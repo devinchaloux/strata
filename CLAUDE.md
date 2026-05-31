@@ -109,8 +109,8 @@ The goal of this phase is to produce:
    `git commit`, or `git push` until Devin explicitly says to. When he does,
    propose a commit message in the format below and wait for confirmation.
 
-2. **Never push to `main`.** All work happens on the `dev` branch. `main` only
-   receives changes via pull request, which Devin opens and merges on GitHub.
+2. **Never push to `main`.** `main` only receives changes via pull request,
+   which Devin opens and merges on GitHub.
 
 3. **Ask before any destructive action.** File deletions, git resets, anything
    irreversible. When in doubt, ask. The cost of asking is low.
@@ -126,8 +126,8 @@ The goal of this phase is to produce:
 - Always work on a feature branch cut from `dev`.
 - Branch naming: `feat/<short-description>`
   (e.g. `feat/strata-schema-draft`, `feat/form-diagram-widget-spec`)
-- When a task is complete, tell Devin the branch is ready. He reviews and merges
-  to `dev` himself.
+- When a task is complete, merge the feature branch into `dev` and push to
+  `origin/dev`. Never push to `main`.
 - Never commit directly to `dev` or `main`.
 
 ---
