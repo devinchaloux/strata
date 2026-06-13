@@ -530,3 +530,64 @@ a new entry is added noting the reversal and why.
 - **Slug uniqueness:** Slugs are generated from labels and de-duplicated by chronological `startTime` order, not creation order. The embed API supports targeting spans by slug, UUID, or `startTime` — so unlabeled spans (no slug) are still navigable by timestamp.
 - **BPM grid correction:** The BPM grid utility must support correction points where bar numbering resets (e.g., at formal elisions where bars 3|4 become bars 1|2 in the next hypermeter unit). This is a Phase 0.3/1.6 UX decision.
 - **Built-in vocabulary starter set:** The global built-in type list (span types and point marker types) will be defined in Phase 0.6 after stress-testing across multiple analytical traditions. The schema mechanism is fixed; the content is a Phase 0.6 deliverable.
+
+---
+
+## Widget Contract (Phase 0.2)
+
+*Decisions made during the Phase 0.2 widget contract design session. Output: `widgets/_contract.md` (new), `widgets/form-diagram.md` (new).*
+
+---
+
+**Decision:** The widget contract is expressed as a `WidgetDefinition<TData>` object, not a class interface.
+**Rationale:** A plain object with typed fields is more idiomatic in React/TypeScript, simpler to tree-shake, and easier for future community widget authors to implement. The object is registered in a `Map<LayerType, WidgetDefinition<any>>` at application startup.
+
+---
+
+**Decision:** `WidgetRenderProps` and `WidgetEditProps` are distinct prop interfaces. `WidgetEditProps` extends `WidgetRenderProps` and adds mutation callbacks.
+**Rationale:** The render component must be safe to use in the embeddable viewer, which means it cannot accept mutation callbacks or have side effects beyond rendering. Keeping the two prop sets distinct makes this constraint enforced by type rather than convention. The edit component inherits all render props and adds only what the editing layer needs.
+
+---
+
+**Decision:** Widgets wire to the document store through callbacks (`onDataChange`, `onSpanSelect`, `onSpanHover`, `onSeek`), not by importing the Zustand store directly.
+**Rationale:** Store-agnostic widgets are independently testable and can be reused in contexts where the store is replaced or mocked. The editor shell provides the callbacks; the widget treats them as opaque function references. This also keeps third-party widgets decoupled from the internal state architecture.
+
+---
+
+**Decision:** `ViewState` is a dedicated interface carrying `zoom`, `scrollOffset`, and `viewportWidth`. The pixel position formula is documented on the interface.
+**Rationale:** Three widgets in the planned roadmap all need to convert timestamps to pixel positions. Centralizing the formula in a documented interface — and passing `ViewState` uniformly to all widget components — prevents each widget from independently deriving (and potentially diverging on) the position calculation.
+
+---
+
+**Decision:** `contributeTimePoints` is a pure function on `WidgetDefinition`, not a callback from the edit component.
+**Rationale:** A callback-based design would require the widget to explicitly notify the store every time a time point is added, moved, or removed — spreading pool-management logic throughout the widget's interaction code. A pure function that declares "given this data, here are my time points" lets the store compute and sync the pool on any data change, without the widget needing to know when or how synchronization happens. The pool always reflects the widget's current state.
+
+---
+
+**Decision:** BPM grid time points carry `sourceLayerId: null`. No widget's `contributeTimePoints` should return entries with `sourceLayerId: null`.
+**Rationale:** The BPM grid utility is not a widget layer — it has no `id` in the layers array. Using `null` as a sentinel for "contributed by the BPM utility" keeps the ownership model unambiguous. The rule that widget `contributeTimePoints` functions must not return `null`-sourced entries prevents accidental clobbering of BPM grid entries.
+
+---
+
+**Decision:** `TimelinePresenceComponent` is a separate optional component (null if unused) that renders SVG elements directly onto the shared ruler.
+**Rationale:** Timeline ruler content (span boundary ticks, energy control point markers) is contextually different from the widget's main panel content — it needs to render within the ruler's SVG coordinate system and respond to the same zoom/scroll state as the ruler itself. Separating it from the main widget panel keeps each component's rendering context clean.
+
+---
+
+**Decision:** Unknown widget types encountered in a loaded document render a labeled placeholder, not a crash.
+**Rationale:** A document authored with a future widget type (e.g., an `"energy-contour"` layer in a file opened in a v1 build) should still load. The unknown layer's data is preserved in the document store unchanged; the UI shows a "widget type not supported in this version" placeholder. This is a forward-compatibility guarantee that costs almost nothing to implement and protects scholars' files across version boundaries.
+
+---
+
+**Decision:** `WidgetExporter.export` receives the full `StrataDocument` as a context argument alongside the specific `layer` and `data`.
+**Rationale:** Exporting often requires document-level context: vocabulary terms (to display type labels in SVG), metadata (for PDF headers), and `duration` (to compute viewBox). Passing the full document keeps the export function signature simple and avoids threading individual fields through separately as the needs expand.
+
+---
+
+**Decision:** Form diagram `contributeTimePoints` IDs use the format `layerId:timestamp` (e.g., `"abc123:94.5"`).
+**Rationale:** Point IDs must be stable across repeated calls for the same boundary so the store can correctly detect no-change vs. updated vs. new entries. Deriving the ID from the content (layer + timestamp) is deterministic and requires no additional state. When a boundary moves, the old ID disappears and the new one appears — the store treats this as a deletion and addition, which is correct.
+
+---
+
+**Decision:** The form diagram's `contributeTimePoints` deduplicates timestamps before returning — adjacent spans sharing a boundary contribute only one pool entry per timestamp, not two.
+**Rationale:** A boundary shared between two consecutive spans is one moment in the music, not two. Contributing duplicate timestamps would create two pool entries for the same point, confusing snap logic (which would need to deduplicate on read) and inflating the pool unnecessarily. Deduplication at the source keeps the pool clean.
