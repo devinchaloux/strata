@@ -2,7 +2,7 @@
 ## A Modular Music Analysis Tool
 
 *Project Vision & Architectural Guiding Document*
-*Working Title — v0.3 Draft — May 2026*
+*Working Title — v0.5 Draft — June 2026*
 
 > This is a living document. It is updated after each major ideation session as design decisions accumulate. No code has been written yet.
 
@@ -10,11 +10,15 @@
 
 ## 1. Project Vision
 
+> **What Strata actually is:** a tool for layered time span analysis that produces structured, queryable, comparable data — enabling scholars to build corpora and interrogate interpretive analytical observations across tracks, performances, and repertoires. This capability does not currently exist in the field. Existing tools produce display artifacts. Strata produces data.
+
 Strata is a web-based, open-source music analysis tool built around a unified analysis document. At its core, it lets an analyst link a YouTube video (or upload a local audio file), then build layered analytical views — called widgets — that are all synchronized to the same playback timeline and saved into a single portable file.
 
 The name Strata reflects the central design metaphor: analysis is not a single flat view but a set of interpretive layers, each illuminating something different about the same piece of music. A form diagram, an intensity curve, an instrumentation map, a written timestamped commentary — these are all strata of the same analytical object.
 
 Existing tools in this space produce form diagram visualizations synced to audio. Strata is inspired by this work but departs significantly in architecture: where existing tools are single-purpose and siloed, Strata is a modular container. Where existing tools enforce hierarchical or non-overlapping formal constraints, Strata is flexible. Where existing tools produce display artifacts, Strata produces queryable scholarly data.
+
+EDM scholarship is the origin and the stress test for this architecture — its formal complexity, overlapping frameworks, and energy-driven structures pushed every design decision toward generality. But the underlying capability — layered time span analysis producing structured comparable data — applies to any repertoire that benefits from timestamp-anchored interpretive analysis. EDM made the tool correct. Music theory at large is the actual audience.
 
 > **The central insight:** the analysis IS the data. When a scholar marks a section boundary, names it, and assigns it a formal type, they are not just annotating a diagram — they are creating a structured, queryable record. Strata is built to make that record first-class.
 
@@ -119,7 +123,7 @@ Each widget type defines a contract:
 - A **timeline presence** — does it draw anything on the shared horizontal axis?
 - An **export definition** — what formats does this widget support, and what function produces each blob?
 
-Built-in widget types for v1: Form Diagram. Additional types (Intensity Graph, Instrumentation Map, Timestamped Written Analysis) are planned but not required for v1. Third-party widgets can be implemented by anyone as long as they conform to the widget contract.
+Built-in widget types for v1: Form Diagram. Additional types (Energy Contour, Instrumentation/Layer Map, Timestamped Written Analysis) are planned but not required for v1. See Section 6 for the full widget roadmap and the analytical rationale for the three-widget stack. Third-party widgets can be implemented by anyone as long as they conform to the widget contract.
 
 ### 2.4 The Shared Timeline Axis
 
@@ -136,6 +140,20 @@ A key design goal — not for v1 but designed in from the start — is that widg
 The data model must support this from day one even if the UI for it is not built until later. Span IDs (see Section 3) are the mechanism.
 
 > **Design principle:** seed the architecture for inter-widget data, but do not build the vines in v1. The file format supports relationships between layers. The reactive cross-widget behavior is a v2+ feature.
+
+### 2.6 The Shared Time Point Pool
+
+Time points are a **document-level resource**, not owned by any individual widget. A shared pool of timestamps lives at the top level of the analysis document. Any widget can contribute time points to that pool, and any widget can snap to or reference any point in the pool regardless of what created it.
+
+This resolves three problems simultaneously:
+
+- **Workflow-agnostic entry**: it doesn't matter which widget the analyst opens first. Time points created in the form diagram are immediately available in the energy contour widget, and vice versa. No import step, no rebuild.
+- **Granularity mismatch**: if a form diagram uses coarse section boundaries (verse, chorus, drop), the analyst can add finer time points directly from the energy contour widget without touching the form diagram. Those points are still available to the form diagram if the analyst later wants to subdivide.
+- **BPM grid generation**: a BPM-aware grid utility writes bar-level time points into the shared pool. Both the form diagram and the energy contour widget immediately have access to that grid as snap targets. This is more useful than a metronomic grid computed per-widget because it survives tempo changes and added measures — the analyst corrects the pool, and all widgets benefit.
+
+**v1 implementation:** a flat array of timestamps at the document level that widgets read from. Live reactivity (moving a point in one widget updates it everywhere) is v2 complexity, but the data architecture supports it from day one.
+
+> **Architectural note:** this decision was informed by painful experience with BriFormer's siloed widget architecture, in which each layer is temporally independent and there is no mechanism for cross-widget time point sharing. The shared pool is the explicit inversion of that pattern.
 
 ---
 
@@ -282,6 +300,31 @@ Strata serves both EDM scholars (who need simultaneous non-hierarchical framewor
 
 An EDM analysis file will typically have two or three form layers and no written analysis widget. A sonata form analysis file will typically have one form layer plus a written analysis widget that creates analytical depth through reference. Both coexist in the same architecture without compromise.
 
+### 4.5 Form Diagram Editor — Interaction Model
+
+Span boundaries are placed and adjusted through a layered interaction model designed around the correction workflow:
+
+- **Spacebar** — places a boundary at the current playback timestamp. This is the primary capture gesture during a listening pass.
+- **Arrow keys** — nudge the selected boundary by small increments (approximately one video frame). This addresses the most common correction case: a boundary placed slightly early or late.
+- **Boundary drag** — drag a boundary handle for larger adjustments. Hard-stops at adjacent boundaries; a boundary cannot be dragged through a neighboring span. Spans have a minimum enforced width to prevent accidental collapse.
+- **Merge** — an explicit action (not a drag consequence) that combines two or more consecutive spans. See merge design below.
+
+All three correction mechanisms — nudge, drag, merge — operate on a *selected boundary*, not on a whole span. Whole-span dragging is not implemented.
+
+### 4.6 The Hierarchical Enforcement Toggle
+
+Strata's default is non-hierarchical: overlapping spans are valid data, and no constraint is enforced at the editing level. This is itself a theoretical statement — made transparently, not silently. BriFormer's non-overlapping constraint is also a theoretical statement, but it presents itself as a neutral default. Strata inverts the assumption and names it.
+
+For analysts whose theoretical commitments require hierarchical thinking — Schenkerian analysis being the clearest example — a **hierarchical enforcement toggle** is available as an opt-in setting, buried in layer settings rather than surfaced prominently. When enabled on a specific layer, the editing UI will prevent the analyst from drawing a span that overlaps with an existing span in that layer.
+
+**Design requirements for this toggle:**
+- Opt-in only. Never the default.
+- Per-layer, not per-document. An analyst can have one hierarchically-constrained layer and two unconstrained layers in the same file.
+- Activating it presents a warning that explains what functionality is being given up and asks for confirmation. The warning is not punitive — it is informational. The analyst may have excellent reasons to want this constraint.
+- The underlying data model does not change. Hierarchical enforcement is a UI editing constraint, not a schema constraint. A file with a hierarchically-constrained layer is identical in format to one without it.
+
+**The design philosophy:** analysts who believe deeply that music is hierarchical are welcome to enforce that constraint on themselves. The tool makes the cost of that constraint explicit rather than hiding it. If a scholar turns on hierarchical enforcement and finds they can represent everything they need to represent — the tool has served them. If they find themselves unable to represent something analytically true — the tool has made an argument more effectively than any paper could.
+
 ---
 
 ## 5. User Stories by Audience
@@ -312,19 +355,44 @@ An EDM analysis file will typically have two or three form layers and no written
 - I want to analyze a source track and multiple remixes as a set — all tagged as performances of the same underlying work — and compare how producers handle formally ambiguous sections.
 - The insight: a remix is a performance, and performance is a kind of analysis. Strata supports this by treating remixes as instances of a source track, the same way multiple recordings are instances of a composition.
 
-### 5.4 Amateur Analyst / Enthusiast
+### 5.4 Classical Analyst — Phrase Rhythm / Schenkerian
+
+- I want to apply multiple simultaneous analytical frameworks to a movement — one layer for large-scale formal sections, one for phrase rhythm, one for a Schenkerian reduction — and see all of them on the same timeline without any layer constraining another.
+- I want the option to enforce non-overlapping spans within a single layer when my analytical framework requires it, while leaving other layers unconstrained.
+- I want to query my corpus: how many movements in my collection resolve their Schenkerian Urlinie in the recapitulation vs. the coda? How does phrase rhythm correlate with formal section type across my corpus?
+- I do not want to be forced into a single analytical lens. Different layers should be able to represent different theoretical commitments simultaneously.
+
+### 5.5 Jazz Scholar
+
+- I want to track multiple simultaneous layers: large-scale form (head/solos/head), soloist presence, harmonic rhythm, and energy contour — all on the same timeline for a single performance.
+- I want to compare multiple performances of the same standard and see how different performers distribute time across formal sections, enter solos, and manage energy across the form.
+- I want my analyses to be queryable: which soloists in my corpus consistently build energy across the full chorus form? Where does harmonic rhythm typically accelerate relative to the solo peak?
+
+### 5.6 Film Music Scholar
+
+- I want to map musical texture and formal sections onto narrative structure — marking cue boundaries, thematic material, orchestration shifts, and their relationship to scene changes and dramatic beats.
+- I want to query across a corpus of cues: how often does the composer thin the texture at a scene transition? Does energy contour correlate with narrative tension in this composer's style?
+- Point markers are essential for me: musical events like a leitmotif entry or a harmonic arrival are moments, not durations, and I need them queryable.
+
+### 5.7 Hip-Hop Scholar
+
+- I want to track formal sections (verse, hook, bridge, outro), energy contour, and flow density as separate but simultaneous layers on the same timeline.
+- I want to mark when a producer drops elements, introduces samples, or shifts the beat — as a DAW-style instrumentation layer — and correlate those choices with formal section changes.
+- I want to query across a corpus: do producers in this sub-genre consistently reduce energy at the hook, or is it the opposite? How long do verses run in this period relative to the hook?
+
+### 5.8 Amateur Analyst / Enthusiast
 
 - I want to make a form diagram for a song I love without needing to download software or create an account.
 - I want it to be shareable so I can post it in a music theory community online.
 - I do not need corpus analysis features. I just want a clean, functional diagram.
 
-### 5.5 Music Video Staging Scholar (new)
+### 5.9 Music Video Staging Scholar
 
 - I am tracking staging events in music videos — when specific performers enter, when visual motifs recur, when choreographic sections begin and end.
 - My corpus currently lives in a spreadsheet. If the videos are on YouTube, I could use Strata to mark events and spans directly on the video timeline, making my observations timestamp-anchored and queryable across my corpus.
 - A mix of point markers (for discrete staging events) and spans (for choreographic sections) covers most of what I need. A dedicated staging widget with richer visual affordances would be a future improvement.
 
-### 5.6 Widget Developer / Community Contributor
+### 5.10 Widget Developer / Community Contributor
 
 - I want to build a new widget type — maybe a harmonic rhythm tracker, or a lyrics synchronization layer — and plug it into the Strata ecosystem without forking the core codebase.
 - I want the widget contract to be documented clearly enough that I can implement it independently.
@@ -338,17 +406,49 @@ An EDM analysis file will typically have two or three form layers and no written
 
 The proof-of-concept widget and the data spine of the system. Draggable, resizable section blocks on a timeline. Multiple layers. Optional overlap. Controlled vocabulary types. Span IDs that other widgets can reference. This is the minimum viable Strata.
 
-### 6.2 v2: Intensity / Sonic Density Graph
+### 6.2 v2: Energy Contour Widget
 
-A manually drawn intensity curve synced to the timeline. The analyst paints intensity as the video plays — dragging up and down to record their interpretive sense of sonic density, energy level, or textural complexity. The curve sits below the form diagram, visually aligned to section boundaries.
+The energy contour widget tracks the **functional energy trajectory** of a track over time — how sonic energy rises, falls, and plateaus across the listening experience. It is analyst-drawn and interpretive, not computed from audio.
 
-> **Why manual, not computed?** Sonic intensity in music is interpretive, not purely acoustic. A spectrogram or waveform gives partial information. The analyst's ear and judgment are irreplaceable. Manual drawing is not a limitation — it is the right epistemology for this kind of analysis.
->
-> Note: automated waveform/spectrogram extraction from YouTube is technically impossible due to browser cross-origin security constraints. The YouTube IFrame API provides playback controls but does not expose the audio stream.
+**Why this widget exists:** EDM producers and scholars have long described the characteristic shape of tracks in terms of energy cycles — buildups, peaks, breakdowns, releases. Butler (2006) includes a prototypical form diagram from a producer that uses triangles and rectangles to describe energy shape. Peres (2016) formalizes setup, buildup, and peak as sonic functions. Smith (2021, MTO 27.2) tracks the continuous processes (filter sweeps, pitch slides, snare rolls) that produce energy change. The energy contour widget sits between these frameworks: it tracks *what energy is doing* (function), not *how a producer achieves it* (mechanism). Mechanism detail belongs in the instrumentation widget.
 
-### 6.3 v2/v3: Instrumentation Layer
+**Why discretized, not free-drawn:** a smooth hand-drawn curve is always unique. A discretized profile — built from control points at analyst-chosen intensity levels — can be *the same* across two tracks in a corpus-queryable sense. Forcing the analyst to assign a level (rather than sketch a shape) produces an interpretive claim rather than an impressionistic trace. That claim is arguable, comparable, and aggregable. This is not a limitation of the widget — it is the epistemological point of the widget.
+
+#### Data Model
+
+The core data primitive is a **control point**: `{ time: float (seconds), intensity: float (0.0–1.0) }`.
+
+The analyst places control points wherever they want. Two points at the same intensity with nothing between them = flat. Two points at different intensities = a transition.
+
+**Transition type** is a field on each segment between two adjacent control points, not on the control point itself. Values: `gradual` (energy changes continuously across the segment — a buildup, a fade) or `step` (energy changes instantaneously — a drop hit, a breakdown cutoff). This field is analytical data, not a rendering choice. A corpus question like "in what percentage of tracks does the first peak arrive via a gradual transition vs. a step?" is answerable because of this field.
+
+**Intensity as float, divisions as display preference:** intensity is stored as a continuous float (0.0–1.0). The number of display divisions — the snap levels the analyst sees and works with — is a layer-level setting, defaulting to 5. An analyst who needs finer distinctions can set it to 7 or 10. Two analyses using different division counts are still comparable at the data level because the underlying float is the same primitive.
+
+#### BPM Grid (Optional Scaffolding)
+
+If the analyst sets a BPM at the layer level, the widget displays faint gridlines at bar or four-bar intervals and offers snapping. This is scaffolding only — it never constrains the data. Time points contributed to the shared pool by this scaffold are available to the form diagram and other widgets. Tempo changes and added measures are handled by correcting the pool directly; they do not break the data model.
+
+#### Relationship to the Form Diagram
+
+The most natural workflow is: draw a form diagram first, establish section boundaries, then open the energy contour widget and import those boundaries as starting control points. The import populates the shared time point pool with the form diagram's boundary timestamps. The analyst then assigns intensity levels and transition types.
+
+**v1:** this import is a hard copy of timestamps from the form diagram layer into the shared pool. If the analyst later moves a form diagram boundary, the energy contour control points do not automatically update.
+
+**v2:** control points imported from the form diagram become live references via span ID. Moving a boundary in the form diagram updates the corresponding control point in the energy contour widget automatically.
+
+The reverse also holds: control points added in the energy contour widget are available as snap targets in the form diagram, enabling analysts who prefer to start with energy analysis to build their formal sections around it.
+
+#### Relationship to the Instrumentation Widget
+
+The energy contour tracks function. The instrumentation widget tracks mechanism. An analyst who wants to note that a particular gradual transition is produced by a filter sweep, snare diminution, and element layering simultaneously records that in the instrumentation widget — or in the `notes` field of the relevant control point or segment. The energy contour does not need to know the mechanism; the instrumentation widget does not need to track the functional trajectory. They are complementary views of the same music.
+
+> **Name:** this widget is called the **Energy Contour** widget throughout the codebase and documentation. Earlier references to "Intensity Graph" or "Sonic Density Graph" are superseded by this name.
+
+### 6.3 v2/v3: Instrumentation / Layer Widget
 
 A DAW-style view showing which instruments, voices, or elements are present at any given point. Each "track" in the layer is a named element with presence blocks on the timeline. Integrated into the same file and timeline as all other widgets.
+
+> **Relationship to the energy contour:** the instrumentation widget is the natural home for mechanism-level detail. Where the energy contour records that energy increased gradually over sixteen bars, the instrumentation widget can show which elements were added, which automation curves were running, and what production techniques produced that increase. Smith's (2021) continuous process framework — tracking filter sweeps, pitch slides, and snare rolls as formal mechanisms — is most naturally captured at this layer. The two widgets answer different questions and are designed to coexist in the same analysis file.
 
 ### 6.4 v2/v3+: Timestamped Written Analysis
 
@@ -424,15 +524,70 @@ Producing a single document from multiple widgets (e.g., form diagram SVG with w
 
 ---
 
-## 8. Corpus Analysis, Corpus Builder & The Library
+## 8. The Embeddable Viewer
 
-### 8.1 Corpus Analysis Philosophy
+### 8.1 Concept
+
+The embeddable viewer is a read-only render of a `.strata` file, designed for embedding in web-based scholarly writing — specifically in Astro/Keystatic content. It is not a separate product; it is the render path of the widget system, instantiated without the editing layer.
+
+The scholarly use case: an analyst writes a prose argument, and embeds a live form diagram — synced to audio, focused on a specific formal span — directly in the text. The reader can listen to the section being discussed while reading the argument about it. The embed and the prose make different but complementary analytical claims simultaneously; neither is a caption for the other.
+
+> **On the relationship between embed and prose:** the form diagram shows structure; the prose says why it matters. A reader engaging only with the diagram gets something real. A reader engaging only with the prose gets something real. Together they produce an analytical experience neither delivers alone. The embed should feel like a live object the prose is in conversation with — not a figure with a caption.
+
+### 8.2 The Viewer Component
+
+`<StrataViewer>` is a React component that takes a parsed `.strata` object and renders it read-only. The editor wraps this same component and adds the editing layer on top. The viewer is the shared primitive.
+
+In Astro, the viewer is instantiated as an island with `client:load` or `client:visible`. The `.strata` file is co-located with content and imported at build time. Updating the analysis file updates all embeds referencing it on the next build.
+
+### 8.3 The Embed API
+
+```jsx
+<StrataEmbed
+  file="track-analysis.strata"   // path to co-located .strata file
+  widgets={["form"]}             // allowlist of widget types to render
+  focus="drop-1"                 // slug of the span to focus
+  defaultLoop={true}             // loop playback within focused span
+  defaultContext={false}         // show adjacent spans for context
+/>
+```
+
+`widgets` is an allowlist filter. The embed renders only the specified widget types from the file; all other layers are ignored. This allows a single rich analysis file to power multiple targeted embeds across multiple content pieces.
+
+`focus` resolves the slug to the span's `startTime` and `endTime`. Focus triggers: seek to `startTime`, zoom timeline to the span, loop playback, highlight the span visually.
+
+### 8.4 Context Mode
+
+When `defaultContext` is true, the embed expands to show adjacent spans in the same layer rather than the focused span in isolation. Context is span-aware, not time-based — the embed shows the formal neighbors of the focused span, giving the reader a sense of where it falls in the larger structure. This is analytically more meaningful than an arbitrary fixed-second window.
+
+### 8.5 Source Offset
+
+Each source reference in a `.strata` file carries a `sourceOffset` field — the difference in seconds between the recording's true start and the YouTube video's audio start. Seeking behavior applies the offset automatically. Span timestamps always represent recording time, never YouTube video time. If a YouTube video is replaced (due to takedown, re-upload, or quality upgrade), only the URL and offset need updating; span data is untouched.
+
+### 8.6 Link Health Monitoring
+
+YouTube link health is monitored via the oEmbed endpoint, implemented as a scheduled GitHub Action. The Action scans all `.strata` files in the repo weekly, checks each YouTube URL, and opens an issue for any that return a failure. This provides passive monitoring without requiring the analyst to manually check links across a growing corpus.
+
+### 8.7 Update Propagation
+
+Because embeds are file-referenced (not inline JSON) and the viewer component is shared across all embeds, there are two kinds of updates, both free:
+
+- **Viewer component updates** (new features, bug fixes, reader toggles in v2): rebuild the site, all embeds get the new version.
+- **Analysis data updates** (revised span boundaries, corrected timestamps, new layers): update the `.strata` file, rebuild, all embeds referencing that file reflect the change.
+
+Reader-accessible toggles (loop on/off, context on/off) are a v2 quality-of-life feature. In v1, defaults are author-set and fixed for the reader.
+
+---
+
+## 9. Corpus Analysis, Corpus Builder & The Library
+
+### 9.1 Corpus Analysis Philosophy
 
 Strata's stance: the tool produces good data. What scholars do with that data is up to them. A basic corpus view may be built into the tool eventually, but the primary commitment is to a file format clean enough that a Python script, a custom app, or a simple spreadsheet import can extract meaningful information without requiring the Strata application.
 
 > The file format is a scholarly data standard disguised as a tool interface. Any scholar with basic technical literacy — or a technically-minded collaborator — should be able to query a folder of `.strata` files using nothing but Python's json module and a loop.
 
-### 8.2 What Makes Corpus Analysis Possible
+### 9.2 What Makes Corpus Analysis Possible
 
 Three things must be designed in from day one, even if nullable in v1:
 
@@ -440,7 +595,7 @@ Three things must be designed in from day one, even if nullable in v1:
 - The `vocabulary` reference on the document — which vocabulary this file uses. Enables filtering a corpus to only files using compatible vocabulary.
 - The `project` tag on the document — which collection this file belongs to. Enables grouping.
 
-### 8.3 The Corpus Builder
+### 9.3 The Corpus Builder
 
 The Corpus Builder is a separate companion application that consumes `.strata` files (and MEI files) and provides organization, querying, and extensibility for corpus-scale scholarly work. It is not a future phase of Strata — it is a second product.
 
@@ -521,7 +676,7 @@ External analysis packages (Python scripts, community-built tools) can plug into
 
 **The file discovery problem:** a significant portion of the target audience lacks fluent familiarity with folder structures. File import must be guided, visual, and search-assisted rather than path-based. Users should be able to find and import `.strata` files through a UI flow that does not assume knowledge of where files live on their computer. (See Section 9 for the open question on implementation approach.)
 
-### 8.4 The Library (Pie in the Sky — May Never Be Built)
+### 9.4 The Library (Pie in the Sky — May Never Be Built)
 
 The Library is where analyses are shared publicly, browsed, voted on, and commented on. It requires user accounts, a backend, storage, and moderation. It is explicitly deprioritized — the Analysis Tool and Corpus Builder together constitute a complete scholarly tool without it.
 
@@ -529,7 +684,7 @@ Build only if the community demands it and the resources exist.
 
 ---
 
-## 9. Open Questions & Deferred Decisions
+## 10. Open Questions & Deferred Decisions
 
 ### Questions to Answer Before or During v1 Build
 
@@ -540,6 +695,10 @@ Build only if the community demands it and the resources exist.
 - **"Expected event not present" — exact implementation.** Document-level field? Layer-level list? Boolean `absent` on a point marker? Needs a design decision before v1 schema is finalized.
 - **Point marker vocabulary at v1.** Does the Hepokoski/Darcy use case require project-level custom point marker types at v1? Or can it wait for v2? Depends on whether classical scholars are in the primary v1 audience.
 - **What is the exact boundary between core schema and widget-defined data payload?** The typed envelope pattern is decided; the formal spec of the boundary needs to be written out. This is part of the schema drafting work.
+- **Shared time point pool — exact schema.** What fields does a time point in the pool carry beyond `timestamp`? Does it store a `sourceWidgetId`? A `label`? A `type`? The minimum viable pool entry is just a timestamp, but the schema should be written out formally before coding begins.
+- **Energy contour — segment data model.** A segment exists between two control points and carries a `transitionType` field. Does the segment have its own `id`? Its own `notes` field? This needs to be formally specified as part of the energy contour widget contract.
+- **Energy contour — v1 scope decision.** The energy contour widget is currently listed as v2. Given how fully its data model has been designed, the question of whether it belongs in v1 alongside the form diagram is worth revisiting before build begins.
+- **Merge UX — dedicated design session required before implementation.** The conflict-only dialog design, multi-select interaction model, deprecation record format, and edge cases (merging spans with different parents, merging across layers) need resolution before the form diagram editor is built. Merge is a v1 requirement.
 
 ### Questions That Can Wait
 
@@ -555,9 +714,12 @@ Build only if the community demands it and the resources exist.
 - Is there a native Anthemics integration? — Deferred. Keep tools separate until both are stable.
 - **Written analysis widget — v2 or v3+?** See roadmap note in 6.4.
 - **Music video staging — dedicated widget?** Standard form diagram + point marker likely covers this. Revisit if that user community arrives.
+- **Hierarchical enforcement toggle — exact UX of the warning dialog.** Content of the warning, confirmation flow, and how the toggle state is surfaced in the layer UI. Resolve before form diagram widget UI is finalized.
+- **Energy contour — live reference import (v2).** When control points become live references to span IDs rather than hard-copied timestamps, what happens to a control point whose source span is deleted? Needs a conflict resolution design.
+- **BPM grid utility — scope.** Is the BPM grid generator a utility built into the energy contour widget, a standalone utility that writes to the shared pool, or a layer-level setting? The shared pool architecture suggests standalone, but the UX is unresolved.
 
 ---
 
 *Strata — Working Title*
-*Project Vision & Architectural Guiding Document v0.4*
-*Generated May 2026 — Updated with session notes v0.2, v0.3, and v0.4 (Corpus Builder, demo corpus, MEI).*
+*Project Vision & Architectural Guiding Document v0.5*
+*Generated May 2026 — Updated with session notes v0.2, v0.3, v0.4 (Corpus Builder, demo corpus, MEI), and v0.5 (energy contour widget, shared time point pool, three-widget analytical stack, hierarchical enforcement toggle, core product claim reframe).*
