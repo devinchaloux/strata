@@ -647,3 +647,89 @@ a new entry is added noting the reversal and why.
 
 **Decision:** The video panel renders only when a YouTube URL is set on the document. When no URL is set, no video panel or iframe is rendered.
 **Rationale:** Rendering an empty player state (placeholder iframe, disabled controls) when no URL is set adds visual weight without function. The transport bar is always visible but all controls are disabled when no URL is set. The video panel appears only when there is actually a video to show.
+
+---
+
+## Form Diagram Editor (Phase 0.4)
+
+*Decisions made during the Phase 0.4 form diagram editor UX design session, conducted collaboratively with Devin Chaloux. An initial unilateral draft was produced and then superseded in full by a collaborative revision session on 2026-06-13. All decisions below reflect the collaborative session. Output: `_private/form-diagram-ux-spec.md` (revised), schema updates to `src/types/strata.ts` and `schema/strata.schema.json`.*
+
+---
+
+**Decision:** Form diagram spans are arcs and brackets, not rectangular bars. The shape model is composable: end cap geometry is driven by the existing `startBoundaryType`/`endBoundaryType` fields; top line style is a new per-span field `lineType: 'arc' | 'flat'` (default: `'arc'`).
+**Rationale:** BriFormer's shape gallery offers pre-baked combinations with no semantic structure — picking "arc with diagonal start" conflates two independent analytical claims into an arbitrary visual choice. The composable model keeps each dimension semantically meaningful: `lineType` encodes the display style of the arch; `startBoundaryType`/`endBoundaryType` encode the analytical character of the formal transition (definite, gradual, elided). Both are independently corpus-queryable. Rectangular bars belong to the future instrumentation widget (DAW-style track visualization), not the form diagram. Confirmed during design session by reference to BriFormer screenshots showing bracket/arc notation on real analyses.
+
+---
+
+**Decision:** Shape type assignment is driven by layer-level defaults. New spans inherit the layer's default `lineType`. Post-hoc bulk adjustment (multi-select + apply in the metadata panel) is the primary shape refinement model. No per-span shape picker appears during the primary annotation workflow.
+**Rationale:** Requiring analysts to select a shape for every span during placement is a BriFormer-class UX failure — it interrupts the live listening and annotation workflow. The fast path (Spacebar, Spacebar, Spacebar) must produce correctly shaped spans with zero configuration. Per-span shape deviation is an edge case handled in a second pass. Multi-select + bulk apply must be implemented in Phase 2 for this model to work; it is a load-bearing UX requirement.
+
+---
+
+**Decision:** Three semantic text zones exist for each span shape — above the shape (maps to `Span.label`), inside the shape (maps to `Span.annotation`), and below (maps to point marker labels; no span field in v1). Zone membership is determined by field semantics, not by shape type, span width, or available space.
+**Rationale:** BriFormer conflates text position with text content — analysts choose a text zone the same way they choose a shape, with no structural meaning to the positioning choice. Strata's model makes position semantically mandatory: `label` (the section name) always renders above the arc peak; `annotation` (analytical detail — thematic IDs, bar numbers, brief observations such as "Anthem gradually emerges") always renders inside the shape body. Different scholarly traditions may use the zones differently, which is why layer-level rendering config overrides exist — but the field-to-zone mapping is the stable semantic layer that makes these choices corpus-queryable.
+
+---
+
+**Decision:** Text rendering within a layer is configurable via four layer-level fields added to a new `LayerRenderingConfig` object on `Layer`: `labelPosition` (`'above'` | `'inside'`), `labelJustification` (`'left'` | `'center'` | `'right'`), `annotationPosition` (`'above'` | `'inside'`), `annotationJustification` (`'left'` | `'center'` | `'right'`). Defaults: label above and centered; annotation inside and left-aligned. There are no per-span text rendering overrides in v1.
+**Rationale:** Devin's workflow — section names centered above brackets, analytical text left-aligned inside the shape body — is the default, but it is not universal. Analysts using thematic letter labeling ("A", "B", "C") inside domes may want `labelPosition: 'inside'` and `labelJustification: 'center'`. A Schenkerian analyst may want annotations above the bracket. Layer-level config accommodates different scholarly practices without per-span configuration (which would produce inconsistent diagrams). The rendering config lives on the layer so every span inherits it with zero additional effort — the analyst configures the layer once, not each span.
+
+---
+
+**Decision:** Font size is a layer-level setting, not a per-span attribute. Per-span font size is not supported in v1. The exact API (enum vs. numeric scale) is deferred to Phase 0.7 visual design.
+**Rationale:** BriFormer's central text UX failure is per-span manual font sizing, producing inconsistent sizes across the diagram — Devin reports "5 clicks in some cases" to resize a single span's text. Locking font size to the layer level prevents this class of inconsistency at the architectural level. The Phase 0.7 visual design session will define the exact mechanism; the constraint is that font size is uniform within a layer and set once, not per span.
+
+---
+
+**Decision:** The app shell layout is (top to bottom): above-ruler widget layers [track headers + span areas] → full-width timeline ruler → transport bar → optional below-ruler widget layers → video panel (collapsible).
+**Rationale:** Form diagram arcs and brackets arch above the timeline ruler — their labels float above and their annotation text appears inside the shape body. The ruler is the temporal reference below the diagrams, not above them. This matches the orientation confirmed by Devin with reference to BriFormer (which he described as having the editing layer on top, ruler below). The transport bar sits between the ruler and the video panel. The video panel is at the bottom. The initial unilateral draft had this layout wrong (video top, ruler second, widget area below) and was corrected during collaborative review.
+
+---
+
+**Decision:** Each layer has a DAW-style track header cell to the left of its span content area. Headers form a left column that scrolls vertically with the layer stack. They are not a unified sidebar panel. A global collapse toggle collapses all headers simultaneously to a condensed state (~28px wide: color swatch + visibility toggle only). Per-row expand/collapse is not supported in v1.
+**Rationale:** The standard DAW layout (Pro Tools, Logic, Ableton) places track headers to the left of track content with the same row height. This maintains spatial correspondence between header and content without separate scroll synchronization. Expanded headers show layer name, visibility toggle, and settings access. Condensed state provides the minimum needed to identify and toggle a layer when screen real estate is at a premium. Global collapse rather than per-row is simpler and sufficient — the use case for having some rows expanded and others condensed simultaneously is weak in v1.
+
+---
+
+**Decision:** The timeline ruler starts at the same horizontal position as the left edge of the span content area. The header column has a blank offset cell in the ruler row equal to the header width. This is a hard alignment invariant, not a stylistic choice.
+**Rationale:** If the ruler started at the window's left edge (behind the track headers), a span beginning at 0:00 would appear shifted rightward from the ruler's 0:00 mark — the coordinate systems would be misaligned. Correct time reading from the diagram requires that span positions above the ruler align exactly with ruler tick marks below. The blank offset cell enforces this. Devin explicitly called this out during the design session when reviewing the initial mockup.
+
+---
+
+**Decision:** Widget position relative to the timeline ruler is a two-level setting: `defaultPosition: 'above' | 'below'` on the `WidgetDefinition` (widget contract, set by the widget type); optional `position: 'above' | 'below'` override on each `Layer` (set by the analyst per-layer in the layer settings popover). Absent a layer override, the widget's `defaultPosition` applies. Absent a widget default, `'above'` is assumed.
+**Rationale:** Different widget types belong on different sides of the ruler by default. The form diagram belongs above (arcs arch above the time axis). A written analysis widget might belong below. The analyst should also be able to override per-layer for specialized workflows. Two-level configuration captures both the common case and the exception with minimal schema complexity. Adding `defaultPosition` to the widget contract and `position` to `Layer` both cost nothing now and prevent a migration later.
+
+---
+
+**Decision:** The metadata panel is a right sidebar (~280px) that appears when a span is selected. Architecturally it is a "detail panel with a position slot" — on wide viewports it mounts to the right; on narrow viewports (tablet/mobile) the same component renders as a bottom sheet. No redesign required for mobile adaptation, only a different mounting slot.
+**Rationale:** Option A (right sidebar) was selected for sustained editing. Selecting a span and filling in label, type, annotation, boundary types, and lyrics is a multi-field workflow that benefits from a stable, predictable surface. Inline popovers compete visually with the diagram; a bottom drawer wastes vertical space on desktop. Mobile usability is a requirement (BriFormer works on mobile) and the "position slot" framing ensures mobile adaptation does not require a component rewrite.
+
+---
+
+**Decision:** Spacebar while playing places a span boundary at `currentTime` on the active layer, without pausing playback. Spacebar while paused starts playback. Both behaviors coexist on the same key without a mode switch. A small persistent context indicator in the transport bar shows the current Spacebar action.
+**Rationale:** Spacebar-to-place (while playing, without pausing) is the correct capture gesture for live annotation: the analyst listens through the track and taps when a new section begins. Audio Timeliner's two-step workflow (Spacebar to mark → then draw bubble) was explicitly rejected by Devin. BriFormer improved this with direct placement; Strata improves further with no separate placement step. The dual behavior (place while playing, start-play while paused) requires UI acknowledgment: the context indicator ensures analysts always know what Space will do.
+
+---
+
+**Decision:** All structural span operations (Split at playhead, Merge with previous/next, Duplicate, Delete) are available in both the right-click context menu and the metadata panel action strip. Neither location is optional in v1.
+**Rationale:** Right-click-only is a discoverability problem on desktop and a complete blocker on mobile. The metadata panel action strip provides click/tap access to all structural operations, making them reachable on touch screens and for analysts who do not use right-click. Both surfaces must exist. Context menu = keyboard-free desktop shortcut. Action strip = the primary surface for mobile and for new users who haven't memorized right-click availability.
+
+---
+
+**Decision:** `M` places a point marker at the current playback time. A dedicated button in the transport bar provides the click/tap equivalent for mobile and discoverability.
+**Rationale:** `M` is mnemonic (Marker), parallel to Spacebar for span boundaries, and unused in the player chrome keyboard map. The transport bar button follows BriFormer's pattern (which Devin confirmed has both `M` shortcut and a button) and is necessary for mobile usability. Placement in the transport bar is natural because point marker placement is a playback-time action — done while listening, like Spacebar for boundaries.
+
+---
+
+**Decision:** Inline label editing (double-click on span body) is implemented for desktop only. Mobile uses the metadata panel as the exclusive editing surface for labels in v1.
+**Rationale:** Double-click on desktop is an unambiguous shortcut for the most common metadata edit. Single-click (select) and double-click (inline edit) are distinct with no ambiguity on a pointing device. Touch has no clean double-tap equivalent — it can trigger zoom or other system gestures. Long-press inline edit adds complexity for a convenience shortcut that is already handled by the metadata panel on touch. Mobile v1 uses the panel; inline editing on touch can be revisited in v2.
+
+---
+
+**Decision:** Layer drag-reorder is conditionally included in v1. Include if a lightweight implementation (e.g. dnd-kit sortable) is straightforward in Phase 2; defer to v1.5 if not. This is not a Phase 2 blocker.
+**Rationale:** Layer reorder is quality-of-life, not core analytical requirement. The `displayOrder` field is in the schema from day one; adding reorder UI later requires no data migration. Forcing it into v1 risks delaying the form diagram widget for a non-essential feature.
+
+---
+
+**Decision:** Per-span color override UI, parent span picker, and custom span type creation are deferred to Phase 0.6 for final v1 scope decision. Fields are present in the schema and in the metadata panel's "Advanced" section but may ship without active UI interaction in v1.
+**Rationale:** These are scope decisions that affect implementation time without affecting the core analytical workflow. The schema and panel layout accommodate them regardless of the scope decision. Phase 0.6 explicitly enumerates what ships in v1 vs. v1.5.

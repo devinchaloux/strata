@@ -21,6 +21,8 @@ export type SourceType = "youtube" | "local";
 
 export type BoundaryType = "definite" | "gradual" | "elided";
 
+export type LineType = "arc" | "flat";
+
 // ---------------------------------------------------------------------------
 // Source Reference
 // ---------------------------------------------------------------------------
@@ -148,6 +150,7 @@ export interface Span {
   endBoundaryType?: BoundaryType | null;  // Omit or null for "definite" (default)
   parentId?: string | null;              // UUID of parent span; hierarchical reference without enforcement
   mergedFrom?: string[] | null;          // Always >= 2 UUIDs when present
+  lineType?: LineType;                   // Top line style of the arc/bracket shape; default 'arc'
 }
 
 // ---------------------------------------------------------------------------
@@ -224,15 +227,24 @@ export type LayerData = FormDiagramData;
  * (all fields except data). The data field is defined by the widget type.
  * New widget types can be added without modifying the core schema.
  */
+export interface LayerRenderingConfig {
+  labelPosition?: "above" | "inside";
+  labelJustification?: "left" | "center" | "right";
+  annotationPosition?: "above" | "inside";
+  annotationJustification?: "left" | "center" | "right";
+}
+
 export interface Layer {
-  id: string;                   // UUID; never changes
+  id: string;                        // UUID; never changes
   type: LayerType;
-  label: string;                // Short human-readable layer name
-  description?: string | null;  // Optional analytical purpose or framework context for this layer
-  visibility: boolean;          // Hidden layers are excluded from exports
-  locked: boolean;              // When true, layer is read-only in the editor
-  colorDefault: string;         // Hex fallback for spans with no per-span color override
-  displayOrder: number;         // Render order; lower = renders first (bottom); gaps allowed
+  label: string;                     // Short human-readable layer name
+  description?: string | null;       // Optional analytical purpose or framework context for this layer
+  visibility: boolean;               // Hidden layers are excluded from exports
+  locked: boolean;                   // When true, layer is read-only in the editor
+  colorDefault: string;              // Hex fallback for spans with no per-span color override
+  displayOrder: number;              // Render order; lower = renders first (bottom); gaps allowed
+  position?: "above" | "below";     // Position relative to ruler; absent = use widget defaultPosition
+  rendering?: LayerRenderingConfig;  // Text rendering defaults for spans in this layer
   data: LayerData;
 }
 
