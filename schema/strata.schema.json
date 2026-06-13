@@ -264,6 +264,34 @@
       }
     },
 
+    "LayerRenderingConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Layer-level defaults for text rendering within span shapes. All spans in the layer inherit these settings. No per-span text rendering overrides in v1. Defaults: label above/center, annotation inside/left.",
+      "properties": {
+        "labelPosition": {
+          "type": "string",
+          "enum": ["above", "inside"],
+          "description": "Where span labels render relative to the arc shape. 'above' = label floats above the arc peak (default); 'inside' = label renders inside the shape body. Applies to all spans in this layer."
+        },
+        "labelJustification": {
+          "type": "string",
+          "enum": ["left", "center", "right"],
+          "description": "Horizontal alignment of label text. Default: 'center'. Natural for section names above brackets."
+        },
+        "annotationPosition": {
+          "type": "string",
+          "enum": ["above", "inside"],
+          "description": "Where span annotation text renders relative to the arc shape. 'inside' = renders inside the shape body (default); 'above' = floats above the arc peak. Applies to all spans in this layer."
+        },
+        "annotationJustification": {
+          "type": "string",
+          "enum": ["left", "center", "right"],
+          "description": "Horizontal alignment of annotation text. Default: 'left'. Natural for analytical text inside brackets."
+        }
+      }
+    },
+
     "Layer": {
       "type": "object",
       "required": ["id", "type", "label", "visibility", "locked", "colorDefault", "displayOrder", "data"],
@@ -305,6 +333,15 @@
           "type": "integer",
           "minimum": 0,
           "description": "Render order. Lower numbers render first (bottom of the visual stack). Gaps are allowed."
+        },
+        "position": {
+          "type": "string",
+          "enum": ["above", "below"],
+          "description": "Position of this layer relative to the timeline ruler. Absent = use the widget type's defaultPosition from the WidgetDefinition. Absent widget default = 'above'. Set by the analyst per-layer in the layer settings popover."
+        },
+        "rendering": {
+          "$ref": "#/$defs/LayerRenderingConfig",
+          "description": "Text rendering defaults for spans in this layer. Omit to use system defaults (label above/center, annotation inside/left)."
         },
         "data": {
           "description": "Widget-specific data payload. Shape is determined by the type field.",
@@ -407,6 +444,11 @@
           "items": { "type": "string", "format": "uuid" },
           "minItems": 2,
           "description": "UUIDs of source spans when created by a merge. Enables reference resolution for inter-widget links that pointed to deprecated span IDs. Null for spans not produced by a merge. Always contains at least two IDs when present."
+        },
+        "lineType": {
+          "type": "string",
+          "enum": ["arc", "flat"],
+          "description": "Top line style of the arc/bracket shape. 'arc' = curved dome arch (classic bubble form); 'flat' = straight horizontal line (open bracket / rectangular-top form). Composable with startBoundaryType/endBoundaryType which control end cap geometry independently. Absent = 'arc' (default). Set at layer level for consistency; per-span override for edge cases."
         }
       }
     },
