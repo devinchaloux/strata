@@ -1,0 +1,289 @@
+{
+  "strataVersion": "0.1.0",
+  "fileFormatVersion": 1,
+  "createdAt": "2026-06-13T10:00:00.000Z",
+  "updatedAt": "2026-06-13T14:30:00.000Z",
+
+  "title": "Levels",
+  "artist": ["Avicii"],
+  "context": "recording",
+  "duration": 201.0,
+
+  "composer": null,
+  "work": null,
+  "derivativeOf": null,
+
+  "notes": "Two-layer analysis of Avicii 'Levels' (2011). Layer 1 applies Peres (2016) EDM functional section taxonomy. Layer 2 identifies macro-level three-part form. Notable for its rotational energy structure and extremely economical use of a single melodic hook (a pitched-up sample of Etta James 'Something's Got a Hold on Me').",
+  "bpm": 128.0,
+  "timeSignature": { "numerator": 4, "denominator": 4 },
+
+  "source": {
+    "type": "youtube",
+    "url": "https://www.youtube.com/watch?v=_ovdm2yX4MA",
+    "sourceOffset": 0.0
+  },
+
+  "project": "anthemics-edm-corpus",
+  "analysisAuthor": "Devin Chaloux",
+
+  "vocabulary": {
+    "spanTypes": [],
+    "pointMarkerTypes": [
+      {
+        "id": "energy-peak",
+        "label": "Energy Peak",
+        "description": "The moment of maximum perceived sonic energy in a section — typically the loudest, densest, most kinetically charged instant.",
+        "color": "#FF4444"
+      }
+    ]
+  },
+
+  "sharedTimePoints": [
+    {
+      "id": "11111111-0000-4000-8000-000000000001",
+      "timestamp": 54.0,
+      "label": "Drop 1 boundary",
+      "sourceLayerId": "aaaa0001-0000-4000-8000-000000000001"
+    },
+    {
+      "id": "11111111-0000-4000-8000-000000000002",
+      "timestamp": 97.0,
+      "label": "Drop 2 boundary",
+      "sourceLayerId": "aaaa0001-0000-4000-8000-000000000001"
+    },
+    {
+      "id": "11111111-0000-4000-8000-000000000003",
+      "timestamp": 129.0,
+      "label": "Final drop boundary",
+      "sourceLayerId": "aaaa0001-0000-4000-8000-000000000001"
+    }
+  ],
+
+  "layers": [
+
+    {
+      "id": "aaaa0001-0000-4000-8000-000000000001",
+      "type": "form-diagram",
+      "label": "Functional Sections",
+      "description": "Phrase-level EDM formal analysis applying Peres (2016) functional section taxonomy: intro, build, drop, breakdown, outro.",
+      "visibility": true,
+      "locked": false,
+      "colorDefault": "#4A90D9",
+      "displayOrder": 0,
+      "data": {
+        "hierarchicalEnforcement": false,
+        "spans": [
+          {
+            "id": "bbbb0001-0000-4000-8000-000000000001",
+            "label": "Intro",
+            "slug": "intro",
+            "startTime": 0.0,
+            "endTime": 21.0,
+            "type": "intro",
+            "color": null,
+            "annotation": "pitched-up vocal hook (Etta James sample)",
+            "notes": "Hook introduced immediately with no drop. Energy builds toward the first drop. The opening gesture frames everything that follows.",
+            "lyrics": "Oh, sometimes I get a good feeling, yeah / Get a feeling that I never never never never had before, no no",
+            "parentId": null,
+            "mergedFrom": null
+          },
+          {
+            "id": "bbbb0002-0000-4000-8000-000000000002",
+            "label": "Build 1",
+            "slug": "build-1",
+            "startTime": 21.0,
+            "endTime": 54.0,
+            "type": "build",
+            "color": null,
+            "annotation": "filter sweep + snare roll",
+            "notes": "Classic riser build. Cutdown at ~0:43 before the drop.",
+            "endBoundaryType": "gradual",
+            "parentId": null,
+            "mergedFrom": null
+          },
+          {
+            "id": "bbbb0003-0000-4000-8000-000000000003",
+            "label": "Drop 1",
+            "slug": "drop-1",
+            "startTime": 54.0,
+            "endTime": 64.0,
+            "type": "drop",
+            "color": "#FF6B35",
+            "startBoundaryType": "gradual",
+            "parentId": null,
+            "mergedFrom": null
+          },
+          {
+            "id": "bbbb0004-0000-4000-8000-000000000004",
+            "label": "Breakdown 1",
+            "slug": "breakdown-1",
+            "startTime": 64.0,
+            "endTime": 75.0,
+            "type": "breakdown",
+            "color": null,
+            "parentId": null,
+            "mergedFrom": null
+          },
+          {
+            "id": "bbbb0005-0000-4000-8000-000000000005",
+            "label": "Build 2",
+            "slug": "build-2",
+            "startTime": 75.0,
+            "endTime": 97.0,
+            "type": "build",
+            "color": null,
+            "notes": "Follows identical trajectory to Build 1. Listener familiarity raises the anticipation.",
+            "endBoundaryType": "gradual",
+            "parentId": null,
+            "mergedFrom": ["cccc0001-0000-4000-8000-000000000001", "cccc0002-0000-4000-8000-000000000002"]
+          },
+          {
+            "id": "bbbb0006-0000-4000-8000-000000000006",
+            "label": "Drop 2",
+            "slug": "drop-2",
+            "startTime": 97.0,
+            "endTime": 107.0,
+            "type": "drop",
+            "color": "#FF6B35",
+            "startBoundaryType": "gradual",
+            "parentId": null,
+            "mergedFrom": null
+          },
+          {
+            "id": "bbbb0007-0000-4000-8000-000000000007",
+            "label": "Breakdown 2",
+            "slug": "breakdown-2",
+            "startTime": 107.0,
+            "endTime": 129.0,
+            "type": "breakdown",
+            "color": null,
+            "notes": "Extended breakdown — longer than BD1. Energy fully depleted before final build.",
+            "confidence": "approximate",
+            "parentId": null,
+            "mergedFrom": null
+          },
+          {
+            "id": "bbbb0008-0000-4000-8000-000000000008",
+            "label": "Build 3",
+            "slug": "build-3",
+            "startTime": 129.0,
+            "endTime": 140.0,
+            "type": "build",
+            "color": null,
+            "endBoundaryType": "gradual",
+            "parentId": null,
+            "mergedFrom": null
+          },
+          {
+            "id": "bbbb0009-0000-4000-8000-000000000009",
+            "label": "Final Drop",
+            "slug": "final-drop",
+            "startTime": 140.0,
+            "endTime": 152.0,
+            "type": "drop",
+            "color": "#FF6B35",
+            "notes": "Brief — track moves quickly to outro. No full loop of the drop.",
+            "startBoundaryType": "gradual",
+            "parentId": null,
+            "mergedFrom": null
+          },
+          {
+            "id": "bbbb0010-0000-4000-8000-000000000010",
+            "label": "Outro",
+            "slug": "outro",
+            "startTime": 152.0,
+            "endTime": 201.0,
+            "type": "outro",
+            "color": null,
+            "annotation": "hook return; mirror of intro",
+            "notes": "Vocal hook returns; energy decays. The prime mark in the large-scale layer signals the departure: the hook now carries the weight of the drops that preceded it.",
+            "parentId": null,
+            "mergedFrom": null
+          }
+        ]
+      }
+    },
+
+    {
+      "id": "aaaa0002-0000-4000-8000-000000000002",
+      "type": "form-diagram",
+      "label": "Large-Scale Form",
+      "description": "Macro-level three-part form (A B A') showing rotational structure organized around two full drop cycles.",
+      "visibility": true,
+      "locked": false,
+      "colorDefault": "#7B68EE",
+      "displayOrder": 1,
+      "data": {
+        "hierarchicalEnforcement": false,
+        "spans": [
+          {
+            "id": "eeee0001-0000-4000-8000-000000000001",
+            "label": "A",
+            "slug": "a",
+            "startTime": 0.0,
+            "endTime": 54.0,
+            "type": "intro",
+            "color": null,
+            "notes": "Setup: establishes the hook, builds toward the first drop.",
+            "parentId": null,
+            "mergedFrom": null
+          },
+          {
+            "id": "eeee0002-0000-4000-8000-000000000002",
+            "label": "B",
+            "slug": "b",
+            "startTime": 54.0,
+            "endTime": 140.0,
+            "type": null,
+            "color": null,
+            "notes": "The energetic core — two full drop cycles. Type is null: no vocabulary term captures 'the main event' cleanly at this scale.",
+            "parentId": null,
+            "mergedFrom": null
+          },
+          {
+            "id": "eeee0003-0000-4000-8000-000000000003",
+            "label": "A′",
+            "slug": "a-prime",
+            "startTime": 140.0,
+            "endTime": 201.0,
+            "type": "outro",
+            "color": null,
+            "notes": "Return of the hook material. Mirror of A. The prime mark signals the departure: the hook now carries the weight of the drops that preceded it.",
+            "parentId": null,
+            "mergedFrom": null
+          }
+        ]
+      }
+    }
+
+  ],
+
+  "pointMarkers": [
+    {
+      "id": "dddd0001-0000-4000-8000-000000000001",
+      "timestamp": 58.5,
+      "label": "Energy peak",
+      "type": "energy-peak",
+      "notes": "Loudest moment of Drop 1. Full filter open, all elements present.",
+      "confidence": "approximate"
+    },
+    {
+      "id": "dddd0002-0000-4000-8000-000000000002",
+      "timestamp": 107.0,
+      "label": null,
+      "type": null,
+      "notes": "The boundary between Drop 2 and Breakdown 2 feels ambiguous — there may be a brief 'mini-drop' in here. Revisit.",
+      "flagged": true,
+      "confidence": "speculative"
+    },
+    {
+      "id": "dddd0003-0000-4000-8000-000000000003",
+      "timestamp": 101.0,
+      "label": "Energy peak",
+      "type": "energy-peak",
+      "notes": "Second peak. Slightly louder than Drop 1 due to listener familiarity effect.",
+      "confidence": "approximate"
+    }
+  ]
+
+}

@@ -1,0 +1,456 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://strata.tools/schema/strata.schema.json",
+  "title": "StrataDocument",
+  "description": "A Strata music analysis document (.strata file). The file format is the core invention — everything else is downstream of getting this schema right.",
+  "type": "object",
+  "required": [
+    "strataVersion",
+    "fileFormatVersion",
+    "createdAt",
+    "updatedAt",
+    "title",
+    "artist",
+    "duration",
+    "source",
+    "vocabulary",
+    "sharedTimePoints",
+    "layers",
+    "pointMarkers"
+  ],
+  "additionalProperties": false,
+  "properties": {
+
+    "strataVersion": {
+      "type": "string",
+      "description": "Version of the Strata app that created this file (semver string). Used for diagnosing compatibility issues."
+    },
+    "fileFormatVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Schema version number. Starts at 1. Increment when the schema changes incompatibly. The app uses this to decide whether to run a migration before loading."
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of file creation. Set once on first save; never updated."
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of last save. Updated on every save."
+    },
+
+    "title": {
+      "type": "string",
+      "description": "Display title of the track or recording."
+    },
+    "artist": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Performer or artist name(s). Array to support multiple artists cleanly — e.g. ['The Chainsmokers', 'Halsey']. Single-artist tracks use a one-element array."
+    },
+    "context": {
+      "type": ["string", "null"],
+      "enum": ["recording", "performance", null],
+      "description": "Nature of the artifact. 'recording' = studio recording; 'performance' = live performance of a composed work. Optional — null if unspecified. Controls which additional fields (composer, work) are surfaced in the UI. Encourage analysts to set this before cross-corpus comparison."
+    },
+    "duration": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Track duration in seconds (float). Stored explicitly so span timestamps can be validated against the total length."
+    },
+
+    "composer": {
+      "type": ["string", "null"],
+      "description": "Composer of the work. Surfaced in UI when context = 'performance'."
+    },
+    "work": {
+      "type": ["string", "null"],
+      "description": "Composition identifier — e.g. 'Piano Sonata Op. 13'. Enables cross-file corpus comparison of different performances of the same work."
+    },
+    "derivativeOf": {
+      "$ref": "#/$defs/DerivativeReference"
+    },
+
+    "notes": {
+      "type": ["string", "null"],
+      "description": "Document-level free text. Methodological notes, analytical caveats, summary of findings. Distinct from the Written Analysis widget (timestamped, structured prose) — this is a simple overview field."
+    },
+    "bpm": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Beats per minute of the track. Used by the BPM grid utility to generate bar-level time points in the shared pool for span boundary snapping. Null if not applicable or not set. For variable-tempo tracks, set the dominant BPM and adjust individual time points manually."
+    },
+    "timeSignature": {
+      "$ref": "#/$defs/TimeSignature"
+    },
+
+    "source": {
+      "$ref": "#/$defs/SourceReference"
+    },
+    "project": {
+      "type": ["string", "null"],
+      "description": "Corpus or collection tag. Used by the Corpus Builder to group related analysis files — e.g. 'anthemics-edm-corpus'."
+    },
+    "analysisAuthor": {
+      "type": ["string", "null"],
+      "description": "Who created this analysis."
+    },
+
+    "vocabulary": {
+      "$ref": "#/$defs/Vocabulary"
+    },
+    "sharedTimePoints": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/SharedTimePoint" },
+      "description": "Document-level time point pool. Any widget layer can contribute timestamps here; any widget can snap to or reference any point in the pool regardless of what created it."
+    },
+    "layers": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Layer" },
+      "description": "Ordered array of widget layer instances."
+    },
+    "pointMarkers": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/PointMarker" },
+      "description": "Document-level point markers. Events in the recording (medial caesura, energy peak, flagged observation). Stored at the document level so they are visible across all layers without duplication."
+    }
+
+  },
+
+  "$defs": {
+
+    "DerivativeReference": {
+      "description": "When this track is derived from another (remix, cover, re-recording, etc.), this field records the relationship. Null for original recordings.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["sourceTrack", "relationship"],
+          "additionalProperties": false,
+          "properties": {
+            "sourceTrack": {
+              "type": "string",
+              "description": "Filename of the analysis file representing the source track — e.g. 'heroes-original.strata'."
+            },
+            "relationship": {
+              "type": "string",
+              "description": "Nature of the derivative relationship. Suggested values: 'remix', 'cover', 'rerecording', 'arrangement'. Free text is accepted — the suggested list is not exhaustive."
+            }
+          }
+        }
+      ]
+    },
+
+    "TimeSignature": {
+      "description": "Time signature of the track. Used with bpm to generate the BPM grid. Null if not set.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["numerator", "denominator"],
+          "additionalProperties": false,
+          "properties": {
+            "numerator": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Number of beats per measure — e.g. 4 in common time."
+            },
+            "denominator": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Note value that receives one beat, expressed as a power of 2 — e.g. 4 = quarter note."
+            }
+          }
+        }
+      ]
+    },
+
+    "SourceReference": {
+      "type": "object",
+      "required": ["type", "sourceOffset"],
+      "additionalProperties": false,
+      "description": "Reference to the audio or video source. Stored as an object so that sourceOffset is unambiguously coupled to the source it describes.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["youtube", "local"]
+        },
+        "url": {
+          "type": "string",
+          "description": "Full YouTube video URL. Required when type = 'youtube'."
+        },
+        "filename": {
+          "type": "string",
+          "description": "Audio filename only (no folder path). Required when type = 'local'. Not shareable — the file must be present on the viewer's machine."
+        },
+        "sourceOffset": {
+          "type": "number",
+          "description": "Offset in seconds between the source file's start and the recording's true start. player_time = recording_time + sourceOffset. All span timestamps are stored in recording time. Updating the offset corrects all seek behavior without touching span data."
+        }
+      },
+      "if": { "properties": { "type": { "const": "youtube" } } },
+      "then": { "required": ["url"] },
+      "else": { "required": ["filename"] }
+    },
+
+    "Vocabulary": {
+      "type": "object",
+      "required": ["spanTypes", "pointMarkerTypes"],
+      "additionalProperties": false,
+      "description": "Project-level custom vocabulary terms. pointMarkerTypes has v1 UI (required for classical scholars); spanTypes UI deferred to v2.",
+      "properties": {
+        "spanTypes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/VocabTerm" }
+        },
+        "pointMarkerTypes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/VocabTerm" }
+        }
+      }
+    },
+
+    "VocabTerm": {
+      "type": "object",
+      "required": ["id", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "description": "Stable identifier. Lowercase alphanumeric and hyphens. Used as the corpus-queryable type value in spans and point markers. Changing this ID breaks corpus queries against existing files."
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable display name shown in the type picker."
+        },
+        "description": {
+          "type": "string",
+          "description": "Explanation shown as a tooltip when the analyst is choosing a type."
+        },
+        "color": {
+          "type": ["string", "null"],
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "Optional default hex color for items of this type."
+        }
+      }
+    },
+
+    "SharedTimePoint": {
+      "type": "object",
+      "required": ["id", "timestamp"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "timestamp": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Recording time, seconds (float)."
+        },
+        "label": {
+          "type": ["string", "null"]
+        },
+        "sourceLayerId": {
+          "type": ["string", "null"],
+          "description": "ID of the layer that contributed this time point, for provenance."
+        }
+      }
+    },
+
+    "Layer": {
+      "type": "object",
+      "required": ["id", "type", "label", "visibility", "locked", "colorDefault", "displayOrder", "data"],
+      "additionalProperties": false,
+      "description": "A widget layer instance. The typed envelope pattern: the core schema enforces all fields except data; the data field shape is defined by the widget type.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["form-diagram"],
+          "description": "Widget type. v1: 'form-diagram' only. Future types: 'energy-contour', 'instrumentation', 'written-analysis'."
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Short human-readable layer name. Displayed in the layer panel."
+        },
+        "description": {
+          "type": ["string", "null"],
+          "description": "Optional longer description of this layer's analytical purpose or framework — e.g. 'Hepokoski/Darcy exposition analysis' or 'Phrase-level hypermeter, 4-bar units'. Distinct from label. Togglable visibility in the UI."
+        },
+        "visibility": {
+          "type": "boolean",
+          "description": "Hidden layers are excluded from exports."
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "When true, the layer cannot be edited — only viewed and exported."
+        },
+        "colorDefault": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "Fallback color for spans with no per-span color override."
+        },
+        "displayOrder": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Render order. Lower numbers render first (bottom of the visual stack). Gaps are allowed."
+        },
+        "data": {
+          "description": "Widget-specific data payload. Shape is determined by the type field.",
+          "oneOf": [
+            { "$ref": "#/$defs/FormDiagramData" }
+          ]
+        }
+      }
+    },
+
+    "FormDiagramData": {
+      "type": "object",
+      "required": ["hierarchicalEnforcement", "spans"],
+      "additionalProperties": false,
+      "description": "Data payload for a form-diagram layer.",
+      "properties": {
+        "hierarchicalEnforcement": {
+          "type": "boolean",
+          "description": "Opt-in per-layer toggle preventing overlapping spans during editing. Never the default — Strata's theoretical position is that overlapping analytical frameworks are valid. Applied at the UI level only; the schema always allows overlapping spans."
+        },
+        "spans": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Span" }
+        }
+      }
+    },
+
+    "Span": {
+      "type": "object",
+      "required": ["id", "startTime", "endTime"],
+      "additionalProperties": false,
+      "description": "A time span representing a formal section. The universal primitive of the Strata system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Auto-generated UUID. Never changes. Never shown to the user. Used for all inter-widget references and merge tracking."
+        },
+        "label": {
+          "type": ["string", "null"],
+          "description": "Display name set by the analyst. Optional — null for unlabeled spans (e.g. bar-level hypermeter spans where the type carries the analytical meaning). Empty string is valid for a newly placed span awaiting a label."
+        },
+        "slug": {
+          "type": ["string", "null"],
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "description": "Auto-generated from label — e.g. 'Drop 1' → 'drop-1'. Stable human-readable reference key for embeds and inter-widget links. Null if no label. Uniqueness is enforced by chronological position (startTime order) within the document, not by creation order."
+        },
+        "startTime": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Start of span in recording time, seconds (float)."
+        },
+        "endTime": {
+          "type": "number",
+          "minimum": 0,
+          "description": "End of span in recording time, seconds (float). Must exceed startTime."
+        },
+        "type": {
+          "type": ["string", "null"],
+          "description": "Controlled vocabulary term ID. The corpus-queryable classification of this section. Separate from label by design."
+        },
+        "color": {
+          "type": ["string", "null"],
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "Per-span hex color override. Null = use layer colorDefault."
+        },
+        "annotation": {
+          "type": ["string", "null"],
+          "description": "Diagram-visible text displayed on the span body alongside the label. For analytical observations that should appear on the diagram — e.g. 'filter sweep → snare roll', '+Kick', 'Anthem gradually emerges'. Distinct from notes (tooltip only) and from label (the section name). Feeds into the Written Analysis widget when built."
+        },
+        "notes": {
+          "type": ["string", "null"],
+          "description": "Short freetext observation. Tooltip-level only — not rendered on the diagram."
+        },
+        "lyrics": {
+          "type": ["string", "null"],
+          "description": "Lyric text occurring during this span. Not displayed on the form diagram by default. Corpus-queryable. Feeds into the Written Analysis widget."
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["definite", "approximate", "speculative"],
+          "description": "Analyst's confidence in the placement of this span's boundaries. Optional — omit for 'definite' (default). Only set explicitly when marking a span as approximate or speculative."
+        },
+        "startBoundaryType": {
+          "type": ["string", "null"],
+          "enum": ["definite", "gradual", "elided", null],
+          "description": "Character of the formal transition at the start of this span. 'definite' = hard, precise cut; 'gradual' = inherently processual transition (a buildup that gradually becomes the section); 'elided' = this span's start is formally simultaneous with the end of the preceding span. Null or omit for 'definite'. Distinct from confidence: this describes the music's formal behavior, not the analyst's certainty about placement."
+        },
+        "endBoundaryType": {
+          "type": ["string", "null"],
+          "enum": ["definite", "gradual", "elided", null],
+          "description": "Character of the formal transition at the end of this span. 'elided' pairs with startBoundaryType = 'elided' on the following span to mark a reciprocal elision. When two adjacent spans share elided endpoints and their timestamps overlap, the renderer draws the elision visual (overlapping bracket)."
+        },
+        "parentId": {
+          "type": ["string", "null"],
+          "description": "Optional UUID reference to a parent span. Expresses hierarchical relationship without enforcing it in the data model."
+        },
+        "mergedFrom": {
+          "type": ["array", "null"],
+          "items": { "type": "string", "format": "uuid" },
+          "minItems": 2,
+          "description": "UUIDs of source spans when created by a merge. Enables reference resolution for inter-widget links that pointed to deprecated span IDs. Null for spans not produced by a merge. Always contains at least two IDs when present."
+        }
+      }
+    },
+
+    "PointMarker": {
+      "type": "object",
+      "required": ["id", "timestamp"],
+      "additionalProperties": false,
+      "description": "A single-timestamp analytical event. Document-level — not per-layer.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "timestamp": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Recording time, seconds (float)."
+        },
+        "label": {
+          "type": ["string", "null"]
+        },
+        "type": {
+          "type": ["string", "null"],
+          "description": "Controlled vocabulary term ID. Corpus-queryable."
+        },
+        "notes": {
+          "type": ["string", "null"]
+        },
+        "flagged": {
+          "type": "boolean",
+          "description": "'Come back to this.' Simple bookmark for moments the analyst wants to revisit. Distinct from confidence — flagged means I want to return here, not I am uncertain about this. Optional — omit for false (default)."
+        },
+        "absent": {
+          "type": "boolean",
+          "description": "'This expected event was explicitly determined to be absent.' Analytically significant in H/D and similar frameworks where a missing event has formal consequences. No v1 UI — stored and preserved but not settable from the interface in v1. Optional — omit for false (default)."
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["definite", "approximate", "speculative"],
+          "description": "Analyst's confidence in the identification and placement of this event. Optional — omit for 'definite' (default)."
+        }
+      }
+    }
+
+  }
+}

@@ -31,30 +31,37 @@ the repo.
 
 ## Who You Are in This Workflow
 
-**This workflow has two layers:**
+Claude Code (you) handles this project end to end — strategy, design, and
+execution. Architecture decisions, schema design, widget specs, doc authoring,
+and implementation all happen here.
 
-- **Claude Chat** is the strategy and reasoning layer. Architecture decisions,
-  schema design, widget specs, doc authoring — all happen there.
-- **Claude Code (you)** is the execution layer. You implement, write to files,
-  and iterate on what's already been decided. You do not redesign, re-scope, or
-  make strategic calls.
-
-When you encounter ambiguity, a design question, or a decision that wasn't
-covered in the handoff, **stop and surface it**. Don't guess. Don't extrapolate.
-Pause, explain what you found, and wait. A short pause beats hours of unwinding
-bad assumptions.
+When you encounter a major design question or ambiguity that genuinely requires
+Devin's input — a scope call, a user preference, a constraint you don't have
+enough context to resolve — surface it clearly and wait. For design decisions
+within the established architecture, make a recommendation and proceed. Note
+every decision you make so it can be propagated to `docs/decisions.md`.
 
 ---
 
 ## Session Start — Always Do This First
 
-1. Read `_private/handoff.md` — this is your brief for the session.
-2. Confirm the session goal with Devin before writing anything.
-3. If the handoff is missing, incomplete, or contradicts itself, ask before
-   starting.
-4. Check for any listed prerequisites and verify they're met before proceeding.
+**Run `/brief` to begin any session.** This command reads all session
+context, checks git state, presents a structured brief, and asks for scope
+confirmation before any work begins.
 
-Then run:
+**Never start work until Devin confirms the scope.**
+
+### What `/brief` does
+
+1. Reads `_private/handoff.md`, `_private/build-plan.md`, `docs/decisions.md`,
+   `docs/vision.md`, and any other files in `_private/`
+2. Checks `git status` and `git branch`
+3. Outputs a structured brief: current phase, last session summary, open
+   blockers, proposed scope, git state
+4. Asks: "Does this match what you want to work on today?"
+5. Waits for confirmation before proceeding
+
+### After scope is confirmed
 
 ```bash
 git checkout dev
@@ -62,7 +69,8 @@ git pull origin dev
 git checkout -b feat/<branch-name>
 ```
 
-If any of these commands fails, stop and surface it before continuing.
+If the handoff is missing, contradicts itself, or the git state is unexpected,
+surface it and ask before continuing.
 
 ---
 
@@ -73,6 +81,10 @@ strata/
 ├── CLAUDE.md
 ├── .gitignore
 ├── README.md
+├── .claude/
+│   └── skills/
+│       └── brief/
+│           └── SKILL.md    ← /brief — session start workflow
 ├── docs/
 │   ├── vision.md           ← full project vision (distilled from ideation)
 │   └── decisions.md        ← architectural decisions log, living document
@@ -89,17 +101,21 @@ strata/
 
 ## Current Phase
 
-**Design phase — no application code yet.**
+**Pre-build: design sessions and schema work.**
 
-Work in this phase is entirely in `docs/`, `schema/`, and `widgets/`. There is
-no `src/` directory, no `package.json`, no dev server, no database. Do not
-scaffold application code until explicitly asked.
+Design decisions, schema, and widget contract specs are being finalized before
+application code is written. See `_private/build-plan.md` for the full phase
+breakdown and what gates each phase.
 
-The goal of this phase is to produce:
-1. A formal, validated `.strata` JSON schema
-2. A realistic example `.strata` file that stress-tests the schema
-3. A widget contract specification for the form diagram widget
-4. A clean, complete decisions log
+The immediate goals (Phase 0) are:
+1. Formal TypeScript types and JSON schema (`schema/strata.schema.json`)
+2. Widget contract specification (`widgets/_contract.md`)
+3. Form diagram editor UX spec
+4. Merge UX spec
+5. Player chrome spec
+
+Once Phase 0 is complete, Phase 1 scaffolds the Vite + React + TypeScript
+application.
 
 ---
 
@@ -109,8 +125,8 @@ The goal of this phase is to produce:
    `git commit`, or `git push` until Devin explicitly says to. When he does,
    propose a commit message in the format below and wait for confirmation.
 
-2. **Never push to `main`.** All work happens on the `dev` branch. `main` only
-   receives changes via pull request, which Devin opens and merges on GitHub.
+2. **Never push to `main`.** `main` only receives changes via pull request,
+   which Devin opens and merges on GitHub.
 
 3. **Ask before any destructive action.** File deletions, git resets, anything
    irreversible. When in doubt, ask. The cost of asking is low.
@@ -126,8 +142,8 @@ The goal of this phase is to produce:
 - Always work on a feature branch cut from `dev`.
 - Branch naming: `feat/<short-description>`
   (e.g. `feat/strata-schema-draft`, `feat/form-diagram-widget-spec`)
-- When a task is complete, tell Devin the branch is ready. He reviews and merges
-  to `dev` himself.
+- When a task is complete, merge the feature branch into `dev` and push to
+  `origin/dev`. Never push to `main`.
 - Never commit directly to `dev` or `main`.
 
 ---
@@ -163,15 +179,13 @@ Propose commit messages as a code block so Devin can copy them directly.
 **Update freely:**
 - `_private/handoff.md` — at session end, always. Write what happened, what's
   left, what the next session needs to know.
-- `docs/decisions.md` — when a decision made in the handoff needs to be
-  propagated to the permanent record.
+- `docs/decisions.md` — propagate every decision made during the session.
 - Any `schema/` or `widgets/` file that was the target of the session.
+- `docs/vision.md` — update when design decisions require it. Propose the
+  change in plain language before writing if the scope is large.
 
-**Let Chat own these — flag changes rather than making them:**
-- `docs/vision.md` — strategy document, maintained in Chat.
-- `README.md` — updated at milestone moments, not mid-session.
-
-If you think a Chat-owned doc needs a change, flag it in your session summary.
+**Update at milestone moments only:**
+- `README.md` — not mid-session. Update when a meaningful milestone ships.
 
 ---
 
@@ -179,15 +193,15 @@ If you think a Chat-owned doc needs a change, flag it in your session summary.
 
 When the handoff doesn't cover something you need:
 
-1. Stop.
-2. State the specific point of ambiguity in plain English.
-3. Offer your best guess, framed as a guess.
-4. Recommend the right next step — usually "take this back to Chat."
-5. Wait.
+1. State the specific ambiguity in plain English.
+2. Make a recommendation with your reasoning.
+3. If it's a scope call, user preference, or something with a constraint you
+   don't have context to resolve — ask Devin and wait.
+4. If it's a design decision within the established architecture — make the call,
+   proceed, and log it in `docs/decisions.md`.
 
-Do not extrapolate and keep going. The separation of Chat (strategy) and CC
-(execution) exists for a reason. Pulling strategy into the execution environment
-is the failure mode this workflow is designed to prevent.
+Measure twice before any destructive or hard-to-reverse action. Everything else:
+make a call and keep moving.
 
 ---
 
@@ -204,5 +218,4 @@ Before telling Devin a session is done:
 
 ---
 
-*This file is maintained in Claude Chat. Propose edits via the session friction
-log rather than editing directly unless Devin asks.*
+*Propose edits to this file in conversation with Devin before making them.*
