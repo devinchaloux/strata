@@ -591,3 +591,59 @@ a new entry is added noting the reversal and why.
 
 **Decision:** The form diagram's `contributeTimePoints` deduplicates timestamps before returning — adjacent spans sharing a boundary contribute only one pool entry per timestamp, not two.
 **Rationale:** A boundary shared between two consecutive spans is one moment in the music, not two. Contributing duplicate timestamps would create two pool entries for the same point, confusing snap logic (which would need to deduplicate on read) and inflating the pool unnecessarily. Deduplication at the source keeps the pool clean.
+
+---
+
+## Player Chrome (Phase 0.3)
+
+*Decisions made during the Phase 0.3 player chrome design session. Output: `_private/player-chrome-spec.md`.*
+
+---
+
+**Decision:** The rewind button seeks to track start (0:00), not to the last-placed boundary.
+**Rationale:** The correction use cases for slightly mistimed boundary placement are served by arrow-key nudge and boundary drag — not by rewind. A rewind that remembers the last placed boundary would be stateful and unpredictable, especially after the analyst has been navigating the timeline. Track-start rewind is universally expected behavior in any media player and is always the correct target.
+
+---
+
+**Decision:** Time display format is `M:SS.mmm` for tracks under one hour, `H:MM:SS.mmm` for tracks one hour or longer. Three decimal places of milliseconds are always shown.
+**Rationale:** Arrow-key nudge moves a selected boundary by approximately one video frame (~0.033s). The analyst must be able to see that change reflected in the time display to confirm the nudge registered. Three decimal places provide that precision. `M:SS.mmm` is human-readable and maps to how analysts think about music time (minutes and seconds, not raw seconds). Tracks over one hour (operas, long film scores) require the hours field.
+
+---
+
+**Decision:** Playback rate selector offers four rates: 0.5×, 0.75×, 1×, 1.25×.
+**Rationale:** The primary use case is slowing down for careful listening and precise boundary placement. 0.75× is the most-used slow speed — still intelligible, meaningfully slower. 0.5× handles very rapid passages. 1.25× supports quick review of familiar material without distortion. Rates above 1.25× introduce pitch artifacts that compromise analytical listening. 0.25× is rarely needed and distorts badly. The YouTube IFrame API supports all four of these rates for all videos.
+
+---
+
+**Decision:** The seek bar does not snap to shared time point pool entries during drag. Named pool entries (those with a `label` field) are shown as tick marks on the seek bar; BPM grid entries (sourceLayerId: null) are not shown on the seek bar.
+**Rationale:** Drag-snapping on the seek bar fights the analyst when they want to land at an arbitrary position between pool entries — the most common seek target during initial listening. Tick marks provide navigation landmarks without imposing constraint. BPM grid entries are excluded from the seek bar because they are too dense at most zoom levels and would produce visual noise; they remain visible on the shared timeline axis where their density is managed by zoom.
+
+---
+
+**Decision:** `Space` places a form diagram boundary at the current playback time. `Space` is NOT a play/pause shortcut. `K` is play/pause.
+**Rationale:** Space-to-place is BriFormer's correct insight — it is the primary capture gesture during a listening pass and must not be intercepted by the player chrome. `K` is consistent with YouTube's own keyboard shortcuts, which many analysts will already have internalized from years of using YouTube for music study.
+
+---
+
+**Decision:** The `requestAnimationFrame` polling loop runs continuously while the YouTube player is ready, regardless of whether playback is active.
+**Rationale:** Pausing the rAF loop when paused would require a separate event path to handle externally-triggered seeks (e.g., clicking on the shared timeline axis). Running the loop continuously at one `getCurrentTime()` call per frame is negligible overhead and keeps the time display and playback cursor accurate from a single, simple code path.
+
+---
+
+**Decision:** YouTube's native player controls are disabled entirely (`playerVars.controls: 0`). The custom React chrome replaces all YouTube controls.
+**Rationale:** Native YouTube controls and custom controls would duplicate functionality and conflict visually. The custom chrome gives full control over layout, styling, and interaction model — including the ability to suppress YouTube's default `Space` key handling, which would otherwise conflict with boundary placement.
+
+---
+
+**Decision:** When the video panel is "collapsed," the YouTube iframe remains in the DOM at its rendered size, clipped by a zero-height container with `overflow: hidden`. The iframe is never removed from the DOM or set to `display: none`.
+**Rationale:** The YouTube IFrame API requires the iframe to be mounted and accessible to function. Removing it or hiding it via `display: none` would suspend the API, break the rAF polling loop, and require re-initialization on expand. CSS overflow clipping hides the video visually while keeping the API alive.
+
+---
+
+**Decision:** When the analyst changes the YouTube URL on an existing document, the player calls `player.cueVideoById(newVideoId)` (not `loadVideoById`).
+**Rationale:** `loadVideoById` autoplays immediately. `cueVideoById` loads the video metadata without starting playback — consistent with the analyst's expectation that changing a URL is a document editing action, not a play action. Autoplay on URL change would be surprising and disruptive mid-session.
+
+---
+
+**Decision:** The video panel renders only when a YouTube URL is set on the document. When no URL is set, no video panel or iframe is rendered.
+**Rationale:** Rendering an empty player state (placeholder iframe, disabled controls) when no URL is set adds visual weight without function. The transport bar is always visible but all controls are disabled when no URL is set. The video panel appears only when there is actually a video to show.
