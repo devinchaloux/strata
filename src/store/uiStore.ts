@@ -1,4 +1,8 @@
 import { create } from 'zustand'
+import type { YTPlayerState } from '@/lib/youtube'
+
+// Re-export so consumers don't need a separate import
+export type { YTPlayerState }
 
 // ---------------------------------------------------------------------------
 // Types
@@ -21,7 +25,8 @@ export interface ViewState {
 export interface UIState {
   // Playback
   currentTime: number
-  isPlaying: boolean
+  duration: number           // seconds; 0 until player is ready
+  playbackState: YTPlayerState
   playbackRate: PlaybackRate
   playerStatus: PlayerStatus
   playerError: string | null
@@ -41,7 +46,8 @@ export interface UIState {
 
   // Actions — playback
   setCurrentTime: (time: number) => void
-  setIsPlaying: (playing: boolean) => void
+  setDuration: (duration: number) => void
+  setPlaybackState: (state: YTPlayerState) => void
   setPlaybackRate: (rate: PlaybackRate) => void
   setPlayerStatus: (status: PlayerStatus, error?: string | null) => void
 
@@ -66,7 +72,8 @@ export interface UIState {
 
 const useUIStore = create<UIState>()((set) => ({
   currentTime: 0,
-  isPlaying: false,
+  duration: 0,
+  playbackState: 'unstarted',
   playbackRate: 1,
   playerStatus: 'uninitialized',
   playerError: null,
@@ -79,10 +86,12 @@ const useUIStore = create<UIState>()((set) => ({
   hoveredSpanId: null,
   activeLayerId: null,
 
-  videoPanelVisible: false,
+  // Default true — the panel is expanded when a video first loads
+  videoPanelVisible: true,
 
   setCurrentTime: (time) => set({ currentTime: time }),
-  setIsPlaying: (playing) => set({ isPlaying: playing }),
+  setDuration: (duration) => set({ duration }),
+  setPlaybackState: (playbackState) => set({ playbackState }),
   setPlaybackRate: (rate) => set({ playbackRate: rate }),
   setPlayerStatus: (status, error = null) => set({ playerStatus: status, playerError: error }),
 
