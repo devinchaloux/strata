@@ -292,6 +292,18 @@ export interface WidgetDefinition<TData extends LayerData> {
   /** Optional description for the layer creation picker. */
   description?: string;
 
+  /**
+   * Default position of this widget type relative to the timeline ruler.
+   * 'above' = widget renders in the zone above the ruler (standard for form diagrams,
+   *           energy contours, and most analytical widgets).
+   * 'below' = widget renders in the zone below the ruler (e.g. written analysis).
+   *
+   * The analyst can override this per-layer via Layer.position in the layer settings
+   * popover. Absent a Layer.position override, this value applies. Absent this field,
+   * 'above' is assumed.
+   */
+  defaultPosition: 'above' | 'below';
+
   // -------------------------------------------------------------------------
   // Components
   // -------------------------------------------------------------------------
