@@ -43,11 +43,20 @@ export function SeekBar({
   }
 
   function handlePointerMove(e: React.PointerEvent) {
+    if (e.buttons === 0) {
+      // No button held — self-correct in case isDragging got stuck
+      isDragging.current = false
+      return
+    }
     if (!isDragging.current) return
     onSeek(fractionFromPointer(e) * duration)
   }
 
   function handlePointerUp() {
+    isDragging.current = false
+  }
+
+  function handlePointerCancel() {
     isDragging.current = false
   }
 
@@ -74,6 +83,7 @@ export function SeekBar({
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >

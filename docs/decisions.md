@@ -733,3 +733,49 @@ a new entry is added noting the reversal and why.
 
 **Decision:** Per-span color override UI, parent span picker, and custom span type creation are deferred to Phase 0.6 for final v1 scope decision. Fields are present in the schema and in the metadata panel's "Advanced" section but may ship without active UI interaction in v1.
 **Rationale:** These are scope decisions that affect implementation time without affecting the core analytical workflow. The schema and panel layout accommodate them regardless of the scope decision. Phase 0.6 explicitly enumerates what ships in v1 vs. v1.5.
+
+---
+
+## Shared Timeline Axis (Phase 1.6)
+
+*Decisions made during Phase 1.6 implementation. Output: `src/lib/timeline.ts`, `src/hooks/useTimeline.ts`, `src/components/TimelineAxis.tsx`.*
+
+---
+
+**Decision:** The SVG ruler pans via `position: absolute; left: -scrollOffset` CSS rather than the browser's native scroll mechanism. The container has `overflow: hidden`.
+**Rationale:** Using `overflow: hidden` + CSS transform (or `left`) keeps scroll state entirely in the Zustand store (`scrollOffset`), which is the single source of truth. Using `overflow-x: auto` with `scrollLeft` would require synchronizing DOM scroll state with React state — two sources of truth that diverge under programmatic updates (DAW following, zoom re-centering). The CSS approach also prevents scroll events from propagating to the page, avoiding conflicts with the non-passive wheel handler.
+
+---
+
+**Decision:** The wheel event handler is attached via `addEventListener({ passive: false })` directly on the container ref, not via React's `onWheel` prop.
+**Rationale:** React 17+ treats `onWheel` as a passive event listener by default. Passive listeners cannot call `preventDefault()`, which means the browser would still scroll the page on wheel events over the timeline. The non-passive direct attachment gives full control over scroll behavior. React's synthetic event system is bypassed for this specific case.
+
+---
+
+**Decision:** The `snap.current` ref pattern is used in both the wheel handler and the DAW cursor following effect. A mutable ref is updated synchronously on every render; event handlers and effects read from it rather than declaring reactive dependencies.
+**Rationale:** Both callbacks need access to the latest `zoom`, `scrollOffset`, `pps`, `viewportWidth`, `duration`, and `totalWidth` without these values appearing as `useEffect` or `useCallback` dependencies. Declaring them as dependencies would either (a) re-attach the non-passive wheel listener on every store update, or (b) cause the DAW following to trigger on `scrollOffset` changes it just initiated, creating a render loop. The ref pattern gives correct behavior: always reads current values, never re-registers event handlers unnecessarily.
+
+---
+
+**Decision:** `MIN_ZOOM = 1`. At minimum zoom the entire track fits within the viewport width exactly, with `scrollOffset = 0`.
+**Rationale:** Zoom-out below 1× would shrink the track to a fraction of the viewport, wasting space and making tick marks illegible. The track fitting the viewport exactly at 1× is a natural "overview" mode. Analysts zoom in for precision work and zoom out to return to the full-track view.
+
+---
+
+**Decision:** Tick interval is selected from a predefined table of 16 nice values (0.01s, 0.025s, 0.05s, 0.1s, 0.25s, 0.5s, 1s, 2s, 5s, 10s, 15s, 30s, 60s, 120s, 300s, 600s) with a minimum of 64px between ticks.
+**Rationale:** Mathematical rounding to "nice" intervals (powers of 10 × [1, 2, 5]) would skip musically meaningful values like 15s (a common formal phrase length) and 0.25s (close to a quarter note at typical tempos). The explicit table covers the musically relevant density range. 64px minimum gives enough horizontal space for the widest label at 9px monospace font.
+
+---
+
+**Decision:** Tick label precision matches the active interval: M:SS for ≥1s intervals, M:SS.d for 0.1s intervals, M:SS.dd for 0.01s intervals, M:SS.ddd for sub-10ms. Integer arithmetic (via `Math.round(seconds * 1000)`) is used throughout to avoid floating-point label artifacts.
+**Rationale:** Labels must reflect the precision the analyst is working at. Showing "0:30" at a 0.5s interval would be ambiguous (is the tick at exactly 30.0 or 30.5?). Showing "0:30.0" makes the precision explicit. Integer-millisecond arithmetic prevents labels like "0:29.999" from floating-point accumulation in the tick index multiplication.
+
+---
+
+**Decision:** The playback cursor renders as a DOM `<div>` element positioned on top of the SVG, not as an SVG element within the ruler.
+**Rationale:** The SVG is translated via `left: -scrollOffset`, which would require the cursor to be positioned at `cursorPx + scrollOffset` in SVG coordinates to appear correctly. A DOM element positioned at `left: cursorPx` in the container's coordinate system is simpler and immune to the SVG transform. It also avoids re-rendering the SVG on every rAF frame (which only the cursor needs).
+
+---
+
+**Decision:** Cursor following only fires during active playback (`playbackState === 'playing'`). Off-screen left during playback snaps to 20%. Approaching or past the right edge during playback follows at 80%. No auto-scroll when paused.
+**Rationale:** The YouTube IFrame API's `getCurrentTime()` returns the hover-preview position when the user mouses over the in-player seek bar, even when paused. Since the rAF loop calls `getCurrentTime()` on every frame, this produces spurious `currentTime` changes that would snap the ruler. Restricting following to `playbackState === 'playing'` eliminates the spurious snaps. The left-correction (20%) handles backward seek during active playback. When paused, the analyst pans the timeline manually.
