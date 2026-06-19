@@ -1,5 +1,7 @@
 import { useEffect } from 'react'
 import { useFileIO } from '@/hooks/useFileIO'
+import { YouTubePlayer } from '@/components/YouTubePlayer'
+import { TimelineAxis } from '@/components/TimelineAxis'
 
 // ---------------------------------------------------------------------------
 // Toolbar button
@@ -133,6 +135,12 @@ export default function App() {
           <span className="ml-auto text-xs text-muted-foreground">Unsaved changes</span>
         )}
       </header>
+
+      {/* Shared timeline axis — ruler, playback cursor, zoom */}
+      <TimelineAxis />
+
+      {/* YouTube player — transport bar always visible; video panel when URL is set */}
+      <YouTubePlayer />
 
       {/* Main content */}
       <main className="flex flex-1 items-center justify-center">
