@@ -199,6 +199,47 @@ a new entry is added noting the reversal and why.
 
 ---
 
+## Merge UX (Phase 0.5)
+
+*Decisions made during the Phase 0.5 merge UX design session, conducted collaboratively with Devin Chaloux. Output: `_private/merge-ux-spec.md`.*
+
+---
+
+**Decision:** Multi-select uses three gestures: Shift+click for range selection (auto-fill), Ctrl+click for toggling individual spans, and context-sensitive box-drag on empty layer space for rectangle selection.
+**Rationale:** Shift+click-to-range is the universal convention for contiguous selection (Finder, text editors, spreadsheets). Auto-filling spans between the first and last selected span is correct behavior — requiring the analyst to manually Ctrl+click every span in a run would be tedious and error-prone. Ctrl+click for non-contiguous multi-select is equally universal. Box-drag on empty space is context-sensitive: drag on a span body or boundary handle has its own meaning; drag on empty space unambiguously means "select what I'm drawing a rectangle around."
+
+---
+
+**Decision:** Cross-layer merge is not supported. Merge is always within a single layer.
+**Rationale:** A merged span must live in exactly one layer. If two spans from different layers are merged, there is no unambiguous answer for which layer the result belongs to — a "choose layer" dialog would add friction without a compelling use case. Analysts wanting to consolidate across layers have the option of duplicating a span into one layer and then merging. Cross-layer merge may be reconsidered if a concrete user need emerges.
+
+---
+
+**Decision:** Merge is accessed via three points: a toolbar button in the primary app chrome, the Ctrl+J keyboard shortcut, and the right-click context menu. The metadata panel action strip also provides "Merge ←" and "→ Merge" buttons for single-span 2-span merge (mobile and discoverability path).
+**Rationale:** The context menu alone is insufficient — it is not accessible on mobile and is not discoverable for new users. A persistent toolbar button is always visible; its disabled/enabled state communicates merge eligibility at a glance. The metadata panel action strip mirrors the context menu for single-span operations (per the Phase 0.4 principle that all structural operations must be reachable from both surfaces). Ctrl+J ("Join") is the keyboard shortcut: mnemonic, unused in the existing key map, and unambiguous on both platforms (Ctrl+M minimizes windows on Mac; M is taken by point marker placement).
+
+---
+
+**Decision:** Merge is only enabled when all selected spans are consecutive within the same layer. Non-consecutive Ctrl+click selections are valid multi-selections but merge is disabled for them.
+**Rationale:** Merging non-consecutive spans would silently consume the spans between them — a destructive side effect not implied by the selection. The analyst who wants to merge a non-consecutive set must explicitly include the intermediate spans. This is enforced at the UI level (disabled button + tooltip); the merge logic itself only ever operates on a consecutive range.
+
+---
+
+**Decision:** The conflict dialog shows a read-only "Auto-resolved" section alongside the interactive conflict resolution fields.
+**Rationale:** The analyst should see the full picture of what the merged span will contain — not just the fields they need to decide, but also the fields that were decided automatically and why. Hiding auto-resolved fields from the dialog would require a secondary "show more" step to audit. The read-only section is visually distinct (lower priority, lighter weight) so it does not compete with the interactive resolution fields.
+
+---
+
+**Decision:** The "Merge spans →" confirm button in the conflict dialog is disabled until all conflicting fields have a selection.
+**Rationale:** Partial resolution would produce a span with null values in fields that had competing entries — silently discarding data. Requiring all radio groups to be resolved before confirming ensures the analyst has explicitly handled every conflict. The cost is that the analyst cannot "confirm and come back" — but the conflict dialog is scoped to only the fields with genuine conflicts, so the number of required choices is minimal.
+
+---
+
+**Decision:** Notes from all selected spans are concatenated with a `\n\n---\n\n` separator. No conflict dialog for notes regardless of content.
+**Rationale:** Notes are additive records — both entries represent things the analyst observed and wrote down. There is no analytical basis for choosing one over the other. Concatenation preserves all information. The separator makes the boundary between the original notes legible in the merged record.
+
+---
+
 ## Shared Time Point Pool
 
 **Decision:** Time points are a document-level shared resource (the "shared time point pool"), not owned by any individual widget.
