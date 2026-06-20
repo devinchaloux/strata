@@ -1,0 +1,669 @@
+{
+  "strataVersion": "0.1.0",
+  "fileFormatVersion": 1,
+  "createdAt": "2026-06-20T00:00:00.000Z",
+  "updatedAt": "2026-06-20T00:00:00.000Z",
+  "title": "Alive",
+  "artist": [
+    "Krewella"
+  ],
+  "context": "recording",
+  "duration": 290,
+  "composer": null,
+  "work": null,
+  "derivativeOf": null,
+  "notes": "Test/demo analysis. 128 BPM, 4/4. Clean 4-bar (7.5s) grid 0:00-2:15; unquantized silence break 2:15-~2:18.75 after which the grid drifts and timestamps are approximate. Three rotations framed by beat-match intro/outro.",
+  "bpm": 128,
+  "timeSignature": {
+    "numerator": 4,
+    "denominator": 4
+  },
+  "source": {
+    "type": "youtube",
+    "url": "https://youtu.be/hPpK_GkAK30",
+    "sourceOffset": 0
+  },
+  "project": "strata-demo-corpus",
+  "analysisAuthor": "Devin Chaloux",
+  "vocabulary": {
+    "spanTypes": [
+      {
+        "id": "a-section",
+        "label": "A",
+        "kind": "span"
+      },
+      {
+        "id": "b-section",
+        "label": "B",
+        "kind": "span"
+      },
+      {
+        "id": "c-section",
+        "label": "C",
+        "kind": "span"
+      },
+      {
+        "id": "c-prime",
+        "label": "C′",
+        "kind": "span"
+      },
+      {
+        "id": "d-section",
+        "label": "D",
+        "kind": "span"
+      },
+      {
+        "id": "e-section",
+        "label": "E",
+        "kind": "span"
+      },
+      {
+        "id": "f-section",
+        "label": "F",
+        "kind": "span"
+      },
+      {
+        "id": "f-prime",
+        "label": "F′",
+        "kind": "span"
+      }
+    ],
+    "pointMarkerTypes": []
+  },
+  "sharedTimePoints": [
+    {
+      "id": "e6c9eca2-3c39-4a09-a5f1-0f7180f3d425",
+      "timestamp": 0,
+      "label": null,
+      "sourceLayerId": null
+    },
+    {
+      "id": "1e110857-b1b9-44ee-9a80-4871da2594a0",
+      "timestamp": 7.5,
+      "label": null,
+      "sourceLayerId": null
+    },
+    {
+      "id": "01bdc2b4-e847-4c54-8b08-14b1004876b2",
+      "timestamp": 15,
+      "label": null,
+      "sourceLayerId": null
+    },
+    {
+      "id": "6adb65ab-d650-40f9-899a-800e810aca6b",
+      "timestamp": 22.5,
+      "label": null,
+      "sourceLayerId": null
+    },
+    {
+      "id": "e98d86de-ebf2-403d-a164-19816d186fe1",
+      "timestamp": 30,
+      "label": null,
+      "sourceLayerId": null
+    },
+    {
+      "id": "e0d31162-edbf-4420-9d5e-cd1e6ff6cec6",
+      "timestamp": 37.5,
+      "label": null,
+      "sourceLayerId": null
+    },
+    {
+      "id": "014f9c03-d090-4f6d-976a-267790116235",
+      "timestamp": 45,
+      "label": null,
+      "sourceLayerId": null
+    },
+    {
+      "id": "02d513d4-65b6-48ec-b6dd-7028492e1e5c",
+      "timestamp": 52.5,
+      "label": null,
+      "sourceLayerId": null
+    },
+    {
+      "id": "e4a43598-13be-4939-b109-6bbf95ec11c3",
+      "timestamp": 60,
+      "label": null,
+      "sourceLayerId": null
+    },
+    {
+      "id": "da468cdb-0e76-4ec1-acb1-be83f2d07b65",
+      "timestamp": 67.5,
+      "label": null,
+      "sourceLayerId": null
+    },
+    {
+      "id": "1ab5a630-ee1c-480c-a14b-e2359f4e7ab2",
+      "timestamp": 75,
+      "label": null,
+      "sourceLayerId": null
+    },
+    {
+      "id": "b0f7cb25-a735-4489-aff6-474cb0c32af3",
+      "timestamp": 82.5,
+      "label": null,
+      "sourceLayerId": null
+    },
+    {
+      "id": "c9d7b79a-9584-43f7-9d30-681db84a9604",
+      "timestamp": 90,
+      "label": null,
+      "sourceLayerId": null
+    },
+    {
+      "id": "d9fcfb42-bec9-4cf6-9cae-e910020bcd90",
+      "timestamp": 97.5,
+      "label": null,
+      "sourceLayerId": null
+    },
+    {
+      "id": "9f496c26-403c-47ed-8057-2686eaf5a5d4",
+      "timestamp": 105,
+      "label": null,
+      "sourceLayerId": null
+    },
+    {
+      "id": "73a7fee9-6726-40ab-9f86-a59b6b418d19",
+      "timestamp": 112.5,
+      "label": null,
+      "sourceLayerId": null
+    },
+    {
+      "id": "5814fa52-817e-4361-a6cc-221170c914da",
+      "timestamp": 120,
+      "label": null,
+      "sourceLayerId": null
+    },
+    {
+      "id": "a8aa5915-fc9f-4aeb-b80a-1f5bf58809b6",
+      "timestamp": 127.5,
+      "label": null,
+      "sourceLayerId": null
+    },
+    {
+      "id": "3c542df7-8703-4dfd-85ba-8db796a80a0a",
+      "timestamp": 135,
+      "label": null,
+      "sourceLayerId": null
+    }
+  ],
+  "layers": [
+    {
+      "id": "ada9b9fc-6526-4efe-bda3-6b057ca9dc9d",
+      "type": "form-diagram",
+      "label": "Phrases",
+      "description": "7.5s (4-bar) phrase material, letter-labeled.",
+      "visibility": true,
+      "locked": false,
+      "fillColorDefault": "#94a3b8",
+      "strokeColorDefault": "#475569",
+      "displayOrder": 0,
+      "data": {
+        "hierarchicalEnforcement": false,
+        "spans": [
+          {
+            "id": "e8d7f7a1-9f40-4016-ba58-e22cf6d69aef",
+            "startTime": 30,
+            "endTime": 37.5,
+            "label": "A",
+            "type": "a-section",
+            "fillColor": "#94a3b8"
+          },
+          {
+            "id": "c45ae118-45f4-4878-933c-3fcb268a3d77",
+            "startTime": 37.5,
+            "endTime": 45,
+            "label": "A",
+            "type": "a-section",
+            "fillColor": "#94a3b8"
+          },
+          {
+            "id": "13492259-d2d8-49bc-b080-603c18aedbf7",
+            "startTime": 45,
+            "endTime": 52.5,
+            "label": "B",
+            "type": "b-section",
+            "fillColor": "#22c55e"
+          },
+          {
+            "id": "ce3108ab-96b5-4191-97ab-9b7c5fef78e9",
+            "startTime": 52.5,
+            "endTime": 60,
+            "label": "B",
+            "type": "b-section",
+            "fillColor": "#22c55e"
+          },
+          {
+            "id": "7ea7fba1-7b7e-4a64-8834-5d4dc999199b",
+            "startTime": 60,
+            "endTime": 67.5,
+            "label": "C",
+            "type": "c-section",
+            "fillColor": "#0e7490",
+            "annotation": "bass layer enters"
+          },
+          {
+            "id": "dbcb2fd5-6911-490c-8bb8-6c026c6e153b",
+            "startTime": 67.5,
+            "endTime": 75,
+            "label": "C'",
+            "type": "c-prime",
+            "fillColor": "#06b6d4"
+          },
+          {
+            "id": "219ad25a-adef-4d87-a6fd-91b3f15014ea",
+            "startTime": 75,
+            "endTime": 82.5,
+            "label": "D",
+            "type": "d-section",
+            "fillColor": "#3b82f6"
+          },
+          {
+            "id": "83dbaf67-d8d5-458b-9355-829cf7d6f9b0",
+            "startTime": 82.5,
+            "endTime": 90,
+            "label": "D",
+            "type": "d-section",
+            "fillColor": "#3b82f6"
+          },
+          {
+            "id": "2d00accd-ee93-4919-b027-63104c00b163",
+            "startTime": 90,
+            "endTime": 97.5,
+            "label": "Build",
+            "lineType": "arc"
+          },
+          {
+            "id": "4c0b5a9d-9b2a-4b05-a73a-95f074b2203a",
+            "startTime": 97.5,
+            "endTime": 105,
+            "label": "Build",
+            "annotation": "+drums",
+            "lineType": "arc",
+            "endBoundaryType": "gradual"
+          },
+          {
+            "id": "db9f2815-7aff-45b4-89c5-44463c95d75f",
+            "startTime": 105,
+            "endTime": 112.5,
+            "label": "D",
+            "type": "d-section",
+            "fillColor": "#3b82f6",
+            "startBoundaryType": "gradual"
+          },
+          {
+            "id": "0b2508cf-bee4-4039-beaa-c1bb31a23f63",
+            "startTime": 112.5,
+            "endTime": 120,
+            "label": "D",
+            "type": "d-section",
+            "fillColor": "#3b82f6"
+          },
+          {
+            "id": "a09914f7-80d2-4be0-8630-28ca9367cb89",
+            "startTime": 120,
+            "endTime": 127.5,
+            "label": "D",
+            "type": "d-section",
+            "fillColor": "#3b82f6"
+          },
+          {
+            "id": "750b82a8-3e2d-4155-819a-6dcebcb48c57",
+            "startTime": 127.5,
+            "endTime": 135,
+            "label": "D",
+            "type": "d-section",
+            "fillColor": "#3b82f6"
+          },
+          {
+            "id": "e84a609b-7d0b-42cf-bc59-9ad0d8f349b1",
+            "startTime": 135,
+            "endTime": 138.75,
+            "label": "Break",
+            "annotation": "silence",
+            "lineType": "arc"
+          },
+          {
+            "id": "3d85d74d-b240-40af-bc0c-b411a6b512e7",
+            "startTime": 138.75,
+            "endTime": 146.25,
+            "label": "E",
+            "type": "e-section",
+            "fillColor": "#8b5cf6",
+            "confidence": "approximate"
+          },
+          {
+            "id": "4ff58603-068b-4091-a9d0-a07c7452db3b",
+            "startTime": 146.25,
+            "endTime": 153.25,
+            "label": "E",
+            "type": "e-section",
+            "fillColor": "#8b5cf6",
+            "confidence": "approximate"
+          },
+          {
+            "id": "f5b6bfe1-55c4-4411-b7a2-8c9eb8988cb3",
+            "startTime": 153.25,
+            "endTime": 160.75,
+            "label": "F",
+            "type": "f-section",
+            "fillColor": "#c2410c",
+            "confidence": "approximate"
+          },
+          {
+            "id": "d15282ed-f0c8-49bb-a926-1f1f38ce8c4b",
+            "startTime": 160.75,
+            "endTime": 168.75,
+            "label": "F'",
+            "type": "f-prime",
+            "fillColor": "#f97316",
+            "confidence": "approximate"
+          },
+          {
+            "id": "cf2264fe-c9b8-4cb8-ae3b-56ec03caf7c4",
+            "startTime": 168.75,
+            "endTime": 176.25,
+            "label": "D",
+            "type": "d-section",
+            "fillColor": "#3b82f6",
+            "confidence": "approximate"
+          },
+          {
+            "id": "5bdb8b21-dcb7-4d6a-8358-0b1707589521",
+            "startTime": 176.25,
+            "endTime": 183.75,
+            "label": "D",
+            "type": "d-section",
+            "fillColor": "#3b82f6",
+            "confidence": "approximate"
+          },
+          {
+            "id": "6a59c077-80c8-48e4-a643-36bcdb57f441",
+            "startTime": 183.75,
+            "endTime": 191.25,
+            "label": "D",
+            "type": "d-section",
+            "fillColor": "#3b82f6",
+            "startBoundaryType": "gradual",
+            "confidence": "approximate"
+          },
+          {
+            "id": "2e1134ac-e322-44f7-ad15-ed051c329e4a",
+            "startTime": 191.25,
+            "endTime": 198.75,
+            "label": "D",
+            "type": "d-section",
+            "fillColor": "#3b82f6",
+            "confidence": "approximate"
+          },
+          {
+            "id": "aba86df8-c727-4830-a66d-f8f3e28aae78",
+            "startTime": 198.75,
+            "endTime": 206.25,
+            "label": "D",
+            "type": "d-section",
+            "fillColor": "#3b82f6",
+            "confidence": "approximate"
+          },
+          {
+            "id": "384f2f83-ea9d-40a0-b09f-b96db2a9851c",
+            "startTime": 206.25,
+            "endTime": 213.75,
+            "label": "D",
+            "type": "d-section",
+            "fillColor": "#3b82f6",
+            "confidence": "approximate"
+          },
+          {
+            "id": "4d41af10-1eb5-406f-a3e0-325c67a275d9",
+            "startTime": 213.75,
+            "endTime": 221.25,
+            "label": "Build",
+            "lineType": "arc",
+            "confidence": "approximate"
+          },
+          {
+            "id": "f8944138-d674-406a-aa18-2cbb9101c14c",
+            "startTime": 221.25,
+            "endTime": 228.75,
+            "label": "Build",
+            "lineType": "arc",
+            "endBoundaryType": "gradual",
+            "confidence": "approximate"
+          },
+          {
+            "id": "02c4894e-778d-4913-a9ee-da65d54db04b",
+            "startTime": 228.75,
+            "endTime": 236.25,
+            "label": "D",
+            "type": "d-section",
+            "fillColor": "#3b82f6",
+            "startBoundaryType": "gradual",
+            "confidence": "approximate"
+          },
+          {
+            "id": "2ad18afb-4d70-4d46-8043-225714614bc8",
+            "startTime": 236.25,
+            "endTime": 243.75,
+            "label": "D",
+            "type": "d-section",
+            "fillColor": "#3b82f6",
+            "confidence": "approximate"
+          },
+          {
+            "id": "cac2fb19-386b-411e-b98f-87cb22fe7b5b",
+            "startTime": 243.75,
+            "endTime": 251.25,
+            "label": "D",
+            "type": "d-section",
+            "fillColor": "#3b82f6",
+            "confidence": "approximate"
+          },
+          {
+            "id": "453c3570-75ad-4044-ad90-971b34406f7c",
+            "startTime": 251.25,
+            "endTime": 258.75,
+            "label": "D",
+            "type": "d-section",
+            "fillColor": "#3b82f6",
+            "confidence": "approximate"
+          }
+        ]
+      }
+    },
+    {
+      "id": "8a19f872-8560-42e5-9e45-175956ebb71b",
+      "type": "form-diagram",
+      "label": "Sections",
+      "description": "Verse / Chorus / Buildup / Drop / Break.",
+      "visibility": true,
+      "locked": false,
+      "fillColorDefault": "#ffffff",
+      "strokeColorDefault": "#64748b",
+      "displayOrder": 1,
+      "data": {
+        "hierarchicalEnforcement": false,
+        "spans": [
+          {
+            "id": "121b80de-1de4-4700-bd3a-a9f4beb200cc",
+            "startTime": 45,
+            "endTime": 75,
+            "label": "Verse 1",
+            "type": "verse",
+            "lineType": "flat"
+          },
+          {
+            "id": "d277f5ed-a962-4056-a155-20ecb36ad636",
+            "startTime": 75,
+            "endTime": 90,
+            "label": "Chorus",
+            "type": "chorus",
+            "lineType": "flat"
+          },
+          {
+            "id": "5b274471-9705-4b26-b7bb-6241d42e3eb7",
+            "startTime": 90,
+            "endTime": 105,
+            "label": "Buildup",
+            "type": "buildup",
+            "lineType": "flat",
+            "endBoundaryType": "gradual"
+          },
+          {
+            "id": "abe1deb9-5d1d-4f5e-9a6c-6556ca2c2939",
+            "startTime": 105,
+            "endTime": 135,
+            "label": "Drop",
+            "type": "drop",
+            "annotation": "Dance chorus",
+            "lineType": "flat",
+            "startBoundaryType": "gradual"
+          },
+          {
+            "id": "f7aa0c0d-1f55-4534-a98c-5ff430e11194",
+            "startTime": 135,
+            "endTime": 138.75,
+            "label": "Break",
+            "type": null,
+            "annotation": "silence / unquantized",
+            "lineType": "flat"
+          },
+          {
+            "id": "6cc11813-9b03-4db2-8af7-93c5f23ba5ea",
+            "startTime": 138.75,
+            "endTime": 168.75,
+            "label": "Verse 2",
+            "type": "verse",
+            "lineType": "flat",
+            "confidence": "approximate"
+          },
+          {
+            "id": "13d1d028-dbce-4dff-8109-5e7e4472aceb",
+            "startTime": 168.75,
+            "endTime": 183.75,
+            "label": "Chorus",
+            "type": "chorus",
+            "lineType": "flat",
+            "confidence": "approximate"
+          },
+          {
+            "id": "eb72d227-bdf7-4c9d-8805-f757b62099f1",
+            "startTime": 183.75,
+            "endTime": 198.75,
+            "label": "Drop",
+            "type": "drop",
+            "lineType": "flat",
+            "startBoundaryType": "gradual",
+            "confidence": "approximate"
+          },
+          {
+            "id": "f018af27-4723-4bd6-a3f3-1fb81f4a1ca6",
+            "startTime": 198.75,
+            "endTime": 213.75,
+            "label": "Chorus",
+            "type": "chorus",
+            "lineType": "flat",
+            "confidence": "approximate"
+          },
+          {
+            "id": "3954a03c-c6c3-4b6f-8ebe-98e8deb0b0fd",
+            "startTime": 213.75,
+            "endTime": 228.75,
+            "label": "Buildup",
+            "type": "buildup",
+            "lineType": "flat",
+            "endBoundaryType": "gradual",
+            "confidence": "approximate"
+          },
+          {
+            "id": "974ab99e-8bd9-4aca-9d5c-a0d4011f7ad3",
+            "startTime": 228.75,
+            "endTime": 258.75,
+            "label": "Drop",
+            "type": "drop",
+            "lineType": "flat",
+            "startBoundaryType": "gradual",
+            "confidence": "approximate"
+          }
+        ]
+      }
+    },
+    {
+      "id": "be373f3f-8363-436c-84e5-ebb4fef2b496",
+      "type": "form-diagram",
+      "label": "Large-scale form",
+      "description": "Beat-match frames and rotational macro-form.",
+      "visibility": true,
+      "locked": false,
+      "fillColorDefault": "#ffffff",
+      "strokeColorDefault": "#475569",
+      "displayOrder": 2,
+      "data": {
+        "hierarchicalEnforcement": false,
+        "spans": [
+          {
+            "id": "93f79ace-f91b-4ba1-812c-53914dc28ffd",
+            "startTime": 0,
+            "endTime": 30,
+            "label": "Beat-match intro",
+            "type": "beat-match-intro",
+            "lineType": "flat"
+          },
+          {
+            "id": "dec5db99-b957-4672-a737-8c31fd26e4f1",
+            "startTime": 30,
+            "endTime": 45,
+            "label": "Intro",
+            "type": "intro",
+            "lineType": "flat"
+          },
+          {
+            "id": "1f6199aa-94b2-4930-9640-761472f4a9a4",
+            "startTime": 45,
+            "endTime": 135,
+            "label": "Rotation 1",
+            "type": "rotation",
+            "lineType": "flat"
+          },
+          {
+            "id": "fa2141a1-e1d2-4a94-b103-4cb65d7562a1",
+            "startTime": 138.75,
+            "endTime": 198.75,
+            "label": "Rotation 2",
+            "type": "rotation",
+            "lineType": "flat",
+            "confidence": "approximate"
+          },
+          {
+            "id": "e523021a-4aff-4a97-8129-45f8041ac15f",
+            "startTime": 198.75,
+            "endTime": 258.75,
+            "label": "Rotation 3",
+            "type": "rotation",
+            "lineType": "flat",
+            "confidence": "approximate"
+          },
+          {
+            "id": "79ce5dc9-1d49-4125-bef0-2dc983708e51",
+            "startTime": 258.75,
+            "endTime": 290,
+            "label": "Beat-match outro",
+            "type": "beat-match-outro",
+            "lineType": "flat",
+            "confidence": "approximate"
+          }
+        ]
+      }
+    }
+  ],
+  "pointMarkers": [
+    {
+      "id": "559ce19c-b068-481d-b4fa-ca8537758d95",
+      "timestamp": 135,
+      "label": "Grid falls off (unquantized break)",
+      "type": null,
+      "notes": "Silence break ~2:15-2:18.75. The 128-BPM grid anchored at 0:00 stops aligning after this; bar grid re-anchors at ~2:18.75. Post-break timestamps are approximate.",
+      "flagged": true,
+      "confidence": "approximate"
+    }
+  ]
+}

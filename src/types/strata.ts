@@ -66,6 +66,10 @@ export interface VocabTerm {
   label: string
   description?: string
   color?: string | null
+  /** Whether this term applies to spans or point markers. Required for vocab pack import. */
+  kind?: 'span' | 'point-marker'
+  /** Pack provenance string, e.g. "My Pack v1.0.0". Set on import; absent for built-ins. */
+  source?: string
 }
 
 export interface Vocabulary {
@@ -105,7 +109,8 @@ export interface Span {
   startTime: number              // Recording time, seconds (float)
   endTime: number                // Must exceed startTime
   type?: string | null           // Vocabulary term ID; corpus-queryable
-  color?: string | null          // Hex per-span override; null = use layer colorDefault
+  fillColor?: string | null      // Hex fill override; null = use layer fillColorDefault
+  strokeColor?: string | null    // Hex stroke override; null = use layer strokeColorDefault
   annotation?: string | null     // Diagram-visible analytical text (on span body)
   notes?: string | null          // Tooltip-only; not rendered on diagram
   lyrics?: string | null         // Lyric text; corpus-queryable
@@ -136,6 +141,7 @@ export interface PointMarker {
   flagged?: boolean            // "Come back to this." Omit for false (default)
   absent?: boolean             // "Expected event explicitly absent." No v1 UI. Omit for false.
   confidence?: ConfidenceLevel // Omit for "definite" (default)
+  harmonicContext?: string | null // Roman numeral key context, e.g. "V", "I", "bVI". Display: "{hc}:{typeAbbr}"
 }
 
 // ---------------------------------------------------------------------------
@@ -197,7 +203,8 @@ export interface Layer {
   description?: string | null
   visibility: boolean
   locked: boolean
-  colorDefault: string   // Hex fallback for spans with no per-span color override
+  fillColorDefault: string   // Hex fill fallback for spans with no per-span fillColor override
+  strokeColorDefault: string // Hex stroke fallback for spans with no per-span strokeColor override
   displayOrder: number   // Lower = renders first (bottom); gaps allowed
   /**
    * Position relative to the timeline ruler.

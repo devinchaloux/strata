@@ -38,7 +38,8 @@ describe('StrataDocument shape', () => {
       label: 'Large-scale form',
       visibility: true,
       locked: false,
-      colorDefault: '#6366f1',
+      fillColorDefault: '#6366f1',
+      strokeColorDefault: '#6366f1',
       displayOrder: 0,
       data: { hierarchicalEnforcement: false, spans: [] },
     }

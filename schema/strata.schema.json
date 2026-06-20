@@ -236,6 +236,15 @@
           "type": ["string", "null"],
           "pattern": "^#[0-9A-Fa-f]{6}$",
           "description": "Optional default hex color for items of this type."
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["span", "point-marker"],
+          "description": "Whether this term applies to spans or point markers. Required for vocabulary pack import to route terms correctly."
+        },
+        "source": {
+          "type": "string",
+          "description": "Pack provenance string, e.g. 'My Pack v1.0.0'. Set on import; absent for built-ins and project-local terms."
         }
       }
     },
@@ -294,7 +303,7 @@
 
     "Layer": {
       "type": "object",
-      "required": ["id", "type", "label", "visibility", "locked", "colorDefault", "displayOrder", "data"],
+      "required": ["id", "type", "label", "visibility", "locked", "fillColorDefault", "strokeColorDefault", "displayOrder", "data"],
       "additionalProperties": false,
       "description": "A widget layer instance. The typed envelope pattern: the core schema enforces all fields except data; the data field shape is defined by the widget type.",
       "properties": {
@@ -324,10 +333,15 @@
           "type": "boolean",
           "description": "When true, the layer cannot be edited — only viewed and exported."
         },
-        "colorDefault": {
+        "fillColorDefault": {
           "type": "string",
           "pattern": "^#[0-9A-Fa-f]{6}$",
-          "description": "Fallback color for spans with no per-span color override."
+          "description": "Fallback fill color for spans with no per-span fillColor override."
+        },
+        "strokeColorDefault": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "Fallback stroke color for spans with no per-span strokeColor override."
         },
         "displayOrder": {
           "type": "integer",
@@ -403,10 +417,15 @@
           "type": ["string", "null"],
           "description": "Controlled vocabulary term ID. The corpus-queryable classification of this section. Separate from label by design."
         },
-        "color": {
+        "fillColor": {
           "type": ["string", "null"],
           "pattern": "^#[0-9A-Fa-f]{6}$",
-          "description": "Per-span hex color override. Null = use layer colorDefault."
+          "description": "Per-span hex fill color override. Null = use layer fillColorDefault."
+        },
+        "strokeColor": {
+          "type": ["string", "null"],
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "Per-span hex stroke color override. Null = use layer strokeColorDefault."
         },
         "annotation": {
           "type": ["string", "null"],
@@ -485,6 +504,10 @@
         "absent": {
           "type": "boolean",
           "description": "'This expected event was explicitly determined to be absent.' Analytically significant in H/D and similar frameworks where a missing event has formal consequences. No v1 UI — stored and preserved but not settable from the interface in v1. Optional — omit for false (default)."
+        },
+        "harmonicContext": {
+          "type": ["string", "null"],
+          "description": "Roman numeral key context for cadence point markers — e.g. 'V', 'I', 'bVI'. Display: '{harmonicContext}:{typeAbbreviation}' when set (e.g. 'V:HC', 'I:PAC'). Corpus-queryable independently of the cadence type field."
         },
         "confidence": {
           "type": "string",
