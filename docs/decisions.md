@@ -199,6 +199,62 @@ a new entry is added noting the reversal and why.
 
 ---
 
+## v1 Feature Scope (Phase 0.6)
+
+*Decisions made during the Phase 0.6 v1 feature scope session, conducted collaboratively with Devin Chaloux. Output: v1 Scope section of `_private/build-plan.md`.*
+
+---
+
+**Decision:** `Span.color` is replaced by two independent fields: `Span.fillColor: string | null` and `Span.strokeColor: string | null`. `Layer.colorDefault` is similarly replaced by `Layer.fillColorDefault: string` and `Layer.strokeColorDefault: string`.
+**Rationale:** Form diagram spans are arcs and brackets — the fill (interior of the shape) and the stroke (the arc/bracket line) are visually and analytically independent. An analyst may want a light fill with a dark stroke, or a colored stroke with no fill. BriFormer exposes both controls; Strata must as well. Storing them as a single `color` field would force a coupled value that cannot represent this distinction. The change propagates to `src/types/strata.ts` and `schema/strata.schema.json` in Phase 2.
+
+---
+
+**Decision:** The color picker UI shows two labeled rows (Fill / Stroke), each with a curated swatch palette of 8–10 preset colors and a hex input fallback. A "layer default" option sets the field to null, restoring inheritance from the layer's default colors.
+**Rationale:** BriFormer's color picker (a large named-color grid) was identified by Devin as poor UX. A small curated swatch palette covers the common cases with one click; the hex input handles custom colors. The "layer default" option makes it easy to clear a per-span override without knowing the layer's exact color value.
+
+---
+
+**Decision:** Per-span fill + stroke color override UI ships in v1. Layer reordering ships in v1 (dnd-kit sortable). `parentId` picker UI is v1.5 — the field is in the schema and displayed read-only in the Advanced section, but no span reference picker is built in v1.
+**Rationale:** Color override and layer reordering are both low implementation cost relative to their workflow value. `parentId` picker requires a searchable span reference dropdown that is non-trivial to implement well; the field exists in the schema and can be set programmatically or via future UI without migration. Deferring the picker does not block any core analytical workflow.
+
+---
+
+**Decision:** Custom span type creation and custom point marker type creation are v1 requirements. The UI is a "Add type" flow in the vocabulary type picker, creating a project-level `VocabTerm` stored in `StrataDocument.vocabulary`.
+**Rationale:** Classical and common-practice scholars require H&D-framework point marker types (MC, EEC, ESC) and custom formal section labels. Deferring custom types to v2 would make the tool unusable for this audience at launch. This was flagged in a prior session; Phase 0.6 confirms and extends it to span types as well.
+
+---
+
+**Decision:** The built-in vocabulary type picker groups terms by analytical tradition: General, Pop/Rock, EDM, Common Practice, Jazz, Form Letters. A document-level tradition preference controls which group expands by default.
+**Rationale:** A flat list of 45+ terms is overwhelming when an analyst needs only 8. Grouping by tradition makes the picker navigable and surfaces the most relevant terms first. The tradition preference is set at document creation and can be changed in document settings; it affects the picker's default state only, never restricts which terms are available.
+
+---
+
+**Decision:** Form-letter span types (A, B, A', B'', etc.) are generated dynamically via a "Letter…" generator in the type picker rather than pre-defined in the built-in vocabulary.
+**Rationale:** The number of possible letter-prime combinations is unbounded across analytical traditions and works. Pre-defining even A–F with double-prime variants would require 18+ entries, most of which any given analyst would never use. The dynamic generator lets the analyst specify the letter and prime count on demand; the resulting term is stored as a project-level custom type. `rotation` is the one pre-defined form-letter type because it is a named analytical concept (Hepokoski rotational analysis), not a positional label.
+
+---
+
+**Decision:** Letter-form labels (A-section, B-section, A', Rotation) are vocabulary span *types*, not annotation text. They are corpus-queryable.
+**Rationale:** "How often does the B section of a ternary form contain a modulation?" and "How many rotations does this corpus average?" are real corpus questions. If these labels live only in the free-text annotation field, they are not queryable without string matching. Making them vocabulary types gives them the same corpus-query status as `chorus` or `exposition`. This is distinct from phrase-level letter labels (A, B, C for individual phrases within a period or sentence), which are work-specific annotations that go in `Span.annotation` as free text and are not corpus-queryable in a meaningful cross-work sense.
+
+---
+
+**Decision:** Vocabulary pack import (`.vocab.json`) is a v1 feature. Terms from an imported pack merge into `StrataDocument.vocabulary` with a `source` field recording pack provenance. The `.strata` file remains self-contained — no external dependency at open time.
+**Rationale:** The vocabulary system is inherently community-driven; no single maintainer can anticipate every analytical tradition's term requirements. Making pack import available at v1 ensures the tool is not a dead end for traditions not covered by the starter set. File-based import requires no server, no accounts, and no infrastructure — it is as simple as opening a `.strata` file. In-app pack discovery (browsing, ratings, versioning) is the v3+ infrastructure layer; file import is the v1 foundation that makes community sharing possible immediately.
+
+---
+
+**Decision:** `PointMarker` gains an optional `harmonicContext: string | null` field. When set, the display format is `{harmonicContext}:{typeAbbreviation}` (e.g., `V:HC`, `I:PAC`, `bVI:IAC`).
+**Rationale:** Key context for cadences — "this is a half cadence in the key of the dominant" — is analytically significant and corpus-queryable independently of the cadence type. Storing it as free-text in the label field (e.g., labeling the marker "V:HC") makes it display-only and not queryable. A dedicated `harmonicContext` field enables corpus queries like "all half cadences in the dominant" across a corpus. The field is optional and available on all point marker types, not only cadences, since key context may be relevant to other events (key changes, theme entries, etc.).
+
+---
+
+**Decision:** The built-in vocabulary starter set ships with 45 terms: 32 span types across General, EDM, Common Practice, and Jazz traditions; 13 point marker types across General, Cadences, and H&D groups. Full list in `_private/build-plan.md` under "v1 Scope."
+**Rationale:** 45 terms is enough to cover immediate use cases across EDM, common-practice, and jazz scholarship without overwhelming the picker. Terms missing from the starter set are addressed via the "Add custom type" flow (v1) or vocabulary pack import (v1). The list will expand through stress-testing on real analyses; it is not intended to be comprehensive at launch.
+
+---
+
 ## Merge UX (Phase 0.5)
 
 *Decisions made during the Phase 0.5 merge UX design session, conducted collaboratively with Devin Chaloux. Output: `_private/merge-ux-spec.md`.*
