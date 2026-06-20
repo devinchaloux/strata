@@ -876,3 +876,75 @@ a new entry is added noting the reversal and why.
 
 **Decision:** Cursor following only fires during active playback (`playbackState === 'playing'`). Off-screen left during playback snaps to 20%. Approaching or past the right edge during playback follows at 80%. No auto-scroll when paused.
 **Rationale:** The YouTube IFrame API's `getCurrentTime()` returns the hover-preview position when the user mouses over the in-player seek bar, even when paused. Since the rAF loop calls `getCurrentTime()` on every frame, this produces spurious `currentTime` changes that would snap the ruler. Restricting following to `playbackState === 'playing'` eliminates the spurious snaps. The left-correction (20%) handles backward seek during active playback. When paused, the analyst pans the timeline manually.
+
+---
+
+## Schema Changes (Phase 2 prep, 2026-06-20)
+
+**Decision:** Split `Span.color` → `Span.fillColor` + `Span.strokeColor`, and `Layer.colorDefault` → `Layer.fillColorDefault` + `Layer.strokeColorDefault`.
+**Rationale:** Form-diagram shapes need independent fill and outline control. A bracket may be an unfilled outline (stroke only) or a filled bubble; per-span overrides must address each independently. Confirmed required by the visual-design work (open brackets = stroke, no fill).
+
+---
+
+**Decision:** Added `PointMarker.harmonicContext: string | null`.
+**Rationale:** Cadence/point markers need Roman-numeral key context (`V:HC`, `I:PAC`) corpus-queryable independently of the cadence type. Surfaced directly by the "Parto parto" harmony layer during design.
+
+---
+
+**Decision:** Added `VocabTerm.kind: 'span' | 'point-marker'` and `VocabTerm.source?: string`.
+**Rationale:** Vocabulary pack import (Phase 0.6) must route terms to the correct picker and record pack provenance. `kind` disambiguates; `source` records origin.
+
+---
+
+## Visual Design (Phase 0.7, 2026-06-20)
+
+*Full spec: `_private/visual-design-spec.md`. Converged with Devin via live mockup
+iteration. Supersedes the dark-mode assumption and amends the Phase 0.4 layout.*
+
+**Decision:** Light mode only. White "paper" canvas; no dark mode, no theme toggle.
+**Rationale:** Light-on-white is correct for printable analytical graphics — the export is the product. Dark backgrounds produce poor exports. Reverses earlier dark-theme scaffolding. The first Phase 2.1 build was rejected partly for being dark.
+
+---
+
+**Decision:** Typeface is Inter. Sentence case everywhere. Two weights only (400/500).
+**Rationale:** Inter has excellent small-size legibility and clean numerals (timestamps, dense labels). Mono (the earlier choice) was wrong for labels.
+
+---
+
+**Decision:** Layers pack flush — they do not reserve exclusive horizontal bands. Labels render into the negative space (open interior) of the layer above; only ink-collision is constrained, handled locally. A **spacer** is the opt-in element that forces visible separation between independent (non-nested) layers.
+**Rationale:** The DAW track-row model (implied by Phase 0.4) wasted vertical space and broke the dense, legible look. Brackets are open outlines with empty interiors, so labels can overlap a neighbor's *space* without overlapping its *ink*. Amends Phase 0.4's reserved-band assumption.
+
+---
+
+**Decision:** Hierarchy reads through stacking order + boundary alignment, never through bracket size or enclosure. Bracket height is uniform across all layers (default; per-layer height override available).
+**Rationale:** Uniform height is the BriFormer quality cue. Depth is positional. Variable/enclosing heights (an interim mockup) were rejected on sight.
+
+---
+
+**Decision:** Layers are semantically homogeneous — each measures one analytical level (large-scale form / phrase grouping / material / harmony …).
+**Rationale:** Strata's advantage over BriFormer's single-diagram model: a section can be top-level in one layer and have its own phrase reading in another without contradiction, and transitions/connectives live in the layer where they belong rather than being stranded.
+
+---
+
+**Decision:** Collision strategy is content-separation-across-widgets first, then local label handling.
+**Rationale:** Most BriFormer collisions come from cramming non-form data (instrumentation) into the form diagram. In Strata that data is its own widget/layer, removing most collision pressure before any rendering logic runs.
+
+---
+
+**Decision:** Transport bar relocated to the bottom of the shell; the zoomable timeline ruler is the sole authoritative timeline. Form layers sit above the ruler. Amends Phase 0.4 (which placed transport between ruler and video).
+**Rationale:** The transport's seek bar has its own scale that does not match the zoomable ruler; separating analytical timeline (top) from playback controls (bottom) removes the mismatch.
+
+---
+
+**Decision:** Font-size API is a layer-level `fontScale` enum (`sm`/`md`/`lg`); uniform within a layer, no per-span font size in v1.
+**Rationale:** Resolves the Phase 0.4 deferral. Inverts BriFormer's per-element manual resizing (which produces inconsistent sizes).
+
+---
+
+**Decision:** Color is the analyst's choice (`fillColor`/`strokeColor`), not a fixed level convention; default rendering is neutral open brackets. The swatch is organized by hue family, each surfacing curated print-safe **deep/bright** shade pairs (so "similar but not the same" — A vs A′ — is expressible). Arbitrary hex remains available as the deliberate power-user path, not the default.
+**Rationale:** Analysts assign color analytically (e.g. by phrase material). Constraining the surfaced swatches to vetted shades keeps exports printing well while still allowing related-but-distinct material to be shaded.
+
+---
+
+**Decision:** The canonical test/demo analysis is "Alive" by Krewella (`schema/alive.strata`).
+**Rationale:** Devin's pick — clear enough to analyze and exercises the features he cares about (128-BPM grid, rotational form, an unquantized break where the grid drifts). Serves as the working fixture for the component rebuild.
