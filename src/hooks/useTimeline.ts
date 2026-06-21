@@ -34,6 +34,10 @@ export function useTimeline() {
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
+    // Measure synchronously on mount — the ResizeObserver's first callback is
+    // async and can be missed when this component mounts after the document
+    // loads (the ruler only renders once a document exists).
+    setViewportWidth(el.getBoundingClientRect().width)
     const observer = new ResizeObserver((entries) => {
       const width = entries[0]?.contentRect.width ?? 0
       setViewportWidth(width)

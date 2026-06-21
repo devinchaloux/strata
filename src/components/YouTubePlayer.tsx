@@ -165,21 +165,9 @@ export function YouTubePlayer() {
 
   return (
     <>
-      {/* ── Video panel ── */}
-      {/* Only rendered when a YouTube URL is set. Height transitions 200↔0;
-          the iframe stays in the DOM (CSS clip) so the IFrame API stays alive. */}
-      {videoId && (
-        <div
-          className="overflow-hidden border-b border-border transition-[height] duration-200 ease-in-out"
-          style={{ height: videoPanelVisible ? 200 : 0 }}
-        >
-          {/* Inner target for YT.Player — always 200px so the player has dimensions */}
-          <div ref={containerRef} className="w-full" style={{ height: 200 }} />
-        </div>
-      )}
-
-      {/* ── Transport bar — always visible ── */}
-      <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-card px-3">
+      {/* ── Transport bar — always visible; sits above the video panel at the
+          bottom of the shell (Phase 0.7 §2 — transport above video). ── */}
+      <div className="flex h-12 shrink-0 items-center gap-2 border-t border-border bg-card px-3">
         {/* Rewind */}
         <TransportButton
           onClick={() => seek(0)}
@@ -245,6 +233,19 @@ export function YouTubePlayer() {
           </TransportButton>
         )}
       </div>
+
+      {/* ── Video panel ── */}
+      {/* Only rendered when a YouTube URL is set. Height transitions 200↔0;
+          the iframe stays in the DOM (CSS clip) so the IFrame API stays alive. */}
+      {videoId && (
+        <div
+          className="overflow-hidden border-t border-border transition-[height] duration-200 ease-in-out"
+          style={{ height: videoPanelVisible ? 200 : 0 }}
+        >
+          {/* Inner target for YT.Player — always 200px so the player has dimensions */}
+          <div ref={containerRef} className="w-full" style={{ height: 200 }} />
+        </div>
+      )}
     </>
   )
 }

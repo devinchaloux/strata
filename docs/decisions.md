@@ -948,3 +948,29 @@ iteration. Supersedes the dark-mode assumption and amends the Phase 0.4 layout.*
 
 **Decision:** The canonical test/demo analysis is "Alive" by Krewella (`schema/alive.strata`).
 **Rationale:** Devin's pick — clear enough to analyze and exercises the features he cares about (128-BPM grid, rotational form, an unquantized break where the grid drifts). Serves as the working fixture for the component rebuild.
+
+---
+
+## Phase 2 Implementation (Form Diagram — Milestone A)
+
+*Decisions made while building the static render foundation, reviewed live with Devin against the BriFormer reference.*
+
+---
+
+**Decision:** The form-layer stack is **bottom-anchored on the timeline ruler** — the lowest layer sits flush against the ruler with no gap, and empty room for additional layers accumulates *above*. Widgets stack upward on the timeline (the ruler is the fixed reference line); the timestamped written-analysis widget is the exception and may render *below* the ruler since it does not track the timeline spatially.
+**Rationale:** The earlier layout left dead space between the layers and the ruler. Anchoring the stack to the ruler makes the timeline the spatial anchor that everything else stacks against, which is the correct mental model for a reorderable widget system and matches how analysts read a diagram (detail nearest the time axis, broader frames above).
+
+---
+
+**Decision:** Confirmed model A for vertical packing (uniform-height, truly flush, hierarchy from aligned boundary tails forming continuous vertical lines) over model B (nested variable-height enclosure). BriFormer's apparent "enclosure" is model A with flush-aligned tails, not variable bracket heights.
+**Rationale:** Reaffirms the Phase 0.7 uniform-height decision after a live comparison. Enclosure (variable heights) breaks down when frameworks overlap rather than nest cleanly — the EDM case — whereas aligned-tail flush stacking reads as hierarchy in the nesting case and stays correct under overlap.
+
+---
+
+**Decision:** Phrase / letter-material spans default to a **rounded bracket** (flat top, rounded corners, filled), not a dome. The dome (`lineType: 'arc'`) remains an opt-in shape the analyst can choose per span.
+**Rationale:** Devin's call against the BriFormer reference — the workhorse phrase shape is a rounded bracket; the dome is a deliberate, occasional choice. Label placement (above / inside / none) likewise stays the analyst's choice via layer rendering config; the renderer imposes nothing.
+
+---
+
+**Decision (follow-ups, not yet implemented):** Two layer-level fields are implied by the specs but not yet in the schema types — a `fontScale` (`sm`/`md`/`lg`, Phase 0.7 §5) and a default `lineType` (Phase 0.4 "the layer's default line type"). Both are hard-defaulted in the renderer for now (`md`, `arc`) pending a small schema addition.
+**Rationale:** Logged so the schema gap is tracked rather than silently carried; deferred to avoid a schema change mid-iteration.

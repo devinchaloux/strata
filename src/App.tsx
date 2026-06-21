@@ -1,7 +1,11 @@
 import { useEffect } from 'react'
 import { useFileIO } from '@/hooks/useFileIO'
 import { YouTubePlayer } from '@/components/YouTubePlayer'
-import { TimelineAxis } from '@/components/TimelineAxis'
+import { FormDiagram } from '@/components/FormDiagram'
+import { useDocumentStore } from '@/store/documentStore'
+import { useUIStore } from '@/store/uiStore'
+import aliveRaw from '../schema/alive.strata?raw'
+import type { StrataDocument } from '@/types/strata'
 
 // ---------------------------------------------------------------------------
 // Toolbar button
@@ -90,6 +94,19 @@ export default function App() {
     dismissRecovery,
   } = useFileIO()
 
+  const loadDocument = useDocumentStore((s) => s.loadDocument)
+  const setActiveLayer = useUIStore((s) => s.setActiveLayer)
+
+  // Dev affordance — load the bundled "Alive" fixture to exercise the render path.
+  function loadDemo() {
+    const parsed = JSON.parse(aliveRaw) as StrataDocument
+    loadDocument(parsed)
+    useDocumentStore.temporal.getState().clear()
+    // Make the macro layer (highest displayOrder) the active layer by default.
+    const top = [...parsed.layers].sort((a, b) => b.displayOrder - a.displayOrder)[0]
+    setActiveLayer(top?.id ?? null)
+  }
+
   // Keyboard shortcuts
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -121,6 +138,7 @@ export default function App() {
 
         <ToolbarButton onClick={newFile}>New</ToolbarButton>
         <ToolbarButton onClick={openFile}>Open</ToolbarButton>
+        <ToolbarButton onClick={loadDemo}>Demo</ToolbarButton>
 
         <div className="mx-1 h-4 w-px bg-border" />
 
@@ -136,32 +154,19 @@ export default function App() {
         )}
       </header>
 
-      {/* Shared timeline axis — ruler, playback cursor, zoom */}
-      <TimelineAxis />
-
-      {/* YouTube player — transport bar always visible; video panel when URL is set */}
-      <YouTubePlayer />
-
-      {/* Main content */}
-      <main className="flex flex-1 items-center justify-center">
-        {doc ? (
-          <div className="text-center space-y-1">
-            <p className="text-sm font-medium text-foreground">{doc.title}</p>
-            {doc.artist.length > 0 && (
-              <p className="text-xs text-muted-foreground">{doc.artist.join(', ')}</p>
-            )}
-            {doc.duration > 0 && (
-              <p className="text-xs text-muted-foreground">
-                {Math.floor(doc.duration / 60)}:{String(Math.floor(doc.duration % 60)).padStart(2, '0')}
-              </p>
-            )}
-          </div>
-        ) : (
+      {/* Work area — form layers above the ruler (FormDiagram owns both) */}
+      {doc ? (
+        <FormDiagram />
+      ) : (
+        <main className="flex flex-1 items-center justify-center">
           <p className="text-sm text-muted-foreground">
             Open a .strata file or create a new analysis to begin.
           </p>
-        )}
-      </main>
+        </main>
+      )}
+
+      {/* Transport bar + collapsible video panel — bottom of the shell */}
+      <YouTubePlayer />
 
       {/* Crash recovery modal */}
       {pendingRecovery && (
