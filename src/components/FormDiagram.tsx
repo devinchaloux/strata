@@ -16,6 +16,7 @@
  * Stacking order is macro-on-top (highest displayOrder at the top).
  */
 
+import { useRef, useState } from 'react'
 import {
   ChevronsLeft,
   ChevronsRight,
@@ -38,11 +39,26 @@ const TOP_BAR_HEIGHT = 24
 // Layer header column (visible layers only — hidden ones live in the top bar)
 // ---------------------------------------------------------------------------
 
+const HOVER_LABEL_DELAY = 400 // ms of hover before the rail reveals a label
+
 function LayerHeaders({ layers, collapsed }: { layers: Layer[]; collapsed: boolean }) {
   const activeLayerId = useUIStore((s) => s.activeLayerId)
   const setActiveLayer = useUIStore((s) => s.setActiveLayer)
   const updateLayer = useDocumentStore((s) => s.updateLayer)
   const width = collapsed ? HEADER_WIDTH_RAIL : HEADER_WIDTH_EXPANDED
+
+  // Hover-intent label reveal for the collapsed rail: hovering a row for a beat
+  // pops the layer name out to the right; leaving dismisses it immediately.
+  const [hoverLabelId, setHoverLabelId] = useState<string | null>(null)
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  function armHover(id: string) {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current)
+    hoverTimer.current = setTimeout(() => setHoverLabelId(id), HOVER_LABEL_DELAY)
+  }
+  function disarmHover() {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current)
+    setHoverLabelId(null)
+  }
 
   return (
     <div className="shrink-0 border-r" style={{ width, borderColor: 'var(--hairline)' }}>
@@ -56,6 +72,8 @@ function LayerHeaders({ layers, collapsed }: { layers: Layer[]; collapsed: boole
             key={layer.id}
             style={{ height: LAYER_PITCH }}
             onClick={collapsed ? () => setActiveLayer(layer.id) : undefined}
+            onMouseEnter={collapsed ? () => armHover(layer.id) : undefined}
+            onMouseLeave={collapsed ? disarmHover : undefined}
             className={`relative flex items-center ${collapsed ? 'cursor-pointer justify-center' : 'gap-1.5 pl-2.5 pr-1.5'}`}
           >
             {/* Active-layer accent bar (load-bearing per 0.4 §2 — spacebar target) */}
@@ -67,6 +85,17 @@ function LayerHeaders({ layers, collapsed }: { layers: Layer[]; collapsed: boole
               />
             )}
 
+            {/* Hover-reveal label tooltip (collapsed rail only) */}
+            {collapsed && hoverLabelId === layer.id && (
+              <span
+                className="pointer-events-none absolute left-full top-1/2 z-50 ml-1.5 -translate-y-1/2 whitespace-nowrap rounded px-2 py-1 text-[11px] text-white shadow-md"
+                style={{ backgroundColor: 'var(--ink-primary)' }}
+                role="tooltip"
+              >
+                {layer.label}
+              </span>
+            )}
+
             {collapsed ? (
               <button
                 onClick={(e) => {
@@ -75,7 +104,7 @@ function LayerHeaders({ layers, collapsed }: { layers: Layer[]; collapsed: boole
                 }}
                 className="shrink-0 hover:opacity-80"
                 style={{ color: 'var(--ink-muted)' }}
-                title={`Hide ${layer.label}`}
+                title="Hide layer"
                 aria-label="Hide layer"
               >
                 <Eye size={14} />
