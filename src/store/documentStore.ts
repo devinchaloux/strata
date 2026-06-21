@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { temporal } from 'zundo'
 import type { StrataDocument, Layer, Span, PointMarker, SharedTimePoint } from '@/types/strata'
 import type { FormDiagramData } from '@/types/strata'
+import { placeBoundaryInSpans, MIN_SPAN_WIDTH } from '@/lib/spanEdit'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -47,6 +48,20 @@ interface DocumentState {
   updateSpan: (layerId: string, spanId: string, patch: Partial<Omit<Span, 'id'>>) => void
   removeSpan: (layerId: string, spanId: string) => void
   mergeSpans: (layerId: string, spanIds: string[], result: Span) => void
+  // Spacebar / Split: place a boundary at `time`, splitting the containing span
+  // (or seeding two spans on an empty layer). No-op if the cut isn't valid.
+  placeBoundary: (layerId: string, time: number) => void
+  // Boundary drag: move the shared boundary between two adjacent spans to `time`,
+  // clamped so neither span shrinks below `minWidth` seconds (hard-stop). The
+  // caller passes a zoom-aware minWidth; the store still floors it at the data
+  // minimum (MIN_SPAN_WIDTH).
+  setAdjacentBoundary: (
+    layerId: string,
+    leftSpanId: string,
+    rightSpanId: string,
+    time: number,
+    minWidth?: number,
+  ) => void
 
   // Point marker actions
   addPointMarker: (marker: PointMarker) => void
@@ -218,6 +233,56 @@ const useDocumentStore = create<DocumentState>()(
                   (a, b) => a.startTime - b.startTime
                 )
               )
+            ),
+            updatedAt: now(),
+          },
+        })
+      },
+
+      placeBoundary: (layerId, time) => {
+        const doc = get().document
+        if (!doc) return
+        let changed = false
+        const layers = mapLayer(doc.layers, layerId, (l) => {
+          if (l.type !== 'form-diagram') return l
+          const data = l.data as FormDiagramData
+          const next = placeBoundaryInSpans(
+            data.spans,
+            time,
+            doc.duration,
+            () => crypto.randomUUID(),
+          )
+          if (!next) return l
+          changed = true
+          return { ...l, data: { ...data, spans: next } }
+        })
+        if (!changed) return
+        set({ document: { ...doc, layers, updatedAt: now() } })
+      },
+
+      setAdjacentBoundary: (layerId, leftSpanId, rightSpanId, time, minWidth) => {
+        const doc = get().document
+        if (!doc) return
+        const gap = Math.max(MIN_SPAN_WIDTH, minWidth ?? MIN_SPAN_WIDTH)
+        set({
+          document: {
+            ...doc,
+            layers: mapLayer(doc.layers, layerId, (l) =>
+              mapFormDiagramSpans(l, (spans) => {
+                const left = spans.find((s) => s.id === leftSpanId)
+                const right = spans.find((s) => s.id === rightSpanId)
+                if (!left || !right) return spans
+                // Hard-stop: keep both spans at least `gap` seconds wide.
+                const min = left.startTime + gap
+                const max = right.endTime - gap
+                if (min > max) return spans // too narrow to satisfy on both sides
+                const t = Math.max(min, Math.min(max, time))
+                return spans.map((s) => {
+                  if (s.id === leftSpanId) return { ...s, endTime: t }
+                  if (s.id === rightSpanId) return { ...s, startTime: t }
+                  return s
+                })
+              }),
             ),
             updatedAt: now(),
           },

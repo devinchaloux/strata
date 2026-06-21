@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useEffect } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { useYouTubePlayer } from '@/hooks/useYouTubePlayer'
@@ -163,23 +163,37 @@ export function YouTubePlayer() {
     }
   }
 
+  // Spacebar (Phase 0.4 §8): while playing, place a boundary at the playhead on
+  // the active layer; while paused, start playback. Live state is read via
+  // getState() so the listener stays bound once. Text fields keep native space;
+  // for buttons we preventDefault so a focused transport button isn't re-fired.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.code !== 'Space') return
+      const el = e.target as HTMLElement | null
+      const tag = el?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable) {
+        return
+      }
+      e.preventDefault()
+      const ui = useUIStore.getState()
+      if (ui.playbackState === 'playing') {
+        if (ui.activeLayerId) {
+          useDocumentStore.getState().placeBoundary(ui.activeLayerId, ui.currentTime)
+        }
+      } else {
+        play()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [play])
+
   return (
     <>
-      {/* ── Video panel ── */}
-      {/* Only rendered when a YouTube URL is set. Height transitions 200↔0;
-          the iframe stays in the DOM (CSS clip) so the IFrame API stays alive. */}
-      {videoId && (
-        <div
-          className="overflow-hidden border-b border-border transition-[height] duration-200 ease-in-out"
-          style={{ height: videoPanelVisible ? 200 : 0 }}
-        >
-          {/* Inner target for YT.Player — always 200px so the player has dimensions */}
-          <div ref={containerRef} className="w-full" style={{ height: 200 }} />
-        </div>
-      )}
-
-      {/* ── Transport bar — always visible ── */}
-      <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-card px-3">
+      {/* ── Transport bar — always visible; sits above the video panel at the
+          bottom of the shell (Phase 0.7 §2 — transport above video). ── */}
+      <div className="flex h-12 shrink-0 items-center gap-2 border-t border-border bg-card px-3">
         {/* Rewind */}
         <TransportButton
           onClick={() => seek(0)}
@@ -245,6 +259,19 @@ export function YouTubePlayer() {
           </TransportButton>
         )}
       </div>
+
+      {/* ── Video panel ── */}
+      {/* Only rendered when a YouTube URL is set. Height transitions 200↔0;
+          the iframe stays in the DOM (CSS clip) so the IFrame API stays alive. */}
+      {videoId && (
+        <div
+          className="overflow-hidden border-t border-border transition-[height] duration-200 ease-in-out"
+          style={{ height: videoPanelVisible ? 200 : 0 }}
+        >
+          {/* Inner target for YT.Player — always 200px so the player has dimensions */}
+          <div ref={containerRef} className="w-full" style={{ height: 200 }} />
+        </div>
+      )}
     </>
   )
 }

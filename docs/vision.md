@@ -159,6 +159,14 @@ This resolves three problems simultaneously:
 
 ## 3. Data Model
 
+> **Authoritative source:** the formal schema in `schema/` (`strata.schema.json` +
+> the TypeScript types in `src/types/strata.ts`) is the source of truth for the
+> data model. The prose and tables in this section are conceptual and have drifted
+> from the finalized schema in places (e.g. `context` is now optional with `remix`
+> removed in favor of `derivativeOf`; span `color` is split into `fillColor` /
+> `strokeColor`). A full reconciliation pass of this section against the schema is
+> pending — see `docs/decisions.md` for the binding decisions.
+
 ### 3.1 File-Level Metadata
 
 Every analysis document stores the following at the top level. Fields marked optional can be null in v1 but the schema must include them so they never need to be migrated in.

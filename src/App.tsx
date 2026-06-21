@@ -1,7 +1,12 @@
 import { useEffect } from 'react'
 import { useFileIO } from '@/hooks/useFileIO'
 import { YouTubePlayer } from '@/components/YouTubePlayer'
-import { TimelineAxis } from '@/components/TimelineAxis'
+import { FormDiagram } from '@/components/FormDiagram'
+import { MetadataPanel } from '@/components/MetadataPanel'
+import { useDocumentStore } from '@/store/documentStore'
+import { useUIStore } from '@/store/uiStore'
+import aliveRaw from '../schema/alive.strata?raw'
+import type { StrataDocument } from '@/types/strata'
 
 // ---------------------------------------------------------------------------
 // Toolbar button
@@ -90,11 +95,40 @@ export default function App() {
     dismissRecovery,
   } = useFileIO()
 
+  const loadDocument = useDocumentStore((s) => s.loadDocument)
+  const setActiveLayer = useUIStore((s) => s.setActiveLayer)
+
+  // Dev affordance — load the bundled "Alive" fixture to exercise the render path.
+  function loadDemo() {
+    const parsed = JSON.parse(aliveRaw) as StrataDocument
+    loadDocument(parsed)
+    useDocumentStore.temporal.getState().clear()
+    // Make the macro layer (highest displayOrder) the active layer by default.
+    const top = [...parsed.layers].sort((a, b) => b.displayOrder - a.displayOrder)[0]
+    setActiveLayer(top?.id ?? null)
+  }
+
   // Keyboard shortcuts
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const mod = e.metaKey || e.ctrlKey
       if (!mod) return
+
+      // Undo / redo. Inside a text field, let the browser handle native text
+      // undo instead of walking the document history.
+      if (e.key === 'z' || e.key === 'Z') {
+        const el = e.target as HTMLElement | null
+        const tag = el?.tagName
+        const inField =
+          tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable
+        if (inField) return
+        e.preventDefault()
+        const temporal = useDocumentStore.temporal.getState()
+        if (e.shiftKey) temporal.redo()
+        else temporal.undo()
+        return
+      }
+
       if (e.key === 'n' || e.key === 'N') {
         e.preventDefault()
         newFile()
@@ -121,6 +155,7 @@ export default function App() {
 
         <ToolbarButton onClick={newFile}>New</ToolbarButton>
         <ToolbarButton onClick={openFile}>Open</ToolbarButton>
+        <ToolbarButton onClick={loadDemo}>Demo</ToolbarButton>
 
         <div className="mx-1 h-4 w-px bg-border" />
 
@@ -136,32 +171,23 @@ export default function App() {
         )}
       </header>
 
-      {/* Shared timeline axis — ruler, playback cursor, zoom */}
-      <TimelineAxis />
-
-      {/* YouTube player — transport bar always visible; video panel when URL is set */}
-      <YouTubePlayer />
-
-      {/* Main content */}
-      <main className="flex flex-1 items-center justify-center">
+      {/* Work area row — form diagram + right metadata panel (panel renders
+          null when nothing is selected) */}
+      <div className="flex min-h-0 flex-1">
         {doc ? (
-          <div className="text-center space-y-1">
-            <p className="text-sm font-medium text-foreground">{doc.title}</p>
-            {doc.artist.length > 0 && (
-              <p className="text-xs text-muted-foreground">{doc.artist.join(', ')}</p>
-            )}
-            {doc.duration > 0 && (
-              <p className="text-xs text-muted-foreground">
-                {Math.floor(doc.duration / 60)}:{String(Math.floor(doc.duration % 60)).padStart(2, '0')}
-              </p>
-            )}
-          </div>
+          <FormDiagram />
         ) : (
-          <p className="text-sm text-muted-foreground">
-            Open a .strata file or create a new analysis to begin.
-          </p>
+          <main className="flex flex-1 items-center justify-center">
+            <p className="text-sm text-muted-foreground">
+              Open a .strata file or create a new analysis to begin.
+            </p>
+          </main>
         )}
-      </main>
+        <MetadataPanel />
+      </div>
+
+      {/* Transport bar + collapsible video panel — bottom of the shell */}
+      <YouTubePlayer />
 
       {/* Crash recovery modal */}
       {pendingRecovery && (
