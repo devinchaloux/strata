@@ -7,8 +7,9 @@
  * viewport width) from the UI store; the TimelineAxis below owns the controller
  * that writes those values, so this component stays purely presentational for now.
  *
- * Interactions (selection, hover, spacebar placement, boundary drag) arrive in
- * Milestone B — this milestone is the static visual foundation only.
+ * Interactions arrive incrementally in Milestone B. Slice 1 (here): click a span
+ * to select it, hover to preview; click empty canvas to deselect. Placement and
+ * boundary drag come in later slices.
  */
 
 import { useDocumentStore } from '@/store/documentStore'
@@ -31,6 +32,12 @@ import type { Layer, Span, FormDiagramData, BoundaryType } from '@/types/strata'
 const INK_PRIMARY = 'var(--ink-primary)'
 const INK_SECONDARY = '#475569'
 const TEXT_PAD = 5 // horizontal inset for left/right-justified text
+
+// Selection styling (BriFormer convention): a light grey box fills the selected
+// span's rectangle with a blue outline — the blue reads even when the span
+// already has a grey/colored fill. Hover is a fainter grey wash, no outline.
+const SELECT_BLUE = '#2563eb'
+const SELECT_GREY = '#64748b'
 
 type Justification = 'left' | 'center' | 'right'
 
@@ -55,6 +62,13 @@ interface SpanShapeProps {
 }
 
 function SpanShape({ span, layer, pps, fontScale }: SpanShapeProps) {
+  // Per-span subscription: a span only re-renders when ITS own selected/hovered
+  // state flips, not on every selection change across the diagram.
+  const isSelected = useUIStore((s) => s.selectedSpanId === span.id)
+  const isHovered = useUIStore((s) => s.hoveredSpanId === span.id)
+  const selectSpan = useUIStore((s) => s.selectSpan)
+  const hoverSpan = useUIStore((s) => s.hoverSpan)
+
   const x = span.startTime * pps
   const width = (span.endTime - span.startTime) * pps
   if (width <= 0) return null
@@ -83,7 +97,17 @@ function SpanShape({ span, layer, pps, fontScale }: SpanShapeProps) {
   const aboveAnnotY = -LABEL_RISE - fonts.label // stack annotation above the label if both go up
 
   return (
-    <g transform={`translate(${x}, 0)`} opacity={opacity}>
+    <g
+      transform={`translate(${x}, 0)`}
+      opacity={opacity}
+      style={{ cursor: 'pointer' }}
+      onMouseEnter={() => hoverSpan(span.id)}
+      onMouseLeave={() => hoverSpan(null)}
+      onClick={(e) => {
+        e.stopPropagation() // don't let the click bubble to the deselect handler
+        selectSpan(span.id)
+      }}
+    >
       <path
         d={path}
         fill={fill}
@@ -93,6 +117,27 @@ function SpanShape({ span, layer, pps, fontScale }: SpanShapeProps) {
         strokeLinejoin="round"
         strokeLinecap="round"
       />
+
+      {/* Selection / hover box — drawn OVER the shape so it reads on white or
+          colored fills. Hover: faint grey wash. Selected: grey box + blue
+          outline (BriFormer convention). Text renders after, staying crisp. */}
+      {(isSelected || isHovered) && (
+        <rect
+          x={-1}
+          y={-1}
+          width={width + 2}
+          height={SHAPE_HEIGHT + 2}
+          rx={3}
+          fill={SELECT_GREY}
+          fillOpacity={isSelected ? 0.2 : 0.08}
+          stroke={isSelected ? SELECT_BLUE : 'none'}
+          strokeWidth={isSelected ? 1.5 : 0}
+        />
+      )}
+
+      {/* Transparent hit area — generous, covers the whole shape body so the
+          open (white-filled) brackets are easy to click, not just the stroke. */}
+      <rect x={0} y={0} width={width} height={SHAPE_HEIGHT} fill="transparent" />
 
       {/* Section label */}
       {span.label && (
@@ -156,6 +201,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   const scrollOffset = useUIStore((s) => s.scrollOffset)
   const viewportWidth = useUIStore((s) => s.viewportWidth)
   const currentTime = useUIStore((s) => s.currentTime)
+  const selectSpan = useUIStore((s) => s.selectSpan)
   const duration = useDocumentStore((s) => s.document?.duration ?? 0)
 
   const pps = computePps(duration, viewportWidth, zoom)
@@ -171,6 +217,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
     <div
       className="relative min-w-0 flex-1 overflow-hidden"
       style={{ background: 'var(--canvas)', height: svgHeight }}
+      onClick={() => selectSpan(null)}
     >
       <svg
         style={{

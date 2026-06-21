@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useFileIO } from '@/hooks/useFileIO'
 import { YouTubePlayer } from '@/components/YouTubePlayer'
 import { FormDiagram } from '@/components/FormDiagram'
+import { MetadataPanel } from '@/components/MetadataPanel'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import aliveRaw from '../schema/alive.strata?raw'
@@ -112,6 +113,22 @@ export default function App() {
     function onKeyDown(e: KeyboardEvent) {
       const mod = e.metaKey || e.ctrlKey
       if (!mod) return
+
+      // Undo / redo. Inside a text field, let the browser handle native text
+      // undo instead of walking the document history.
+      if (e.key === 'z' || e.key === 'Z') {
+        const el = e.target as HTMLElement | null
+        const tag = el?.tagName
+        const inField =
+          tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable
+        if (inField) return
+        e.preventDefault()
+        const temporal = useDocumentStore.temporal.getState()
+        if (e.shiftKey) temporal.redo()
+        else temporal.undo()
+        return
+      }
+
       if (e.key === 'n' || e.key === 'N') {
         e.preventDefault()
         newFile()
@@ -154,16 +171,20 @@ export default function App() {
         )}
       </header>
 
-      {/* Work area — form layers above the ruler (FormDiagram owns both) */}
-      {doc ? (
-        <FormDiagram />
-      ) : (
-        <main className="flex flex-1 items-center justify-center">
-          <p className="text-sm text-muted-foreground">
-            Open a .strata file or create a new analysis to begin.
-          </p>
-        </main>
-      )}
+      {/* Work area row — form diagram + right metadata panel (panel renders
+          null when nothing is selected) */}
+      <div className="flex min-h-0 flex-1">
+        {doc ? (
+          <FormDiagram />
+        ) : (
+          <main className="flex flex-1 items-center justify-center">
+            <p className="text-sm text-muted-foreground">
+              Open a .strata file or create a new analysis to begin.
+            </p>
+          </main>
+        )}
+        <MetadataPanel />
+      </div>
 
       {/* Transport bar + collapsible video panel — bottom of the shell */}
       <YouTubePlayer />

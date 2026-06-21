@@ -63,6 +63,7 @@ function DotsIcon() {
 
 function LayerHeaders({ layers }: { layers: Layer[] }) {
   const activeLayerId = useUIStore((s) => s.activeLayerId)
+  const setActiveLayer = useUIStore((s) => s.setActiveLayer)
   const visibleLayers = layers.filter((l) => l.visibility)
 
   return (
@@ -96,16 +97,17 @@ function LayerHeaders({ layers }: { layers: Layer[] }) {
             >
               <EyeIcon open={layer.visibility} />
             </button>
-            <span
-              className="min-w-0 flex-1 truncate text-[11px]"
+            <button
+              className="min-w-0 flex-1 truncate text-left text-[11px]"
               style={{
                 color: 'var(--ink-primary)',
                 fontWeight: active ? 500 : 400,
               }}
-              title={layer.label}
+              title={`${layer.label} — click to make active`}
+              onClick={() => setActiveLayer(layer.id)}
             >
               {layer.label}
-            </span>
+            </button>
             <button
               className="shrink-0"
               style={{ color: 'var(--ink-faint)' }}
