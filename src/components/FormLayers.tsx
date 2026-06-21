@@ -204,8 +204,10 @@ function FormLayerGroup({
 
       {/* Boundary drag handles — at each shared edge between adjacent spans.
           Rendered after the shapes so they win pointer events at the edge.
-          stopPropagation keeps a drag (or click) from selecting a span. */}
-      {spans.map((span, i) => {
+          stopPropagation keeps a drag (or click) from selecting a span.
+          Locked layers get no handles (read-only). */}
+      {!layer.locked &&
+        spans.map((span, i) => {
         const next = spans[i + 1]
         if (!next || Math.abs(span.endTime - next.startTime) > 1e-6) return null
         return (
@@ -242,8 +244,9 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   const pps = computePps(duration, viewportWidth, zoom)
   const totalWidth = viewportWidth * zoom
   const svgWidth = Math.max(totalWidth, viewportWidth)
-  const visibleCount = layers.filter((l) => l.visibility).length
-  const svgHeight = stackHeight(visibleCount)
+  // Every layer keeps a slot (hidden ones render empty) so the header column and
+  // the canvas stay row-aligned; FormLayerGroup draws nothing for hidden layers.
+  const svgHeight = stackHeight(layers.length)
 
   const cursorPx = pps > 0 ? currentTime * pps - scrollOffset : -1
   const cursorVisible = cursorPx >= 0 && cursorPx <= viewportWidth
@@ -294,17 +297,15 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
         }}
       >
         {pps > 0 &&
-          layers
-            .filter((l) => l.visibility)
-            .map((layer, i) => (
-              <FormLayerGroup
-                key={layer.id}
-                layer={layer}
-                index={i}
-                pps={pps}
-                onBoundaryDragStart={beginBoundaryDrag}
-              />
-            ))}
+          layers.map((layer, i) => (
+            <FormLayerGroup
+              key={layer.id}
+              layer={layer}
+              index={i}
+              pps={pps}
+              onBoundaryDragStart={beginBoundaryDrag}
+            />
+          ))}
       </svg>
 
       {/* Playback cursor — mirrors the ruler cursor so the two read as one line */}
