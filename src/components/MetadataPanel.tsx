@@ -9,9 +9,12 @@
  * spacebar placement — slice 3).
  */
 
+import { useState, useEffect } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { formatTime } from '@/lib/youtube'
+import { parseTimecode } from '@/lib/timecode'
+import { MIN_SPAN_WIDTH } from '@/lib/spanEdit'
 import { slugify } from '@/lib/slug'
 import type {
   Span,
@@ -49,6 +52,49 @@ function Field({
 const inputClass =
   'w-full rounded border border-border bg-card px-2 py-1 text-xs text-foreground ' +
   'focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground'
+
+/**
+ * Editable timecode field. Shows the formatted value; on Enter/blur it parses
+ * the text and commits (the parent clamps it). Escape or an unparseable value
+ * restores the current value.
+ */
+function TimeInput({
+  value,
+  onCommit,
+  title,
+}: {
+  value: number
+  onCommit: (seconds: number) => void
+  title: string
+}) {
+  const [text, setText] = useState(() => formatTime(value))
+  // Re-sync when the underlying value changes (commit result, undo, reselect).
+  useEffect(() => setText(formatTime(value)), [value])
+
+  function commit() {
+    const parsed = parseTimecode(text)
+    if (parsed == null) setText(formatTime(value))
+    else onCommit(parsed)
+  }
+
+  return (
+    <input
+      className="w-[88px] rounded border border-border bg-card px-1.5 py-0.5 text-center text-xs tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+      value={text}
+      title={title}
+      aria-label={title}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.currentTarget.blur()
+        else if (e.key === 'Escape') {
+          setText(formatTime(value))
+          e.currentTarget.blur()
+        }
+      }}
+    />
+  )
+}
 
 function Segmented<T extends string>({
   options,
@@ -125,8 +171,10 @@ export function MetadataPanel() {
   const updateSpan = useDocumentStore((s) => s.updateSpan)
   const removeSpan = useDocumentStore((s) => s.removeSpan)
   const addSpan = useDocumentStore((s) => s.addSpan)
+  const placeBoundary = useDocumentStore((s) => s.placeBoundary)
   const selectedSpanId = useUIStore((s) => s.selectedSpanId)
   const selectSpan = useUIStore((s) => s.selectSpan)
+  const currentTime = useUIStore((s) => s.currentTime)
 
   const found = findSelected(doc?.layers ?? [], selectedSpanId)
   if (!found) return null
@@ -147,11 +195,26 @@ export function MetadataPanel() {
     selectSpan(copy.id)
   }
 
+  const canSplit = currentTime > span.startTime && currentTime < span.endTime
+  function handleSplit() {
+    placeBoundary(layer.id, currentTime)
+  }
+
   function copy(text: string) {
     navigator.clipboard?.writeText(text)
   }
 
   const duration = span.endTime - span.startTime
+  const trackDuration = doc?.duration ?? span.endTime
+
+  // Numeric boundary edits — clamped so the span stays valid (≥ MIN_SPAN_WIDTH,
+  // within [0, track duration]). Edits this span's own times only.
+  function commitStart(t: number) {
+    update({ startTime: Math.max(0, Math.min(t, span.endTime - MIN_SPAN_WIDTH)) })
+  }
+  function commitEnd(t: number) {
+    update({ endTime: Math.max(span.startTime + MIN_SPAN_WIDTH, Math.min(t, trackDuration)) })
+  }
 
   return (
     <aside
@@ -172,14 +235,14 @@ export function MetadataPanel() {
       </div>
 
       <div className="px-3 py-3">
-        {/* Time range + duration (read-only) */}
+        {/* Time range (editable) + duration */}
         <div className="mb-3 rounded bg-muted px-2 py-1.5">
-          <div className="flex items-center justify-between text-xs tabular-nums text-foreground">
-            <span>{formatTime(span.startTime)}</span>
+          <div className="flex items-center justify-between gap-1">
+            <TimeInput value={span.startTime} onCommit={commitStart} title="Start time" />
             <span className="text-muted-foreground">→</span>
-            <span>{formatTime(span.endTime)}</span>
+            <TimeInput value={span.endTime} onCommit={commitEnd} title="End time" />
           </div>
-          <div className="mt-0.5 text-[10px] text-muted-foreground">
+          <div className="mt-1 text-[10px] text-muted-foreground">
             Duration {formatTime(duration)}
           </div>
         </div>
@@ -364,9 +427,10 @@ export function MetadataPanel() {
         {/* Actions */}
         <div className="mt-4 flex gap-2 border-t pt-3" style={{ borderColor: 'var(--hairline)' }}>
           <button
-            disabled
-            title="Coming with placement (slice 3)"
-            className="flex-1 rounded border border-border px-2 py-1 text-[11px] text-muted-foreground opacity-40"
+            onClick={handleSplit}
+            disabled={!canSplit}
+            title={canSplit ? 'Split at playhead' : 'Move the playhead inside this span to split'}
+            className="flex-1 rounded border border-border px-2 py-1 text-[11px] text-foreground hover:bg-accent disabled:opacity-40"
           >
             Split
           </button>

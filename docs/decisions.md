@@ -974,3 +974,18 @@ iteration. Supersedes the dark-mode assumption and amends the Phase 0.4 layout.*
 
 **Decision (follow-ups, not yet implemented):** Two layer-level fields are implied by the specs but not yet in the schema types — a `fontScale` (`sm`/`md`/`lg`, Phase 0.7 §5) and a default `lineType` (Phase 0.4 "the layer's default line type"). Both are hard-defaulted in the renderer for now (`md`, `arc`) pending a small schema addition.
 **Rationale:** Logged so the schema gap is tracked rather than silently carried; deferred to avoid a schema change mid-iteration.
+
+---
+
+**Decision:** Boundary-drag uses a **zoom-aware minimum width** — a neighbor span cannot be squeezed below a fixed on-screen pixel width (`MIN_BOUNDARY_DRAG_PX`, ~8px), converted to seconds at the current zoom. An absolute 0.25s data floor (`MIN_SPAN_WIDTH`) sits underneath.
+**Rationale:** A fixed *time* floor (0.25s) is sub-pixel at low zoom, so a drag could shrink a span into something invisible and unselectable with no obvious recovery. Tying the floor to on-screen pixels means "you can only make a span as small as you can currently resolve" — to make a genuinely narrow span you must zoom in, where you can also see and grab it. This removes the unrecoverable-sliver trap at its root.
+
+---
+
+**Decision:** The metadata panel's time range is **numerically editable** (typed start/end timecodes, parsed and clamped) — the precise, by-value correction path. It edits the selected span's own times only (does not move neighbors).
+**Rationale:** Pairs with drag (by-feel) as the exact-value complement, and is the always-available way to fix any selected span regardless of how it renders. Independent (non-rippling) editing is honest to the data model, where span start/end are independent and overlaps are valid.
+
+---
+
+**Decision:** **Arrow-key boundary nudge is deferred** (cut from v1 for now), and with it the "selected boundary" model it required.
+**Rationale:** The correction space is already covered three ways — drag (coarse by-feel), zoom+drag (fine by-feel), and numeric entry (exact by-value). Nudge's only unique contribution was frame-precise by-feel adjustment without zooming or typing — a convenience, not a missing capability. Cutting it keeps the interaction model simpler (no second, boundary-level selection concept alongside span selection). Revisit only if real use reveals a gap.

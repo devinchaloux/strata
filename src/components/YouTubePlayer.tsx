@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useEffect } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { useYouTubePlayer } from '@/hooks/useYouTubePlayer'
@@ -162,6 +162,32 @@ export function YouTubePlayer() {
       play()
     }
   }
+
+  // Spacebar (Phase 0.4 §8): while playing, place a boundary at the playhead on
+  // the active layer; while paused, start playback. Live state is read via
+  // getState() so the listener stays bound once. Text fields keep native space;
+  // for buttons we preventDefault so a focused transport button isn't re-fired.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.code !== 'Space') return
+      const el = e.target as HTMLElement | null
+      const tag = el?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable) {
+        return
+      }
+      e.preventDefault()
+      const ui = useUIStore.getState()
+      if (ui.playbackState === 'playing') {
+        if (ui.activeLayerId) {
+          useDocumentStore.getState().placeBoundary(ui.activeLayerId, ui.currentTime)
+        }
+      } else {
+        play()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [play])
 
   return (
     <>

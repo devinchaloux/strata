@@ -12,6 +12,7 @@
  * boundary drag come in later slices.
  */
 
+import { useRef } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { computePps } from '@/lib/timeline'
@@ -27,6 +28,7 @@ import {
   shapeTopY,
   type FontScale,
 } from '@/lib/formShape'
+import { MIN_SPAN_WIDTH, MIN_BOUNDARY_DRAG_PX } from '@/lib/spanEdit'
 import type { Layer, Span, FormDiagramData, BoundaryType } from '@/types/strata'
 
 const INK_PRIMARY = 'var(--ink-primary)'
@@ -172,23 +174,54 @@ function SpanShape({ span, layer, pps, fontScale }: SpanShapeProps) {
   )
 }
 
+/** Begins a boundary drag for the shared edge between two adjacent spans. */
+type BoundaryDragStart = (
+  layerId: string,
+  leftSpanId: string,
+  rightSpanId: string,
+) => (e: React.PointerEvent) => void
+
 function FormLayerGroup({
   layer,
   index,
   pps,
+  onBoundaryDragStart,
 }: {
   layer: Layer
   index: number
   pps: number
+  onBoundaryDragStart: BoundaryDragStart
 }) {
   if (!layer.visibility) return null
   const data = layer.data as FormDiagramData
   const fontScale: FontScale = 'md' // schema fontScale field pending — default md
+  const spans = data.spans
   return (
     <g transform={`translate(0, ${shapeTopY(index)})`}>
-      {data.spans.map((span) => (
+      {spans.map((span) => (
         <SpanShape key={span.id} span={span} layer={layer} pps={pps} fontScale={fontScale} />
       ))}
+
+      {/* Boundary drag handles — at each shared edge between adjacent spans.
+          Rendered after the shapes so they win pointer events at the edge.
+          stopPropagation keeps a drag (or click) from selecting a span. */}
+      {spans.map((span, i) => {
+        const next = spans[i + 1]
+        if (!next || Math.abs(span.endTime - next.startTime) > 1e-6) return null
+        return (
+          <rect
+            key={`bound-${span.id}`}
+            x={span.endTime * pps - 3}
+            y={-2}
+            width={6}
+            height={SHAPE_HEIGHT + 4}
+            fill="transparent"
+            style={{ cursor: 'ew-resize' }}
+            onPointerDown={onBoundaryDragStart(layer.id, span.id, next.id)}
+            onClick={(e) => e.stopPropagation()}
+          />
+        )
+      })}
     </g>
   )
 }
@@ -197,11 +230,13 @@ function FormLayerGroup({
  * @param layers  already sorted for display (macro-on-top: highest displayOrder first)
  */
 export function FormLayers({ layers }: { layers: Layer[] }) {
+  const containerRef = useRef<HTMLDivElement>(null)
   const zoom = useUIStore((s) => s.zoom)
   const scrollOffset = useUIStore((s) => s.scrollOffset)
   const viewportWidth = useUIStore((s) => s.viewportWidth)
   const currentTime = useUIStore((s) => s.currentTime)
   const selectSpan = useUIStore((s) => s.selectSpan)
+  const setAdjacentBoundary = useDocumentStore((s) => s.setAdjacentBoundary)
   const duration = useDocumentStore((s) => s.document?.duration ?? 0)
 
   const pps = computePps(duration, viewportWidth, zoom)
@@ -213,8 +248,37 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   const cursorPx = pps > 0 ? currentTime * pps - scrollOffset : -1
   const cursorVisible = cursorPx >= 0 && cursorPx <= viewportWidth
 
+  // Convert a screen x to a timeline time, accounting for the container's left
+  // edge and the horizontal scroll. (A span at time t is painted at
+  // containerLeft - scrollOffset + t*pps.)
+  function clientXToTime(clientX: number): number {
+    const rect = containerRef.current?.getBoundingClientRect()
+    if (!rect || pps <= 0) return 0
+    return (scrollOffset + (clientX - rect.left)) / pps
+  }
+
+  // Boundary drag: while the pointer moves, push the shared boundary to the
+  // store (which clamps it). Captured pps/scrollOffset are stable for the drag.
+  const beginBoundaryDrag: BoundaryDragStart =
+    (layerId, leftId, rightId) => (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      // Zoom-aware floor: a neighbor can't be squeezed below MIN_BOUNDARY_DRAG_PX
+      // on screen, so a drag never produces an invisibly-small span.
+      const minWidth = pps > 0 ? MIN_BOUNDARY_DRAG_PX / pps : MIN_SPAN_WIDTH
+      const onMove = (ev: PointerEvent) =>
+        setAdjacentBoundary(layerId, leftId, rightId, clientXToTime(ev.clientX), minWidth)
+      const onUp = () => {
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', onUp)
+      }
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', onUp)
+    }
+
   return (
     <div
+      ref={containerRef}
       className="relative min-w-0 flex-1 overflow-hidden"
       style={{ background: 'var(--canvas)', height: svgHeight }}
       onClick={() => selectSpan(null)}
@@ -233,7 +297,13 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
           layers
             .filter((l) => l.visibility)
             .map((layer, i) => (
-              <FormLayerGroup key={layer.id} layer={layer} index={i} pps={pps} />
+              <FormLayerGroup
+                key={layer.id}
+                layer={layer}
+                index={i}
+                pps={pps}
+                onBoundaryDragStart={beginBoundaryDrag}
+              />
             ))}
       </svg>
 
