@@ -948,3 +948,75 @@ iteration. Supersedes the dark-mode assumption and amends the Phase 0.4 layout.*
 
 **Decision:** The canonical test/demo analysis is "Alive" by Krewella (`schema/alive.strata`).
 **Rationale:** Devin's pick — clear enough to analyze and exercises the features he cares about (128-BPM grid, rotational form, an unquantized break where the grid drifts). Serves as the working fixture for the component rebuild.
+
+---
+
+## Phase 2 Implementation (Form Diagram — Milestone A)
+
+*Decisions made while building the static render foundation, reviewed live with Devin against the BriFormer reference.*
+
+---
+
+**Decision:** The form-layer stack is **bottom-anchored on the timeline ruler** — the lowest layer sits flush against the ruler with no gap, and empty room for additional layers accumulates *above*. Widgets stack upward on the timeline (the ruler is the fixed reference line); the timestamped written-analysis widget is the exception and may render *below* the ruler since it does not track the timeline spatially.
+**Rationale:** The earlier layout left dead space between the layers and the ruler. Anchoring the stack to the ruler makes the timeline the spatial anchor that everything else stacks against, which is the correct mental model for a reorderable widget system and matches how analysts read a diagram (detail nearest the time axis, broader frames above).
+
+---
+
+**Decision:** Confirmed model A for vertical packing (uniform-height, truly flush, hierarchy from aligned boundary tails forming continuous vertical lines) over model B (nested variable-height enclosure). BriFormer's apparent "enclosure" is model A with flush-aligned tails, not variable bracket heights.
+**Rationale:** Reaffirms the Phase 0.7 uniform-height decision after a live comparison. Enclosure (variable heights) breaks down when frameworks overlap rather than nest cleanly — the EDM case — whereas aligned-tail flush stacking reads as hierarchy in the nesting case and stays correct under overlap.
+
+---
+
+**Decision:** Phrase / letter-material spans default to a **rounded bracket** (flat top, rounded corners, filled), not a dome. The dome (`lineType: 'arc'`) remains an opt-in shape the analyst can choose per span.
+**Rationale:** Devin's call against the BriFormer reference — the workhorse phrase shape is a rounded bracket; the dome is a deliberate, occasional choice. Label placement (above / inside / none) likewise stays the analyst's choice via layer rendering config; the renderer imposes nothing.
+
+---
+
+**Decision (follow-ups, not yet implemented):** Two layer-level fields are implied by the specs but not yet in the schema types — a `fontScale` (`sm`/`md`/`lg`, Phase 0.7 §5) and a default `lineType` (Phase 0.4 "the layer's default line type"). Both are hard-defaulted in the renderer for now (`md`, `arc`) pending a small schema addition.
+**Rationale:** Logged so the schema gap is tracked rather than silently carried; deferred to avoid a schema change mid-iteration.
+
+---
+
+**Decision:** Boundary-drag uses a **zoom-aware minimum width** — a neighbor span cannot be squeezed below a fixed on-screen pixel width (`MIN_BOUNDARY_DRAG_PX`, ~8px), converted to seconds at the current zoom. An absolute 0.25s data floor (`MIN_SPAN_WIDTH`) sits underneath.
+**Rationale:** A fixed *time* floor (0.25s) is sub-pixel at low zoom, so a drag could shrink a span into something invisible and unselectable with no obvious recovery. Tying the floor to on-screen pixels means "you can only make a span as small as you can currently resolve" — to make a genuinely narrow span you must zoom in, where you can also see and grab it. This removes the unrecoverable-sliver trap at its root.
+
+---
+
+**Decision:** The metadata panel's time range is **numerically editable** (typed start/end timecodes, parsed and clamped) — the precise, by-value correction path. It edits the selected span's own times only (does not move neighbors).
+**Rationale:** Pairs with drag (by-feel) as the exact-value complement, and is the always-available way to fix any selected span regardless of how it renders. Independent (non-rippling) editing is honest to the data model, where span start/end are independent and overlaps are valid.
+
+---
+
+**Decision:** **Arrow-key boundary nudge is deferred** (cut from v1 for now), and with it the "selected boundary" model it required.
+**Rationale:** The correction space is already covered three ways — drag (coarse by-feel), zoom+drag (fine by-feel), and numeric entry (exact by-value). Nudge's only unique contribution was frame-precise by-feel adjustment without zooming or typing — a convenience, not a missing capability. Cutting it keeps the interaction model simpler (no second, boundary-level selection concept alongside span selection). Revisit only if real use reveals a gap.
+
+---
+
+## Phase 2 Implementation (Layer Management — 2.4 part 1)
+
+*Decisions made while building the header column / layer management, reviewed live with Devin.*
+
+---
+
+**Decision:** Span **selection** renders as a light grey box fill on the span's own rectangle plus a blue outline (BriFormer convention), not a full-height time band and not an extra bracket-like outline.
+**Rationale:** Reviewed against BriFormer directly. The grey fill is what makes it read as a selected *box* (an outline alone read as a competing bracket); the blue outline keeps it legible when the span already has a grey/colored fill. Hover is the same grey wash without the outline, so previewing reads differently from selecting.
+
+---
+
+**Decision:** The form diagram is a **bounded widget with a defined upper edge** (a widget top bar holding the collapse toggle and hidden-layer chips). The empty space above the widget belongs to *other* widgets that stack on the timeline — the form diagram does not claim it. The widget bottom-anchors as a compact block on the shared ruler. Extends the earlier bottom-anchored-stacking decision.
+**Rationale:** Devin's correction — treating all the whitespace above the layers as "form-diagram space" was wrong; widgets stack on the timeline and each is bounded. Defining the widget's top edge makes the multi-widget layout legible and gives the collapse toggle / hidden-layer controls a natural home.
+
+---
+
+**Decision:** The layer-header column **collapses to a ~34px icon rail** (Phase 0.4 §2 condensed state) via a chevron toggle on the widget top bar. The rail shows one eye (visibility) per row; clicking the row sets the active layer; the accent bar marks active. **No color swatch in the rail** — color lives only in the Advanced section of the metadata panel.
+**Rationale:** Reclaims horizontal working space. A color swatch in the header read as a stray "fill-color symbol" duplicating the Advanced control, so it was removed.
+
+---
+
+**Decision:** The collapsed rail reveals a layer's full name via a **hover-intent tooltip** (~400ms delay, dismiss on leave), popping out to the right — the icon-rail convention (VS Code / Slack). Not the native control title.
+**Rationale:** The narrow rail truncates names; a deliberate hover reveal shows the full label without expanding, and the delay prevents it flashing as the cursor passes over.
+
+---
+
+**Decision:** Hiding a layer **reclaims its vertical slot entirely** (the diagram reads as a complete graphic, important for export); hidden layers surface as "show" chips in the widget top bar so they can be brought back.
+**Rationale:** Devin's call — a hidden layer leaving an empty band would make an exported graphic look like it is missing something. The header column and canvas stay row-aligned because both iterate the visible layers; hidden layers move to the top bar rather than holding a slot.

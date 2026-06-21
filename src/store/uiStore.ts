@@ -43,6 +43,7 @@ export interface UIState {
 
   // Panels
   videoPanelVisible: boolean
+  headersCollapsed: boolean // layer-header column collapsed to the icon rail
 
   // Actions — playback
   setCurrentTime: (time: number) => void
@@ -64,6 +65,7 @@ export interface UIState {
   // Actions — panels
   toggleVideoPanel: () => void
   setVideoPanelVisible: (visible: boolean) => void
+  toggleHeadersCollapsed: () => void
 }
 
 // ---------------------------------------------------------------------------
@@ -88,6 +90,7 @@ const useUIStore = create<UIState>()((set) => ({
 
   // Default true — the panel is expanded when a video first loads
   videoPanelVisible: true,
+  headersCollapsed: false,
 
   setCurrentTime: (time) => set({ currentTime: time }),
   setDuration: (duration) => set({ duration }),
@@ -105,6 +108,7 @@ const useUIStore = create<UIState>()((set) => ({
 
   toggleVideoPanel: () => set((s) => ({ videoPanelVisible: !s.videoPanelVisible })),
   setVideoPanelVisible: (visible) => set({ videoPanelVisible: visible }),
+  toggleHeadersCollapsed: () => set((s) => ({ headersCollapsed: !s.headersCollapsed })),
 }))
 
 export { useUIStore }

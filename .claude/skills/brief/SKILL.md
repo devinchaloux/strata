@@ -17,7 +17,16 @@ Then use Glob to check for any other files in `_private/` (`_private/*.md`) and 
 
 ## Step 2 — Check git state
 
-Run `git status` and `git branch` to confirm the current branch and whether there are uncommitted changes from a prior session. Report anything unexpected.
+Run `git status` and `git branch` to confirm the current branch and whether there are uncommitted changes from a prior session.
+
+**Reconcile the handoff against git — git is the source of truth.** The handoff is
+written *before* Devin commits, so its "uncommitted work / proposed commit" section
+describes a state that is about to change. By the next session, that work has
+usually been committed and merged by Devin. Do not treat the handoff's git claims
+as current: compare them to actual `git log` / `git status`, and if the handoff
+says work is uncommitted but git shows it landed, that is the expected, healthy
+case — report the delta plainly and move on. Only flag a genuine problem (lost
+work, unexpected dirty tree, surprising branch). Report anything unexpected.
 
 ## Step 3 — Present a session brief
 
