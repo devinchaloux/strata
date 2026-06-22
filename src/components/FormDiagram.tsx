@@ -17,19 +17,26 @@
  */
 
 import { useRef, useState } from 'react'
-import {
-  ChevronsLeft,
-  ChevronsRight,
-  Eye,
-  EyeOff,
-  MoreHorizontal,
-} from 'lucide-react'
+import { ChevronsLeft, ChevronsRight, Eye, EyeOff } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { TimelineAxis } from './TimelineAxis'
 import { FormLayers } from './FormLayers'
+import { LayerSettingsPopover } from './LayerSettingsPopover'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { LAYER_PITCH, STACK_TOP_PAD, stackHeight } from '@/lib/formShape'
-import type { Layer } from '@/types/strata'
+import type { Layer, FormDiagramData } from '@/types/strata'
 
 const HEADER_WIDTH_EXPANDED = 122
 const HEADER_WIDTH_RAIL = 34
@@ -45,7 +52,20 @@ function LayerHeaders({ layers, collapsed }: { layers: Layer[]; collapsed: boole
   const activeLayerId = useUIStore((s) => s.activeLayerId)
   const setActiveLayer = useUIStore((s) => s.setActiveLayer)
   const updateLayer = useDocumentStore((s) => s.updateLayer)
+  const removeLayer = useDocumentStore((s) => s.removeLayer)
   const width = collapsed ? HEADER_WIDTH_RAIL : HEADER_WIDTH_EXPANDED
+
+  // Delete confirmation is owned here, not inside each layer's settings popover:
+  // confirming removes the layer, which would unmount a dialog nested in that row
+  // mid-close (Radix throws). One hoisted dialog, keyed by the pending layer.
+  const [pendingDelete, setPendingDelete] = useState<Layer | null>(null)
+  const pendingSpanCount = pendingDelete
+    ? (pendingDelete.data as FormDiagramData).spans.length
+    : 0
+  function confirmDelete() {
+    if (pendingDelete) removeLayer(pendingDelete.id)
+    setPendingDelete(null)
+  }
 
   // Hover-intent label reveal for the collapsed rail: hovering a row for a beat
   // pops the layer name out to the right; leaving dismisses it immediately.
@@ -58,6 +78,25 @@ function LayerHeaders({ layers, collapsed }: { layers: Layer[]; collapsed: boole
   function disarmHover() {
     if (hoverTimer.current) clearTimeout(hoverTimer.current)
     setHoverLabelId(null)
+  }
+
+  // Inline rename (desktop, expanded headers only — per 0.4 §2/§6): double-click a
+  // layer name to edit it in place. Enter or blur commits; Escape cancels. An
+  // empty/whitespace draft is treated as cancel, since Layer.label is required.
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
+  function startRename(layer: Layer) {
+    setEditingId(layer.id)
+    setDraft(layer.label)
+  }
+  function commitRename() {
+    if (!editingId) return
+    const trimmed = draft.trim()
+    if (trimmed) updateLayer(editingId, { label: trimmed })
+    setEditingId(null)
+  }
+  function cancelRename() {
+    setEditingId(null)
   }
 
   return (
@@ -120,27 +159,74 @@ function LayerHeaders({ layers, collapsed }: { layers: Layer[]; collapsed: boole
                 >
                   <Eye size={14} />
                 </button>
-                <button
-                  className="min-w-0 flex-1 truncate text-left text-[11px]"
-                  style={{ color: 'var(--ink-primary)', fontWeight: active ? 500 : 400 }}
-                  title={`${layer.label} — click to make active`}
-                  onClick={() => setActiveLayer(layer.id)}
-                >
-                  {layer.label}
-                </button>
-                <button
-                  className="shrink-0"
-                  style={{ color: 'var(--ink-faint)' }}
-                  title="Layer settings"
-                  aria-label="Layer settings"
-                >
-                  <MoreHorizontal size={14} />
-                </button>
+                {editingId === layer.id ? (
+                  <input
+                    autoFocus
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onFocus={(e) => e.target.select()}
+                    onBlur={commitRename}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        commitRename()
+                      } else if (e.key === 'Escape') {
+                        e.preventDefault()
+                        cancelRename()
+                      }
+                    }}
+                    // Stop clicks from bubbling to the active-layer / row handlers.
+                    onClick={(e) => e.stopPropagation()}
+                    className="min-w-0 flex-1 rounded border bg-white px-1 text-[11px] outline-none"
+                    style={{ borderColor: 'hsl(var(--primary))', color: 'var(--ink-primary)' }}
+                  />
+                ) : (
+                  <button
+                    className="min-w-0 flex-1 truncate text-left text-[11px]"
+                    style={{ color: 'var(--ink-primary)', fontWeight: active ? 500 : 400 }}
+                    title={`${layer.label} — click to make active, double-click to rename`}
+                    onClick={() => setActiveLayer(layer.id)}
+                    onDoubleClick={() => startRename(layer)}
+                  >
+                    {layer.label}
+                  </button>
+                )}
+                <LayerSettingsPopover
+                  layer={layer}
+                  onRequestDelete={() => setPendingDelete(layer)}
+                />
               </>
             )}
           </div>
         )
       })}
+
+      {/* Single delete-confirm dialog, hoisted out of the per-layer popovers so
+          removing the layer never unmounts an open dialog's own subtree. */}
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={(o) => !o && setPendingDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete “{pendingDelete?.label}”?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the layer and its {pendingSpanCount}{' '}
+              {pendingSpanCount === 1 ? 'span' : 'spans'} from the analysis. You can
+              undo this with Ctrl/Cmd+Z.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className={cn(buttonVariants({ variant: 'destructive', size: 'sm' }))}
+            >
+              Delete layer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
