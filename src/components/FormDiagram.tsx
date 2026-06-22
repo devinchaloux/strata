@@ -17,12 +17,35 @@
  */
 
 import { useRef, useState } from 'react'
-import { ChevronsLeft, ChevronsRight, Eye, EyeOff } from 'lucide-react'
+import {
+  ChevronsLeft,
+  ChevronsRight,
+  Eye,
+  EyeOff,
+  GripVertical,
+} from 'lucide-react'
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers'
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { TimelineAxis } from './TimelineAxis'
 import { FormLayers } from './FormLayers'
 import { LayerSettingsPopover } from './LayerSettingsPopover'
+import { AddLayerPopover } from './AddLayerPopover'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,7 +61,7 @@ import { cn } from '@/lib/utils'
 import { LAYER_PITCH, STACK_TOP_PAD, stackHeight } from '@/lib/formShape'
 import type { Layer, FormDiagramData } from '@/types/strata'
 
-const HEADER_WIDTH_EXPANDED = 122
+const HEADER_WIDTH_EXPANDED = 140
 const HEADER_WIDTH_RAIL = 34
 const TOP_BAR_HEIGHT = 24
 
@@ -48,11 +71,171 @@ const TOP_BAR_HEIGHT = 24
 
 const HOVER_LABEL_DELAY = 400 // ms of hover before the rail reveals a label
 
-function LayerHeaders({ layers, collapsed }: { layers: Layer[]; collapsed: boolean }) {
-  const activeLayerId = useUIStore((s) => s.activeLayerId)
+/**
+ * One draggable layer header row. Extracted as a component so each can call
+ * useSortable (hooks can't run inside a map). Owns its own rename + hover state —
+ * both are inherently per-row, and only one row edits at a time. Drag is offered
+ * only in the expanded state (the rail is too narrow for a handle); in the rail
+ * the row keeps click-to-activate and hover-to-reveal.
+ */
+function SortableLayerHeaderRow({
+  layer,
+  active,
+  collapsed,
+  onRequestDelete,
+}: {
+  layer: Layer
+  active: boolean
+  collapsed: boolean
+  onRequestDelete: () => void
+}) {
   const setActiveLayer = useUIStore((s) => s.setActiveLayer)
   const updateLayer = useDocumentStore((s) => s.updateLayer)
+
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: layer.id })
+
+  // Inline rename (desktop, expanded only — per 0.4 §2/§6): double-click the name
+  // to edit; Enter/blur commits, Escape cancels, empty draft is treated as cancel.
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+  function startRename() {
+    setDraft(layer.label)
+    setEditing(true)
+  }
+  function commitRename() {
+    const trimmed = draft.trim()
+    if (trimmed) updateLayer(layer.id, { label: trimmed })
+    setEditing(false)
+  }
+
+  // Hover-intent label reveal for the collapsed rail.
+  const [hoverLabel, setHoverLabel] = useState(false)
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  function armHover() {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current)
+    hoverTimer.current = setTimeout(() => setHoverLabel(true), HOVER_LABEL_DELAY)
+  }
+  function disarmHover() {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current)
+    setHoverLabel(false)
+  }
+
+  const style: React.CSSProperties = {
+    height: LAYER_PITCH,
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+    zIndex: isDragging ? 10 : undefined,
+    position: 'relative',
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      onClick={collapsed ? () => setActiveLayer(layer.id) : undefined}
+      onMouseEnter={collapsed ? armHover : undefined}
+      onMouseLeave={collapsed ? disarmHover : undefined}
+      className={`flex items-center ${collapsed ? 'cursor-pointer justify-center' : 'gap-1 pl-1 pr-1.5'}`}
+    >
+      {/* Active-layer accent bar (load-bearing per 0.4 §2 — spacebar target) */}
+      {active && (
+        <span
+          aria-hidden
+          className="absolute left-0 top-0 h-full w-[2.5px]"
+          style={{ backgroundColor: 'hsl(var(--primary))' }}
+        />
+      )}
+
+      {/* Hover-reveal label tooltip (collapsed rail only) */}
+      {collapsed && hoverLabel && (
+        <span
+          className="pointer-events-none absolute left-full top-1/2 z-50 ml-1.5 -translate-y-1/2 whitespace-nowrap rounded px-2 py-1 text-[11px] text-white shadow-md"
+          style={{ backgroundColor: 'var(--ink-primary)' }}
+          role="tooltip"
+        >
+          {layer.label}
+        </span>
+      )}
+
+      {collapsed ? (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            updateLayer(layer.id, { visibility: false })
+          }}
+          className="shrink-0 hover:opacity-80"
+          style={{ color: 'var(--ink-muted)' }}
+          title="Hide layer"
+          aria-label="Hide layer"
+        >
+          <Eye size={14} />
+        </button>
+      ) : (
+        <>
+          {/* Drag handle — reorder by displayOrder. */}
+          <button
+            {...attributes}
+            {...listeners}
+            className="shrink-0 touch-none cursor-grab active:cursor-grabbing hover:opacity-100"
+            style={{ color: 'var(--ink-faint)', opacity: 0.6 }}
+            title="Drag to reorder"
+            aria-label="Drag to reorder layer"
+          >
+            <GripVertical size={13} />
+          </button>
+          <button
+            onClick={() => updateLayer(layer.id, { visibility: false })}
+            className="shrink-0 hover:opacity-80"
+            style={{ color: 'var(--ink-muted)' }}
+            title="Hide layer"
+            aria-label="Hide layer"
+          >
+            <Eye size={14} />
+          </button>
+          {editing ? (
+            <input
+              autoFocus
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onFocus={(e) => e.target.select()}
+              onBlur={commitRename}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  commitRename()
+                } else if (e.key === 'Escape') {
+                  e.preventDefault()
+                  setEditing(false)
+                }
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="min-w-0 flex-1 rounded border bg-white px-1 text-[11px] outline-none"
+              style={{ borderColor: 'hsl(var(--primary))', color: 'var(--ink-primary)' }}
+            />
+          ) : (
+            <button
+              className="min-w-0 flex-1 truncate text-left text-[11px]"
+              style={{ color: 'var(--ink-primary)', fontWeight: active ? 500 : 400 }}
+              title={`${layer.label} — click to make active, double-click to rename`}
+              onClick={() => setActiveLayer(layer.id)}
+              onDoubleClick={startRename}
+            >
+              {layer.label}
+            </button>
+          )}
+          <LayerSettingsPopover layer={layer} onRequestDelete={onRequestDelete} />
+        </>
+      )}
+    </div>
+  )
+}
+
+function LayerHeaders({ layers, collapsed }: { layers: Layer[]; collapsed: boolean }) {
+  const activeLayerId = useUIStore((s) => s.activeLayerId)
   const removeLayer = useDocumentStore((s) => s.removeLayer)
+  const reorderLayers = useDocumentStore((s) => s.reorderLayers)
   const width = collapsed ? HEADER_WIDTH_RAIL : HEADER_WIDTH_EXPANDED
 
   // Delete confirmation is owned here, not inside each layer's settings popover:
@@ -67,36 +250,16 @@ function LayerHeaders({ layers, collapsed }: { layers: Layer[]; collapsed: boole
     setPendingDelete(null)
   }
 
-  // Hover-intent label reveal for the collapsed rail: hovering a row for a beat
-  // pops the layer name out to the right; leaving dismisses it immediately.
-  const [hoverLabelId, setHoverLabelId] = useState<string | null>(null)
-  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  function armHover(id: string) {
-    if (hoverTimer.current) clearTimeout(hoverTimer.current)
-    hoverTimer.current = setTimeout(() => setHoverLabelId(id), HOVER_LABEL_DELAY)
-  }
-  function disarmHover() {
-    if (hoverTimer.current) clearTimeout(hoverTimer.current)
-    setHoverLabelId(null)
-  }
-
-  // Inline rename (desktop, expanded headers only — per 0.4 §2/§6): double-click a
-  // layer name to edit it in place. Enter or blur commits; Escape cancels. An
-  // empty/whitespace draft is treated as cancel, since Layer.label is required.
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [draft, setDraft] = useState('')
-  function startRename(layer: Layer) {
-    setEditingId(layer.id)
-    setDraft(layer.label)
-  }
-  function commitRename() {
-    if (!editingId) return
-    const trimmed = draft.trim()
-    if (trimmed) updateLayer(editingId, { label: trimmed })
-    setEditingId(null)
-  }
-  function cancelRename() {
-    setEditingId(null)
+  // A small distance threshold so a click on the grip doesn't register as a drag.
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+  function handleDragEnd(e: DragEndEvent) {
+    const { active, over } = e
+    if (!over || active.id === over.id) return
+    const ids = layers.map((l) => l.id) // current top-to-bottom order
+    const from = ids.indexOf(String(active.id))
+    const to = ids.indexOf(String(over.id))
+    if (from === -1 || to === -1) return
+    reorderLayers(arrayMove(ids, from, to))
   }
 
   return (
@@ -104,102 +267,24 @@ function LayerHeaders({ layers, collapsed }: { layers: Layer[]; collapsed: boole
       {/* Top headroom matching the stack so header rows align with the shapes */}
       <div style={{ height: STACK_TOP_PAD }} />
 
-      {layers.map((layer) => {
-        const active = layer.id === activeLayerId
-        return (
-          <div
-            key={layer.id}
-            style={{ height: LAYER_PITCH }}
-            onClick={collapsed ? () => setActiveLayer(layer.id) : undefined}
-            onMouseEnter={collapsed ? () => armHover(layer.id) : undefined}
-            onMouseLeave={collapsed ? disarmHover : undefined}
-            className={`relative flex items-center ${collapsed ? 'cursor-pointer justify-center' : 'gap-1.5 pl-2.5 pr-1.5'}`}
-          >
-            {/* Active-layer accent bar (load-bearing per 0.4 §2 — spacebar target) */}
-            {active && (
-              <span
-                aria-hidden
-                className="absolute left-0 top-0 h-full w-[2.5px]"
-                style={{ backgroundColor: 'hsl(var(--primary))' }}
-              />
-            )}
-
-            {/* Hover-reveal label tooltip (collapsed rail only) */}
-            {collapsed && hoverLabelId === layer.id && (
-              <span
-                className="pointer-events-none absolute left-full top-1/2 z-50 ml-1.5 -translate-y-1/2 whitespace-nowrap rounded px-2 py-1 text-[11px] text-white shadow-md"
-                style={{ backgroundColor: 'var(--ink-primary)' }}
-                role="tooltip"
-              >
-                {layer.label}
-              </span>
-            )}
-
-            {collapsed ? (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  updateLayer(layer.id, { visibility: false })
-                }}
-                className="shrink-0 hover:opacity-80"
-                style={{ color: 'var(--ink-muted)' }}
-                title="Hide layer"
-                aria-label="Hide layer"
-              >
-                <Eye size={14} />
-              </button>
-            ) : (
-              <>
-                <button
-                  onClick={() => updateLayer(layer.id, { visibility: false })}
-                  className="shrink-0 hover:opacity-80"
-                  style={{ color: 'var(--ink-muted)' }}
-                  title="Hide layer"
-                  aria-label="Hide layer"
-                >
-                  <Eye size={14} />
-                </button>
-                {editingId === layer.id ? (
-                  <input
-                    autoFocus
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onFocus={(e) => e.target.select()}
-                    onBlur={commitRename}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        commitRename()
-                      } else if (e.key === 'Escape') {
-                        e.preventDefault()
-                        cancelRename()
-                      }
-                    }}
-                    // Stop clicks from bubbling to the active-layer / row handlers.
-                    onClick={(e) => e.stopPropagation()}
-                    className="min-w-0 flex-1 rounded border bg-white px-1 text-[11px] outline-none"
-                    style={{ borderColor: 'hsl(var(--primary))', color: 'var(--ink-primary)' }}
-                  />
-                ) : (
-                  <button
-                    className="min-w-0 flex-1 truncate text-left text-[11px]"
-                    style={{ color: 'var(--ink-primary)', fontWeight: active ? 500 : 400 }}
-                    title={`${layer.label} — click to make active, double-click to rename`}
-                    onClick={() => setActiveLayer(layer.id)}
-                    onDoubleClick={() => startRename(layer)}
-                  >
-                    {layer.label}
-                  </button>
-                )}
-                <LayerSettingsPopover
-                  layer={layer}
-                  onRequestDelete={() => setPendingDelete(layer)}
-                />
-              </>
-            )}
-          </div>
-        )
-      })}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={layers.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+          {layers.map((layer) => (
+            <SortableLayerHeaderRow
+              key={layer.id}
+              layer={layer}
+              active={layer.id === activeLayerId}
+              collapsed={collapsed}
+              onRequestDelete={() => setPendingDelete(layer)}
+            />
+          ))}
+        </SortableContext>
+      </DndContext>
 
       {/* Single delete-confirm dialog, hoisted out of the per-layer popovers so
           removing the layer never unmounts an open dialog's own subtree. */}
@@ -257,6 +342,8 @@ function WidgetTopBar({
       >
         {collapsed ? <ChevronsRight size={15} /> : <ChevronsLeft size={15} />}
       </button>
+
+      <AddLayerPopover />
 
       {hidden.length > 0 && (
         <div className="flex items-center gap-1 overflow-hidden">
