@@ -42,6 +42,10 @@ interface DocumentState {
   addLayer: (layer: Layer) => void
   updateLayer: (id: string, patch: Partial<Omit<Layer, 'id' | 'type'>>) => void
   removeLayer: (id: string) => void
+  // Reorder: given the layer ids in their new top-to-bottom display order,
+  // reassign the displayOrder values those layers already hold (top gets the
+  // highest). Permutes only among the passed layers; any others are untouched.
+  reorderLayers: (idsTopToBottom: string[]) => void
 
   // Span actions
   addSpan: (layerId: string, span: Span) => void
@@ -166,6 +170,31 @@ const useDocumentStore = create<DocumentState>()(
             ...doc,
             layers: doc.layers.filter((l) => l.id !== id),
             sharedTimePoints: doc.sharedTimePoints.filter((p) => p.sourceLayerId !== id),
+            updatedAt: now(),
+          },
+        })
+      },
+
+      reorderLayers: (idsTopToBottom) => {
+        const doc = get().document
+        if (!doc) return
+        // The displayOrder values these layers currently occupy, highest first.
+        // Reassigning the same values to the new order keeps every other layer
+        // (e.g. hidden ones not in the list) exactly where it sits numerically.
+        const slots = idsTopToBottom
+          .map((id) => doc.layers.find((l) => l.id === id)?.displayOrder)
+          .filter((v): v is number => v !== undefined)
+          .sort((a, b) => b - a)
+        const orderById = new Map<string, number>()
+        idsTopToBottom.forEach((id, i) => {
+          if (slots[i] !== undefined) orderById.set(id, slots[i])
+        })
+        set({
+          document: {
+            ...doc,
+            layers: doc.layers.map((l) =>
+              orderById.has(l.id) ? { ...l, displayOrder: orderById.get(l.id)! } : l,
+            ),
             updatedAt: now(),
           },
         })
