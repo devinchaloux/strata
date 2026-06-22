@@ -1020,3 +1020,30 @@ iteration. Supersedes the dark-mode assumption and amends the Phase 0.4 layout.*
 
 **Decision:** Hiding a layer **reclaims its vertical slot entirely** (the diagram reads as a complete graphic, important for export); hidden layers surface as "show" chips in the widget top bar so they can be brought back.
 **Rationale:** Devin's call — a hidden layer leaving an empty band would make an exported graphic look like it is missing something. The header column and canvas stay row-aligned because both iterate the visible layers; hidden layers move to the top bar rather than holding a slot.
+
+---
+
+## Phase 2 Implementation (Layer Management — 2.4 part 2)
+
+*Decisions made while finishing layer management (rename, settings popover, add, reorder), reviewed live with Devin.*
+
+---
+
+**Decision:** **shadcn/ui (on Radix UI) is now the realized component foundation.** The first primitives were pulled in as editable `src/components/ui/` files (`button`, `popover`, `alert-dialog`, `switch`) styled to the Phase 0.7 light theme. Hand-rolling accessible popovers/dialogs is not the path.
+**Rationale:** The Tech Stack decision always named shadcn/Radix; the project was scaffolded for it (the `cn` helper, the HSL token mappings, `tailwindcss-animate`) but components were never added. Devin's build philosophy — *do it correctly, not the quickest happy path* — settled it: Radix handles focus, Escape, click-outside, collision-aware positioning, and portal rendering (so popovers aren't clipped by `overflow:hidden`) far more correctly than a hand-rolled one-off, and every future dialog/dropdown/sheet reuses this foundation. Subsequent primitives are added per-feature.
+
+---
+
+**Decision (reversal):** ~~The hierarchical enforcement toggle prevents overlapping spans *within a single layer*~~ — **superseded.** Hierarchical enforcement means **cross-layer nesting**: a span must nest within the boundaries another layer has already established (it cannot cross a coarser layer's boundary). Layers order by size — **bottom = finest subdivisions, top = coarsest** (matching the macro-on-top render order). Formally, each layer's boundary set must be a **superset** of the layer above it; finer layers may subdivide further but must keep every boundary the coarser layer has. **Same-size spans are allowed** at every layer (nesting is inclusive — a child may equal its parent, e.g. the Alive breakdown coextensive across all three layers).
+**Rationale:** Devin clarified the original spec wording (`vision.md` §4.6, the earlier Hierarchical Enforcement entry, and the `FormDiagramData.hierarchicalEnforcement` field comment) described a different, weaker constraint than intended. Cross-layer nesting is the standard "hierarchical" meaning and the one Devin wants. He also wants the strictness to *dissuade* use — off by default is the theoretical statement; the constraint, when on, is deliberately demanding.
+**Consequences:** (1) The flag is **not per-layer** — a relationship between layers can't live on one layer's data. It is **scoped to the form-diagram widget type** (NOT document-level: the planned instrumentation widget is inherently non-hierarchical, so a document-wide flag would be wrong). Exact schema location is deferred to the dedicated build session. (2) The per-layer toggle built in 2.4 was **pulled** from the settings popover (it was misplaced and a no-op); the stale `FormDiagramData.hierarchicalEnforcement` field is left unused pending the rebuild. (3) `vision.md` §4.6 still carries the old wording and needs a reconciliation pass (flagged, not yet rewritten). Enforcement logic (boundary-superset validation on placement/drag) is its own future work item.
+
+---
+
+**Decision:** There is **no layer-level color default as a user feature.** Fill colors come *only* from per-span choices in the metadata panel's Advanced section. Unstyled spans render as **open brackets with no visible fill**; new layers default to white fill (reads as no-fill on the white canvas) with a neutral ink stroke — never a grey box.
+**Rationale:** Devin's call, overriding the Phase 0.6 implication that a layer-wide color default would be a surfaced control. Analysts color per-bracket, not per-layer; a layer-paint control is a DAW affordance that doesn't fit this tool. The `fillColorDefault`/`strokeColorDefault` schema fields remain as the renderer's fallback, but are not exposed as an editable layer setting. The curated color **swatch picker** (Phase 0.6) lives in the per-span Advanced panel and is its own future session.
+
+---
+
+**Decision:** Layer **reorder** uses dnd-kit sortable on the expanded header rows (drag handle per row; collapsed rail is not draggable). The `reorderLayers` store action **permutes the existing `displayOrder` values** among the reordered layers (top gets the highest), leaving any layers not in the list — e.g. hidden ones — at their current `displayOrder`. New layers are created on top (max `displayOrder` + 1) and become the active layer.
+**Rationale:** Reassigning the existing value set rather than renumbering from scratch keeps hidden layers anchored in the numeric order and makes the operation a single undoable store mutation. The header column and span canvas both sort by `displayOrder`, so reordering the headers moves the spans in lockstep automatically. Per Phase 0.4 §2, reorder was conditional on being lightweight — dnd-kit made it so.
