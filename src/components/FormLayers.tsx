@@ -66,10 +66,39 @@ interface SpanShapeProps {
 function SpanShape({ span, layer, pps, fontScale }: SpanShapeProps) {
   // Per-span subscription: a span only re-renders when ITS own selected/hovered
   // state flips, not on every selection change across the diagram.
-  const isSelected = useUIStore((s) => s.selectedSpanId === span.id)
+  const isSelected = useUIStore((s) => s.selectedSpanIds.includes(span.id))
   const isHovered = useUIStore((s) => s.hoveredSpanId === span.id)
   const selectSpan = useUIStore((s) => s.selectSpan)
+  const toggleSpan = useUIStore((s) => s.toggleSpan)
+  const setSelection = useUIStore((s) => s.setSelection)
   const hoverSpan = useUIStore((s) => s.hoverSpan)
+
+  // Modifier-aware selection (Merge UX §1):
+  //   plain click → single-select
+  //   ctrl/cmd-click → toggle this span in/out of the set
+  //   shift-click → range-select from the anchor to here, within this layer
+  function handleClick(e: React.MouseEvent) {
+    e.stopPropagation() // don't let the click bubble to the deselect handler
+    if (e.shiftKey) {
+      const anchorId = useUIStore.getState().selectionAnchorId
+      const layerSpans = (layer.data as FormDiagramData).spans
+      const sorted = [...layerSpans].sort((a, b) => a.startTime - b.startTime)
+      const anchorIdx = sorted.findIndex((s) => s.id === anchorId)
+      // No anchor, or anchor lives in another layer → treat as a plain click.
+      if (anchorIdx === -1) {
+        selectSpan(span.id)
+        return
+      }
+      const clickedIdx = sorted.findIndex((s) => s.id === span.id)
+      const [lo, hi] = anchorIdx < clickedIdx ? [anchorIdx, clickedIdx] : [clickedIdx, anchorIdx]
+      const range = sorted.slice(lo, hi + 1).map((s) => s.id)
+      setSelection(range, anchorId) // keep the pivot for further shift-clicks
+    } else if (e.metaKey || e.ctrlKey) {
+      toggleSpan(span.id)
+    } else {
+      selectSpan(span.id)
+    }
+  }
 
   const x = span.startTime * pps
   const width = (span.endTime - span.startTime) * pps
@@ -105,10 +134,7 @@ function SpanShape({ span, layer, pps, fontScale }: SpanShapeProps) {
       style={{ cursor: 'pointer' }}
       onMouseEnter={() => hoverSpan(span.id)}
       onMouseLeave={() => hoverSpan(null)}
-      onClick={(e) => {
-        e.stopPropagation() // don't let the click bubble to the deselect handler
-        selectSpan(span.id)
-      }}
+      onClick={handleClick}
     >
       <path
         d={path}
@@ -237,7 +263,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   const scrollOffset = useUIStore((s) => s.scrollOffset)
   const viewportWidth = useUIStore((s) => s.viewportWidth)
   const currentTime = useUIStore((s) => s.currentTime)
-  const selectSpan = useUIStore((s) => s.selectSpan)
+  const clearSelection = useUIStore((s) => s.clearSelection)
   const setAdjacentBoundary = useDocumentStore((s) => s.setAdjacentBoundary)
   const duration = useDocumentStore((s) => s.document?.duration ?? 0)
 
@@ -284,7 +310,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
       ref={containerRef}
       className="relative min-w-0 flex-1 overflow-hidden"
       style={{ background: 'var(--canvas)', height: svgHeight }}
-      onClick={() => selectSpan(null)}
+      onClick={() => clearSelection()}
     >
       <svg
         style={{

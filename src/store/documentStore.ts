@@ -50,6 +50,9 @@ interface DocumentState {
   // Span actions
   addSpan: (layerId: string, span: Span) => void
   updateSpan: (layerId: string, spanId: string, patch: Partial<Omit<Span, 'id'>>) => void
+  // Bulk edit: apply one patch to many spans (the set may span multiple layers).
+  // A single store write = one undo step. Used by the multi-select metadata panel.
+  updateSpans: (spanIds: string[], patch: Partial<Omit<Span, 'id'>>) => void
   removeSpan: (layerId: string, spanId: string) => void
   mergeSpans: (layerId: string, spanIds: string[], result: Span) => void
   // Spacebar / Split: place a boundary at `time`, splitting the containing span
@@ -230,6 +233,25 @@ const useDocumentStore = create<DocumentState>()(
                   .map((s) => (s.id === spanId ? { ...s, ...patch } : s))
                   .sort((a, b) => a.startTime - b.startTime)
               )
+            ),
+            updatedAt: now(),
+          },
+        })
+      },
+
+      updateSpans: (spanIds, patch) => {
+        const doc = get().document
+        if (!doc || spanIds.length === 0) return
+        const ids = new Set(spanIds)
+        set({
+          document: {
+            ...doc,
+            layers: doc.layers.map((l) =>
+              mapFormDiagramSpans(l, (spans) =>
+                spans
+                  .map((s) => (ids.has(s.id) ? { ...s, ...patch } : s))
+                  .sort((a, b) => a.startTime - b.startTime),
+              ),
             ),
             updatedAt: now(),
           },

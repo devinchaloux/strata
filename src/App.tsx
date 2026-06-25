@@ -1,8 +1,10 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useFileIO } from '@/hooks/useFileIO'
+import { useMerge } from '@/hooks/useMerge'
 import { YouTubePlayer } from '@/components/YouTubePlayer'
 import { FormDiagram } from '@/components/FormDiagram'
 import { MetadataPanel } from '@/components/MetadataPanel'
+import { MergeConflictDialog } from '@/components/MergeConflictDialog'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import aliveRaw from '../schema/alive.strata?raw'
@@ -15,16 +17,19 @@ import type { StrataDocument } from '@/types/strata'
 function ToolbarButton({
   onClick,
   disabled,
+  title,
   children,
 }: {
   onClick: () => void
   disabled?: boolean
+  title?: string
   children: React.ReactNode
 }) {
   return (
     <button
       onClick={onClick}
       disabled={disabled}
+      title={title}
       className="rounded px-2.5 py-1 text-xs font-medium text-foreground
         hover:bg-accent hover:text-accent-foreground
         disabled:opacity-40 disabled:pointer-events-none
@@ -98,6 +103,12 @@ export default function App() {
   const loadDocument = useDocumentStore((s) => s.loadDocument)
   const setActiveLayer = useUIStore((s) => s.setActiveLayer)
 
+  // Merge: eligibility drives the toolbar button; performMerge is held in a ref
+  // so the keydown effect can call the latest closure without re-subscribing.
+  const { eligibility: mergeEligibility, performMerge } = useMerge()
+  const performMergeRef = useRef(performMerge)
+  performMergeRef.current = performMerge
+
   // Dev affordance — load the bundled "Alive" fixture to exercise the render path.
   function loadDemo() {
     const parsed = JSON.parse(aliveRaw) as StrataDocument
@@ -126,6 +137,13 @@ export default function App() {
         const temporal = useDocumentStore.temporal.getState()
         if (e.shiftKey) temporal.redo()
         else temporal.undo()
+        return
+      }
+
+      // Ctrl/Cmd+J — Join (merge) the selected spans. No-ops when ineligible.
+      if (e.key === 'j' || e.key === 'J') {
+        e.preventDefault()
+        performMergeRef.current()
         return
       }
 
@@ -166,6 +184,16 @@ export default function App() {
           Save As
         </ToolbarButton>
 
+        <div className="mx-1 h-4 w-px bg-border" />
+
+        <ToolbarButton
+          onClick={() => performMerge()}
+          disabled={!mergeEligibility.ok}
+          title={mergeEligibility.ok ? 'Merge selected spans (Ctrl+J)' : mergeEligibility.reason}
+        >
+          Merge
+        </ToolbarButton>
+
         {isDirty && (
           <span className="ml-auto text-xs text-muted-foreground">Unsaved changes</span>
         )}
@@ -188,6 +216,9 @@ export default function App() {
 
       {/* Transport bar + collapsible video panel — bottom of the shell */}
       <YouTubePlayer />
+
+      {/* Merge conflict dialog — renders only when a merge has conflicts */}
+      <MergeConflictDialog />
 
       {/* Crash recovery modal */}
       {pendingRecovery && (

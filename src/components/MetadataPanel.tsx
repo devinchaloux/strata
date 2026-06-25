@@ -12,6 +12,7 @@
 import { useState, useEffect } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
+import { useMerge } from '@/hooks/useMerge'
 import { formatTime } from '@/lib/youtube'
 import { parseTimecode } from '@/lib/timecode'
 import { MIN_SPAN_WIDTH } from '@/lib/spanEdit'
@@ -132,17 +133,25 @@ function Segmented<T extends string>({
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Find the selected span and the layer that owns it. */
-function findSelected(
-  layers: Layer[],
-  spanId: string | null,
-): { layer: Layer; span: Span } | null {
-  if (!spanId) return null
-  for (const layer of layers) {
-    const span = (layer.data as FormDiagramData).spans.find((s) => s.id === spanId)
-    if (span) return { layer, span }
+export interface SpanEntry {
+  layer: Layer
+  span: Span
+}
+
+/** Resolve selected span ids to {layer, span} entries (order follows ids). */
+function findSpans(layers: Layer[], spanIds: string[]): SpanEntry[] {
+  const out: SpanEntry[] = []
+  for (const id of spanIds) {
+    for (const layer of layers) {
+      if (layer.type !== 'form-diagram') continue
+      const span = (layer.data as FormDiagramData).spans.find((s) => s.id === id)
+      if (span) {
+        out.push({ layer, span })
+        break
+      }
+    }
   }
-  return null
+  return out
 }
 
 const CONFIDENCE_OPTS: { value: ConfidenceLevel; label: string }[] = [
@@ -168,18 +177,31 @@ const LINETYPE_OPTS: { value: LineType; label: string }[] = [
 
 export function MetadataPanel() {
   const doc = useDocumentStore((s) => s.document)
+  const selectedSpanIds = useUIStore((s) => s.selectedSpanIds)
+
+  const found = findSpans(doc?.layers ?? [], selectedSpanIds)
+  if (found.length === 0) return null
+  if (found.length === 1) return <SingleSpanPanel layer={found[0].layer} span={found[0].span} />
+  return <MultiSpanPanel entries={found} />
+}
+
+// ---------------------------------------------------------------------------
+// Single-span panel — the full Phase 0.4 §5 field set for one selected span.
+// ---------------------------------------------------------------------------
+
+function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
+  const doc = useDocumentStore((s) => s.document)
   const updateSpan = useDocumentStore((s) => s.updateSpan)
   const removeSpan = useDocumentStore((s) => s.removeSpan)
   const addSpan = useDocumentStore((s) => s.addSpan)
   const placeBoundary = useDocumentStore((s) => s.placeBoundary)
-  const selectedSpanId = useUIStore((s) => s.selectedSpanId)
   const selectSpan = useUIStore((s) => s.selectSpan)
   const currentTime = useUIStore((s) => s.currentTime)
+  const { neighborId, performMerge } = useMerge()
 
-  const found = findSelected(doc?.layers ?? [], selectedSpanId)
-  if (!found) return null
+  const prevId = neighborId(span.id, 'prev')
+  const nextId = neighborId(span.id, 'next')
 
-  const { layer, span } = found
   const update = (patch: Partial<Omit<Span, 'id'>>) => updateSpan(layer.id, span.id, patch)
 
   const spanTypes = doc?.vocabulary.spanTypes ?? []
@@ -424,8 +446,28 @@ export function MetadataPanel() {
           </button>
         </Field>
 
-        {/* Actions */}
+        {/* Merge with neighbor (Merge UX §3.4) */}
         <div className="mt-4 flex gap-2 border-t pt-3" style={{ borderColor: 'var(--hairline)' }}>
+          <button
+            onClick={() => prevId && performMerge([prevId, span.id])}
+            disabled={!prevId}
+            title={prevId ? 'Merge with previous span' : 'No previous span in this layer'}
+            className="flex-1 rounded border border-border px-2 py-1 text-[11px] text-foreground hover:bg-accent disabled:opacity-40"
+          >
+            Merge ←
+          </button>
+          <button
+            onClick={() => nextId && performMerge([span.id, nextId])}
+            disabled={!nextId}
+            title={nextId ? 'Merge with next span' : 'No next span in this layer'}
+            className="flex-1 rounded border border-border px-2 py-1 text-[11px] text-foreground hover:bg-accent disabled:opacity-40"
+          >
+            → Merge
+          </button>
+        </div>
+
+        {/* Actions */}
+        <div className="mt-2 flex gap-2">
           <button
             onClick={handleSplit}
             disabled={!canSplit}
@@ -446,6 +488,226 @@ export function MetadataPanel() {
           >
             Delete
           </button>
+        </div>
+      </div>
+    </aside>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Multi-span panel — bulk edit (Phase 2.5). Fields that sensibly apply across a
+// selection stay editable and write to ALL selected spans in one undo step;
+// per-span / positional fields (time, slug, notes, parent) are omitted. When a
+// field's value differs across the selection it reads as "Mixed" until set.
+// ---------------------------------------------------------------------------
+
+const MIXED = Symbol('mixed')
+
+/** Common value across spans for one field, or MIXED when they disagree. */
+function commonValue<T>(spans: Span[], get: (s: Span) => T): T | typeof MIXED {
+  const first = get(spans[0])
+  return spans.every((s) => get(s) === first) ? first : MIXED
+}
+
+function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
+  const doc = useDocumentStore((s) => s.document)
+  const updateSpans = useDocumentStore((s) => s.updateSpans)
+  const clearSelection = useUIStore((s) => s.clearSelection)
+  const { eligibility, performMerge } = useMerge()
+
+  const spans = entries.map((e) => e.span)
+  const ids = spans.map((s) => s.id)
+  const spanTypes = doc?.vocabulary.spanTypes ?? []
+
+  // Apply a patch to every selected span (one undo step).
+  const setAll = (patch: Partial<Omit<Span, 'id'>>) => updateSpans(ids, patch)
+
+  // Resolved common values (or MIXED) per bulk field.
+  const label = commonValue(spans, (s) => s.label ?? '')
+  const type = commonValue(spans, (s) => s.type ?? '')
+  const annotation = commonValue(spans, (s) => s.annotation ?? '')
+  const lyrics = commonValue(spans, (s) => s.lyrics ?? '')
+  const confidence = commonValue(spans, (s) => s.confidence ?? 'definite')
+  const startB = commonValue(spans, (s) => s.startBoundaryType ?? 'definite')
+  const endB = commonValue(spans, (s) => s.endBoundaryType ?? 'definite')
+  const lineType = commonValue(spans, (s) => s.lineType ?? 'arc')
+
+  // Layer color defaults for the swatch fallback (use the first selection's layer).
+  const fillFallback = entries[0].layer.fillColorDefault
+  const strokeFallback = entries[0].layer.strokeColorDefault
+  const fill = commonValue(spans, (s) => s.fillColor ?? null)
+  const stroke = commonValue(spans, (s) => s.strokeColor ?? null)
+
+  const mergeReason = eligibility.ok ? '' : eligibility.reason
+
+  return (
+    <aside
+      className="flex w-[280px] shrink-0 flex-col overflow-y-auto border-l bg-card"
+      style={{ borderColor: 'var(--hairline)' }}
+    >
+      {/* Header */}
+      <div
+        className="flex items-center justify-between border-b px-3 py-2"
+        style={{ borderColor: 'var(--hairline)' }}
+      >
+        <span className="text-xs font-medium text-foreground">{spans.length} spans selected</span>
+        <button
+          onClick={() => clearSelection()}
+          className="text-muted-foreground hover:text-foreground"
+          title="Clear selection"
+          aria-label="Clear selection"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div className="px-3 py-3">
+        {/* Merge — primary multi-select action */}
+        <button
+          onClick={() => performMerge()}
+          disabled={!eligibility.ok}
+          title={mergeReason}
+          className="mb-4 w-full rounded bg-primary px-2 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {eligibility.ok ? `Merge ${spans.length} spans` : 'Merge'}
+        </button>
+        {!eligibility.ok && (
+          <p className="-mt-3 mb-4 text-[10px] text-muted-foreground">{mergeReason}</p>
+        )}
+
+        <div className="mb-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          Apply to all selected
+        </div>
+
+        {/* Label */}
+        <Field label="Label">
+          <input
+            className={inputClass}
+            value={label === MIXED ? '' : label}
+            placeholder={label === MIXED ? 'Mixed — type to set all' : 'Unlabeled'}
+            onChange={(e) => {
+              const v = e.target.value
+              const next = v === '' ? null : v
+              setAll({ label: next, slug: next ? slugify(next) : null })
+            }}
+          />
+        </Field>
+
+        {/* Type */}
+        <Field label="Type">
+          <select
+            className={inputClass}
+            value={type === MIXED ? '' : type}
+            onChange={(e) => setAll({ type: e.target.value || null })}
+          >
+            <option value="">{type === MIXED ? '— mixed —' : '— none —'}</option>
+            {spanTypes.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        {/* Annotation */}
+        <Field label="Annotation" helper="Diagram-visible — renders inside the shape">
+          <textarea
+            className={`${inputClass} resize-y`}
+            rows={2}
+            value={annotation === MIXED ? '' : annotation}
+            placeholder={annotation === MIXED ? 'Mixed — type to set all' : ''}
+            onChange={(e) => setAll({ annotation: e.target.value || null })}
+          />
+        </Field>
+
+        {/* Confidence */}
+        <Field label="Confidence" helper={confidence === MIXED ? 'Mixed across selection' : undefined}>
+          <Segmented
+            options={CONFIDENCE_OPTS}
+            value={confidence === MIXED ? ('' as ConfidenceLevel) : confidence}
+            onChange={(v) => setAll({ confidence: v })}
+          />
+        </Field>
+
+        {/* Boundaries */}
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <Field label="Start boundary">
+              <select
+                className={inputClass}
+                value={startB === MIXED ? '' : startB}
+                onChange={(e) => setAll({ startBoundaryType: e.target.value as BoundaryType })}
+              >
+                {startB === MIXED && <option value="">— mixed —</option>}
+                {BOUNDARY_OPTS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          <div className="flex-1">
+            <Field label="End boundary">
+              <select
+                className={inputClass}
+                value={endB === MIXED ? '' : endB}
+                onChange={(e) => setAll({ endBoundaryType: e.target.value as BoundaryType })}
+              >
+                {endB === MIXED && <option value="">— mixed —</option>}
+                {BOUNDARY_OPTS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+        </div>
+
+        {/* Line style */}
+        <Field label="Line style" helper={lineType === MIXED ? 'Mixed across selection' : undefined}>
+          <Segmented
+            options={LINETYPE_OPTS}
+            value={lineType === MIXED ? ('' as LineType) : lineType}
+            onChange={(v) => setAll({ lineType: v })}
+          />
+        </Field>
+
+        {/* Lyrics — repeating sections (e.g. a chorus) often share lyrics */}
+        <Field label="Lyrics" helper="Corpus-queryable">
+          <textarea
+            className={`${inputClass} resize-y`}
+            rows={2}
+            value={lyrics === MIXED ? '' : lyrics}
+            placeholder={lyrics === MIXED ? 'Mixed — type to set all' : ''}
+            onChange={(e) => setAll({ lyrics: e.target.value || null })}
+          />
+        </Field>
+
+        {/* Colors */}
+        <div className="mt-4 mb-2 border-t pt-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground" style={{ borderColor: 'var(--hairline)' }}>
+          Advanced
+        </div>
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <Field label="Fill" helper={fill === MIXED ? 'Mixed' : undefined}>
+              <ColorControl
+                value={fill === MIXED ? null : fill}
+                fallback={fillFallback}
+                onChange={(c) => setAll({ fillColor: c })}
+              />
+            </Field>
+          </div>
+          <div className="flex-1">
+            <Field label="Stroke" helper={stroke === MIXED ? 'Mixed' : undefined}>
+              <ColorControl
+                value={stroke === MIXED ? null : stroke}
+                fallback={strokeFallback}
+                onChange={(c) => setAll({ strokeColor: c })}
+              />
+            </Field>
+          </div>
         </div>
       </div>
     </aside>

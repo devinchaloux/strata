@@ -1047,3 +1047,105 @@ iteration. Supersedes the dark-mode assumption and amends the Phase 0.4 layout.*
 
 **Decision:** Layer **reorder** uses dnd-kit sortable on the expanded header rows (drag handle per row; collapsed rail is not draggable). The `reorderLayers` store action **permutes the existing `displayOrder` values** among the reordered layers (top gets the highest), leaving any layers not in the list — e.g. hidden ones — at their current `displayOrder`. New layers are created on top (max `displayOrder` + 1) and become the active layer.
 **Rationale:** Reassigning the existing value set rather than renumbering from scratch keeps hidden layers anchored in the numeric order and makes the operation a single undoable store mutation. The header column and span canvas both sort by `displayOrder`, so reordering the headers moves the spans in lockstep automatically. Per Phase 0.4 §2, reorder was conditional on being lightweight — dnd-kit made it so.
+
+---
+
+## Merge Implementation (Phase 2.5)
+
+*Decisions made during the Phase 2.5 merge build, conducted with Devin. Output:
+`src/lib/mergeSpans.ts` (pure logic), `src/hooks/useMerge.ts`, `MergeConflictDialog`,
+multi-select in `uiStore`, `updateSpans` bulk action, multi-mode `MetadataPanel`.
+These extend the Phase 0.5 Merge UX spec and the Merge field rules above.*
+
+---
+
+**Decision:** Multi-select is a set of span ids (`uiStore.selectedSpanIds`), with
+`selectSpan` (single/replace), `toggleSpan` (Ctrl/Cmd-click), `setSelection`
+(shift-range / future box-drag), and `clearSelection`. Shift-range is computed in
+the span click handler against the layer's startTime-sorted spans and **preserves
+the original anchor** (`selectionAnchorId`) so successive shift-clicks extend from
+the same pivot.
+**Rationale:** A set is the minimal structure that serves both merge (consecutive
+same-layer subset) and bulk edit (any subset, possibly cross-layer). Keeping the
+pivot stable matches the universal range-select convention (Finder, spreadsheets).
+Selection lives in the UI store, not the undo history — undoing a merge restores
+the source spans but does not restore the prior selection (the merged id it held no
+longer resolves, so the panel simply closes). This is consistent with the existing
+selection/undo separation.
+
+---
+
+**Decision:** The single logged "color" merge rule applies **independently** to the
+split `fillColor` and `strokeColor` fields: a lone override wins; two or more
+distinct overrides conflict, with "layer default" (null) offered as an option when
+any selected span has no override.
+**Rationale:** The Phase 0.5 rule predates the Phase 0.6 color split. Each field is
+visually and analytically independent (decisions.md, "Span Data Model"), so each
+resolves on its own. No new rule — just the existing one applied twice.
+
+---
+
+**Decision:** `annotation` conflicts (dialog) when spans differ; `lyrics` and
+`notes` concatenate with the `\n\n---\n\n` separator. `confidence` takes the lowest
+of the selection. `startBoundaryType` = the first span's start face,
+`endBoundaryType` = the last span's end face, `lineType` = the first span's. `slug`
+is regenerated from the resolved label. `startTime`/`endTime` = min/max of the
+selection; `mergedFrom` = all source ids in startTime order.
+**Rationale:** Annotation renders on the diagram, so silently concatenating it could
+clutter the figure — surfacing it for a deliberate choice is correct (Devin's call).
+Lyrics and notes are additive records with no diagram footprint, so concatenation
+loses nothing. Boundary faces and lineType take the outermost/first span's values
+because the merged span's edges ARE the outer edges of the range. The "time points /
+point markers union" rule from the Phase 0.5 spec is a **no-op in v1**: point markers
+are document-level and spans carry no time-point field, so there is nothing to union.
+
+---
+
+**Decision:** Unlike color, a lone non-null `parentId` against a `null` **is** a
+conflict (options: the parent, or "None"); only an all-equal set (including all-null)
+auto-resolves.
+**Rationale:** Matches the Phase 0.5 edge-case table. A parent reference is a
+structural claim, not a style override — dropping or keeping it is a human decision,
+not an automatic "the one that exists wins."
+
+---
+
+**Decision:** When 2+ spans are selected the metadata panel becomes a **bulk-edit**
+panel: fields that sensibly apply across a selection stay editable and write to ALL
+selected spans in one undo step (`label`, `type`, `confidence`, `fillColor`,
+`strokeColor`, `startBoundaryType`, `endBoundaryType`, `lineType`, `annotation`,
+`lyrics`). Per-span / positional fields are omitted (`startTime`, `endTime`, `slug`,
+`notes`, `parentId`). A field whose value differs across the selection reads as
+"Mixed" until set.
+**Rationale:** Devin's workflow ask — quickly label a run of spans "Chorus", mark
+them all approximate, or apply a boundary type — rather than a passive merge
+launcher. `lyrics` is included because repeating sections (a recurring chorus) often
+share lyric text. `notes` is excluded because it holds distinct per-span working
+observations that a bulk overwrite would clobber. The bulk write is a single
+`updateSpans` store mutation = one undo step.
+
+---
+
+**Decision:** Merge entry points shipped in this slice: the toolbar **Merge** button
+(enabled by eligibility, tooltip carries the reason), **Ctrl+J**, and the
+metadata-panel **Merge ← / → Merge** (single-span, merge with previous/next neighbor)
+plus the **Merge N spans** button in the multi-select panel. **Box-drag
+rectangle-select** and the **right-click context menu** from the Phase 0.5 spec are
+deferred to a fast follow.
+**Rationale:** Devin chose a core-first slice. Toolbar + Ctrl+J + panel buttons make
+merge fully reachable (including a mobile/touch path via the panel) with a reviewable
+diff; the two deferred items are net-new gesture/menu surfaces that, like the dnd-kit
+drag, can't be verified in the headless preview and are better landed on their own.
+
+---
+
+**Decision:** The merge conflict dialog uses a new shadcn `Dialog` primitive over
+`@radix-ui/react-dialog` (the plain, overlay-dismissible modal counterpart to the
+existing `AlertDialog`). Conflict-only: it opens only when `resolveMerge` returns
+conflicts; a clean merge commits immediately with no dialog. Confirm is disabled
+until every conflict has a choice; Cancel/Escape/overlay/X all abandon with source
+spans untouched.
+**Rationale:** Matches the Phase 0.5 conflict-only design. AlertDialog is for
+consequential confirms (delete); a merge the analyst initiated is a normal modal that
+should be cheaply dismissible. `@radix-ui/react-dialog` was the one Radix primitive
+not yet vendored.
