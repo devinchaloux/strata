@@ -117,6 +117,7 @@ function TransportButton({
       aria-label={title}
       className="p-1.5 rounded text-foreground
         hover:bg-accent hover:text-accent-foreground
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card
         disabled:opacity-40 disabled:pointer-events-none
         transition-colors"
     >
@@ -240,7 +241,8 @@ export function YouTubePlayer() {
           title="Playback rate"
           aria-label="Playback rate"
           className="h-7 rounded border border-border bg-card text-xs text-foreground px-1
-            hover:bg-accent focus:outline-none disabled:opacity-40 cursor-pointer"
+            hover:bg-accent disabled:opacity-40 cursor-pointer transition-colors
+            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card"
         >
           {RATES.map((r) => (
             <option key={r} value={String(r)}>
