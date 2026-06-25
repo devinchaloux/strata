@@ -1,8 +1,22 @@
 import { create } from 'zustand'
 import type { YTPlayerState } from '@/lib/youtube'
+import type { Span } from '@/types/strata'
+import type { MergeConflict } from '@/lib/mergeSpans'
 
 // Re-export so consumers don't need a separate import
 export type { YTPlayerState }
+
+/**
+ * Open-merge-dialog state. Set when a merge has unresolved field conflicts; the
+ * MergeConflictDialog renders from it. `draft` already carries the new span id
+ * and all auto-resolved fields; the dialog fills the conflict fields on confirm.
+ */
+export interface MergeDialogState {
+  layerId: string
+  sourceIds: string[]
+  draft: Span
+  conflicts: MergeConflict[]
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -36,14 +50,19 @@ export interface UIState {
   scrollOffset: number
   viewportWidth: number
 
-  // Selection
-  selectedSpanId: string | null
+  // Selection — multi-select set is the source of truth. Single-select call
+  // sites read selectedSpanIds[0]. selectionAnchorId is the pivot for shift-range.
+  selectedSpanIds: string[]
+  selectionAnchorId: string | null
   hoveredSpanId: string | null
   activeLayerId: string | null
 
   // Panels
   videoPanelVisible: boolean
   headersCollapsed: boolean // layer-header column collapsed to the icon rail
+
+  // Merge conflict dialog (null = closed)
+  mergeDialog: MergeDialogState | null
 
   // Actions — playback
   setCurrentTime: (time: number) => void
@@ -58,7 +77,10 @@ export interface UIState {
   setViewportWidth: (width: number) => void
 
   // Actions — selection
-  selectSpan: (id: string | null) => void
+  selectSpan: (id: string | null) => void       // single select (replace); null clears
+  toggleSpan: (id: string) => void               // ctrl/cmd-click: add/remove from set
+  setSelection: (ids: string[], anchorId?: string | null) => void // shift-range / box-drag
+  clearSelection: () => void
   hoverSpan: (id: string | null) => void
   setActiveLayer: (id: string | null) => void
 
@@ -66,6 +88,10 @@ export interface UIState {
   toggleVideoPanel: () => void
   setVideoPanelVisible: (visible: boolean) => void
   toggleHeadersCollapsed: () => void
+
+  // Actions — merge dialog
+  openMergeDialog: (state: MergeDialogState) => void
+  closeMergeDialog: () => void
 }
 
 // ---------------------------------------------------------------------------
@@ -84,13 +110,16 @@ const useUIStore = create<UIState>()((set) => ({
   scrollOffset: 0,
   viewportWidth: 0,
 
-  selectedSpanId: null,
+  selectedSpanIds: [],
+  selectionAnchorId: null,
   hoveredSpanId: null,
   activeLayerId: null,
 
   // Default true — the panel is expanded when a video first loads
   videoPanelVisible: true,
   headersCollapsed: false,
+
+  mergeDialog: null,
 
   setCurrentTime: (time) => set({ currentTime: time }),
   setDuration: (duration) => set({ duration }),
@@ -102,13 +131,30 @@ const useUIStore = create<UIState>()((set) => ({
   setScrollOffset: (offset) => set({ scrollOffset: offset }),
   setViewportWidth: (width) => set({ viewportWidth: width }),
 
-  selectSpan: (id) => set({ selectedSpanId: id }),
+  selectSpan: (id) =>
+    set({ selectedSpanIds: id ? [id] : [], selectionAnchorId: id }),
+  toggleSpan: (id) =>
+    set((s) => ({
+      selectedSpanIds: s.selectedSpanIds.includes(id)
+        ? s.selectedSpanIds.filter((x) => x !== id)
+        : [...s.selectedSpanIds, id],
+      selectionAnchorId: id,
+    })),
+  setSelection: (ids, anchorId) =>
+    set({
+      selectedSpanIds: ids,
+      selectionAnchorId: anchorId !== undefined ? anchorId : ids[ids.length - 1] ?? null,
+    }),
+  clearSelection: () => set({ selectedSpanIds: [], selectionAnchorId: null }),
   hoverSpan: (id) => set({ hoveredSpanId: id }),
   setActiveLayer: (id) => set({ activeLayerId: id }),
 
   toggleVideoPanel: () => set((s) => ({ videoPanelVisible: !s.videoPanelVisible })),
   setVideoPanelVisible: (visible) => set({ videoPanelVisible: visible }),
   toggleHeadersCollapsed: () => set((s) => ({ headersCollapsed: !s.headersCollapsed })),
+
+  openMergeDialog: (state) => set({ mergeDialog: state }),
+  closeMergeDialog: () => set({ mergeDialog: null }),
 }))
 
 export { useUIStore }

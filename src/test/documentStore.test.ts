@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useDocumentStore } from '@/store/documentStore'
-import type { StrataDocument, Layer } from '@/types/strata'
+import type { StrataDocument, Layer, Span, FormDiagramData } from '@/types/strata'
 
 // Minimal layer/doc builders for exercising store actions in isolation.
 function layer(id: string, displayOrder: number, visibility = true): Layer {
@@ -73,5 +73,41 @@ describe('reorderLayers', () => {
   it('is a no-op-safe call when ids match current order', () => {
     useDocumentStore.getState().reorderLayers(['c', 'b', 'a'])
     expect(topToBottom()).toEqual(['c', 'b', 'a'])
+  })
+})
+
+describe('updateSpans (bulk edit)', () => {
+  function spanLayer(id: string, spans: Span[]): Layer {
+    return { ...layer(id, 0), data: { hierarchicalEnforcement: false, spans } }
+  }
+  function spansOf(layerId: string): Span[] {
+    const l = useDocumentStore.getState().document!.layers.find((x) => x.id === layerId)!
+    return (l.data as FormDiagramData).spans
+  }
+
+  beforeEach(() => {
+    useDocumentStore.getState().loadDocument(
+      doc([
+        spanLayer('L1', [
+          { id: 'a', startTime: 0, endTime: 10 },
+          { id: 'b', startTime: 10, endTime: 20 },
+          { id: 'c', startTime: 20, endTime: 30 },
+        ]),
+      ]),
+    )
+    useDocumentStore.temporal.getState().clear()
+  })
+
+  it('applies one patch to every targeted span and leaves others untouched', () => {
+    useDocumentStore.getState().updateSpans(['a', 'c'], { type: 'chorus' })
+    const byId = Object.fromEntries(spansOf('L1').map((s) => [s.id, s.type]))
+    expect(byId).toEqual({ a: 'chorus', b: undefined, c: 'chorus' })
+  })
+
+  it('is a single undo step for the whole bulk edit', () => {
+    useDocumentStore.getState().updateSpans(['a', 'b', 'c'], { confidence: 'approximate' })
+    expect(spansOf('L1').every((s) => s.confidence === 'approximate')).toBe(true)
+    useDocumentStore.temporal.getState().undo()
+    expect(spansOf('L1').every((s) => s.confidence === undefined)).toBe(true)
   })
 })
