@@ -27,7 +27,7 @@ import type { BoundaryType, LineType, ConfidenceLevel } from '@/types/strata'
 // Metrics (starting values — Phase 0.7 §8; tweakable once seen on real data)
 // ---------------------------------------------------------------------------
 
-export const SHAPE_HEIGHT = 20 // uniform across all layers (the BriFormer cue)
+export const SHAPE_HEIGHT = 26 // uniform across all layers (the BriFormer cue)
 export const CORNER_RADIUS = 6 // definite tail corner curve
 export const GRADUAL_INSET = 9 // horizontal run of an angled (gradual) tail
 export const STROKE_WIDTH = 1.5
@@ -45,9 +45,9 @@ export const STROKE_WIDTH = 1.5
  *   STACK_TOP_PAD  headroom above the top layer for its label (no layer above it)
  *   LABEL_RISE   how far a label baseline sits above its shape's top edge
  */
-export const LAYER_GAP = 2
+export const LAYER_GAP = 3
 export const LAYER_PITCH = SHAPE_HEIGHT + LAYER_GAP
-export const STACK_TOP_PAD = 16
+export const STACK_TOP_PAD = 18
 export const LABEL_RISE = 4
 
 /** Total pixel height of a flush stack of n visible layers. */
