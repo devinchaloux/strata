@@ -15,7 +15,7 @@
 import { useRef } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
-import { computePps } from '@/lib/timeline'
+import { computePps, totalContentWidth } from '@/lib/timeline'
 import {
   buildShapePath,
   confidenceStroke,
@@ -267,8 +267,8 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   const setAdjacentBoundary = useDocumentStore((s) => s.setAdjacentBoundary)
   const duration = useDocumentStore((s) => s.document?.duration ?? 0)
 
-  const pps = computePps(duration, viewportWidth, zoom)
-  const totalWidth = viewportWidth * zoom
+  const pps = computePps(zoom)
+  const totalWidth = totalContentWidth(duration, zoom)
   const svgWidth = Math.max(totalWidth, viewportWidth)
   // Every layer keeps a slot (hidden ones render empty) so the header column and
   // the canvas stay row-aligned; FormLayerGroup draws nothing for hidden layers.

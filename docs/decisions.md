@@ -1149,3 +1149,66 @@ spans untouched.
 consequential confirms (delete); a merge the analyst initiated is a normal modal that
 should be cheaply dismissible. `@radix-ui/react-dialog` was the one Radix primitive
 not yet vendored.
+
+---
+
+## Timeline Zoom & Scroll (Phase 2 polish)
+
+*Decisions made during the Phase 2 polish/zoom session (2026-06-25). Outputs:
+`src/lib/timeline.ts`, `src/hooks/useTimeline.ts`, `src/components/TimelineAxis.tsx`,
+`src/components/TimelineScrollbar.tsx` (new), `src/lib/formShape.ts`.*
+
+---
+
+**Decision:** "100%" is a fixed standard scale (`BASE_PPS` = 10 px/s), decoupled
+from viewport width and track duration. "Fit to window" is a separate, explicit
+control — no longer the meaning of 100%.
+**Rationale:** Previously `zoom = 1` was defined as `pps = viewportWidth*zoom/duration`,
+so 100% literally *was* fit-to-window — a long track and a short track both read as
+"100%" at wildly different physical scales, and the same analysis looked different on
+different screens. Making 100% a fixed px/second makes the scale meaningful and
+stable across tracks and screens (the BriFormer-style working scale), and frees
+fit-to-window to be its own action. `BASE_PPS` is the single lever for "how big is
+100%". Pixel formula is now `px = timestamp * BASE_PPS * zoom - scrollOffset`.
+
+---
+
+**Decision:** On document load, the timeline auto-fits to the window once (keyed on
+duration); window resizes do **not** re-fit (the analyst's zoom is preserved).
+**Rationale:** Opening a file should show the whole track (the old load behavior),
+but with 100% now a fixed scale the store's default zoom would open a long track
+partway in. A one-time fit-on-load preserves the "see everything first" default while
+keeping 100% reachable as a distinct, standard scale. *Open for Devin: whether the
+persistent default working view should be fit or 100% — currently fit-on-load.*
+
+---
+
+**Decision:** Zoom is bounded dynamically: minimum = `min(fitZoom, 1)` (clamped to an
+absolute 5% floor), maximum = 5000% (`ABS_MAX_ZOOM`).
+**Rationale:** There is no point zooming out past "the whole track fits" (only dead
+space), so a long track's floor is its fit zoom; a short track (fit > 100%) floors at
+100% since zooming below that just shrinks a track that already fits. 5000% gives
+frame-level headroom for boundary editing. All bounds live in `lib/timeline.ts` as
+pure, unit-tested functions.
+
+---
+
+**Decision:** The timeline gets a custom horizontal scrollbar (thin draggable thumb
+under the ruler), shown only when content overflows the viewport; its gutter is
+always reserved so the ruler doesn't jump when overflow toggles.
+**Rationale:** The timeline pans by writing `scrollOffset` (the SVG is translated
+inside an overflow-hidden column), so there is no native scrollbar to inherit. Before
+this, panning was wheel/trackpad-only with no visible affordance that more track
+existed off-screen. The scrollbar geometry (`scrollbarMetrics`, `scrollOffsetFromThumbX`)
+is pure and unit-tested; the component is a thin view over it. Clicking the track
+pages by ~one viewport; the thumb has a minimum width so it stays grabbable when
+deeply zoomed.
+
+---
+
+**Decision:** Form-layer row height bumped — `SHAPE_HEIGHT` 20→26, `LAYER_GAP` 2→3,
+`STACK_TOP_PAD` 16→18.
+**Rationale:** Closes the pending row-height task (open-questions.md): rows felt
+condensed, and the taller pitch also gives the collapsed-rail hover bubble room to
+clear the ruler. Proportions are preserved (uniform bracket height across layers);
+this only increases the per-row drawing height — the documented lever.
