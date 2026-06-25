@@ -1,7 +1,15 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { useUIStore } from '@/store/uiStore'
 import { useDocumentStore } from '@/store/documentStore'
-import { computePps, clampScrollOffset, MIN_ZOOM, MAX_ZOOM } from '@/lib/timeline'
+import {
+  computePps,
+  clampScrollOffset,
+  totalContentWidth,
+  computeFitZoom,
+  clampZoom,
+  minZoom,
+  ABS_MAX_ZOOM,
+} from '@/lib/timeline'
 
 export function useTimeline() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -18,8 +26,9 @@ export function useTimeline() {
 
   const duration = useDocumentStore((s) => s.document?.duration ?? 0)
 
-  const pps = computePps(duration, viewportWidth, zoom)
-  const totalWidth = viewportWidth * zoom
+  const pps = computePps(zoom)
+  const totalWidth = totalContentWidth(duration, zoom)
+  const minZoomValue = minZoom(duration, viewportWidth)
 
   // ---------------------------------------------------------------------------
   // Snapshot ref — gives non-React callbacks access to current reactive values
@@ -45,6 +54,23 @@ export function useTimeline() {
     observer.observe(el)
     return () => observer.disconnect()
   }, [setViewportWidth])
+
+  // ---------------------------------------------------------------------------
+  // Auto-fit on document load — open a track showing the whole thing, once.
+  //
+  // 100% is now a fixed scale (BASE_PPS), so the store's default zoom would open
+  // a long track partway in. We instead fit-to-window the first time a document's
+  // duration and the viewport are both known. Keyed on duration so loading a new
+  // document re-fits; a window resize does NOT re-fit (the analyst's zoom is kept).
+  // ---------------------------------------------------------------------------
+  const fittedForDuration = useRef<number | null>(null)
+  useEffect(() => {
+    if (duration <= 0 || viewportWidth <= 0) return
+    if (fittedForDuration.current === duration) return
+    fittedForDuration.current = duration
+    setZoom(clampZoom(computeFitZoom(duration, viewportWidth), duration, viewportWidth))
+    setScrollOffset(0)
+  }, [duration, viewportWidth, setZoom, setScrollOffset])
 
   // ---------------------------------------------------------------------------
   // DAW cursor following — only fires during active playback.
@@ -92,9 +118,9 @@ export function useTimeline() {
         const timeUnderCursor = pps > 0 ? (scrollOffset + cursorX) / pps : 0
 
         const factor = e.deltaY < 0 ? 1.2 : 1 / 1.2
-        const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom * factor))
-        const newPps = computePps(duration, viewportWidth, newZoom)
-        const newTotalWidth = viewportWidth * newZoom
+        const newZoom = clampZoom(zoom * factor, duration, viewportWidth)
+        const newPps = computePps(newZoom)
+        const newTotalWidth = totalContentWidth(duration, newZoom)
         const newOffset = clampScrollOffset(
           timeUnderCursor * newPps - cursorX,
           newTotalWidth,
@@ -115,38 +141,45 @@ export function useTimeline() {
   }, [setZoom, setScrollOffset]) // stable store actions — no stale closure risk
 
   // ---------------------------------------------------------------------------
-  // Zoom buttons — cursor-centered on the viewport midpoint
+  // Zoom to a target zoom level, keeping the given anchor time fixed under the
+  // given viewport x. Defaults to the viewport midpoint (used by the buttons).
   // ---------------------------------------------------------------------------
-  const applyZoom = useCallback(
-    (factor: number) => {
-      const { zoom, scrollOffset, pps, viewportWidth, duration } = snap.current
-      const centerTime = pps > 0 ? (scrollOffset + viewportWidth / 2) / pps : 0
-      const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom * factor))
-      const newPps = computePps(duration, viewportWidth, newZoom)
-      const newTotalWidth = viewportWidth * newZoom
-      const newOffset = clampScrollOffset(
-        centerTime * newPps - viewportWidth / 2,
-        newTotalWidth,
-        viewportWidth,
-      )
+  const zoomTo = useCallback(
+    (targetZoom: number, anchorX?: number) => {
+      const { scrollOffset, pps, viewportWidth, duration } = snap.current
+      const ax = anchorX ?? viewportWidth / 2
+      const anchorTime = pps > 0 ? (scrollOffset + ax) / pps : 0
+      const newZoom = clampZoom(targetZoom, duration, viewportWidth)
+      const newPps = computePps(newZoom)
+      const newTotalWidth = totalContentWidth(duration, newZoom)
+      const newOffset = clampScrollOffset(anchorTime * newPps - ax, newTotalWidth, viewportWidth)
       setZoom(newZoom)
       setScrollOffset(newOffset)
     },
     [setZoom, setScrollOffset],
   )
 
-  const zoomIn = useCallback(() => applyZoom(1.5), [applyZoom])
-  const zoomOut = useCallback(() => applyZoom(1 / 1.5), [applyZoom])
-  const resetZoom = useCallback(() => {
-    setZoom(MIN_ZOOM)
+  const zoomIn = useCallback(() => zoomTo(snap.current.zoom * 1.5), [zoomTo])
+  const zoomOut = useCallback(() => zoomTo(snap.current.zoom / 1.5), [zoomTo])
+
+  // Fit-to-window: show the whole track. resetTo100: snap to the standard 100%
+  // scale, keeping the viewport-centered time in view.
+  const fitToWindow = useCallback(() => {
+    const { duration, viewportWidth } = snap.current
+    setZoom(clampZoom(computeFitZoom(duration, viewportWidth), duration, viewportWidth))
     setScrollOffset(0)
   }, [setZoom, setScrollOffset])
+  const resetTo100 = useCallback(() => zoomTo(1), [zoomTo])
 
   return {
     containerRef,
     zoomIn,
     zoomOut,
-    resetZoom,
+    fitToWindow,
+    resetTo100,
+    setScrollOffset,
+    minZoomValue,
+    maxZoomValue: ABS_MAX_ZOOM,
     pps,
     totalWidth,
     zoom,
