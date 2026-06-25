@@ -83,7 +83,8 @@ Point IDs are derived as `layerId:timestamp`. They are stable as long as the tim
 
 **Pixel position formula** (from `_contract.md`, `ViewState`):
 ```
-x = ((timestamp - viewState.scrollOffset) / (document.duration / viewState.zoom)) * viewState.viewportWidth
+pps = BASE_PPS * viewState.zoom            // BASE_PPS = 10 px/s, see lib/timeline.ts
+x   = timestamp * pps - viewState.scrollOffset   // scrollOffset is in pixels
 ```
 
 Ticks outside the visible viewport (`x < 0` or `x > viewportWidth`) are not rendered.

@@ -25,6 +25,7 @@ export function useTimeline() {
   const setViewportWidth = useUIStore((s) => s.setViewportWidth)
 
   const duration = useDocumentStore((s) => s.document?.duration ?? 0)
+  const loadId = useDocumentStore((s) => s.loadId)
 
   const pps = computePps(zoom)
   const totalWidth = totalContentWidth(duration, zoom)
@@ -60,17 +61,19 @@ export function useTimeline() {
   //
   // 100% is now a fixed scale (BASE_PPS), so the store's default zoom would open
   // a long track partway in. We instead fit-to-window the first time a document's
-  // duration and the viewport are both known. Keyed on duration so loading a new
-  // document re-fits; a window resize does NOT re-fit (the analyst's zoom is kept).
+  // duration and the viewport are both known. Keyed on the store's loadId so EVERY
+  // document load re-fits — including reloading the same document, or loading a
+  // different one of identical duration (keying on duration alone missed both).
+  // A window resize does NOT re-fit (loadId is unchanged → the analyst's zoom is kept).
   // ---------------------------------------------------------------------------
-  const fittedForDuration = useRef<number | null>(null)
+  const fittedForLoadId = useRef<number | null>(null)
   useEffect(() => {
     if (duration <= 0 || viewportWidth <= 0) return
-    if (fittedForDuration.current === duration) return
-    fittedForDuration.current = duration
+    if (fittedForLoadId.current === loadId) return
+    fittedForLoadId.current = loadId
     setZoom(clampZoom(computeFitZoom(duration, viewportWidth), duration, viewportWidth))
     setScrollOffset(0)
-  }, [duration, viewportWidth, setZoom, setScrollOffset])
+  }, [loadId, duration, viewportWidth, setZoom, setScrollOffset])
 
   // ---------------------------------------------------------------------------
   // DAW cursor following — only fires during active playback.

@@ -76,6 +76,26 @@ describe('reorderLayers', () => {
   })
 })
 
+describe('loadId (re-fit-on-load signal)', () => {
+  it('increments on every loadDocument, even for identical documents', () => {
+    const start = useDocumentStore.getState().loadId
+    useDocumentStore.getState().loadDocument(doc([layer('a', 0)]))
+    const first = useDocumentStore.getState().loadId
+    expect(first).toBe(start + 1)
+    // Reloading a document of the same duration must still bump loadId, so the
+    // timeline re-fits (the bug was keying on duration, which collides here).
+    useDocumentStore.getState().loadDocument(doc([layer('a', 0)]))
+    expect(useDocumentStore.getState().loadId).toBe(first + 1)
+  })
+
+  it('is not affected by document edits (only loads bump it)', () => {
+    useDocumentStore.getState().loadDocument(doc([layer('a', 0)]))
+    const afterLoad = useDocumentStore.getState().loadId
+    useDocumentStore.getState().updateLayer('a', { label: 'renamed' })
+    expect(useDocumentStore.getState().loadId).toBe(afterLoad)
+  })
+})
+
 describe('updateSpans (bulk edit)', () => {
   function spanLayer(id: string, spans: Span[]): Layer {
     return { ...layer(id, 0), data: { hierarchicalEnforcement: false, spans } }
