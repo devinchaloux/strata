@@ -20,6 +20,11 @@ import {
   buildShapePath,
   confidenceStroke,
   textOnFill,
+  truncateToWidth,
+  estimateTextWidth,
+  verticalBoundaryTimes,
+  sharedTimes,
+  connectorSpanY,
   FONT_SIZES,
   LABEL_RISE,
   SHAPE_HEIGHT,
@@ -41,6 +46,16 @@ const TEXT_PAD = 5 // horizontal inset for left/right-justified text
 const SELECT_BLUE = '#2563eb'
 const SELECT_GREY = '#64748b'
 
+// White halo painted behind negative-space (above-shape) text so a label stays
+// legible where it overhangs the ink of the layer above (§7 — legibility before
+// layout). paint-order draws the stroke first, the fill on top.
+const TEXT_HALO = {
+  stroke: 'var(--canvas)',
+  strokeWidth: 2.5,
+  strokeLinejoin: 'round' as const,
+  paintOrder: 'stroke' as const,
+}
+
 type Justification = 'left' | 'center' | 'right'
 
 const ANCHOR: Record<Justification, 'start' | 'middle' | 'end'> = {
@@ -56,14 +71,44 @@ function textX(spanX: number, width: number, just: Justification): number {
   return spanX + TEXT_PAD
 }
 
+/**
+ * Choose a justification for an above-shape label so it never bleeds past a
+ * timeline edge. A centered label on the first/last span overhangs into the
+ * header column (left) or off the track end / under the zoom controls (right);
+ * re-anchoring it to that edge keeps the whole label readable with no clip and
+ * no awkward gap. Interior labels are unaffected — they overhang freely into
+ * negative space (§3.2), where residual neighbour collisions are handled
+ * separately (§7). Returns the (possibly overridden) justification.
+ */
+function edgeAwareJustification(
+  just: Justification,
+  textWidth: number,
+  spanX: number,
+  spanWidth: number,
+  totalWidth: number,
+): Justification {
+  const localX = textX(0, spanWidth, just)
+  const anchor = ANCHOR[just]
+  const absLeft =
+    anchor === 'start'
+      ? spanX + localX
+      : anchor === 'middle'
+        ? spanX + localX - textWidth / 2
+        : spanX + localX - textWidth
+  if (absLeft < 0) return 'left'
+  if (absLeft + textWidth > totalWidth) return 'right'
+  return just
+}
+
 interface SpanShapeProps {
   span: Span
   layer: Layer
   pps: number
+  totalWidth: number
   fontScale: FontScale
 }
 
-function SpanShape({ span, layer, pps, fontScale }: SpanShapeProps) {
+function SpanShape({ span, layer, pps, totalWidth, fontScale }: SpanShapeProps) {
   // Per-span subscription: a span only re-renders when ITS own selected/hovered
   // state flips, not on every selection change across the diagram.
   const isSelected = useUIStore((s) => s.selectedSpanIds.includes(span.id))
@@ -121,11 +166,44 @@ function SpanShape({ span, layer, pps, fontScale }: SpanShapeProps) {
   const annotationPosition = layer.rendering?.annotationPosition ?? 'inside'
   const annotationJust = (layer.rendering?.annotationJustification ?? 'left') as Justification
 
-  // Local coords: the shape occupies y ∈ [0, SHAPE_HEIGHT]. A label "above"
-  // sits at a negative y, overhanging up into the open bracket of the layer above.
-  const insideY = SHAPE_HEIGHT / 2 + fonts.annotation * 0.36 // optical centering
+  // Local coords: the shape occupies y ∈ [0, SHAPE_HEIGHT]. A label "above" sits
+  // at a negative y, overhanging up into the open bracket of the layer above.
+  // An inside LABEL (e.g. an A/B/C bubble letter) is optically centered, but an
+  // inside ANNOTATION sits in the UPPER part of the body — that leaves the lower
+  // interior free for the child label rising up from the layer below, which is
+  // where most label/annotation collisions came from.
+  const insideLabelY = SHAPE_HEIGHT / 2 + fonts.label * 0.36
+  const insideAnnotY = fonts.annotation + 6
   const aboveLabelY = -LABEL_RISE
   const aboveAnnotY = -LABEL_RISE - fonts.label // stack annotation above the label if both go up
+
+  // Text that sits INSIDE the shape must fit it (truncate with an ellipsis);
+  // text ABOVE the shape lives in negative space and may overhang (§3.2), so it
+  // is left intact and a halo keeps it legible. Full text is always in the
+  // metadata panel and the span tooltip.
+  const innerMax = width - 2 * TEXT_PAD
+  const labelAbove = labelPosition !== 'inside'
+  const annotationAbove = annotationPosition === 'above'
+  const labelText = span.label
+    ? labelAbove
+      ? span.label
+      : truncateToWidth(span.label, fonts.label, innerMax)
+    : ''
+  const annotationText = span.annotation
+    ? annotationAbove
+      ? span.annotation
+      : truncateToWidth(span.annotation, fonts.annotation, innerMax)
+    : ''
+  const titleText = [span.label, span.type].filter(Boolean).join(' · ')
+
+  // Re-anchor an above-label that would overhang a timeline edge (the track-start
+  // "Beatmatch intro" clip and the track-end "Beatmatch outro" clip).
+  const effLabelJust =
+    labelAbove && labelText
+      ? edgeAwareJustification(labelJust, estimateTextWidth(labelText, fonts.label), x, width, totalWidth)
+      : labelJust
+  const labelLocalX = textX(0, width, effLabelJust)
+  const annotationLocalX = textX(0, width, annotationJust)
 
   return (
     <g
@@ -136,6 +214,10 @@ function SpanShape({ span, layer, pps, fontScale }: SpanShapeProps) {
       onMouseLeave={() => hoverSpan(null)}
       onClick={handleClick}
     >
+      {/* Native tooltip — full label/type, always reachable on hover even when
+          the on-shape text is truncated. */}
+      {titleText && <title>{titleText}</title>}
+
       <path
         d={path}
         fill={fill}
@@ -167,33 +249,33 @@ function SpanShape({ span, layer, pps, fontScale }: SpanShapeProps) {
           open (white-filled) brackets are easy to click, not just the stroke. */}
       <rect x={0} y={0} width={width} height={SHAPE_HEIGHT} fill="transparent" />
 
-      {/* Section label */}
-      {span.label && (
+      {/* Section label — above (negative space, haloed) or inside (centered) */}
+      {labelText && (
         <text
-          x={textX(0, width, labelJust)}
-          y={labelPosition === 'inside' ? insideY : aboveLabelY}
-          textAnchor={ANCHOR[labelJust]}
+          x={labelLocalX}
+          y={labelAbove ? aboveLabelY : insideLabelY}
+          textAnchor={ANCHOR[effLabelJust]}
           fontSize={fonts.label}
           fontWeight={500}
-          fill={labelPosition === 'inside' ? textOnFill(fill, INK_PRIMARY) : INK_PRIMARY}
+          fill={labelAbove ? INK_PRIMARY : textOnFill(fill, INK_PRIMARY)}
+          {...(labelAbove ? TEXT_HALO : {})}
         >
-          {span.label}
+          {labelText}
         </text>
       )}
 
-      {/* Annotation (diagram-visible analytical text) */}
-      {span.annotation && (
+      {/* Annotation — above (haloed) or inside, upper part of the body */}
+      {annotationText && (
         <text
-          x={textX(0, width, annotationJust)}
-          y={annotationPosition === 'above' ? aboveAnnotY : insideY}
+          x={annotationLocalX}
+          y={annotationAbove ? aboveAnnotY : insideAnnotY}
           textAnchor={ANCHOR[annotationJust]}
           fontSize={fonts.annotation}
           fontWeight={400}
-          fill={
-            annotationPosition === 'inside' ? textOnFill(fill, INK_SECONDARY) : INK_SECONDARY
-          }
+          fill={annotationAbove ? INK_SECONDARY : textOnFill(fill, INK_SECONDARY)}
+          {...(annotationAbove ? TEXT_HALO : {})}
         >
-          {span.annotation}
+          {annotationText}
         </text>
       )}
     </g>
@@ -211,11 +293,13 @@ function FormLayerGroup({
   layer,
   index,
   pps,
+  totalWidth,
   onBoundaryDragStart,
 }: {
   layer: Layer
   index: number
   pps: number
+  totalWidth: number
   onBoundaryDragStart: BoundaryDragStart
 }) {
   if (!layer.visibility) return null
@@ -225,7 +309,14 @@ function FormLayerGroup({
   return (
     <g transform={`translate(0, ${shapeTopY(index)})`}>
       {spans.map((span) => (
-        <SpanShape key={span.id} span={span} layer={layer} pps={pps} fontScale={fontScale} />
+        <SpanShape
+          key={span.id}
+          span={span}
+          layer={layer}
+          pps={pps}
+          totalWidth={totalWidth}
+          fontScale={fontScale}
+        />
       ))}
 
       {/* Boundary drag handles — at each shared edge between adjacent spans.
@@ -252,6 +343,43 @@ function FormLayerGroup({
       })}
     </g>
   )
+}
+
+/**
+ * Boundary connectors — the continuous-vertical-line cue (§3.3 / §4.2).
+ *
+ * For each pair of vertically-adjacent layers, find the boundaries that present
+ * a clean vertical tail on BOTH sides (flat bracket + definite boundary) and
+ * draw a thin connector across the inter-layer gap. The connector joins the
+ * upper tail, the gap, and the lower tail into one line — which is how nesting
+ * reads. Drawn behind the shapes (it only occupies the empty gap, so there is no
+ * overlap with shape bodies).
+ */
+function BoundaryConnectors({ layers, pps }: { layers: Layer[]; pps: number }) {
+  const lines: React.ReactNode[] = []
+  for (let i = 0; i < layers.length - 1; i++) {
+    const upper = layers[i]
+    const lower = layers[i + 1]
+    if (upper.type !== 'form-diagram' || lower.type !== 'form-diagram') continue
+    const upperT = verticalBoundaryTimes((upper.data as FormDiagramData).spans)
+    const lowerT = verticalBoundaryTimes((lower.data as FormDiagramData).spans)
+    const { y1, y2 } = connectorSpanY(i)
+    for (const t of sharedTimes(upperT, lowerT)) {
+      const x = t * pps
+      lines.push(
+        <line
+          key={`conn-${upper.id}-${t.toFixed(3)}`}
+          x1={x}
+          y1={y1}
+          x2={x}
+          y2={y2}
+          stroke={upper.strokeColorDefault}
+          strokeWidth={STROKE_WIDTH}
+        />,
+      )
+    }
+  }
+  return <g>{lines}</g>
 }
 
 /**
@@ -322,6 +450,9 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
           display: 'block',
         }}
       >
+        {/* Connectors first so the bracket shapes paint on top of them. */}
+        {pps > 0 && <BoundaryConnectors layers={layers} pps={pps} />}
+
         {pps > 0 &&
           layers.map((layer, i) => (
             <FormLayerGroup
@@ -329,6 +460,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
               layer={layer}
               index={i}
               pps={pps}
+              totalWidth={totalWidth}
               onBoundaryDragStart={beginBoundaryDrag}
             />
           ))}

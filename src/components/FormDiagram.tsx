@@ -42,6 +42,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
+import { useTimeline } from '@/hooks/useTimeline'
 import { TimelineAxis } from './TimelineAxis'
 import { FormLayers } from './FormLayers'
 import { LayerSettingsPopover } from './LayerSettingsPopover'
@@ -317,18 +318,131 @@ function LayerHeaders({ layers, collapsed }: { layers: Layer[]; collapsed: boole
 }
 
 // ---------------------------------------------------------------------------
-// Widget top bar — defines the widget's upper edge; holds the collapse toggle
-// and "show" chips for any hidden layers.
+// Zoom controls — live in the widget top bar (right side) rather than floating
+// over the ruler's time labels. − / 100% (reset to standard scale) / + / Fit.
+// ---------------------------------------------------------------------------
+
+interface ZoomControlProps {
+  zoom: number
+  minZoomValue: number
+  maxZoomValue: number
+  zoomIn: () => void
+  zoomOut: () => void
+  resetTo100: () => void
+  fitToWindow: () => void
+}
+
+/** Small +/− icon button with a disabled (faded) state. */
+function ZoomButton({
+  onClick,
+  disabled,
+  label,
+  children,
+}: {
+  onClick: () => void
+  disabled: boolean
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className="flex items-center justify-center rounded hover:bg-accent disabled:cursor-default"
+      style={{
+        width: 16,
+        height: 16,
+        fontSize: 13,
+        lineHeight: 1,
+        color: disabled ? 'var(--ink-faint)' : 'var(--ink-secondary)',
+        opacity: disabled ? 0.4 : 1,
+        cursor: disabled ? 'default' : 'pointer',
+        background: 'none',
+        border: 'none',
+        padding: 0,
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+function ZoomControls({
+  zoom,
+  minZoomValue,
+  maxZoomValue,
+  zoomIn,
+  zoomOut,
+  resetTo100,
+  fitToWindow,
+}: ZoomControlProps) {
+  return (
+    <div className="flex items-center gap-0.5" style={{ color: 'var(--ink-secondary)' }}>
+      <ZoomButton onClick={zoomOut} disabled={zoom <= minZoomValue + 1e-6} label="Zoom out">
+        −
+      </ZoomButton>
+      <button
+        onClick={resetTo100}
+        aria-label="Reset to 100%"
+        title="Reset to 100% (standard scale)"
+        className="rounded px-1 hover:bg-accent"
+        style={{
+          minWidth: 32,
+          height: 16,
+          fontSize: 10,
+          fontVariantNumeric: 'tabular-nums',
+          color: 'var(--ink-secondary)',
+          cursor: 'pointer',
+          background: 'none',
+          border: 'none',
+          textAlign: 'center',
+        }}
+      >
+        {Math.round(zoom * 100)}%
+      </button>
+      <ZoomButton onClick={zoomIn} disabled={zoom >= maxZoomValue - 1e-6} label="Zoom in">
+        +
+      </ZoomButton>
+      <span
+        aria-hidden
+        style={{ width: 1, height: 12, background: 'var(--hairline)', margin: '0 2px' }}
+      />
+      <button
+        onClick={fitToWindow}
+        aria-label="Fit to window"
+        title="Fit the whole track to the window"
+        className="rounded px-1 hover:bg-accent"
+        style={{
+          height: 16,
+          fontSize: 10,
+          color: 'var(--ink-secondary)',
+          cursor: 'pointer',
+          background: 'none',
+          border: 'none',
+        }}
+      >
+        Fit
+      </button>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Widget top bar — defines the widget's upper edge; holds the collapse toggle,
+// "show" chips for any hidden layers, and the timeline zoom controls (right).
 // ---------------------------------------------------------------------------
 
 function WidgetTopBar({
   collapsed,
   onToggleCollapsed,
   hidden,
+  zoom,
 }: {
   collapsed: boolean
   onToggleCollapsed: () => void
   hidden: Layer[]
+  zoom: ZoomControlProps
 }) {
   const updateLayer = useDocumentStore((s) => s.updateLayer)
   return (
@@ -364,6 +478,10 @@ function WidgetTopBar({
           ))}
         </div>
       )}
+
+      <div className="ml-auto">
+        <ZoomControls {...zoom} />
+      </div>
     </div>
   )
 }
@@ -376,7 +494,20 @@ export function FormDiagram() {
   const doc = useDocumentStore((s) => s.document)
   const collapsed = useUIStore((s) => s.headersCollapsed)
   const toggleCollapsed = useUIStore((s) => s.toggleHeadersCollapsed)
+  // Timeline state lives here so the zoom controls can render in the widget top
+  // bar while the ruler (TimelineAxis) renders below. One shared instance.
+  const timeline = useTimeline()
   if (!doc) return null
+
+  const zoomProps = {
+    zoom: timeline.zoom,
+    minZoomValue: timeline.minZoomValue,
+    maxZoomValue: timeline.maxZoomValue,
+    zoomIn: timeline.zoomIn,
+    zoomOut: timeline.zoomOut,
+    resetTo100: timeline.resetTo100,
+    fitToWindow: timeline.fitToWindow,
+  }
 
   // Macro-on-top; hidden layers are pulled out of the stack (slot reclaimed).
   const sorted = [...doc.layers].sort((a, b) => b.displayOrder - a.displayOrder)
@@ -387,20 +518,32 @@ export function FormDiagram() {
   const headerWidth = collapsed ? HEADER_WIDTH_RAIL : HEADER_WIDTH_EXPANDED
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      {/* Work area — the widget block bottom-anchors onto the ruler; the empty
-          space above belongs to other (future) widgets, not this one. */}
-      <div className="flex min-h-0 flex-1 flex-col justify-end overflow-hidden">
-        <div>
-          <WidgetTopBar
-            collapsed={collapsed}
-            onToggleCollapsed={toggleCollapsed}
-            hidden={hidden}
-          />
-          <div className="flex w-full" style={{ height: stackH }}>
-            <LayerHeaders layers={visible} collapsed={collapsed} />
-            <FormLayers layers={visible} />
-          </div>
+    // px-2 insets the whole diagram (widget card + ruler) together, so the
+    // ruler↔span alignment invariant is unaffected by the framing. The diagram
+    // is TOP-anchored (no reserved blank space above) — for v1 with one widget,
+    // the empty space sits below the ruler instead of between menu and widget.
+    <div className="flex min-h-0 flex-1 flex-col px-2 pt-2">
+      {/* The widget is a framed card: the top bar (collapse / add / hidden
+          chips) and the layer stack read as one object distinct from the shared
+          timeline below. The frame is an inset outline so it paints on top of the
+          canvas and adds no layout box — the ruler↔span alignment is preserved. */}
+      <div
+        className="shrink-0 overflow-hidden rounded-md bg-[var(--canvas)]"
+        style={{
+          outline: '1px solid var(--hairline)',
+          outlineOffset: '-1px',
+          marginBottom: 4,
+        }}
+      >
+        <WidgetTopBar
+          collapsed={collapsed}
+          onToggleCollapsed={toggleCollapsed}
+          hidden={hidden}
+          zoom={zoomProps}
+        />
+        <div className="flex w-full" style={{ height: stackH }}>
+          <LayerHeaders layers={visible} collapsed={collapsed} />
+          <FormLayers layers={visible} />
         </div>
       </div>
 
@@ -411,7 +554,16 @@ export function FormDiagram() {
           style={{ width: headerWidth, borderColor: 'var(--hairline)' }}
         />
         <div className="min-w-0 flex-1">
-          <TimelineAxis />
+          <TimelineAxis
+            containerRef={timeline.containerRef}
+            pps={timeline.pps}
+            totalWidth={timeline.totalWidth}
+            scrollOffset={timeline.scrollOffset}
+            viewportWidth={timeline.viewportWidth}
+            currentTime={timeline.currentTime}
+            duration={timeline.duration}
+            setScrollOffset={timeline.setScrollOffset}
+          />
         </div>
       </div>
     </div>

@@ -91,7 +91,9 @@ export function scrollbarMetrics(
   viewportWidth: number,
   scrollOffset: number,
 ): ScrollbarMetrics {
-  if (viewportWidth <= 0 || totalWidth <= viewportWidth) {
+  // `!(x > 0)` rather than `x <= 0` so NaN inputs (possible on a transient render
+  // before the viewport is measured) resolve to "hidden" instead of a NaN thumb.
+  if (!(viewportWidth > 0) || !(totalWidth > viewportWidth)) {
     return { visible: false, thumbWidth: 0, thumbX: 0, maxThumbX: 0, maxScroll: 0 }
   }
   const thumbWidth = Math.max(MIN_THUMB_PX, (viewportWidth / totalWidth) * viewportWidth)
