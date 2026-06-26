@@ -139,6 +139,48 @@ export function buildShapePath({
 }
 
 // ---------------------------------------------------------------------------
+// Text fitting (Phase 0.7 §7 — collision strategy: abbreviation)
+//
+// Negative-space labels (positioned ABOVE a shape) are allowed to overflow into
+// the open interior of the layer above (§3.2) and are left intact. Text placed
+// INSIDE a shape body must respect the shape bounds, so it is truncated with an
+// ellipsis. Width is estimated, not measured, so this stays a pure function: a
+// slightly conservative average advance keeps truncation from overflowing.
+// ---------------------------------------------------------------------------
+
+// Average glyph advance as a fraction of font size for Inter at small sizes.
+// Deliberately a touch generous so estimates never under-shoot real width.
+const AVG_CHAR_ADVANCE = 0.58
+const ELLIPSIS = '…'
+
+/** Rough pixel width of `text` at `fontPx`. Estimate, not a measurement. */
+export function estimateTextWidth(text: string, fontPx: number): number {
+  return text.length * fontPx * AVG_CHAR_ADVANCE
+}
+
+/**
+ * Truncate `text` so it fits within `maxWidthPx` at `fontPx`, appending an
+ * ellipsis when shortened. Returns '' when not even one character plus the
+ * ellipsis fits (the caller then renders nothing — full text remains available
+ * in the metadata panel and the span's title tooltip).
+ */
+export function truncateToWidth(text: string, fontPx: number, maxWidthPx: number): string {
+  if (!text) return ''
+  if (maxWidthPx <= 0) return ''
+  if (estimateTextWidth(text, fontPx) <= maxWidthPx) return text
+  const ellipsisW = estimateTextWidth(ELLIPSIS, fontPx)
+  // Largest prefix whose width + ellipsis still fits.
+  let n = 0
+  while (
+    n < text.length &&
+    estimateTextWidth(text.slice(0, n + 1), fontPx) + ellipsisW <= maxWidthPx
+  ) {
+    n++
+  }
+  return n === 0 ? '' : text.slice(0, n).trimEnd() + ELLIPSIS
+}
+
+// ---------------------------------------------------------------------------
 // Confidence → stroke styling (Phase 0.7 §6.1)
 // ---------------------------------------------------------------------------
 

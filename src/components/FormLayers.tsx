@@ -20,6 +20,7 @@ import {
   buildShapePath,
   confidenceStroke,
   textOnFill,
+  truncateToWidth,
   FONT_SIZES,
   LABEL_RISE,
   SHAPE_HEIGHT,
@@ -40,6 +41,16 @@ const TEXT_PAD = 5 // horizontal inset for left/right-justified text
 // already has a grey/colored fill. Hover is a fainter grey wash, no outline.
 const SELECT_BLUE = '#2563eb'
 const SELECT_GREY = '#64748b'
+
+// White halo painted behind negative-space (above-shape) text so a label stays
+// legible where it overhangs the ink of the layer above (§7 — legibility before
+// layout). paint-order draws the stroke first, the fill on top.
+const TEXT_HALO = {
+  stroke: 'var(--canvas)',
+  strokeWidth: 2.5,
+  strokeLinejoin: 'round' as const,
+  paintOrder: 'stroke' as const,
+}
 
 type Justification = 'left' | 'center' | 'right'
 
@@ -127,6 +138,25 @@ function SpanShape({ span, layer, pps, fontScale }: SpanShapeProps) {
   const aboveLabelY = -LABEL_RISE
   const aboveAnnotY = -LABEL_RISE - fonts.label // stack annotation above the label if both go up
 
+  // Text that sits INSIDE the shape must fit it (truncate with an ellipsis);
+  // text ABOVE the shape lives in negative space and may overhang (§3.2), so it
+  // is left intact and a halo keeps it legible. Full text is always in the
+  // metadata panel and the span tooltip.
+  const innerMax = width - 2 * TEXT_PAD
+  const labelAbove = labelPosition !== 'inside'
+  const annotationAbove = annotationPosition === 'above'
+  const labelText = span.label
+    ? labelAbove
+      ? span.label
+      : truncateToWidth(span.label, fonts.label, innerMax)
+    : ''
+  const annotationText = span.annotation
+    ? annotationAbove
+      ? span.annotation
+      : truncateToWidth(span.annotation, fonts.annotation, innerMax)
+    : ''
+  const titleText = [span.label, span.type].filter(Boolean).join(' · ')
+
   return (
     <g
       transform={`translate(${x}, 0)`}
@@ -136,6 +166,10 @@ function SpanShape({ span, layer, pps, fontScale }: SpanShapeProps) {
       onMouseLeave={() => hoverSpan(null)}
       onClick={handleClick}
     >
+      {/* Native tooltip — full label/type, always reachable on hover even when
+          the on-shape text is truncated. */}
+      {titleText && <title>{titleText}</title>}
+
       <path
         d={path}
         fill={fill}
@@ -167,33 +201,33 @@ function SpanShape({ span, layer, pps, fontScale }: SpanShapeProps) {
           open (white-filled) brackets are easy to click, not just the stroke. */}
       <rect x={0} y={0} width={width} height={SHAPE_HEIGHT} fill="transparent" />
 
-      {/* Section label */}
-      {span.label && (
+      {/* Section label — above (negative space, haloed) or inside (fitted) */}
+      {labelText && (
         <text
           x={textX(0, width, labelJust)}
-          y={labelPosition === 'inside' ? insideY : aboveLabelY}
+          y={labelAbove ? aboveLabelY : insideY}
           textAnchor={ANCHOR[labelJust]}
           fontSize={fonts.label}
           fontWeight={500}
-          fill={labelPosition === 'inside' ? textOnFill(fill, INK_PRIMARY) : INK_PRIMARY}
+          fill={labelAbove ? INK_PRIMARY : textOnFill(fill, INK_PRIMARY)}
+          {...(labelAbove ? TEXT_HALO : {})}
         >
-          {span.label}
+          {labelText}
         </text>
       )}
 
       {/* Annotation (diagram-visible analytical text) */}
-      {span.annotation && (
+      {annotationText && (
         <text
           x={textX(0, width, annotationJust)}
-          y={annotationPosition === 'above' ? aboveAnnotY : insideY}
+          y={annotationAbove ? aboveAnnotY : insideY}
           textAnchor={ANCHOR[annotationJust]}
           fontSize={fonts.annotation}
           fontWeight={400}
-          fill={
-            annotationPosition === 'inside' ? textOnFill(fill, INK_SECONDARY) : INK_SECONDARY
-          }
+          fill={annotationAbove ? INK_SECONDARY : textOnFill(fill, INK_SECONDARY)}
+          {...(annotationAbove ? TEXT_HALO : {})}
         >
-          {span.annotation}
+          {annotationText}
         </text>
       )}
     </g>
