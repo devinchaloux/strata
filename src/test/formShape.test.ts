@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { estimateTextWidth, truncateToWidth } from '@/lib/formShape'
+import {
+  estimateTextWidth,
+  truncateToWidth,
+  verticalBoundaryTimes,
+  sharedTimes,
+  buildTailPaths,
+  type SpanEdge,
+} from '@/lib/formShape'
 
 describe('estimateTextWidth', () => {
   it('scales with length and font size', () => {
@@ -46,5 +53,67 @@ describe('truncateToWidth', () => {
     const max = estimateTextWidth('A ', 11) + estimateTextWidth('…', 11) + 0.01
     const out = truncateToWidth(text, 11, max)
     expect(out).not.toMatch(/ …$/)
+  })
+})
+
+describe('verticalBoundaryTimes', () => {
+  const flat = (startTime: number, endTime: number, extra: Partial<SpanEdge> = {}): SpanEdge => ({
+    startTime,
+    endTime,
+    lineType: 'flat',
+    ...extra,
+  })
+
+  it('returns flat + definite edges, sorted and de-duped', () => {
+    const spans = [flat(0, 10), flat(10, 20), flat(20, 30)]
+    expect(verticalBoundaryTimes(spans)).toEqual([0, 10, 20, 30])
+  })
+
+  it('excludes arc spans (no vertical tail)', () => {
+    const spans: SpanEdge[] = [
+      { startTime: 0, endTime: 10, lineType: 'arc' },
+      flat(10, 20),
+    ]
+    expect(verticalBoundaryTimes(spans)).toEqual([10, 20])
+  })
+
+  it('excludes gradual (angled) tails', () => {
+    const spans = [
+      flat(0, 10, { endBoundaryType: 'gradual' }),
+      flat(10, 20, { startBoundaryType: 'gradual' }),
+    ]
+    // start 0 (definite) and end 20 (definite) survive; the gradual edge at 10 does not.
+    expect(verticalBoundaryTimes(spans)).toEqual([0, 20])
+  })
+})
+
+describe('buildTailPaths', () => {
+  it('returns empty tails for an arc (no vertical tails)', () => {
+    const t = buildTailPaths({ width: 100, lineType: 'arc', startBoundary: 'definite', endBoundary: 'definite' })
+    expect(t.left).toBe('')
+    expect(t.right).toBe('')
+  })
+
+  it('returns both tails for a flat bracket', () => {
+    const t = buildTailPaths({ width: 100, lineType: 'flat', startBoundary: 'definite', endBoundary: 'definite' })
+    expect(t.left.length).toBeGreaterThan(0)
+    expect(t.right.length).toBeGreaterThan(0)
+    expect(t.left.startsWith('M')).toBe(true)
+  })
+})
+
+describe('sharedTimes', () => {
+  it('returns only times present in both lists', () => {
+    expect(sharedTimes([0, 10, 20, 30], [10, 30])).toEqual([10, 30])
+  })
+
+  it('matches within epsilon and averages the pair', () => {
+    const out = sharedTimes([10.00004], [9.99998])
+    expect(out).toHaveLength(1)
+    expect(out[0]).toBeCloseTo(10, 4)
+  })
+
+  it('is empty when nothing aligns', () => {
+    expect(sharedTimes([1, 2, 3], [4, 5, 6])).toEqual([])
   })
 })

@@ -60,17 +60,32 @@ export function useTimeline() {
   //
   // 100% is now a fixed scale (BASE_PPS), so the store's default zoom would open
   // a long track partway in. We instead fit-to-window the first time a document's
-  // duration and the viewport are both known. Keyed on duration so loading a new
-  // document re-fits; a window resize does NOT re-fit (the analyst's zoom is kept).
+  // duration and the viewport are both known. A fresh document (re)enters fit mode.
   // ---------------------------------------------------------------------------
+  // fitMode: while true, the timeline tracks the viewport width (fit-to-window).
+  // It is set when the user picks Fit or on load, and cleared the moment they
+  // zoom explicitly. This is what lets "Fit" stay fitted when the layer panel is
+  // collapsed/expanded (which changes the ruler width) — Devin's side note.
+  const fitModeRef = useRef(true)
   const fittedForDuration = useRef<number | null>(null)
   useEffect(() => {
     if (duration <= 0 || viewportWidth <= 0) return
     if (fittedForDuration.current === duration) return
     fittedForDuration.current = duration
+    fitModeRef.current = true
     setZoom(clampZoom(computeFitZoom(duration, viewportWidth), duration, viewportWidth))
     setScrollOffset(0)
   }, [duration, viewportWidth, setZoom, setScrollOffset])
+
+  // Re-fit when the viewport width changes WHILE in fit mode (e.g. the layer
+  // panel collapses, widening the ruler). When the analyst has zoomed away from
+  // fit, width changes leave their zoom untouched.
+  useEffect(() => {
+    if (!fitModeRef.current) return
+    if (duration <= 0 || viewportWidth <= 0) return
+    setZoom(clampZoom(computeFitZoom(duration, viewportWidth), duration, viewportWidth))
+    setScrollOffset(0)
+  }, [viewportWidth, duration, setZoom, setScrollOffset])
 
   // ---------------------------------------------------------------------------
   // DAW cursor following — only fires during active playback.
@@ -113,6 +128,7 @@ export function useTimeline() {
 
       if (e.ctrlKey || e.metaKey) {
         // Zoom: keep the time under the cursor fixed.
+        fitModeRef.current = false // explicit zoom leaves fit mode
         const rect = el!.getBoundingClientRect()
         const cursorX = e.clientX - rect.left
         const timeUnderCursor = pps > 0 ? (scrollOffset + cursorX) / pps : 0
@@ -146,6 +162,7 @@ export function useTimeline() {
   // ---------------------------------------------------------------------------
   const zoomTo = useCallback(
     (targetZoom: number, anchorX?: number) => {
+      fitModeRef.current = false // an explicit zoom level leaves fit mode
       const { scrollOffset, pps, viewportWidth, duration } = snap.current
       const ax = anchorX ?? viewportWidth / 2
       const anchorTime = pps > 0 ? (scrollOffset + ax) / pps : 0
@@ -165,6 +182,7 @@ export function useTimeline() {
   // Fit-to-window: show the whole track. resetTo100: snap to the standard 100%
   // scale, keeping the viewport-centered time in view.
   const fitToWindow = useCallback(() => {
+    fitModeRef.current = true // re-enter fit mode; width changes will track
     const { duration, viewportWidth } = snap.current
     setZoom(clampZoom(computeFitZoom(duration, viewportWidth), duration, viewportWidth))
     setScrollOffset(0)

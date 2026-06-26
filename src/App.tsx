@@ -241,7 +241,9 @@ export default function App() {
   }, [newFile, openFile, saveFile, saveFileAs])
 
   return (
-    <div className="flex h-screen flex-col bg-background text-foreground">
+    // Content-sized, not a full-page app: the shell is only as tall as the
+    // toolbar + diagram + transport/video, so there's no dead space anywhere.
+    <div className="flex max-h-screen flex-col bg-background text-foreground">
       {/* Toolbar */}
       <header className="flex h-10 shrink-0 items-center gap-1 border-b border-border px-3">
         <span className="mr-1 flex items-center gap-1.5 select-none">
@@ -292,8 +294,9 @@ export default function App() {
       </header>
 
       {/* Work area row — form diagram + right metadata panel (panel renders
-          null when nothing is selected) */}
-      <div className="flex min-h-0 flex-1">
+          null when nothing is selected). items-start keeps the diagram its
+          natural height (no stretch), so nothing pads out vertically. */}
+      <div className="flex min-h-0 items-start">
         {doc ? (
           <FormDiagram />
         ) : (

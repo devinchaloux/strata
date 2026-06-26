@@ -228,8 +228,8 @@ export function YouTubePlayer() {
           onSeek={seek}
         />
 
-        {/* Time display — monospace to prevent layout shift as digits change */}
-        <span className="shrink-0 text-xs font-mono tabular-nums text-foreground">
+        {/* Time display — tabular figures keep digit columns stable without mono */}
+        <span className="shrink-0 text-xs tabular-nums text-foreground">
           {formatTime(currentTime)} / {formatTime(duration)}
         </span>
 

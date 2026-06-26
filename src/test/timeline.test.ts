@@ -106,6 +106,13 @@ describe('scrollbarMetrics', () => {
     const m = scrollbarMetrics(100000, 1000, 0)
     expect(m.thumbWidth).toBe(MIN_THUMB_PX)
   })
+
+  it('is hidden (not NaN) for non-finite inputs on a transient render', () => {
+    const m = scrollbarMetrics(NaN, 1000, 0)
+    expect(m.visible).toBe(false)
+    expect(m.thumbWidth).toBe(0)
+    expect(scrollbarMetrics(2000, NaN, 0).visible).toBe(false)
+  })
 })
 
 describe('scrollOffsetFromThumbX', () => {

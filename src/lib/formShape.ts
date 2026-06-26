@@ -27,7 +27,7 @@ import type { BoundaryType, LineType, ConfidenceLevel } from '@/types/strata'
 // Metrics (starting values — Phase 0.7 §8; tweakable once seen on real data)
 // ---------------------------------------------------------------------------
 
-export const SHAPE_HEIGHT = 26 // uniform across all layers (the BriFormer cue)
+export const SHAPE_HEIGHT = 28 // uniform across all layers (the BriFormer cue)
 export const CORNER_RADIUS = 6 // definite tail corner curve
 export const GRADUAL_INSET = 9 // horizontal run of an angled (gradual) tail
 export const STROKE_WIDTH = 1.5
@@ -58,6 +58,80 @@ export function stackHeight(layerCount: number): number {
 /** Top-edge y of the shape for layer index i (0 = top of the stack). */
 export function shapeTopY(i: number): number {
   return STACK_TOP_PAD + i * LAYER_PITCH
+}
+
+// ---------------------------------------------------------------------------
+// Boundary alignment — continuous vertical lines across layers (§3.3 / §4.2)
+//
+// When a boundary lines up across flush-stacked layers, the aligned tails
+// should read as ONE vertical line down the stack — that alignment is how
+// nesting is shown (never bracket size). The shapes already place their tails
+// at the boundary x; what interrupts the line is the inter-layer gap plus each
+// shape's rounded top corner curving away. We bridge that span with a thin
+// connector (see the renderer), but only where a clean vertical tail exists on
+// both sides: a flat bracket with a definite boundary. Arcs have no tail and
+// gradual tails are diagonal, so neither participates.
+// ---------------------------------------------------------------------------
+
+export interface SpanEdge {
+  startTime: number
+  endTime: number
+  lineType?: LineType | null
+  startBoundaryType?: BoundaryType | null
+  endBoundaryType?: BoundaryType | null
+}
+
+const TIME_EPS = 1e-4
+
+/**
+ * Times at which a span presents a clean vertical tail (flat bracket + definite
+ * boundary). Sorted ascending and de-duplicated within epsilon.
+ */
+export function verticalBoundaryTimes(spans: SpanEdge[]): number[] {
+  const out: number[] = []
+  for (const s of spans) {
+    if (s.lineType !== 'flat') continue
+    if ((s.startBoundaryType ?? 'definite') === 'definite') out.push(s.startTime)
+    if ((s.endBoundaryType ?? 'definite') === 'definite') out.push(s.endTime)
+  }
+  out.sort((a, b) => a - b)
+  const dedup: number[] = []
+  for (const t of out) {
+    if (dedup.length === 0 || Math.abs(t - dedup[dedup.length - 1]) > TIME_EPS) dedup.push(t)
+  }
+  return dedup
+}
+
+/** Times present in BOTH ascending, de-duped lists (within epsilon). */
+export function sharedTimes(a: number[], b: number[], eps = TIME_EPS): number[] {
+  const out: number[] = []
+  let i = 0
+  let j = 0
+  while (i < a.length && j < b.length) {
+    const d = a[i] - b[j]
+    if (Math.abs(d) <= eps) {
+      out.push((a[i] + b[j]) / 2)
+      i++
+      j++
+    } else if (d < 0) {
+      i++
+    } else {
+      j++
+    }
+  }
+  return out
+}
+
+/**
+ * Vertical extent [y1, y2] of the connector that joins the bottom layer index
+ * `upper`'s baseline to the top of the next layer's vertical tail, closing the
+ * gap + corner so the boundary reads as one continuous line.
+ */
+export function connectorSpanY(upper: number): { y1: number; y2: number } {
+  return {
+    y1: shapeTopY(upper) + SHAPE_HEIGHT, // upper baseline (tail bottom is vertical)
+    y2: shapeTopY(upper + 1) + CORNER_RADIUS, // where the lower tail's vertical begins
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -178,6 +252,37 @@ export function truncateToWidth(text: string, fontPx: number, maxWidthPx: number
     n++
   }
   return n === 0 ? '' : text.slice(0, n).trimEnd() + ELLIPSIS
+}
+
+/**
+ * The two tail sub-paths of a flat bracket (left and right), in the same local
+ * coords as buildShapePath. Used to overdraw the tails SOLID on a dashed
+ * (approximate/speculative) span: confidence dashes the section *body*, but the
+ * tails are shared *boundaries* (their character is boundaryType, not
+ * confidence), so they must stay solid — otherwise adjacent dashed + solid tails
+ * collide into a messy line at a shared boundary. Arcs have no tails.
+ */
+export function buildTailPaths({
+  width,
+  height = SHAPE_HEIGHT,
+  lineType,
+  startBoundary,
+  endBoundary,
+}: ShapePathOptions): { left: string; right: string } {
+  if (lineType === 'arc') return { left: '', right: '' }
+  const w = Math.max(width, 0)
+  const H = height
+  const r = Math.min(CORNER_RADIUS, w / 2, H)
+  const inset = Math.min(GRADUAL_INSET, w / 2)
+  const left =
+    startBoundary === 'gradual'
+      ? `M ${inset} ${H} L 0 0`
+      : `M 0 ${H} L 0 ${r} A ${r} ${r} 0 0 1 ${r} 0`
+  const right =
+    endBoundary === 'gradual'
+      ? `M ${w} 0 L ${w - inset} ${H}`
+      : `M ${w - r} 0 A ${r} ${r} 0 0 1 ${w} ${r} L ${w} ${H}`
+  return { left, right }
 }
 
 // ---------------------------------------------------------------------------
