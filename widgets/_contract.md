@@ -88,7 +88,7 @@ Each subsection below begins with a plain-English description before the code. N
 
 Three small definitions used throughout the rest of the contract.
 
-**`ViewState`** captures where the analyst is currently looking in the timeline: how far zoomed in, where the left edge of the visible area is in seconds, and how wide the viewport is in pixels. Widgets use these three numbers to convert timestamps into screen positions — to figure out where on screen a span at 94.5 seconds should be drawn given the current zoom and scroll.
+**`ViewState`** captures where the analyst is currently looking in the timeline: how far zoomed in, how far the viewport has scrolled (in pixels), and how wide the viewport is in pixels. Widgets use these three numbers to convert timestamps into screen positions — to figure out where on screen a span at 94.5 seconds should be drawn given the current zoom and scroll. `zoom = 1.0` is a fixed physical scale (`BASE_PPS` pixels per second), not "the whole track fits" — fitting the track to the window is a separately computed zoom.
 
 **`ExportFormat`** describes one export file type a widget can produce: an internal identifier, a human-readable label, the MIME type the browser needs to trigger a download, and the file extension.
 
@@ -99,12 +99,14 @@ Three small definitions used throughout the rest of the contract.
  * Current zoom and scroll state of the shared timeline viewport.
  * Widgets use this to convert timestamps to pixel positions.
  *
- * Pixel x-position of a timestamp t:
- *   x = ((t - scrollOffset) / (duration / zoom)) * viewportWidth
+ * Since the Phase 2 zoom rework, zoom is a fixed physical scale (BASE_PPS px/s),
+ * decoupled from duration and viewport width. Pixel x-position of a timestamp t:
+ *   pps = BASE_PPS * zoom        // BASE_PPS = 10, see lib/timeline.ts
+ *   x   = t * pps - scrollOffset
  */
 export interface ViewState {
-  zoom: number;          // Zoom factor; 1.0 = full track duration fits the viewport
-  scrollOffset: number;  // Recording time at the left edge of the viewport, seconds
+  zoom: number;          // Zoom factor; 1.0 = the standard fixed scale (BASE_PPS px/s)
+  scrollOffset: number;  // Viewport left-edge scroll position, in PIXELS
   viewportWidth: number; // Pixel width of the timeline viewport
 }
 

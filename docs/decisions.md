@@ -1212,3 +1212,46 @@ deeply zoomed.
 condensed, and the taller pitch also gives the collapsed-rail hover bubble room to
 clear the ruler. Proportions are preserved (uniform bracket height across layers);
 this only increases the per-row drawing height — the documented lever.
+
+---
+
+## Correctness Pass (post-Phase 2 polish)
+
+*Session 2026-06-25 (second). A targeted correctness/contract-accuracy pass over the
+existing work — no new features. Outputs: `src/store/uiStore.ts`,
+`widgets/_contract.md`, `widgets/form-diagram.md`, `src/store/documentStore.ts`,
+`src/hooks/useTimeline.ts`, `src/test/documentStore.test.ts`.*
+
+---
+
+**Decision:** The documented `ViewState` pixel-position formula is corrected to match
+the Phase 2 zoom rework everywhere it appears: `pps = BASE_PPS * zoom`,
+`px = timestamp * pps - scrollOffset`, with `scrollOffset` in **pixels** (not seconds)
+and `zoom = 1.0` the fixed standard scale (not "the whole track fits").
+**Rationale:** The zoom rework (above) changed the formula to `px = timestamp *
+BASE_PPS * zoom - scrollOffset`, but three docs still carried the pre-rework
+`px = (timestamp / duration) * viewportWidth * zoom - scrollOffset` and mislabeled
+`scrollOffset` as seconds: the `ViewState` JSDoc in `uiStore.ts`, the `ViewState`
+block + prose in `widgets/_contract.md`, and the pixel-formula block in
+`widgets/form-diagram.md`. `ViewState` exists precisely so every widget converts
+timestamps the same way (see "ViewState is a dedicated interface…" above); a wrong
+formula there would make any future widget author mis-place every element and
+misread the units of `scrollOffset`. The runtime code was already correct — this is
+a documentation/contract reconciliation only.
+
+---
+
+**Decision:** Auto-fit-on-load re-fits once per *document load* (keyed on a new
+`DocumentState.loadId` counter), not once per distinct *duration*. This amends the
+"auto-fits… once (keyed on duration)" decision above.
+**Rationale:** Keying the fit on duration meant reloading the same document — the
+Demo button, re-opening a file, restoring a crash session — or loading a different
+track of identical length did **not** re-fit; the analyst's prior zoom/scroll stuck
+on a freshly loaded document. The decision's intent was always "fit on load," and
+duration was an incidental proxy that collides. `loadId` is a monotonic counter
+bumped only by `loadDocument` (every load path funnels through it). It lives on the
+store next to `document` but is excluded from undo history (`partialize` tracks
+`document` only) and from dirty/save comparisons (`selectIsDirty` and `savedSnapshot`
+are document-only), so it never pollutes the file or the undo stack. Verified
+in-browser on the Alive fixture: set zoom to 100%, reload Demo → re-fits to 28%
+(would have stayed 100% under the duration keying).

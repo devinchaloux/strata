@@ -26,16 +26,26 @@ export type PlayerStatus = 'uninitialized' | 'loading' | 'ready' | 'error'
 
 export type PlaybackRate = 0.5 | 0.75 | 1 | 1.25
 
+/**
+ * Current zoom/scroll state of the shared timeline viewport. This is the one
+ * place the timestamp→pixel formula is documented so every widget converts the
+ * same way (decisions.md "ViewState").
+ *
+ * Since the Phase 2 zoom rework, 100% (zoom = 1) is a fixed physical scale of
+ * BASE_PPS px/second, decoupled from viewport width and track duration:
+ *
+ *   pps = BASE_PPS * zoom
+ *   px  = timestamp * pps - scrollOffset
+ *
+ * `scrollOffset` is in PIXELS (the SVG's horizontal translation), not seconds.
+ * See lib/timeline.ts for BASE_PPS and the pure conversion helpers.
+ */
 export interface ViewState {
-  zoom: number
-  scrollOffset: number
-  viewportWidth: number
+  zoom: number          // 1.0 = the standard fixed scale (BASE_PPS px/s); fit is a separate computed zoom
+  scrollOffset: number  // viewport's left-edge scroll position, in pixels
+  viewportWidth: number // pixel width of the timeline viewport
 }
 
-/**
- * Pixel position formula (document this interface so all widgets use the same):
- *   px = (timestamp / duration) * viewportWidth * zoom - scrollOffset
- */
 export interface UIState {
   // Playback
   currentTime: number
