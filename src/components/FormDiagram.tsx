@@ -520,9 +520,10 @@ export function FormDiagram() {
   return (
     // px-2 insets the whole diagram (widget card + ruler) together, so the
     // ruler↔span alignment invariant is unaffected by the framing. The diagram
-    // is TOP-anchored (no reserved blank space above) — for v1 with one widget,
-    // the empty space sits below the ruler instead of between menu and widget.
-    <div className="flex min-h-0 flex-1 flex-col px-2 pt-2">
+    // is BOTTOM-anchored (justify-end): the widget card + ruler sit just above the
+    // transport, and the extra vertical room accumulates ABOVE — that blank space
+    // is where additional widgets will stack as they're added.
+    <div className="flex min-h-0 flex-1 flex-col justify-end px-2 pb-1">
       {/* The widget is a framed card: the top bar (collapse / add / hidden
           chips) and the layer stack read as one object distinct from the shared
           timeline below. The frame is an inset outline so it paints on top of the

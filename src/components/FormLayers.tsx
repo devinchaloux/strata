@@ -18,23 +18,26 @@ import { useUIStore } from '@/store/uiStore'
 import { computePps, totalContentWidth } from '@/lib/timeline'
 import {
   buildShapePath,
-  confidenceStroke,
+  capFromBoundaryType,
+  lineStyleDash,
+  elisionInnerLine,
   textOnFill,
   truncateToWidth,
   estimateTextWidth,
-  verticalBoundaryTimes,
-  sharedTimes,
-  connectorSpanY,
   FONT_SIZES,
   LABEL_RISE,
   SHAPE_HEIGHT,
   STROKE_WIDTH,
+  ISLAND_INSET,
   stackHeight,
   shapeTopY,
   type FontScale,
 } from '@/lib/formShape'
 import { MIN_SPAN_WIDTH, MIN_BOUNDARY_DRAG_PX } from '@/lib/spanEdit'
-import type { Layer, Span, FormDiagramData, BoundaryType } from '@/types/strata'
+import type { Layer, Span, FormDiagramData, CapStyle } from '@/types/strata'
+
+// Lighter ink for the elision cap's inner overlap line (--ink-faint).
+const ELISION_INK = '#94a3b8'
 
 const INK_PRIMARY = 'var(--ink-primary)'
 const INK_SECONDARY = '#475569'
@@ -149,15 +152,21 @@ function SpanShape({ span, layer, pps, totalWidth, fontScale }: SpanShapeProps) 
   const width = (span.endTime - span.startTime) * pps
   if (width <= 0) return null
 
-  const lineType = span.lineType ?? 'arc'
-  const startBoundary: BoundaryType = span.startBoundaryType ?? 'definite'
-  const endBoundary: BoundaryType = span.endBoundaryType ?? 'definite'
+  // Visual caps are the analyst's drawing choice; fall back to the analytical
+  // boundary type for files authored before startCap/endCap existed.
+  const startCap: CapStyle = span.startCap ?? capFromBoundaryType(span.startBoundaryType)
+  const endCap: CapStyle = span.endCap ?? capFromBoundaryType(span.endBoundaryType)
 
   const fill = span.fillColor ?? layer.fillColorDefault
   const stroke = span.strokeColor ?? layer.strokeColorDefault
-  const { dash, opacity } = confidenceStroke(span.confidence)
+  const dash = lineStyleDash(span.lineStyle)
 
-  const path = buildShapePath({ width, lineType, startBoundary, endBoundary })
+  // One path per span (fill + stroke), inset so adjacent spans read as islands.
+  const path = buildShapePath({ width, startCap, endCap, inset: ISLAND_INSET })
+  const elisionLines = [
+    elisionInnerLine(startCap, 'start', width, SHAPE_HEIGHT, ISLAND_INSET),
+    elisionInnerLine(endCap, 'end', width, SHAPE_HEIGHT, ISLAND_INSET),
+  ].filter((d): d is string => d !== null)
   const fonts = FONT_SIZES[fontScale]
 
   // Rendering config — defaults per Phase 0.4 §4 (label above, annotation inside).
@@ -208,7 +217,6 @@ function SpanShape({ span, layer, pps, totalWidth, fontScale }: SpanShapeProps) 
   return (
     <g
       transform={`translate(${x}, 0)`}
-      opacity={opacity}
       style={{ cursor: 'pointer' }}
       onMouseEnter={() => hoverSpan(span.id)}
       onMouseLeave={() => hoverSpan(null)}
@@ -227,6 +235,19 @@ function SpanShape({ span, layer, pps, totalWidth, fontScale }: SpanShapeProps) 
         strokeLinejoin="round"
         strokeLinecap="round"
       />
+
+      {/* Elision caps: a lighter inner line marking the overlap (separate stroke,
+          never a dash on the bracket itself). */}
+      {elisionLines.map((d, i) => (
+        <path
+          key={`elision-${i}`}
+          d={d}
+          fill="none"
+          stroke={ELISION_INK}
+          strokeWidth={STROKE_WIDTH}
+          strokeLinecap="round"
+        />
+      ))}
 
       {/* Selection / hover box — drawn OVER the shape so it reads on white or
           colored fills. Hover: faint grey wash. Selected: grey box + blue
@@ -346,43 +367,6 @@ function FormLayerGroup({
 }
 
 /**
- * Boundary connectors — the continuous-vertical-line cue (§3.3 / §4.2).
- *
- * For each pair of vertically-adjacent layers, find the boundaries that present
- * a clean vertical tail on BOTH sides (flat bracket + definite boundary) and
- * draw a thin connector across the inter-layer gap. The connector joins the
- * upper tail, the gap, and the lower tail into one line — which is how nesting
- * reads. Drawn behind the shapes (it only occupies the empty gap, so there is no
- * overlap with shape bodies).
- */
-function BoundaryConnectors({ layers, pps }: { layers: Layer[]; pps: number }) {
-  const lines: React.ReactNode[] = []
-  for (let i = 0; i < layers.length - 1; i++) {
-    const upper = layers[i]
-    const lower = layers[i + 1]
-    if (upper.type !== 'form-diagram' || lower.type !== 'form-diagram') continue
-    const upperT = verticalBoundaryTimes((upper.data as FormDiagramData).spans)
-    const lowerT = verticalBoundaryTimes((lower.data as FormDiagramData).spans)
-    const { y1, y2 } = connectorSpanY(i)
-    for (const t of sharedTimes(upperT, lowerT)) {
-      const x = t * pps
-      lines.push(
-        <line
-          key={`conn-${upper.id}-${t.toFixed(3)}`}
-          x1={x}
-          y1={y1}
-          x2={x}
-          y2={y2}
-          stroke={upper.strokeColorDefault}
-          strokeWidth={STROKE_WIDTH}
-        />,
-      )
-    }
-  }
-  return <g>{lines}</g>
-}
-
-/**
  * @param layers  already sorted for display (macro-on-top: highest displayOrder first)
  */
 export function FormLayers({ layers }: { layers: Layer[] }) {
@@ -450,8 +434,6 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
           display: 'block',
         }}
       >
-        {/* Connectors first so the bracket shapes paint on top of them. */}
-        {pps > 0 && <BoundaryConnectors layers={layers} pps={pps} />}
 
         {pps > 0 &&
           layers.map((layer, i) => (

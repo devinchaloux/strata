@@ -4,46 +4,52 @@
  * No React, no DOM. Everything here is a pure function so it can be unit-tested
  * and reused by both the editor render path and (later) the embeddable viewer.
  *
- * Shape model (per Phase 0.4 §3 + Phase 0.7 §4):
- *   A span is an OPEN bracket or an arc "bubble" — never a filled rectangle.
- *   - lineType 'flat' → flat horizontal top with two tails dropping to the
- *     baseline. The tails carry the boundary character (definite/gradual).
- *   - lineType 'arc'  → domed top (the classic bubble) sitting on the baseline.
+ * Shape model (per docs/decisions.md "Form Diagram Shape Model", 2026-06-27):
+ *   A span is ONE path — a flat-topped bracket. The top line is always flat
+ *   (domes/arcs are retired). The two end caps carry the visual variety and are
+ *   the analyst's explicit drawing choice (decoupled from analytical data):
+ *     - rounded → flat top meeting a vertical tail through a rounded corner
+ *     - square  → flat top meeting a vertical tail at a sharp corner
+ *     - angled  → a diagonal tail (processual feel)
+ *     - open    → no tail on that side; the flat top just ends
+ *     - elision → a vertical tail; the renderer adds a lighter inner overlap line
  *
- * Coordinate convention: every path is built in LOCAL space where the shape
- * spans x ∈ [0, w], the top edge is y = 0, and the baseline is y = H. The
- * caller translates the group to the span's pixel x and the layer's y.
+ * Spans are drawn as discrete ISLANDS: the shape is inset by `inset` px on each
+ * side so adjacent spans never share boundary pixels (no double-stamping). Stored
+ * timestamps stay exact; only the rendered geometry insets.
  *
- * Why an open path that we still fill: SVG fills an open subpath as if it were
- * closed along a straight line from the last point back to the first. For our
- * brackets that implicit close runs along the baseline — so a white fill makes
- * the bracket read as "open" (only the stroke shows) while a colored fill makes
- * a solid bubble. One path, two visual idioms, no special-casing.
+ * Coordinate convention: every path is built in LOCAL space where the slot spans
+ * x ∈ [0, width], the top edge is y = 0, and the baseline is y = H. The caller
+ * translates the group to the span's pixel x and the layer's y.
+ *
+ * Why an open path that we still fill: SVG fills an open subpath as if closed
+ * along a straight line back to the start. For our brackets that implicit close
+ * runs along the baseline — so a white fill reads as an open bracket while a
+ * colored fill reads as a solid block. One path, two idioms, no special-casing.
  */
 
-import type { BoundaryType, LineType, ConfidenceLevel } from '@/types/strata'
+import type { BoundaryType, CapStyle, LineStyle } from '@/types/strata'
 
 // ---------------------------------------------------------------------------
-// Metrics (starting values — Phase 0.7 §8; tweakable once seen on real data)
+// Metrics (starting values; tweakable once seen on real data)
 // ---------------------------------------------------------------------------
 
 export const SHAPE_HEIGHT = 28 // uniform across all layers (the BriFormer cue)
-export const CORNER_RADIUS = 6 // definite tail corner curve
-export const GRADUAL_INSET = 9 // horizontal run of an angled (gradual) tail
+export const CORNER_RADIUS = 10 // rounded-cap corner curve — deliberately round vs square
+export const ANGLE_INSET = 9 // horizontal run of an angled cap's diagonal tail
 export const STROKE_WIDTH = 1.5
+export const ISLAND_INSET = 1.5 // px inset per side → ~3px gap (2px read as a grey seam, 4px too wide)
 
 /**
- * Vertical anatomy — flush stacking (Phase 0.7 §3, model A).
+ * Vertical anatomy — flush stacking.
  *
- * Layers stack with only a hairline gap so that boundaries shared across layers
- * line up into continuous vertical lines (that alignment IS how hierarchy reads;
- * no bracket is taller than another, none encloses another). A layer's label is
- * NOT given its own reserved row — it is drawn just above the shape, overhanging
- * up into the open interior (negative space) of the bracket above it.
+ * Layers stack with only a hairline gap. A layer's label is NOT given its own
+ * reserved row — it is drawn just above the shape, overhanging up into the open
+ * interior (negative space) of the bracket above it.
  *
- *   LAYER_PITCH  vertical advance per layer = shape + hairline gap
- *   STACK_TOP_PAD  headroom above the top layer for its label (no layer above it)
- *   LABEL_RISE   how far a label baseline sits above its shape's top edge
+ *   LAYER_PITCH   vertical advance per layer = shape + hairline gap
+ *   STACK_TOP_PAD headroom above the top layer for its label
+ *   LABEL_RISE    how far a label baseline sits above its shape's top edge
  */
 export const LAYER_GAP = 3
 export const LAYER_PITCH = SHAPE_HEIGHT + LAYER_GAP
@@ -61,81 +67,7 @@ export function shapeTopY(i: number): number {
 }
 
 // ---------------------------------------------------------------------------
-// Boundary alignment — continuous vertical lines across layers (§3.3 / §4.2)
-//
-// When a boundary lines up across flush-stacked layers, the aligned tails
-// should read as ONE vertical line down the stack — that alignment is how
-// nesting is shown (never bracket size). The shapes already place their tails
-// at the boundary x; what interrupts the line is the inter-layer gap plus each
-// shape's rounded top corner curving away. We bridge that span with a thin
-// connector (see the renderer), but only where a clean vertical tail exists on
-// both sides: a flat bracket with a definite boundary. Arcs have no tail and
-// gradual tails are diagonal, so neither participates.
-// ---------------------------------------------------------------------------
-
-export interface SpanEdge {
-  startTime: number
-  endTime: number
-  lineType?: LineType | null
-  startBoundaryType?: BoundaryType | null
-  endBoundaryType?: BoundaryType | null
-}
-
-const TIME_EPS = 1e-4
-
-/**
- * Times at which a span presents a clean vertical tail (flat bracket + definite
- * boundary). Sorted ascending and de-duplicated within epsilon.
- */
-export function verticalBoundaryTimes(spans: SpanEdge[]): number[] {
-  const out: number[] = []
-  for (const s of spans) {
-    if (s.lineType !== 'flat') continue
-    if ((s.startBoundaryType ?? 'definite') === 'definite') out.push(s.startTime)
-    if ((s.endBoundaryType ?? 'definite') === 'definite') out.push(s.endTime)
-  }
-  out.sort((a, b) => a - b)
-  const dedup: number[] = []
-  for (const t of out) {
-    if (dedup.length === 0 || Math.abs(t - dedup[dedup.length - 1]) > TIME_EPS) dedup.push(t)
-  }
-  return dedup
-}
-
-/** Times present in BOTH ascending, de-duped lists (within epsilon). */
-export function sharedTimes(a: number[], b: number[], eps = TIME_EPS): number[] {
-  const out: number[] = []
-  let i = 0
-  let j = 0
-  while (i < a.length && j < b.length) {
-    const d = a[i] - b[j]
-    if (Math.abs(d) <= eps) {
-      out.push((a[i] + b[j]) / 2)
-      i++
-      j++
-    } else if (d < 0) {
-      i++
-    } else {
-      j++
-    }
-  }
-  return out
-}
-
-/**
- * Vertical extent [y1, y2] of the connector that joins the bottom layer index
- * `upper`'s baseline to the top of the next layer's vertical tail, closing the
- * gap + corner so the boundary reads as one continuous line.
- */
-export function connectorSpanY(upper: number): { y1: number; y2: number } {
-  return {
-    y1: shapeTopY(upper) + SHAPE_HEIGHT, // upper baseline (tail bottom is vertical)
-    y2: shapeTopY(upper + 1) + CORNER_RADIUS, // where the lower tail's vertical begins
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Font scale (Phase 0.7 §5 — layer-level fontScale enum)
+// Font scale (layer-level fontScale enum)
 // ---------------------------------------------------------------------------
 
 export type FontScale = 'sm' | 'md' | 'lg'
@@ -147,79 +79,130 @@ export const FONT_SIZES: Record<FontScale, { label: number; annotation: number }
 }
 
 // ---------------------------------------------------------------------------
+// Shape style resolution (visual style ← analyst choice, with data fallback)
+// ---------------------------------------------------------------------------
+
+/**
+ * Default visual cap derived from the analytical boundary type, for back-compat
+ * with files authored before `startCap`/`endCap` existed. `square` has no data
+ * analog — it is reachable only as an explicit visual choice.
+ */
+export function capFromBoundaryType(b?: BoundaryType | null): CapStyle {
+  switch (b) {
+    case 'gradual':
+      return 'angled'
+    case 'elided':
+      return 'elision'
+    case 'definite':
+    default:
+      return 'rounded'
+  }
+}
+
+/** SVG dash array for a stroke style, or undefined for solid. */
+export function lineStyleDash(style?: LineStyle | null): string | undefined {
+  return style === 'dashed' ? '4 3' : undefined
+}
+
+// ---------------------------------------------------------------------------
 // Path construction
 // ---------------------------------------------------------------------------
 
 export interface ShapePathOptions {
+  /** Pixel width of the span's slot. The shape is drawn inset within it. */
   width: number
   height?: number
-  lineType: LineType
-  startBoundary: BoundaryType
-  endBoundary: BoundaryType
+  startCap: CapStyle
+  endCap: CapStyle
+  /** Inset per side (px) — the island gap. Default 0 (tests / measuring). */
+  inset?: number
 }
 
 /**
- * Build the SVG path `d` string for a span shape in local coordinates.
- * The returned path is open (no `Z`); fill closes it along the baseline.
+ * Build the SVG path `d` string for a span bracket in local coordinates.
+ * Returns '' when the inset slot is too narrow to draw. The path is open (no
+ * `Z`); fill closes it along the baseline.
  */
 export function buildShapePath({
   width,
   height = SHAPE_HEIGHT,
-  lineType,
-  startBoundary,
-  endBoundary,
+  startCap,
+  endCap,
+  inset = 0,
 }: ShapePathOptions): string {
-  const w = Math.max(width, 0)
   const H = height
+  const L = inset
+  const R = width - inset
+  if (R <= L) return ''
 
-  // Arc / bubble: a single elliptical dome from baseline to baseline.
-  // rx = w/2 makes it a half-ellipse so the peak height equals H — keeping the
-  // arc the SAME height as flat brackets (uniform-height rule). Boundary caps
-  // are not expressed on arcs in v1 (deferred — see spec §10).
-  if (lineType === 'arc') {
-    if (w <= 0) return ''
-    return `M 0 ${H} A ${w / 2} ${H} 0 0 1 ${w} ${H}`
-  }
-
-  // Flat bracket: top line + two tails. Corner radius is only meaningful when
-  // the span is wide enough to host two corners.
-  const r = Math.min(CORNER_RADIUS, w / 2, H)
-  const inset = Math.min(GRADUAL_INSET, w / 2)
+  const span = R - L
+  // Cap the corner radius at ~30% of the width so a real flat top always remains:
+  // a full CORNER_RADIUS on a narrow (portrait) span would consume the whole top
+  // and read as a dome/bubble, which is exactly what we retired.
+  const r = Math.min(CORNER_RADIUS, span * 0.3, H)
+  const aInset = Math.min(ANGLE_INSET, span / 2)
 
   const parts: string[] = []
 
-  // --- Left tail ---
-  if (startBoundary === 'gradual') {
-    // Angled tail: baseline starts inset to the right, ramps up to the corner.
-    parts.push(`M ${inset} ${H}`, `L 0 0`)
+  // --- Left cap ---
+  if (startCap === 'rounded') {
+    parts.push(`M ${L} ${H}`, `L ${L} ${r}`, `A ${r} ${r} 0 0 1 ${L + r} 0`)
+  } else if (startCap === 'angled') {
+    // "/" — bottom at the boundary, leaning up-and-right into the flat top
+    parts.push(`M ${L} ${H}`, `L ${L + aInset} 0`)
+  } else if (startCap === 'open') {
+    parts.push(`M ${L} 0`)
   } else {
-    // Definite (and elided, treated as definite in v1 static): vertical tail
-    // with a rounded top-left corner.
-    parts.push(`M 0 ${H}`, `L 0 ${r}`, `A ${r} ${r} 0 0 1 ${r} 0`)
+    // square, elision — a straight vertical tail
+    parts.push(`M ${L} ${H}`, `L ${L} 0`)
   }
 
   // --- Top line ---
-  const topRightX = endBoundary === 'gradual' ? w : w - r
-  parts.push(`L ${topRightX} 0`)
+  const rightTopX = endCap === 'rounded' ? R - r : endCap === 'angled' ? R - aInset : R
+  parts.push(`L ${rightTopX} 0`)
 
-  // --- Right tail ---
-  if (endBoundary === 'gradual') {
-    parts.push(`L ${w - inset} ${H}`)
+  // --- Right cap ---
+  if (endCap === 'rounded') {
+    parts.push(`A ${r} ${r} 0 0 1 ${R} ${r}`, `L ${R} ${H}`)
+  } else if (endCap === 'angled') {
+    // "\" — leaning down-and-right from the flat top to the boundary
+    parts.push(`L ${R} ${H}`)
+  } else if (endCap === 'open') {
+    // no tail — the top simply ends
   } else {
-    parts.push(`A ${r} ${r} 0 0 1 ${w} ${r}`, `L ${w} ${H}`)
+    // square, elision
+    parts.push(`L ${R} ${H}`)
   }
 
   return parts.join(' ')
 }
 
+/**
+ * The lighter inner overlap line for an `elision` cap: a short vertical drawn
+ * just inside the cap's tail. Returns null for non-elision caps. `side` selects
+ * which end. Local coords; same `inset` convention as buildShapePath.
+ */
+export function elisionInnerLine(
+  cap: CapStyle,
+  side: 'start' | 'end',
+  width: number,
+  height: number = SHAPE_HEIGHT,
+  inset = 0,
+): string | null {
+  if (cap !== 'elision') return null
+  const offset = 3
+  const x = side === 'start' ? inset + offset : width - inset - offset
+  if (x <= inset || x >= width - inset) return null
+  return `M ${x} ${height} L ${x} ${Math.min(CORNER_RADIUS, height)}`
+}
+
 // ---------------------------------------------------------------------------
-// Text fitting (Phase 0.7 §7 — collision strategy: abbreviation)
+// Text fitting (collision strategy: abbreviation)
 //
-// Negative-space labels (positioned ABOVE a shape) are allowed to overflow into
-// the open interior of the layer above (§3.2) and are left intact. Text placed
-// INSIDE a shape body must respect the shape bounds, so it is truncated with an
-// ellipsis. Width is estimated, not measured, so this stays a pure function: a
-// slightly conservative average advance keeps truncation from overflowing.
+// Text placed INSIDE a shape body must respect the shape bounds, so it is
+// truncated with an ellipsis. Width is estimated, not measured, so this stays a
+// pure function: a slightly conservative average advance keeps truncation from
+// overflowing. Above-shape labels live in negative space and are left intact.
 // ---------------------------------------------------------------------------
 
 // Average glyph advance as a fraction of font size for Inter at small sizes.
@@ -252,58 +235,6 @@ export function truncateToWidth(text: string, fontPx: number, maxWidthPx: number
     n++
   }
   return n === 0 ? '' : text.slice(0, n).trimEnd() + ELLIPSIS
-}
-
-/**
- * The two tail sub-paths of a flat bracket (left and right), in the same local
- * coords as buildShapePath. Used to overdraw the tails SOLID on a dashed
- * (approximate/speculative) span: confidence dashes the section *body*, but the
- * tails are shared *boundaries* (their character is boundaryType, not
- * confidence), so they must stay solid — otherwise adjacent dashed + solid tails
- * collide into a messy line at a shared boundary. Arcs have no tails.
- */
-export function buildTailPaths({
-  width,
-  height = SHAPE_HEIGHT,
-  lineType,
-  startBoundary,
-  endBoundary,
-}: ShapePathOptions): { left: string; right: string } {
-  if (lineType === 'arc') return { left: '', right: '' }
-  const w = Math.max(width, 0)
-  const H = height
-  const r = Math.min(CORNER_RADIUS, w / 2, H)
-  const inset = Math.min(GRADUAL_INSET, w / 2)
-  const left =
-    startBoundary === 'gradual'
-      ? `M ${inset} ${H} L 0 0`
-      : `M 0 ${H} L 0 ${r} A ${r} ${r} 0 0 1 ${r} 0`
-  const right =
-    endBoundary === 'gradual'
-      ? `M ${w} 0 L ${w - inset} ${H}`
-      : `M ${w - r} 0 A ${r} ${r} 0 0 1 ${w} ${r} L ${w} ${H}`
-  return { left, right }
-}
-
-// ---------------------------------------------------------------------------
-// Confidence → stroke styling (Phase 0.7 §6.1)
-// ---------------------------------------------------------------------------
-
-export interface StrokeStyle {
-  dash: string | undefined
-  opacity: number
-}
-
-export function confidenceStroke(confidence?: ConfidenceLevel): StrokeStyle {
-  switch (confidence) {
-    case 'approximate':
-      return { dash: '4 3', opacity: 1 }
-    case 'speculative':
-      return { dash: '4 3', opacity: 0.6 }
-    case 'definite':
-    default:
-      return { dash: undefined, opacity: 1 }
-  }
 }
 
 // ---------------------------------------------------------------------------

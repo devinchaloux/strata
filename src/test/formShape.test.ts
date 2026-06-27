@@ -2,10 +2,11 @@ import { describe, it, expect } from 'vitest'
 import {
   estimateTextWidth,
   truncateToWidth,
-  verticalBoundaryTimes,
-  sharedTimes,
-  buildTailPaths,
-  type SpanEdge,
+  buildShapePath,
+  capFromBoundaryType,
+  lineStyleDash,
+  elisionInnerLine,
+  CORNER_RADIUS,
 } from '@/lib/formShape'
 
 describe('estimateTextWidth', () => {
@@ -48,7 +49,6 @@ describe('truncateToWidth', () => {
   })
 
   it('does not leave a trailing space before the ellipsis', () => {
-    // "A " would otherwise become "A …"; the space is trimmed first.
     const text = 'A section'
     const max = estimateTextWidth('A ', 11) + estimateTextWidth('…', 11) + 0.01
     const out = truncateToWidth(text, 11, max)
@@ -56,64 +56,88 @@ describe('truncateToWidth', () => {
   })
 })
 
-describe('verticalBoundaryTimes', () => {
-  const flat = (startTime: number, endTime: number, extra: Partial<SpanEdge> = {}): SpanEdge => ({
-    startTime,
-    endTime,
-    lineType: 'flat',
-    ...extra,
+describe('capFromBoundaryType', () => {
+  it('maps boundary character to a default visual cap', () => {
+    expect(capFromBoundaryType('definite')).toBe('rounded')
+    expect(capFromBoundaryType('gradual')).toBe('angled')
+    expect(capFromBoundaryType('elided')).toBe('elision')
   })
 
-  it('returns flat + definite edges, sorted and de-duped', () => {
-    const spans = [flat(0, 10), flat(10, 20), flat(20, 30)]
-    expect(verticalBoundaryTimes(spans)).toEqual([0, 10, 20, 30])
-  })
-
-  it('excludes arc spans (no vertical tail)', () => {
-    const spans: SpanEdge[] = [
-      { startTime: 0, endTime: 10, lineType: 'arc' },
-      flat(10, 20),
-    ]
-    expect(verticalBoundaryTimes(spans)).toEqual([10, 20])
-  })
-
-  it('excludes gradual (angled) tails', () => {
-    const spans = [
-      flat(0, 10, { endBoundaryType: 'gradual' }),
-      flat(10, 20, { startBoundaryType: 'gradual' }),
-    ]
-    // start 0 (definite) and end 20 (definite) survive; the gradual edge at 10 does not.
-    expect(verticalBoundaryTimes(spans)).toEqual([0, 20])
+  it('defaults to rounded for null/undefined', () => {
+    expect(capFromBoundaryType(null)).toBe('rounded')
+    expect(capFromBoundaryType(undefined)).toBe('rounded')
   })
 })
 
-describe('buildTailPaths', () => {
-  it('returns empty tails for an arc (no vertical tails)', () => {
-    const t = buildTailPaths({ width: 100, lineType: 'arc', startBoundary: 'definite', endBoundary: 'definite' })
-    expect(t.left).toBe('')
-    expect(t.right).toBe('')
-  })
-
-  it('returns both tails for a flat bracket', () => {
-    const t = buildTailPaths({ width: 100, lineType: 'flat', startBoundary: 'definite', endBoundary: 'definite' })
-    expect(t.left.length).toBeGreaterThan(0)
-    expect(t.right.length).toBeGreaterThan(0)
-    expect(t.left.startsWith('M')).toBe(true)
+describe('lineStyleDash', () => {
+  it('dashes only for "dashed"', () => {
+    expect(lineStyleDash('dashed')).toBe('4 3')
+    expect(lineStyleDash('solid')).toBeUndefined()
+    expect(lineStyleDash(undefined)).toBeUndefined()
   })
 })
 
-describe('sharedTimes', () => {
-  it('returns only times present in both lists', () => {
-    expect(sharedTimes([0, 10, 20, 30], [10, 30])).toEqual([10, 30])
+describe('buildShapePath', () => {
+  it('draws a flat top — never a dome (no elliptical arc spanning the width)', () => {
+    const d = buildShapePath({ width: 100, startCap: 'rounded', endCap: 'rounded' })
+    // A dome would be a single big A from baseline to baseline; a bracket has a
+    // flat top segment at y=0.
+    expect(d).toContain(' 0') // top line at y=0
+    expect(d).not.toContain('A 50') // no half-width elliptical dome
   })
 
-  it('matches within epsilon and averages the pair', () => {
-    const out = sharedTimes([10.00004], [9.99998])
-    expect(out).toHaveLength(1)
-    expect(out[0]).toBeCloseTo(10, 4)
+  it('insets the drawn shape so adjacent spans read as islands', () => {
+    const flush = buildShapePath({ width: 100, startCap: 'square', endCap: 'square', inset: 0 })
+    const inset = buildShapePath({ width: 100, startCap: 'square', endCap: 'square', inset: 2 })
+    // Flush square starts its left tail at x=0; inset starts at x=2 and ends at 98.
+    expect(flush).toContain('M 0 28')
+    expect(inset).toContain('M 2 28')
+    expect(inset).toContain('98')
   })
 
-  it('is empty when nothing aligns', () => {
-    expect(sharedTimes([1, 2, 3], [4, 5, 6])).toEqual([])
+  it('square caps are sharp verticals (no corner arc)', () => {
+    const d = buildShapePath({ width: 100, startCap: 'square', endCap: 'square' })
+    expect(d).not.toContain('A') // no rounded corners
+  })
+
+  it('rounded caps use corner arcs at the radius', () => {
+    const d = buildShapePath({ width: 100, startCap: 'rounded', endCap: 'rounded' })
+    expect(d.split('A').length).toBe(3) // two corner arcs
+    expect(d).toContain(`L 0 ${CORNER_RADIUS}`) // vertical stops at the corner foot
+  })
+
+  it('an open cap omits that tail (top simply ends)', () => {
+    const d = buildShapePath({ width: 100, startCap: 'open', endCap: 'square' })
+    // Open start: path begins at the top-left (y=0), not the baseline.
+    expect(d.startsWith('M 0 0')).toBe(true)
+  })
+
+  it('an angled start cap leans like "/" (bottom at the boundary, up to the right)', () => {
+    const d = buildShapePath({ width: 100, startCap: 'angled', endCap: 'square' })
+    expect(d.startsWith('M 0 28 L 9 0')).toBe(true) // ANGLE_INSET = 9, H = 28
+  })
+
+  it('an angled end cap leans like "\\" (top to the left, down to the boundary)', () => {
+    const d = buildShapePath({ width: 100, startCap: 'square', endCap: 'angled' })
+    expect(d).toContain('L 91 0') // top ends at R - ANGLE_INSET = 100 - 9
+    expect(d.trimEnd().endsWith('L 100 28')).toBe(true) // diagonal down to the boundary
+  })
+
+  it('returns empty when the inset slot collapses', () => {
+    expect(buildShapePath({ width: 3, startCap: 'square', endCap: 'square', inset: 2 })).toBe('')
+  })
+})
+
+describe('elisionInnerLine', () => {
+  it('returns a faint inner line only for elision caps', () => {
+    expect(elisionInnerLine('rounded', 'start', 100)).toBeNull()
+    expect(elisionInnerLine('elision', 'start', 100)).not.toBeNull()
+  })
+
+  it('places the start line near the left and the end line near the right', () => {
+    const start = elisionInnerLine('elision', 'start', 100, 28, 0)!
+    const end = elisionInnerLine('elision', 'end', 100, 28, 0)!
+    expect(start).toContain('M 3 28')
+    expect(end).toContain('M 97 28')
   })
 })
