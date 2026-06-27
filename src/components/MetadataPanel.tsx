@@ -249,23 +249,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   }
 
   return (
-    <aside
-      className="flex w-[280px] shrink-0 flex-col overflow-y-auto border-l bg-card"
-      style={{ borderColor: 'var(--hairline)' }}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between border-b px-3 py-2" style={{ borderColor: 'var(--hairline)' }}>
-        <span className="text-xs font-medium text-foreground">Span</span>
-        <button
-          onClick={() => selectSpan(null)}
-          className="text-muted-foreground hover:text-foreground"
-          title="Close"
-          aria-label="Close panel"
-        >
-          ✕
-        </button>
-      </div>
-
+    <div className="flex flex-col">
       <div className="px-3 py-3">
         {/* Time range (editable) + duration */}
         <div className="mb-3 rounded bg-muted px-2 py-1.5">
@@ -535,7 +519,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           </button>
         </div>
       </div>
-    </aside>
+    </div>
   )
 }
 
@@ -557,7 +541,6 @@ function commonValue<T>(spans: Span[], get: (s: Span) => T): T | typeof MIXED {
 function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
   const doc = useDocumentStore((s) => s.document)
   const updateSpans = useDocumentStore((s) => s.updateSpans)
-  const clearSelection = useUIStore((s) => s.clearSelection)
   const { eligibility, performMerge } = useMerge()
 
   const spans = entries.map((e) => e.span)
@@ -588,26 +571,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
   const mergeReason = eligibility.ok ? '' : eligibility.reason
 
   return (
-    <aside
-      className="flex w-[280px] shrink-0 flex-col overflow-y-auto border-l bg-card"
-      style={{ borderColor: 'var(--hairline)' }}
-    >
-      {/* Header */}
-      <div
-        className="flex items-center justify-between border-b px-3 py-2"
-        style={{ borderColor: 'var(--hairline)' }}
-      >
-        <span className="text-xs font-medium text-foreground">{spans.length} spans selected</span>
-        <button
-          onClick={() => clearSelection()}
-          className="text-muted-foreground hover:text-foreground"
-          title="Clear selection"
-          aria-label="Clear selection"
-        >
-          ✕
-        </button>
-      </div>
-
+    <div className="flex flex-col">
       <div className="px-3 py-3">
         {/* Merge — primary multi-select action */}
         <button
@@ -793,7 +757,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
           </div>
         </div>
       </div>
-    </aside>
+    </div>
   )
 }
 

@@ -1,9 +1,9 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useFileIO } from '@/hooks/useFileIO'
 import { useMerge } from '@/hooks/useMerge'
 import { YouTubePlayer } from '@/components/YouTubePlayer'
 import { FormDiagram } from '@/components/FormDiagram'
-import { MetadataPanel } from '@/components/MetadataPanel'
+import { Inspector } from '@/components/Inspector'
 import { MergeConflictDialog } from '@/components/MergeConflictDialog'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
@@ -178,6 +178,9 @@ export default function App() {
   const loadDocument = useDocumentStore((s) => s.loadDocument)
   const setActiveLayer = useUIStore((s) => s.setActiveLayer)
 
+  // Inspector collapse is pure view-state; local to the shell.
+  const [inspectorCollapsed, setInspectorCollapsed] = useState(false)
+
   // Merge: eligibility drives the toolbar button; performMerge is held in a ref
   // so the keydown effect can call the latest closure without re-subscribing.
   const { eligibility: mergeEligibility, performMerge } = useMerge()
@@ -241,9 +244,10 @@ export default function App() {
   }, [newFile, openFile, saveFile, saveFileAs])
 
   return (
-    // Content-sized, not a full-page app: the shell is only as tall as the
-    // toolbar + diagram + transport/video, so there's no dead space anywhere.
-    <div className="flex max-h-screen flex-col bg-background text-foreground">
+    // Full-height app shell: header on top, then a main row of [left work area |
+    // right inspector], so the inspector is a persistent full-height column that
+    // pushes the diagram + transport + video to its left.
+    <div className="flex h-screen flex-col bg-background text-foreground">
       {/* Toolbar */}
       <header className="flex h-10 shrink-0 items-center gap-1 border-b border-border px-3">
         <span className="mr-1 flex items-center gap-1.5 select-none">
@@ -293,20 +297,26 @@ export default function App() {
         )}
       </header>
 
-      {/* Work area row — form diagram + right metadata panel (panel renders
-          null when nothing is selected). items-start keeps the diagram its
-          natural height (no stretch), so nothing pads out vertically. */}
-      <div className="flex min-h-0 items-start">
-        {doc ? (
-          <FormDiagram />
-        ) : (
-          <EmptyState onNew={newFile} onOpen={openFile} onDemo={loadDemo} />
-        )}
-        <MetadataPanel />
-      </div>
+      {/* Main row — left work area (diagram bottom-anchored on the ruler, then
+          transport + video at the very bottom) and the right inspector. */}
+      <div className="flex min-h-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col">
+          {doc ? (
+            <FormDiagram />
+          ) : (
+            <EmptyState onNew={newFile} onOpen={openFile} onDemo={loadDemo} />
+          )}
+          {/* Transport bar + collapsible video panel — bottom of the left column */}
+          <YouTubePlayer />
+        </div>
 
-      {/* Transport bar + collapsible video panel — bottom of the shell */}
-      <YouTubePlayer />
+        {doc && (
+          <Inspector
+            collapsed={inspectorCollapsed}
+            onToggle={() => setInspectorCollapsed((v) => !v)}
+          />
+        )}
+      </div>
 
       {/* Merge conflict dialog — renders only when a merge has conflicts */}
       <MergeConflictDialog />

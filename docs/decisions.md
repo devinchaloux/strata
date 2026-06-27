@@ -1344,3 +1344,51 @@ interrupting dialog.
 **Rationale:** A popup ("tag this approximate so it's queryable?") interrupts the
 listening/annotation flow. The push to data is delivered through good defaults and by
 making the queryable payoff visible where the analyst already looks, not via a prompt.
+
+---
+
+## App Shell & Inspector (2026-06-27)
+
+*Session 2026-06-27 (same session as the shape rework). Triggered by the metadata
+panel overlapping the media player after the content-sized shell landed. Outputs:
+`src/App.tsx`, `src/components/Inspector.tsx` (new), `src/components/FormDiagram.tsx`,
+`src/components/MetadataPanel.tsx`.*
+
+---
+
+**Decision:** The app uses a full-height shell with an app-level **Inspector** — a
+persistent, collapsible right-hand column that pushes the diagram, transport, and
+video to its left. This reverses the Phase-2 "content-sized shell, no dead space"
+decision.
+**Rationale:** The metadata panel had no height bound, so under the content-sized
+shell it grew past the diagram and the media player overlapped it. A persistent
+full-height inspector column gives the panel a real height to scroll within — the
+overlap is fixed structurally rather than patched. It is also the conventional,
+scalable layout as more widgets/panels arrive. Cost accepted: a short diagram now
+leaves some empty space in the left column (see the bottom-anchor decision, which
+turns that space into something purposeful).
+
+**Decision:** The Inspector is a **context-dependent host slot**, not wired to the
+form diagram. It owns the chrome (width, border, full height, internal scroll, a
+single header with collapse + contextual title + deselect); the active widget
+supplies only field content. v1 mounts the form-diagram's span `MetadataPanel`;
+future widgets (energy contour, written analysis) mount their own edit UI here.
+**Rationale:** Matches the widget-contract render/edit split already in the log — the
+inspector is host chrome that hosts a widget's contextual editor. Keeping content
+components header-less (chrome lives on the Inspector) is what removed the redundant
+double-header. `MetadataPanel`'s two `<aside>` wrappers became plain content blocks.
+
+**Decision:** The form diagram is **bottom-anchored** in the left work area; extra
+vertical space accumulates **above** it (between the toolbar and the widgets), and
+that space is reserved for additional widgets stacking upward.
+**Rationale:** Keeps the widgets glued to the timeline ruler at any window height
+(the concern with going full-height), and gives the blank space a purpose — it is the
+multi-widget future, not dead space. Reaffirms the earlier "form-layer stack is
+bottom-anchored on the ruler; empty room accumulates above" decision, now load-
+bearing under the full-height shell. Vertical order of the left column, bottom→top:
+transport + video, timeline ruler, widgets, blank.
+
+**Decision:** Layout is designed as flex regions with relative behavior + internal
+scroll, not pixel-pinned positions.
+**Rationale:** Full-height means viewport height is a variable; the layout must adapt
+across heights rather than assume a fixed frame.
