@@ -9,7 +9,7 @@
  *      for the dialog. See `resolveMerge` and `finalizeMerge`.
  *
  * Field rules (mirrors docs/decisions.md "Merge" + the Phase 2.5 extensions for
- * the fillColor/strokeColor split, annotation, lyrics, boundary types, lineType):
+ * the fillColor/strokeColor split, annotation, lyrics, boundary types, caps):
  *
  *   label, type            lone value wins; 2+ distinct non-null → conflict
  *   annotation             lone value wins; 2+ distinct non-null → conflict
@@ -19,7 +19,8 @@
  *   confidence             lowest of the selection (speculative > approximate > definite)
  *   startBoundaryType      first span's (earliest startTime)
  *   endBoundaryType        last span's (latest endTime)
- *   lineType               first span's
+ *   startCap / lineStyle   first span's (outer face / whole-shape style)
+ *   endCap                 last span's (outer face)
  *   startTime / endTime    min / max across the selection
  *   slug                   regenerated from the resolved label
  *   mergedFrom             all source ids in startTime order
@@ -220,7 +221,9 @@ export function resolveMerge(spans: Span[], mkId: () => string): MergeResolution
     startBoundaryType: first.startBoundaryType ?? null,
     endBoundaryType: last.endBoundaryType ?? null,
     parentId,
-    lineType: first.lineType,
+    startCap: first.startCap,
+    endCap: last.endCap,
+    lineStyle: first.lineStyle,
     mergedFrom: sorted.map((s) => s.id),
   }
 

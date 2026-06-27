@@ -1255,3 +1255,92 @@ store next to `document` but is excluded from undo history (`partialize` tracks
 are document-only), so it never pollutes the file or the undo stack. Verified
 in-browser on the Alive fixture: set zoom to 100%, reload Demo → re-fits to 28%
 (would have stayed 100% under the duration keying).
+
+---
+
+## Form Diagram Shape Model — Adjoin Rework (2026-06-27)
+
+*Session 2026-06-27. An attempted "adjoin renderer" — decomposing each bracket into
+separate fill / shared-vertical-boundary / top passes to stop adjacent dashed tails
+double-stamping — was built and rejected on sight ("this looks awful"). A design pass
+then re-examined BriFormer's bracket palette (Brian Jarvis's tool, the quality north
+star) and reset the shape model. Outputs: this section; `widgets/form-diagram.md` §4;
+pending implementation in `src/types/strata.ts`, `schema/strata.schema.json`,
+`schema/alive.strata`, `src/lib/formShape.ts`, `src/components/FormLayers.tsx`.*
+
+---
+
+**Decision:** A span renders as ONE path (fill + stroke in a single path). The
+decomposition into separate fill / shared-boundary-tail / top passes is rejected.
+**Rationale:** Splitting the bracket created seams (corner-meets-vertical joins),
+z-order juggling, and independent dash phases — fragile and ugly. Brian draws each
+bracket as one path; the decomposition specifically manufactured the solid-corner-
+meets-dashed-vertical seam he deliberately avoids. Reverses the in-progress adjoin-
+decomposition approach (never merged).
+
+---
+
+**Decision:** Spans are drawn as discrete islands separated by a *miniscule* (~2px)
+gap, not pixel-abutted at shared boundaries. Stored `startTime`/`endTime` remain
+exact; the drawn shape insets within its time range.
+**Rationale:** The gap is what makes BriFormer read clean — adjacent tails never
+occupy the same pixels, so the double-stamp/collision problem disappears at the
+source (it was the collision, not the data, that looked bad). This decouples the
+*render* from pixel-exactness while keeping the *data* exact, so corpus queryability
+is untouched. Amends the Phase 0.7 "hierarchy reads through boundary alignment /
+continuous vertical lines" decisions (above): islands break those lines — hierarchy
+now reads from the shapes themselves plus explicit grouping (below).
+
+---
+
+**Decision:** No domes / arcs, ever. The top line is always flat. `lineType:
+'arc' | 'flat'` is retired (top is always flat).
+**Rationale:** Devin's call — domes "look bad." The flat bracket with varied corner
+styles is the workhorse and reads cleanest. Reverses the "spans are arcs and
+brackets… `lineType` default `'arc'`" decision (Phase 0.4) and the "phrase spans
+default to a rounded bracket; the dome remains opt-in" decision (Phase 2 Milestone A).
+
+---
+
+**Decision:** Visual style is an explicit analyst choice, decoupled from analytical
+data. New presentation fields: `Span.startCap` / `Span.endCap` of type `CapStyle =
+'rounded' | 'square' | 'angled' | 'open' | 'elision'` (default `'rounded'`, layer-
+overridable), and `Span.lineStyle: 'solid' | 'dashed'` (default `'solid'`).
+`confidence` and `startBoundaryType` / `endBoundaryType` remain as pure, queryable
+DATA and NO LONGER drive rendering.
+**Rationale:** The visual choice is itself an analytical act — the analyst is
+communicating with it — and it is impossible to enumerate every case where a visual
+decision equals a data decision. Decoupling lets them draw freely while we *nudge*
+(ambiently — never an interrupting dialog) toward also recording the queryable data.
+Reverses confidence→stroke (Phase 0.7 §6.1) and boundaryType→geometry (Phase 0.4).
+**Back-compat:** when a visual field is absent the renderer derives a sensible default
+from the data field (`definite`→`rounded`, `gradual`→`angled`, `elided`→`elision`),
+so existing `.strata` files render correctly with no migration; `square` is reachable
+only as an explicit visual choice (it has no data analog).
+
+---
+
+**Decision:** Stroke (solid / dashed) is whole-shape uniform; solid and dashed are
+never mixed at a shared or adjoining edge. The dashed *vertical* is a standalone
+boundary marker — its own construct — not a modifier on a bracket tail.
+**Rationale:** Brian offers a standalone dashed vertical but never a bracket-with-
+dashed-tail, because solid meeting dashed at a shared edge looks broken. One uniform-
+stroke path per shape avoids it; "combining" spans into one visual unit is done by
+adjacent shapes connecting end-to-end or by a grouping bracket, never by a colliding
+mixed stroke.
+
+---
+
+**Decision:** Grouping ("additional groupings") is stored as an ordinary span on a
+higher layer — a wide bracket spanning its children — not a new construct.
+**Rationale:** Reuses the entire shape / label / color / interaction stack; cross-
+layer overlap is already legal in Strata's model. A dedicated construct would only
+buy auto-resize-to-children, which is not a v1 need.
+
+---
+
+**Decision:** The nudge toward recording analytical data is ambient, never an
+interrupting dialog.
+**Rationale:** A popup ("tag this approximate so it's queryable?") interrupts the
+listening/annotation flow. The push to data is delivered through good defaults and by
+making the queryable payoff visible where the analyst already looks, not via a prompt.

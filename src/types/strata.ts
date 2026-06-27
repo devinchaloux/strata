@@ -18,8 +18,15 @@ export type SourceType = 'youtube' | 'local'
 
 export type BoundaryType = 'definite' | 'gradual' | 'elided'
 
-/** Top line style of a form diagram arc/bracket shape. */
-export type LineType = 'arc' | 'flat'
+/**
+ * Visual cap (end-tail) style of a form diagram bracket — the analyst's drawing
+ * choice, decoupled from the analytical `BoundaryType`. The top line is always
+ * flat (domes/arcs are retired). See docs/decisions.md "Form Diagram Shape Model".
+ */
+export type CapStyle = 'rounded' | 'square' | 'angled' | 'open' | 'elision'
+
+/** Visual stroke style of a bracket; whole-shape uniform. Decoupled from confidence. */
+export type LineStyle = 'solid' | 'dashed'
 
 // ---------------------------------------------------------------------------
 // Source Reference
@@ -114,12 +121,15 @@ export interface Span {
   annotation?: string | null     // Diagram-visible analytical text (on span body)
   notes?: string | null          // Tooltip-only; not rendered on diagram
   lyrics?: string | null         // Lyric text; corpus-queryable
-  confidence?: ConfidenceLevel   // Omit for "definite" (default)
-  startBoundaryType?: BoundaryType | null
-  endBoundaryType?: BoundaryType | null
+  confidence?: ConfidenceLevel   // Queryable data; omit for "definite". Does NOT affect rendering.
+  startBoundaryType?: BoundaryType | null // Queryable data; does NOT affect rendering
+  endBoundaryType?: BoundaryType | null   // Queryable data; does NOT affect rendering
   parentId?: string | null       // UUID of parent span; hierarchical ref without enforcement
   mergedFrom?: string[] | null   // Always >= 2 UUIDs when present
-  lineType?: LineType            // Top line style of the arc/bracket shape; default 'arc'
+  // Visual style — the analyst's drawing choice (decoupled from the data above).
+  startCap?: CapStyle            // Default 'rounded' (falls back from startBoundaryType for old files)
+  endCap?: CapStyle              // Default 'rounded' (falls back from endBoundaryType for old files)
+  lineStyle?: LineStyle          // Default 'solid'
 }
 
 // ---------------------------------------------------------------------------

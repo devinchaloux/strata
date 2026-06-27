@@ -105,13 +105,27 @@ describe('resolveMerge — geometry & additive fields', () => {
     expect(mixed.draft.confidence).toBe('speculative')
   })
 
-  it('takes boundary types from the outer faces and lineType from the first span', () => {
-    const s1 = span('a', 0, 10, { startBoundaryType: 'gradual', endBoundaryType: 'definite', lineType: 'flat' })
-    const s2 = span('b', 10, 20, { startBoundaryType: 'definite', endBoundaryType: 'elided', lineType: 'arc' })
+  it('takes boundary types and caps from the outer faces, stroke from the first span', () => {
+    const s1 = span('a', 0, 10, {
+      startBoundaryType: 'gradual',
+      endBoundaryType: 'definite',
+      startCap: 'angled',
+      endCap: 'square',
+      lineStyle: 'dashed',
+    })
+    const s2 = span('b', 10, 20, {
+      startBoundaryType: 'definite',
+      endBoundaryType: 'elided',
+      startCap: 'rounded',
+      endCap: 'open',
+      lineStyle: 'solid',
+    })
     const { draft } = resolveMerge([s1, s2], mkId)
     expect(draft.startBoundaryType).toBe('gradual') // first span's start
     expect(draft.endBoundaryType).toBe('elided') // last span's end
-    expect(draft.lineType).toBe('flat') // first span's
+    expect(draft.startCap).toBe('angled') // first span's outer (start) face
+    expect(draft.endCap).toBe('open') // last span's outer (end) face
+    expect(draft.lineStyle).toBe('dashed') // first span's whole-shape style
   })
 })
 

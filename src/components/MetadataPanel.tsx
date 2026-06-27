@@ -16,6 +16,7 @@ import { useMerge } from '@/hooks/useMerge'
 import { formatTime } from '@/lib/youtube'
 import { parseTimecode } from '@/lib/timecode'
 import { MIN_SPAN_WIDTH } from '@/lib/spanEdit'
+import { capFromBoundaryType } from '@/lib/formShape'
 import { slugify } from '@/lib/slug'
 import type {
   Span,
@@ -23,7 +24,8 @@ import type {
   FormDiagramData,
   ConfidenceLevel,
   BoundaryType,
-  LineType,
+  CapStyle,
+  LineStyle,
 } from '@/types/strata'
 
 // ---------------------------------------------------------------------------
@@ -166,9 +168,17 @@ const BOUNDARY_OPTS: { value: BoundaryType; label: string }[] = [
   { value: 'elided', label: 'Elided' },
 ]
 
-const LINETYPE_OPTS: { value: LineType; label: string }[] = [
-  { value: 'flat', label: 'Bracket' },
-  { value: 'arc', label: 'Arc' },
+const CAP_OPTS: { value: CapStyle; label: string }[] = [
+  { value: 'rounded', label: 'Rounded' },
+  { value: 'square', label: 'Square' },
+  { value: 'angled', label: 'Angled' },
+  { value: 'open', label: 'Open' },
+  { value: 'elision', label: 'Elision' },
+]
+
+const LINESTYLE_OPTS: { value: LineStyle; label: string }[] = [
+  { value: 'solid', label: 'Solid' },
+  { value: 'dashed', label: 'Dashed' },
 ]
 
 // ---------------------------------------------------------------------------
@@ -371,12 +381,47 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           </div>
         </div>
 
-        {/* Line style */}
-        <Field label="Line style">
+        {/* Shape — visual caps (the analyst's drawing choice; decoupled from the
+            boundary-type data above, with a sensible fallback from it). */}
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <Field label="Start cap">
+              <select
+                className={inputClass}
+                value={span.startCap ?? capFromBoundaryType(span.startBoundaryType)}
+                onChange={(e) => update({ startCap: e.target.value as CapStyle })}
+              >
+                {CAP_OPTS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          <div className="flex-1">
+            <Field label="End cap">
+              <select
+                className={inputClass}
+                value={span.endCap ?? capFromBoundaryType(span.endBoundaryType)}
+                onChange={(e) => update({ endCap: e.target.value as CapStyle })}
+              >
+                {CAP_OPTS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+        </div>
+
+        {/* Stroke */}
+        <Field label="Stroke">
           <Segmented
-            options={LINETYPE_OPTS}
-            value={span.lineType ?? 'arc'}
-            onChange={(v) => update({ lineType: v })}
+            options={LINESTYLE_OPTS}
+            value={span.lineStyle ?? 'solid'}
+            onChange={(v) => update({ lineStyle: v })}
           />
         </Field>
 
@@ -530,7 +575,9 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
   const confidence = commonValue(spans, (s) => s.confidence ?? 'definite')
   const startB = commonValue(spans, (s) => s.startBoundaryType ?? 'definite')
   const endB = commonValue(spans, (s) => s.endBoundaryType ?? 'definite')
-  const lineType = commonValue(spans, (s) => s.lineType ?? 'arc')
+  const startCap = commonValue(spans, (s) => s.startCap ?? capFromBoundaryType(s.startBoundaryType))
+  const endCap = commonValue(spans, (s) => s.endCap ?? capFromBoundaryType(s.endBoundaryType))
+  const lineStyle = commonValue(spans, (s) => s.lineStyle ?? 'solid')
 
   // Layer color defaults for the swatch fallback (use the first selection's layer).
   const fillFallback = entries[0].layer.fillColorDefault
@@ -665,12 +712,48 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
           </div>
         </div>
 
-        {/* Line style */}
-        <Field label="Line style" helper={lineType === MIXED ? 'Mixed across selection' : undefined}>
+        {/* Shape — visual caps + stroke */}
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <Field label="Start cap" helper={startCap === MIXED ? 'Mixed' : undefined}>
+              <select
+                className={inputClass}
+                value={startCap === MIXED ? '' : startCap}
+                onChange={(e) => setAll({ startCap: e.target.value as CapStyle })}
+              >
+                {startCap === MIXED && <option value="">— mixed —</option>}
+                {CAP_OPTS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          <div className="flex-1">
+            <Field label="End cap" helper={endCap === MIXED ? 'Mixed' : undefined}>
+              <select
+                className={inputClass}
+                value={endCap === MIXED ? '' : endCap}
+                onChange={(e) => setAll({ endCap: e.target.value as CapStyle })}
+              >
+                {endCap === MIXED && <option value="">— mixed —</option>}
+                {CAP_OPTS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+        </div>
+
+        {/* Stroke */}
+        <Field label="Stroke" helper={lineStyle === MIXED ? 'Mixed across selection' : undefined}>
           <Segmented
-            options={LINETYPE_OPTS}
-            value={lineType === MIXED ? ('' as LineType) : lineType}
-            onChange={(v) => setAll({ lineType: v })}
+            options={LINESTYLE_OPTS}
+            value={lineStyle === MIXED ? ('' as LineStyle) : lineStyle}
+            onChange={(v) => setAll({ lineStyle: v })}
           />
         </Field>
 

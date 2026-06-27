@@ -21,7 +21,11 @@ export type SourceType = "youtube" | "local";
 
 export type BoundaryType = "definite" | "gradual" | "elided";
 
-export type LineType = "arc" | "flat";
+/** Visual cap (end-tail) style of a bracket; analyst's choice, decoupled from BoundaryType. */
+export type CapStyle = "rounded" | "square" | "angled" | "open" | "elision";
+
+/** Visual stroke style of a bracket; whole-shape uniform. Decoupled from confidence. */
+export type LineStyle = "solid" | "dashed";
 
 // ---------------------------------------------------------------------------
 // Source Reference
@@ -150,7 +154,9 @@ export interface Span {
   endBoundaryType?: BoundaryType | null;  // Omit or null for "definite" (default)
   parentId?: string | null;              // UUID of parent span; hierarchical reference without enforcement
   mergedFrom?: string[] | null;          // Always >= 2 UUIDs when present
-  lineType?: LineType;                   // Top line style of the arc/bracket shape; default 'arc'
+  startCap?: CapStyle;                    // Visual cap; default 'rounded' (falls back from startBoundaryType)
+  endCap?: CapStyle;                      // Visual cap; default 'rounded' (falls back from endBoundaryType)
+  lineStyle?: LineStyle;                  // Visual stroke; default 'solid'
 }
 
 // ---------------------------------------------------------------------------
