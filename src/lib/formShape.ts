@@ -238,6 +238,158 @@ export function truncateToWidth(text: string, fontPx: number, maxWidthPx: number
 }
 
 // ---------------------------------------------------------------------------
+// Above-label layout (neighbour-aware truncation — §7 collision strategy)
+//
+// Above-shape labels live in "negative space": each is drawn just above its span,
+// overhanging up into the open interior of the layer above. Within a layer, all
+// labels share one horizontal band, so a label wider than its span overhangs
+// SIDEWAYS into its neighbours' labels (the `Beat-match intr·Intro` collision).
+//
+// The fix is a single left-to-right layout pass per layer. Each label gets a
+// horizontal "lane" bounded by the midpoints to its neighbours' centers; a
+// centered label may grow until it reaches a neighbour's half of that midpoint,
+// then it truncates. Where there is room the label stays whole — truncation only
+// kicks in under genuine pressure. Full text always survives in the tooltip and
+// the metadata panel, so abbreviation loses nothing.
+//
+// We deliberately do NOT stagger labels vertically: the flush stack leaves almost
+// no vertical room (a label sits in the shallow void of the layer above), so the
+// horizontal axis is the only safe place to give. Truncation is also deterministic
+// and reuses estimateTextWidth/truncateToWidth, keeping the whole pass pure.
+// ---------------------------------------------------------------------------
+
+export type Justification = 'left' | 'center' | 'right'
+
+export const ANCHOR: Record<Justification, 'start' | 'middle' | 'end'> = {
+  left: 'start',
+  center: 'middle',
+  right: 'end',
+}
+
+/** Horizontal inset for left/right-justified text from the span edge. */
+export const TEXT_PAD = 5
+
+/**
+ * Per-side clear space pulled inward from a shared lane midpoint, so neighbouring
+ * labels never touch. Two adjacent labels each inset by this much → ~2× this many
+ * px of gap between them. It also absorbs the gap between estimated and rendered
+ * text width (the ellipsis glyph runs a touch wider than the average advance), so
+ * a heavily-truncated `Bu…` beside another `Bu…` stays clearly separated.
+ */
+export const LABEL_GUTTER = 4
+
+/** Local x of a label's anchor point given its justification. */
+export function textX(spanX: number, width: number, just: Justification): number {
+  if (just === 'center') return spanX + width / 2
+  if (just === 'right') return spanX + width - TEXT_PAD
+  return spanX + TEXT_PAD
+}
+
+/**
+ * Re-anchor an above-label so it never bleeds past a timeline edge. A centered
+ * label on the first/last span overhangs into the header column (left) or off the
+ * track end (right); re-anchoring it to that edge keeps the whole label readable
+ * with no clip. Interior labels are unaffected. Returns the resolved justification.
+ */
+export function edgeAwareJustification(
+  just: Justification,
+  textWidth: number,
+  spanX: number,
+  spanWidth: number,
+  totalWidth: number,
+): Justification {
+  const localX = textX(0, spanWidth, just)
+  const anchor = ANCHOR[just]
+  const absLeft =
+    anchor === 'start'
+      ? spanX + localX
+      : anchor === 'middle'
+        ? spanX + localX - textWidth / 2
+        : spanX + localX - textWidth
+  if (absLeft < 0) return 'left'
+  if (absLeft + textWidth > totalWidth) return 'right'
+  return just
+}
+
+export interface SpanLabelInput {
+  id: string
+  /** Left edge of the span, in px. */
+  x: number
+  /** Span width, in px. */
+  width: number
+  /** Full label text (untruncated). */
+  label: string
+}
+
+export interface ResolvedLabel {
+  /** Label after neighbour-aware truncation ('' → render nothing). */
+  text: string
+  /** Justification after edge re-anchoring. */
+  justification: Justification
+}
+
+/**
+ * Lay out one layer's above-shape labels so adjacent labels don't collide.
+ *
+ * Returns a map from span id to its resolved {text, justification}. The spans may
+ * arrive in any order; neighbour relationships are computed from on-screen x.
+ *
+ * Budget model: a label's lane is bounded by the midpoints between its own span
+ * center and its neighbours' centers (clamped to the track), pulled in by
+ * LABEL_GUTTER on each neighbour side. Two centered labels can never overlap —
+ * each stays on its side of the shared midpoint, with the gutter keeping a clear
+ * gap between them.
+ */
+export function layoutLayerLabels(
+  spans: SpanLabelInput[],
+  fontPx: number,
+  totalWidth: number,
+  baseJust: Justification,
+): Map<string, ResolvedLabel> {
+  const result = new Map<string, ResolvedLabel>()
+  const ordered = [...spans].sort((a, b) => a.x - b.x)
+  const centers = ordered.map((s) => s.x + s.width / 2)
+
+  for (let i = 0; i < ordered.length; i++) {
+    const s = ordered[i]
+    if (!s.label) {
+      result.set(s.id, { text: '', justification: baseJust })
+      continue
+    }
+
+    // Lane edges: midpoint to each neighbour's center, pulled in by the gutter so
+    // adjacent labels keep clear of one another. Track edges (no neighbour) get the
+    // full extent — nothing to collide with there.
+    const leftBound = i > 0 ? (centers[i - 1] + centers[i]) / 2 + LABEL_GUTTER : 0
+    const rightBound =
+      i < ordered.length - 1 ? (centers[i] + centers[i + 1]) / 2 - LABEL_GUTTER : totalWidth
+
+    // Decide justification first (edge re-anchoring uses the full text width), then
+    // measure how much horizontal room that anchor actually has inside the lane.
+    const just = edgeAwareJustification(
+      baseJust,
+      estimateTextWidth(s.label, fontPx),
+      s.x,
+      s.width,
+      totalWidth,
+    )
+    const anchorX = textX(s.x, s.width, just)
+    const availW =
+      just === 'center'
+        ? 2 * Math.min(anchorX - leftBound, rightBound - anchorX)
+        : just === 'left'
+          ? rightBound - anchorX
+          : anchorX - leftBound
+
+    result.set(s.id, {
+      text: truncateToWidth(s.label, fontPx, availW),
+      justification: just,
+    })
+  }
+  return result
+}
+
+// ---------------------------------------------------------------------------
 // Color helpers
 // ---------------------------------------------------------------------------
 
