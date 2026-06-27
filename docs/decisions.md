@@ -1392,3 +1392,56 @@ transport + video, timeline ruler, widgets, blank.
 scroll, not pixel-pinned positions.
 **Rationale:** Full-height means viewport height is a variable; the layout must adapt
 across heights rather than assume a fixed frame.
+
+---
+
+## Label Collision Strategy (2026-06-27)
+
+*Session 2026-06-27. The §7 "residual collision" pass for adjacent above-shape
+labels. Outputs: `src/lib/formShape.ts` (new `layoutLayerLabels` + moved
+justification helpers), `src/components/FormLayers.tsx`, `src/test/formShape.test.ts`.*
+
+---
+
+**Decision:** Residual label collisions are resolved by **neighbour-aware
+truncation**, not vertical staggering or hover-only reveal. Each layer runs one
+left-to-right layout pass (`layoutLayerLabels`); a label's horizontal "lane" is
+bounded by the **midpoints between its own span center and its neighbours' centers**
+(clamped to the track edges), and the label truncates with an ellipsis to fit that
+lane. Where there is room the label is left whole — truncation engages only under
+genuine pressure.
+**Rationale:** The flush stack leaves almost no vertical room (a label sits in the
+shallow negative space of the layer above), so vertical staggering would collide
+with the layer above's ink. Horizontal is the only safe axis to give on. Truncation
+is deterministic and reuses the existing pure `estimateTextWidth`/`truncateToWidth`
+helpers. Because adjacent spans share an edge, a centered label always clears at
+least its own span before reaching a neighbour's half of the shared midpoint, so two
+centered labels can never overlap. Full text always survives in the `<title>`
+tooltip and the Inspector, so abbreviation loses no information. This realizes the
+§7 spec lever "abbreviation" over "stagger" / "hover-to-reveal."
+
+**Decision:** Adjacent labels are separated by a fixed per-side `LABEL_GUTTER`
+(4px), pulled inward from each shared lane midpoint.
+**Rationale:** The text-width *estimate* is slightly under the *rendered* width for
+heavily-truncated stubs (the ellipsis glyph runs wider than the average glyph
+advance), so two labels meeting exactly at a midpoint kissed by ~4px in practice.
+The gutter absorbs that estimate error and also reads better — neighbouring labels
+should not touch. The own-span-width "guarantee" yields to the gutter for very
+narrow spans (intended: those are exactly the labels that should abbreviate).
+
+**Decision:** This pass is scoped to **within-layer** adjacent-label collisions.
+Cross-layer label-on-label overlap is left for a follow-up.
+**Rationale:** Within-layer adjacency is the dominant collision visible at fit (the
+`Beat-match intr·Intro`, `Bui·Build` cases). Cross-layer overlap is rarer and is
+partly intended by the negative-space model (a label overhangs *up* into the open
+interior of the layer above, overlapping in space but not necessarily in ink).
+Widening scope now would over-engineer; revisit if cross-layer ink collisions prove
+to be a real problem on live data.
+
+**Decision:** The pure justification helpers (`textX`, `edgeAwareJustification`, the
+anchor map, `TEXT_PAD`) moved from `FormLayers.tsx` into `formShape.ts`.
+**Rationale:** They are pure geometry/text helpers — the stated purpose of
+`formShape.ts` — and relocating them lets the collision layout be a single pure,
+unit-tested function rather than logic embedded in the React component. The component
+now consumes a resolved `{text, justification}` per span and does no label fitting of
+its own (for above-labels); inside-shape labels still fit to their own body.
