@@ -18,22 +18,34 @@ import { useUIStore } from '@/store/uiStore'
 import { computePps, totalContentWidth } from '@/lib/timeline'
 import {
   buildShapePath,
-  confidenceStroke,
+  capFromBoundaryType,
+  lineStyleDash,
+  elisionInnerLine,
   textOnFill,
+  truncateToWidth,
+  layoutLayerLabels,
+  textX,
+  ANCHOR,
+  TEXT_PAD,
   FONT_SIZES,
   LABEL_RISE,
   SHAPE_HEIGHT,
   STROKE_WIDTH,
+  ISLAND_INSET,
   stackHeight,
   shapeTopY,
   type FontScale,
+  type Justification,
+  type ResolvedLabel,
 } from '@/lib/formShape'
 import { MIN_SPAN_WIDTH, MIN_BOUNDARY_DRAG_PX } from '@/lib/spanEdit'
-import type { Layer, Span, FormDiagramData, BoundaryType } from '@/types/strata'
+import type { Layer, Span, FormDiagramData, CapStyle } from '@/types/strata'
+
+// Lighter ink for the elision cap's inner overlap line (--ink-faint).
+const ELISION_INK = '#94a3b8'
 
 const INK_PRIMARY = 'var(--ink-primary)'
 const INK_SECONDARY = '#475569'
-const TEXT_PAD = 5 // horizontal inset for left/right-justified text
 
 // Selection styling (BriFormer convention): a light grey box fills the selected
 // span's rectangle with a blue outline — the blue reads even when the span
@@ -41,19 +53,14 @@ const TEXT_PAD = 5 // horizontal inset for left/right-justified text
 const SELECT_BLUE = '#2563eb'
 const SELECT_GREY = '#64748b'
 
-type Justification = 'left' | 'center' | 'right'
-
-const ANCHOR: Record<Justification, 'start' | 'middle' | 'end'> = {
-  left: 'start',
-  center: 'middle',
-  right: 'end',
-}
-
-/** Resolve the x and text-anchor for a piece of text given justification. */
-function textX(spanX: number, width: number, just: Justification): number {
-  if (just === 'center') return spanX + width / 2
-  if (just === 'right') return spanX + width - TEXT_PAD
-  return spanX + TEXT_PAD
+// White halo painted behind negative-space (above-shape) text so a label stays
+// legible where it overhangs the ink of the layer above (§7 — legibility before
+// layout). paint-order draws the stroke first, the fill on top.
+const TEXT_HALO = {
+  stroke: 'var(--canvas)',
+  strokeWidth: 2.5,
+  strokeLinejoin: 'round' as const,
+  paintOrder: 'stroke' as const,
 }
 
 interface SpanShapeProps {
@@ -61,9 +68,11 @@ interface SpanShapeProps {
   layer: Layer
   pps: number
   fontScale: FontScale
+  /** Resolved above-label from the layer's neighbour-aware layout pass. */
+  labelLayout?: ResolvedLabel
 }
 
-function SpanShape({ span, layer, pps, fontScale }: SpanShapeProps) {
+function SpanShape({ span, layer, pps, fontScale, labelLayout }: SpanShapeProps) {
   // Per-span subscription: a span only re-renders when ITS own selected/hovered
   // state flips, not on every selection change across the diagram.
   const isSelected = useUIStore((s) => s.selectedSpanIds.includes(span.id))
@@ -104,15 +113,21 @@ function SpanShape({ span, layer, pps, fontScale }: SpanShapeProps) {
   const width = (span.endTime - span.startTime) * pps
   if (width <= 0) return null
 
-  const lineType = span.lineType ?? 'arc'
-  const startBoundary: BoundaryType = span.startBoundaryType ?? 'definite'
-  const endBoundary: BoundaryType = span.endBoundaryType ?? 'definite'
+  // Visual caps are the analyst's drawing choice; fall back to the analytical
+  // boundary type for files authored before startCap/endCap existed.
+  const startCap: CapStyle = span.startCap ?? capFromBoundaryType(span.startBoundaryType)
+  const endCap: CapStyle = span.endCap ?? capFromBoundaryType(span.endBoundaryType)
 
   const fill = span.fillColor ?? layer.fillColorDefault
   const stroke = span.strokeColor ?? layer.strokeColorDefault
-  const { dash, opacity } = confidenceStroke(span.confidence)
+  const dash = lineStyleDash(span.lineStyle)
 
-  const path = buildShapePath({ width, lineType, startBoundary, endBoundary })
+  // One path per span (fill + stroke), inset so adjacent spans read as islands.
+  const path = buildShapePath({ width, startCap, endCap, inset: ISLAND_INSET })
+  const elisionLines = [
+    elisionInnerLine(startCap, 'start', width, SHAPE_HEIGHT, ISLAND_INSET),
+    elisionInnerLine(endCap, 'end', width, SHAPE_HEIGHT, ISLAND_INSET),
+  ].filter((d): d is string => d !== null)
   const fonts = FONT_SIZES[fontScale]
 
   // Rendering config — defaults per Phase 0.4 §4 (label above, annotation inside).
@@ -121,21 +136,54 @@ function SpanShape({ span, layer, pps, fontScale }: SpanShapeProps) {
   const annotationPosition = layer.rendering?.annotationPosition ?? 'inside'
   const annotationJust = (layer.rendering?.annotationJustification ?? 'left') as Justification
 
-  // Local coords: the shape occupies y ∈ [0, SHAPE_HEIGHT]. A label "above"
-  // sits at a negative y, overhanging up into the open bracket of the layer above.
-  const insideY = SHAPE_HEIGHT / 2 + fonts.annotation * 0.36 // optical centering
+  // Local coords: the shape occupies y ∈ [0, SHAPE_HEIGHT]. A label "above" sits
+  // at a negative y, overhanging up into the open bracket of the layer above.
+  // An inside LABEL (e.g. an A/B/C bubble letter) is optically centered, but an
+  // inside ANNOTATION sits in the UPPER part of the body — that leaves the lower
+  // interior free for the child label rising up from the layer below, which is
+  // where most label/annotation collisions came from.
+  const insideLabelY = SHAPE_HEIGHT / 2 + fonts.label * 0.36
+  const insideAnnotY = fonts.annotation + 6
   const aboveLabelY = -LABEL_RISE
   const aboveAnnotY = -LABEL_RISE - fonts.label // stack annotation above the label if both go up
+
+  // Text that sits INSIDE the shape must fit it (truncate with an ellipsis);
+  // text ABOVE the shape lives in negative space and may overhang (§3.2), so it
+  // is left intact and a halo keeps it legible. Full text is always in the
+  // metadata panel and the span tooltip.
+  const innerMax = width - 2 * TEXT_PAD
+  const labelAbove = labelPosition !== 'inside'
+  const annotationAbove = annotationPosition === 'above'
+  // Above-labels are resolved by the layer-level layout pass (neighbour-aware
+  // truncation + edge re-anchoring). Inside-labels truncate to the shape body.
+  const labelText = labelAbove
+    ? (labelLayout?.text ?? '')
+    : span.label
+      ? truncateToWidth(span.label, fonts.label, innerMax)
+      : ''
+  const annotationText = span.annotation
+    ? annotationAbove
+      ? span.annotation
+      : truncateToWidth(span.annotation, fonts.annotation, innerMax)
+    : ''
+  const titleText = [span.label, span.type].filter(Boolean).join(' · ')
+
+  const effLabelJust = labelAbove ? (labelLayout?.justification ?? labelJust) : labelJust
+  const labelLocalX = textX(0, width, effLabelJust)
+  const annotationLocalX = textX(0, width, annotationJust)
 
   return (
     <g
       transform={`translate(${x}, 0)`}
-      opacity={opacity}
       style={{ cursor: 'pointer' }}
       onMouseEnter={() => hoverSpan(span.id)}
       onMouseLeave={() => hoverSpan(null)}
       onClick={handleClick}
     >
+      {/* Native tooltip — full label/type, always reachable on hover even when
+          the on-shape text is truncated. */}
+      {titleText && <title>{titleText}</title>}
+
       <path
         d={path}
         fill={fill}
@@ -145,6 +193,19 @@ function SpanShape({ span, layer, pps, fontScale }: SpanShapeProps) {
         strokeLinejoin="round"
         strokeLinecap="round"
       />
+
+      {/* Elision caps: a lighter inner line marking the overlap (separate stroke,
+          never a dash on the bracket itself). */}
+      {elisionLines.map((d, i) => (
+        <path
+          key={`elision-${i}`}
+          d={d}
+          fill="none"
+          stroke={ELISION_INK}
+          strokeWidth={STROKE_WIDTH}
+          strokeLinecap="round"
+        />
+      ))}
 
       {/* Selection / hover box — drawn OVER the shape so it reads on white or
           colored fills. Hover: faint grey wash. Selected: grey box + blue
@@ -167,33 +228,33 @@ function SpanShape({ span, layer, pps, fontScale }: SpanShapeProps) {
           open (white-filled) brackets are easy to click, not just the stroke. */}
       <rect x={0} y={0} width={width} height={SHAPE_HEIGHT} fill="transparent" />
 
-      {/* Section label */}
-      {span.label && (
+      {/* Section label — above (negative space, haloed) or inside (centered) */}
+      {labelText && (
         <text
-          x={textX(0, width, labelJust)}
-          y={labelPosition === 'inside' ? insideY : aboveLabelY}
-          textAnchor={ANCHOR[labelJust]}
+          x={labelLocalX}
+          y={labelAbove ? aboveLabelY : insideLabelY}
+          textAnchor={ANCHOR[effLabelJust]}
           fontSize={fonts.label}
           fontWeight={500}
-          fill={labelPosition === 'inside' ? textOnFill(fill, INK_PRIMARY) : INK_PRIMARY}
+          fill={labelAbove ? INK_PRIMARY : textOnFill(fill, INK_PRIMARY)}
+          {...(labelAbove ? TEXT_HALO : {})}
         >
-          {span.label}
+          {labelText}
         </text>
       )}
 
-      {/* Annotation (diagram-visible analytical text) */}
-      {span.annotation && (
+      {/* Annotation — above (haloed) or inside, upper part of the body */}
+      {annotationText && (
         <text
-          x={textX(0, width, annotationJust)}
-          y={annotationPosition === 'above' ? aboveAnnotY : insideY}
+          x={annotationLocalX}
+          y={annotationAbove ? aboveAnnotY : insideAnnotY}
           textAnchor={ANCHOR[annotationJust]}
           fontSize={fonts.annotation}
           fontWeight={400}
-          fill={
-            annotationPosition === 'inside' ? textOnFill(fill, INK_SECONDARY) : INK_SECONDARY
-          }
+          fill={annotationAbove ? INK_SECONDARY : textOnFill(fill, INK_SECONDARY)}
+          {...(annotationAbove ? TEXT_HALO : {})}
         >
-          {span.annotation}
+          {annotationText}
         </text>
       )}
     </g>
@@ -211,21 +272,50 @@ function FormLayerGroup({
   layer,
   index,
   pps,
+  totalWidth,
   onBoundaryDragStart,
 }: {
   layer: Layer
   index: number
   pps: number
+  totalWidth: number
   onBoundaryDragStart: BoundaryDragStart
 }) {
   if (!layer.visibility) return null
   const data = layer.data as FormDiagramData
   const fontScale: FontScale = 'md' // schema fontScale field pending — default md
   const spans = data.spans
+
+  // Neighbour-aware label layout: one pass over the whole layer so each above-label
+  // is truncated to the room it actually has between its neighbours (§7). Only the
+  // "above" case needs it — inside-labels are bounded by their own shape body.
+  const labelAbove = (layer.rendering?.labelPosition ?? 'above') !== 'inside'
+  const baseJust = (layer.rendering?.labelJustification ?? 'center') as Justification
+  const labelLayout = labelAbove
+    ? layoutLayerLabels(
+        spans.map((s) => ({
+          id: s.id,
+          x: s.startTime * pps,
+          width: (s.endTime - s.startTime) * pps,
+          label: s.label ?? '',
+        })),
+        FONT_SIZES[fontScale].label,
+        totalWidth,
+        baseJust,
+      )
+    : null
+
   return (
     <g transform={`translate(0, ${shapeTopY(index)})`}>
       {spans.map((span) => (
-        <SpanShape key={span.id} span={span} layer={layer} pps={pps} fontScale={fontScale} />
+        <SpanShape
+          key={span.id}
+          span={span}
+          layer={layer}
+          pps={pps}
+          fontScale={fontScale}
+          labelLayout={labelLayout?.get(span.id)}
+        />
       ))}
 
       {/* Boundary drag handles — at each shared edge between adjacent spans.
@@ -322,6 +412,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
           display: 'block',
         }}
       >
+
         {pps > 0 &&
           layers.map((layer, i) => (
             <FormLayerGroup
@@ -329,6 +420,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
               layer={layer}
               index={i}
               pps={pps}
+              totalWidth={totalWidth}
               onBoundaryDragStart={beginBoundaryDrag}
             />
           ))}

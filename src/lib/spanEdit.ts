@@ -41,8 +41,8 @@ export function placeBoundaryInSpans(
   if (spans.length === 0) {
     if (time < MIN_SPAN_WIDTH || time > duration - MIN_SPAN_WIDTH) return null
     return [
-      { id: mkId(), startTime: 0, endTime: time, lineType: 'flat' },
-      { id: mkId(), startTime: time, endTime: duration, lineType: 'flat' },
+      { id: mkId(), startTime: 0, endTime: time },
+      { id: mkId(), startTime: time, endTime: duration },
     ]
   }
 

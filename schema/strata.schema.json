@@ -464,10 +464,20 @@
           "minItems": 2,
           "description": "UUIDs of source spans when created by a merge. Enables reference resolution for inter-widget links that pointed to deprecated span IDs. Null for spans not produced by a merge. Always contains at least two IDs when present."
         },
-        "lineType": {
+        "startCap": {
           "type": "string",
-          "enum": ["arc", "flat"],
-          "description": "Top line style of the arc/bracket shape. 'arc' = curved dome arch (classic bubble form); 'flat' = straight horizontal line (open bracket / rectangular-top form). Composable with startBoundaryType/endBoundaryType which control end cap geometry independently. Absent = 'arc' (default). Set at layer level for consistency; per-span override for edge cases."
+          "enum": ["rounded", "square", "angled", "open", "elision"],
+          "description": "Visual cap (end-tail) style at the start of the bracket — the analyst's drawing choice, decoupled from startBoundaryType (which is analytical data). 'rounded' = vertical tail with a rounded corner; 'square' = sharp corner; 'angled' = diagonal tail; 'open' = no tail; 'elision' = vertical tail plus a lighter inner overlap line. The top line is always flat (domes/arcs are retired). Absent = 'rounded' (falls back from startBoundaryType for files authored before this field)."
+        },
+        "endCap": {
+          "type": "string",
+          "enum": ["rounded", "square", "angled", "open", "elision"],
+          "description": "Visual cap style at the end of the bracket. Same values and defaulting as startCap; falls back from endBoundaryType when absent."
+        },
+        "lineStyle": {
+          "type": "string",
+          "enum": ["solid", "dashed"],
+          "description": "Visual stroke style of the whole bracket — the analyst's choice, decoupled from confidence. Whole-shape uniform; solid and dashed are never mixed at a shared edge. Absent = 'solid'."
         }
       }
     },

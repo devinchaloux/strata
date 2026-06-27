@@ -31,6 +31,12 @@ interface DocumentState {
   // null = document has never been saved (treat as dirty if document exists).
   // isDirty is computed from this — see selectIsDirty below.
   savedSnapshot: string | null
+  // Monotonic counter bumped on every loadDocument. Lets view-state effects
+  // (e.g. the timeline's auto-fit-on-load) fire once per *load* — including
+  // reloading the same document or a different one of identical duration —
+  // rather than keying on a value like duration that can collide. Excluded from
+  // undo history (partialize) and from dirty/save comparisons (document-only).
+  loadId: number
 
   // Document lifecycle
   loadDocument: (doc: StrataDocument) => void
@@ -123,9 +129,14 @@ const useDocumentStore = create<DocumentState>()(
     (set, get) => ({
       document: null,
       savedSnapshot: null,
+      loadId: 0,
 
       loadDocument: (doc) => {
-        set({ document: doc, savedSnapshot: JSON.stringify(doc) })
+        set((s) => ({
+          document: doc,
+          savedSnapshot: JSON.stringify(doc),
+          loadId: s.loadId + 1,
+        }))
         // Clear undo history so the loaded state is the base, not an undo target.
         // Caller invokes useDocumentStore.temporal.getState().clear() after this returns.
       },

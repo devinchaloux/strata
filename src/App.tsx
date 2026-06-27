@@ -1,12 +1,13 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useFileIO } from '@/hooks/useFileIO'
 import { useMerge } from '@/hooks/useMerge'
 import { YouTubePlayer } from '@/components/YouTubePlayer'
 import { FormDiagram } from '@/components/FormDiagram'
-import { MetadataPanel } from '@/components/MetadataPanel'
+import { Inspector } from '@/components/Inspector'
 import { MergeConflictDialog } from '@/components/MergeConflictDialog'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
+import { cn } from '@/lib/utils'
 import aliveRaw from '../schema/alive.strata?raw'
 import type { StrataDocument } from '@/types/strata'
 
@@ -18,11 +19,15 @@ function ToolbarButton({
   onClick,
   disabled,
   title,
+  muted,
   children,
 }: {
   onClick: () => void
   disabled?: boolean
   title?: string
+  // Dev/secondary affordance (e.g. Demo) — rendered lighter so it reads as
+  // non-primary chrome. (Demo itself is stripped before release.)
+  muted?: boolean
   children: React.ReactNode
 }) {
   return (
@@ -30,13 +35,83 @@ function ToolbarButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className="rounded px-2.5 py-1 text-xs font-medium text-foreground
+      className={cn(
+        `rounded-md px-2.5 py-1 text-xs font-medium transition-colors
         hover:bg-accent hover:text-accent-foreground
-        disabled:opacity-40 disabled:pointer-events-none
-        transition-colors"
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background
+        disabled:opacity-40 disabled:pointer-events-none`,
+        muted ? 'text-muted-foreground' : 'text-foreground',
+      )}
     >
       {children}
     </button>
+  )
+}
+
+/** Layered wordmark glyph — three stacked strata, narrowing upward. */
+function StrataMark({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" aria-hidden="true" className="shrink-0">
+      <rect x="2" y="10.5" width="12" height="2" rx="1" fill="hsl(var(--primary))" />
+      <rect x="3.5" y="7" width="9" height="2" rx="1" fill="var(--ink-muted)" />
+      <rect x="5" y="3.5" width="6" height="2" rx="1" fill="var(--ink-faint)" />
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Empty state — the first screen before a document is loaded
+// ---------------------------------------------------------------------------
+
+function EmptyState({
+  onNew,
+  onOpen,
+  onDemo,
+}: {
+  onNew: () => void
+  onOpen: () => void
+  onDemo: () => void
+}) {
+  return (
+    <main className="flex flex-1 items-center justify-center px-6">
+      <div className="flex max-w-sm flex-col items-center text-center">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-secondary">
+          <StrataMark size={26} />
+        </div>
+        <h1 className="text-base font-semibold tracking-tight text-foreground">
+          Start an analysis
+        </h1>
+        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+          Create a new analysis or open a <code className="text-[0.8em]">.strata</code> file, then
+          link a YouTube video and build layered form diagrams on a shared timeline.
+        </p>
+        <div className="mt-5 flex items-center gap-2">
+          <button
+            onClick={onNew}
+            className="rounded-md bg-primary px-3.5 py-1.5 text-xs font-medium text-primary-foreground
+              transition-colors hover:bg-primary/90
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            New analysis
+          </button>
+          <button
+            onClick={onOpen}
+            className="rounded-md border border-border px-3.5 py-1.5 text-xs font-medium text-foreground
+              transition-colors hover:bg-accent
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            Open file…
+          </button>
+        </div>
+        <button
+          onClick={onDemo}
+          className="mt-3 rounded text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline
+            focus-visible:outline-none focus-visible:underline"
+        >
+          Or explore the demo analysis
+        </button>
+      </div>
+    </main>
   )
 }
 
@@ -103,6 +178,9 @@ export default function App() {
   const loadDocument = useDocumentStore((s) => s.loadDocument)
   const setActiveLayer = useUIStore((s) => s.setActiveLayer)
 
+  // Inspector collapse is pure view-state; local to the shell.
+  const [inspectorCollapsed, setInspectorCollapsed] = useState(false)
+
   // Merge: eligibility drives the toolbar button; performMerge is held in a ref
   // so the keydown effect can call the latest closure without re-subscribing.
   const { eligibility: mergeEligibility, performMerge } = useMerge()
@@ -166,16 +244,26 @@ export default function App() {
   }, [newFile, openFile, saveFile, saveFileAs])
 
   return (
+    // Full-height app shell: header on top, then a main row of [left work area |
+    // right inspector], so the inspector is a persistent full-height column that
+    // pushes the diagram + transport + video to its left.
     <div className="flex h-screen flex-col bg-background text-foreground">
       {/* Toolbar */}
       <header className="flex h-10 shrink-0 items-center gap-1 border-b border-border px-3">
-        <span className="mr-3 text-sm font-semibold tracking-tight">Strata</span>
+        <span className="mr-1 flex items-center gap-1.5 select-none">
+          <StrataMark />
+          <span className="text-sm font-semibold tracking-tight text-foreground">Strata</span>
+        </span>
+
+        <div className="mx-1.5 h-4 w-px bg-border" />
 
         <ToolbarButton onClick={newFile}>New</ToolbarButton>
         <ToolbarButton onClick={openFile}>Open</ToolbarButton>
-        <ToolbarButton onClick={loadDemo}>Demo</ToolbarButton>
+        <ToolbarButton onClick={loadDemo} muted title="Load the bundled demo analysis">
+          Demo
+        </ToolbarButton>
 
-        <div className="mx-1 h-4 w-px bg-border" />
+        <div className="mx-1.5 h-4 w-px bg-border" />
 
         <ToolbarButton onClick={saveFile} disabled={!doc}>
           {hasHandle ? 'Save' : 'Download'}
@@ -184,7 +272,7 @@ export default function App() {
           Save As
         </ToolbarButton>
 
-        <div className="mx-1 h-4 w-px bg-border" />
+        <div className="mx-1.5 h-4 w-px bg-border" />
 
         <ToolbarButton
           onClick={() => performMerge()}
@@ -195,27 +283,40 @@ export default function App() {
         </ToolbarButton>
 
         {isDirty && (
-          <span className="ml-auto text-xs text-muted-foreground">Unsaved changes</span>
+          <span
+            className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground"
+            title="You have unsaved changes"
+          >
+            <span
+              className="inline-block h-1.5 w-1.5 rounded-full"
+              style={{ backgroundColor: 'var(--ink-faint)' }}
+              aria-hidden
+            />
+            Unsaved changes
+          </span>
         )}
       </header>
 
-      {/* Work area row — form diagram + right metadata panel (panel renders
-          null when nothing is selected) */}
+      {/* Main row — left work area (diagram bottom-anchored on the ruler, then
+          transport + video at the very bottom) and the right inspector. */}
       <div className="flex min-h-0 flex-1">
-        {doc ? (
-          <FormDiagram />
-        ) : (
-          <main className="flex flex-1 items-center justify-center">
-            <p className="text-sm text-muted-foreground">
-              Open a .strata file or create a new analysis to begin.
-            </p>
-          </main>
-        )}
-        <MetadataPanel />
-      </div>
+        <div className="flex min-w-0 flex-1 flex-col">
+          {doc ? (
+            <FormDiagram />
+          ) : (
+            <EmptyState onNew={newFile} onOpen={openFile} onDemo={loadDemo} />
+          )}
+          {/* Transport bar + collapsible video panel — bottom of the left column */}
+          <YouTubePlayer />
+        </div>
 
-      {/* Transport bar + collapsible video panel — bottom of the shell */}
-      <YouTubePlayer />
+        {doc && (
+          <Inspector
+            collapsed={inspectorCollapsed}
+            onToggle={() => setInspectorCollapsed((v) => !v)}
+          />
+        )}
+      </div>
 
       {/* Merge conflict dialog — renders only when a merge has conflicts */}
       <MergeConflictDialog />

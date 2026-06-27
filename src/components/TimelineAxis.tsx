@@ -1,30 +1,34 @@
-import { useTimeline } from '@/hooks/useTimeline'
 import { generateTicks } from '@/lib/timeline'
 import { TimelineScrollbar } from './TimelineScrollbar'
 
-const RULER_HEIGHT = 40  // px
-const TICK_HEIGHT = 10   // px — tick line length at bottom of ruler
-const LABEL_Y = 14       // px — text baseline from top of SVG
+const RULER_HEIGHT = 24  // px — condensed ruler (the timeline reads tighter now)
+const TICK_HEIGHT = 7    // px — tick line length at bottom of ruler
+const LABEL_Y = 11       // px — text baseline from top of SVG
 
-export function TimelineAxis() {
-  const {
-    containerRef,
-    zoomIn,
-    zoomOut,
-    fitToWindow,
-    resetTo100,
-    setScrollOffset,
-    minZoomValue,
-    maxZoomValue,
-    pps,
-    totalWidth,
-    zoom,
-    scrollOffset,
-    viewportWidth,
-    currentTime,
-    duration,
-  } = useTimeline()
+export interface TimelineAxisProps {
+  containerRef: React.RefObject<HTMLDivElement>
+  pps: number
+  totalWidth: number
+  scrollOffset: number
+  viewportWidth: number
+  currentTime: number
+  duration: number
+  setScrollOffset: (offset: number) => void
+}
 
+// Presentational ruler. The timeline state lives in useTimeline, lifted to
+// FormDiagram so the zoom controls can render in the widget top bar (off the
+// time labels) — the ruler just draws ticks, cursor, and the scrollbar.
+export function TimelineAxis({
+  containerRef,
+  pps,
+  totalWidth,
+  scrollOffset,
+  viewportWidth,
+  currentTime,
+  duration,
+  setScrollOffset,
+}: TimelineAxisProps) {
   const ticks = generateTicks(duration, pps, scrollOffset, viewportWidth)
 
   // Cursor pixel position in the visible area (negative = off-screen left)
@@ -85,7 +89,7 @@ export function TimelineAxis() {
                     y={LABEL_Y}
                     fill="hsl(var(--muted-foreground))"
                     fontSize={9}
-                    fontFamily="ui-monospace, monospace"
+                    style={{ fontVariantNumeric: 'tabular-nums' }}
                     dominantBaseline="auto"
                   >
                     {tick.label}
@@ -134,71 +138,6 @@ export function TimelineAxis() {
             }}
           />
         )}
-
-        {/* Zoom controls — float at top-right, above the SVG.
-            − / 100% (reset to standard scale) / + / Fit (fit-to-window). */}
-        {hasDocument && (
-          <div
-            style={{
-              position: 'absolute',
-              top: 4,
-              right: 6,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
-              zIndex: 10,
-              backgroundColor: 'hsl(var(--background))',
-              borderRadius: 4,
-              padding: '1px 3px',
-              border: '1px solid hsl(var(--border))',
-            }}
-          >
-            <ZoomButton onClick={zoomOut} disabled={zoom <= minZoomValue + 1e-6} label="Zoom out">
-              −
-            </ZoomButton>
-            <button
-              onClick={resetTo100}
-              aria-label="Reset to 100%"
-              title="Reset to 100% (standard scale)"
-              style={{
-                minWidth: 34,
-                height: 16,
-                fontSize: 9,
-                fontFamily: 'ui-monospace, monospace',
-                color: 'hsl(var(--foreground))',
-                cursor: 'pointer',
-                background: 'none',
-                border: 'none',
-                padding: 0,
-                textAlign: 'center',
-              }}
-            >
-              {Math.round(zoom * 100)}%
-            </button>
-            <ZoomButton onClick={zoomIn} disabled={zoom >= maxZoomValue - 1e-6} label="Zoom in">
-              +
-            </ZoomButton>
-            <span aria-hidden style={{ width: 1, height: 12, background: 'hsl(var(--border))', margin: '0 1px' }} />
-            <button
-              onClick={fitToWindow}
-              aria-label="Fit to window"
-              title="Fit the whole track to the window"
-              style={{
-                height: 16,
-                fontSize: 9,
-                fontFamily: 'ui-monospace, monospace',
-                color: 'hsl(var(--foreground))',
-                cursor: 'pointer',
-                background: 'none',
-                border: 'none',
-                padding: '0 2px',
-                textAlign: 'center',
-              }}
-            >
-              Fit
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Horizontal scrollbar — only rendered when the content overflows */}
@@ -209,43 +148,5 @@ export function TimelineAxis() {
         onScroll={setScrollOffset}
       />
     </div>
-  )
-}
-
-/** Small +/− icon button with a disabled (faded) state. */
-function ZoomButton({
-  onClick,
-  disabled,
-  label,
-  children,
-}: {
-  onClick: () => void
-  disabled: boolean
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      style={{
-        width: 16,
-        height: 16,
-        fontSize: 12,
-        lineHeight: 1,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: disabled ? 'hsl(var(--muted-foreground))' : 'hsl(var(--foreground))',
-        opacity: disabled ? 0.3 : 1,
-        cursor: disabled ? 'default' : 'pointer',
-        background: 'none',
-        border: 'none',
-        padding: 0,
-      }}
-    >
-      {children}
-    </button>
   )
 }

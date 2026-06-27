@@ -83,7 +83,8 @@ Point IDs are derived as `layerId:timestamp`. They are stable as long as the tim
 
 **Pixel position formula** (from `_contract.md`, `ViewState`):
 ```
-x = ((timestamp - viewState.scrollOffset) / (document.duration / viewState.zoom)) * viewState.viewportWidth
+pps = BASE_PPS * viewState.zoom            // BASE_PPS = 10 px/s, see lib/timeline.ts
+x   = timestamp * pps - viewState.scrollOffset   // scrollOffset is in pixels
 ```
 
 Ticks outside the visible viewport (`x < 0` or `x > viewportWidth`) are not rendered.
@@ -107,21 +108,32 @@ exporter.formats = [
 
 ## 4. Rendering Rules
 
-### 4.1 Span Blocks
+### 4.1 Span Shapes
 
-Each span is an SVG `<rect>`. Position and width are derived from timestamps:
+Each span is a **single** SVG `<path>` (fill + stroke in one path — never decomposed
+into separate fill / boundary / top passes). Position and width share the timeline
+pixel contract used by the ruler:
 
 ```
-x     = ((span.startTime - viewState.scrollOffset) / viewportDuration) * viewState.viewportWidth
-width = ((span.endTime - span.startTime) / viewportDuration) * viewState.viewportWidth
+x     = span.startTime * pps - viewState.scrollOffset
+width = (span.endTime - span.startTime) * pps
 ```
 
-where `viewportDuration = document.duration / viewState.zoom`.
+where `pps = BASE_PPS * viewState.zoom`.
 
-- **Color:** `span.color ?? layer.colorDefault`
-- **Label:** centered horizontally and vertically in the rect; clipped (`overflow: hidden`) when the span is too narrow; hidden entirely below a minimum pixel width threshold
-- **Annotation:** `span.annotation` renders as smaller text below the label inside the span block; tooltip on hover for long annotations
-- **Notes:** `span.notes` is tooltip-only; never rendered on the diagram
+- **Islands, not abutments:** the drawn shape is inset within its time range so
+  adjacent spans are separated by a miniscule (~2px) gap. Stored timestamps stay
+  exact; only the rendered geometry insets. Adjacent tails therefore never share
+  pixels — the double-stamp/collision problem is removed at the source.
+- **Top line:** always flat. There is no dome/arc.
+- **Fill / stroke color:** `span.fillColor ?? layer.fillColorDefault` and
+  `span.strokeColor ?? layer.strokeColorDefault`. The path is open; fill closes it
+  along the baseline, so a white fill reads as an open bracket and a colored fill as
+  a solid block.
+- **Label:** per layer rendering config — above the shape (in the negative space of
+  the layer above) by default; truncated to fit when rendered inside the body.
+- **Annotation:** `span.annotation` inside the shape body; tooltip on hover for long text.
+- **Notes:** `span.notes` is tooltip-only; never rendered on the diagram.
 
 ### 4.2 Overlapping Spans
 
@@ -134,25 +146,40 @@ Spans within a layer that overlap in time occupy sub-rows within the layer's ver
 
 All sub-rows share the same horizontal coordinate system. Overlapping spans are never merged visually.
 
-### 4.3 Confidence Visual States
+### 4.3 Shape Vocabulary (visual style — the analyst's choice)
 
-| `confidence` value | Border | Opacity |
-|---|---|---|
-| `"definite"` (or omitted) | Solid | 1.0 |
-| `"approximate"` | Dashed | 1.0 |
-| `"speculative"` | Dashed | 0.6 |
+The drawn shape is the analyst's explicit choice and is **decoupled from the
+analytical data**. The renderer reads only the visual fields below; `confidence` and
+`startBoundaryType` / `endBoundaryType` are queryable data and **do not affect
+rendering** (see decisions log, 2026-06-27).
 
-### 4.4 Boundary Types
+**Caps** — `span.startCap` / `span.endCap`, type `CapStyle`:
 
-Visual rendering of `startBoundaryType` / `endBoundaryType`:
-
-| value | Border rendering |
+| value | rendering |
 |---|---|
-| `"definite"` (or null/omitted) | Straight vertical border |
-| `"gradual"` | Angled / chevron border indicating processual transition |
-| `"elided"` | Overlapping bracket; the renderer detects reciprocal `"elided"` boundaries on adjacent spans and draws the elision bracket between them |
+| `"rounded"` (default) | flat top meeting a vertical tail through a rounded corner |
+| `"square"` | flat top meeting a vertical tail at a sharp corner |
+| `"angled"` | diagonal tail (processual feel) |
+| `"open"` | no tail on that side — the flat top simply ends |
+| `"elision"` | the vertical tail plus a lighter inner boundary line (overlap cue) |
 
-The elision visual requires both adjacent spans to have the matching `"elided"` boundary *and* overlapping timestamps. The renderer detects this pattern; the analyst does not configure the visual directly.
+**Stroke** — `span.lineStyle`: `"solid"` (default) or `"dashed"`. Whole-shape uniform —
+solid and dashed are never mixed within a path or at a shared edge. A standalone
+dashed vertical is a separate boundary-marker construct, not a dashed bracket tail.
+
+**Defaults & back-compat:** a cap defaults to the layer default, ultimately
+`"rounded"`. When a span has no explicit cap, the renderer derives one from the
+analytical boundary type (`definite`→`rounded`, `gradual`→`angled`, `elided`→`elision`)
+so existing `.strata` files render with no migration; `"square"` is reachable only as
+an explicit visual choice (it has no data analog). `lineStyle` defaults to `"solid"`
+regardless of `confidence`.
+
+### 4.4 Grouping
+
+A grouping (e.g. a "Drop section" bracket spanning several sub-spans) is not a special
+construct: it is an ordinary span on a **higher layer** whose width covers its
+children, drawn as a wide bracket. It reuses the entire shape / label / color /
+interaction model; cross-layer overlap is already valid in Strata's data model.
 
 ### 4.5 Selected and Hovered States
 

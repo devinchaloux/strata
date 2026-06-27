@@ -4,46 +4,52 @@
  * No React, no DOM. Everything here is a pure function so it can be unit-tested
  * and reused by both the editor render path and (later) the embeddable viewer.
  *
- * Shape model (per Phase 0.4 §3 + Phase 0.7 §4):
- *   A span is an OPEN bracket or an arc "bubble" — never a filled rectangle.
- *   - lineType 'flat' → flat horizontal top with two tails dropping to the
- *     baseline. The tails carry the boundary character (definite/gradual).
- *   - lineType 'arc'  → domed top (the classic bubble) sitting on the baseline.
+ * Shape model (per docs/decisions.md "Form Diagram Shape Model", 2026-06-27):
+ *   A span is ONE path — a flat-topped bracket. The top line is always flat
+ *   (domes/arcs are retired). The two end caps carry the visual variety and are
+ *   the analyst's explicit drawing choice (decoupled from analytical data):
+ *     - rounded → flat top meeting a vertical tail through a rounded corner
+ *     - square  → flat top meeting a vertical tail at a sharp corner
+ *     - angled  → a diagonal tail (processual feel)
+ *     - open    → no tail on that side; the flat top just ends
+ *     - elision → a vertical tail; the renderer adds a lighter inner overlap line
  *
- * Coordinate convention: every path is built in LOCAL space where the shape
- * spans x ∈ [0, w], the top edge is y = 0, and the baseline is y = H. The
- * caller translates the group to the span's pixel x and the layer's y.
+ * Spans are drawn as discrete ISLANDS: the shape is inset by `inset` px on each
+ * side so adjacent spans never share boundary pixels (no double-stamping). Stored
+ * timestamps stay exact; only the rendered geometry insets.
  *
- * Why an open path that we still fill: SVG fills an open subpath as if it were
- * closed along a straight line from the last point back to the first. For our
- * brackets that implicit close runs along the baseline — so a white fill makes
- * the bracket read as "open" (only the stroke shows) while a colored fill makes
- * a solid bubble. One path, two visual idioms, no special-casing.
+ * Coordinate convention: every path is built in LOCAL space where the slot spans
+ * x ∈ [0, width], the top edge is y = 0, and the baseline is y = H. The caller
+ * translates the group to the span's pixel x and the layer's y.
+ *
+ * Why an open path that we still fill: SVG fills an open subpath as if closed
+ * along a straight line back to the start. For our brackets that implicit close
+ * runs along the baseline — so a white fill reads as an open bracket while a
+ * colored fill reads as a solid block. One path, two idioms, no special-casing.
  */
 
-import type { BoundaryType, LineType, ConfidenceLevel } from '@/types/strata'
+import type { BoundaryType, CapStyle, LineStyle } from '@/types/strata'
 
 // ---------------------------------------------------------------------------
-// Metrics (starting values — Phase 0.7 §8; tweakable once seen on real data)
+// Metrics (starting values; tweakable once seen on real data)
 // ---------------------------------------------------------------------------
 
-export const SHAPE_HEIGHT = 26 // uniform across all layers (the BriFormer cue)
-export const CORNER_RADIUS = 6 // definite tail corner curve
-export const GRADUAL_INSET = 9 // horizontal run of an angled (gradual) tail
+export const SHAPE_HEIGHT = 28 // uniform across all layers (the BriFormer cue)
+export const CORNER_RADIUS = 10 // rounded-cap corner curve — deliberately round vs square
+export const ANGLE_INSET = 9 // horizontal run of an angled cap's diagonal tail
 export const STROKE_WIDTH = 1.5
+export const ISLAND_INSET = 1.5 // px inset per side → ~3px gap (2px read as a grey seam, 4px too wide)
 
 /**
- * Vertical anatomy — flush stacking (Phase 0.7 §3, model A).
+ * Vertical anatomy — flush stacking.
  *
- * Layers stack with only a hairline gap so that boundaries shared across layers
- * line up into continuous vertical lines (that alignment IS how hierarchy reads;
- * no bracket is taller than another, none encloses another). A layer's label is
- * NOT given its own reserved row — it is drawn just above the shape, overhanging
- * up into the open interior (negative space) of the bracket above it.
+ * Layers stack with only a hairline gap. A layer's label is NOT given its own
+ * reserved row — it is drawn just above the shape, overhanging up into the open
+ * interior (negative space) of the bracket above it.
  *
- *   LAYER_PITCH  vertical advance per layer = shape + hairline gap
- *   STACK_TOP_PAD  headroom above the top layer for its label (no layer above it)
- *   LABEL_RISE   how far a label baseline sits above its shape's top edge
+ *   LAYER_PITCH   vertical advance per layer = shape + hairline gap
+ *   STACK_TOP_PAD headroom above the top layer for its label
+ *   LABEL_RISE    how far a label baseline sits above its shape's top edge
  */
 export const LAYER_GAP = 3
 export const LAYER_PITCH = SHAPE_HEIGHT + LAYER_GAP
@@ -61,7 +67,7 @@ export function shapeTopY(i: number): number {
 }
 
 // ---------------------------------------------------------------------------
-// Font scale (Phase 0.7 §5 — layer-level fontScale enum)
+// Font scale (layer-level fontScale enum)
 // ---------------------------------------------------------------------------
 
 export type FontScale = 'sm' | 'md' | 'lg'
@@ -73,90 +79,314 @@ export const FONT_SIZES: Record<FontScale, { label: number; annotation: number }
 }
 
 // ---------------------------------------------------------------------------
+// Shape style resolution (visual style ← analyst choice, with data fallback)
+// ---------------------------------------------------------------------------
+
+/**
+ * Default visual cap derived from the analytical boundary type, for back-compat
+ * with files authored before `startCap`/`endCap` existed. `square` has no data
+ * analog — it is reachable only as an explicit visual choice.
+ */
+export function capFromBoundaryType(b?: BoundaryType | null): CapStyle {
+  switch (b) {
+    case 'gradual':
+      return 'angled'
+    case 'elided':
+      return 'elision'
+    case 'definite':
+    default:
+      return 'rounded'
+  }
+}
+
+/** SVG dash array for a stroke style, or undefined for solid. */
+export function lineStyleDash(style?: LineStyle | null): string | undefined {
+  return style === 'dashed' ? '4 3' : undefined
+}
+
+// ---------------------------------------------------------------------------
 // Path construction
 // ---------------------------------------------------------------------------
 
 export interface ShapePathOptions {
+  /** Pixel width of the span's slot. The shape is drawn inset within it. */
   width: number
   height?: number
-  lineType: LineType
-  startBoundary: BoundaryType
-  endBoundary: BoundaryType
+  startCap: CapStyle
+  endCap: CapStyle
+  /** Inset per side (px) — the island gap. Default 0 (tests / measuring). */
+  inset?: number
 }
 
 /**
- * Build the SVG path `d` string for a span shape in local coordinates.
- * The returned path is open (no `Z`); fill closes it along the baseline.
+ * Build the SVG path `d` string for a span bracket in local coordinates.
+ * Returns '' when the inset slot is too narrow to draw. The path is open (no
+ * `Z`); fill closes it along the baseline.
  */
 export function buildShapePath({
   width,
   height = SHAPE_HEIGHT,
-  lineType,
-  startBoundary,
-  endBoundary,
+  startCap,
+  endCap,
+  inset = 0,
 }: ShapePathOptions): string {
-  const w = Math.max(width, 0)
   const H = height
+  const L = inset
+  const R = width - inset
+  if (R <= L) return ''
 
-  // Arc / bubble: a single elliptical dome from baseline to baseline.
-  // rx = w/2 makes it a half-ellipse so the peak height equals H — keeping the
-  // arc the SAME height as flat brackets (uniform-height rule). Boundary caps
-  // are not expressed on arcs in v1 (deferred — see spec §10).
-  if (lineType === 'arc') {
-    if (w <= 0) return ''
-    return `M 0 ${H} A ${w / 2} ${H} 0 0 1 ${w} ${H}`
-  }
-
-  // Flat bracket: top line + two tails. Corner radius is only meaningful when
-  // the span is wide enough to host two corners.
-  const r = Math.min(CORNER_RADIUS, w / 2, H)
-  const inset = Math.min(GRADUAL_INSET, w / 2)
+  const span = R - L
+  // Cap the corner radius at ~30% of the width so a real flat top always remains:
+  // a full CORNER_RADIUS on a narrow (portrait) span would consume the whole top
+  // and read as a dome/bubble, which is exactly what we retired.
+  const r = Math.min(CORNER_RADIUS, span * 0.3, H)
+  const aInset = Math.min(ANGLE_INSET, span / 2)
 
   const parts: string[] = []
 
-  // --- Left tail ---
-  if (startBoundary === 'gradual') {
-    // Angled tail: baseline starts inset to the right, ramps up to the corner.
-    parts.push(`M ${inset} ${H}`, `L 0 0`)
+  // --- Left cap ---
+  if (startCap === 'rounded') {
+    parts.push(`M ${L} ${H}`, `L ${L} ${r}`, `A ${r} ${r} 0 0 1 ${L + r} 0`)
+  } else if (startCap === 'angled') {
+    // "/" — bottom at the boundary, leaning up-and-right into the flat top
+    parts.push(`M ${L} ${H}`, `L ${L + aInset} 0`)
+  } else if (startCap === 'open') {
+    parts.push(`M ${L} 0`)
   } else {
-    // Definite (and elided, treated as definite in v1 static): vertical tail
-    // with a rounded top-left corner.
-    parts.push(`M 0 ${H}`, `L 0 ${r}`, `A ${r} ${r} 0 0 1 ${r} 0`)
+    // square, elision — a straight vertical tail
+    parts.push(`M ${L} ${H}`, `L ${L} 0`)
   }
 
   // --- Top line ---
-  const topRightX = endBoundary === 'gradual' ? w : w - r
-  parts.push(`L ${topRightX} 0`)
+  const rightTopX = endCap === 'rounded' ? R - r : endCap === 'angled' ? R - aInset : R
+  parts.push(`L ${rightTopX} 0`)
 
-  // --- Right tail ---
-  if (endBoundary === 'gradual') {
-    parts.push(`L ${w - inset} ${H}`)
+  // --- Right cap ---
+  if (endCap === 'rounded') {
+    parts.push(`A ${r} ${r} 0 0 1 ${R} ${r}`, `L ${R} ${H}`)
+  } else if (endCap === 'angled') {
+    // "\" — leaning down-and-right from the flat top to the boundary
+    parts.push(`L ${R} ${H}`)
+  } else if (endCap === 'open') {
+    // no tail — the top simply ends
   } else {
-    parts.push(`A ${r} ${r} 0 0 1 ${w} ${r}`, `L ${w} ${H}`)
+    // square, elision
+    parts.push(`L ${R} ${H}`)
   }
 
   return parts.join(' ')
 }
 
-// ---------------------------------------------------------------------------
-// Confidence → stroke styling (Phase 0.7 §6.1)
-// ---------------------------------------------------------------------------
-
-export interface StrokeStyle {
-  dash: string | undefined
-  opacity: number
+/**
+ * The lighter inner overlap line for an `elision` cap: a short vertical drawn
+ * just inside the cap's tail. Returns null for non-elision caps. `side` selects
+ * which end. Local coords; same `inset` convention as buildShapePath.
+ */
+export function elisionInnerLine(
+  cap: CapStyle,
+  side: 'start' | 'end',
+  width: number,
+  height: number = SHAPE_HEIGHT,
+  inset = 0,
+): string | null {
+  if (cap !== 'elision') return null
+  const offset = 3
+  const x = side === 'start' ? inset + offset : width - inset - offset
+  if (x <= inset || x >= width - inset) return null
+  return `M ${x} ${height} L ${x} ${Math.min(CORNER_RADIUS, height)}`
 }
 
-export function confidenceStroke(confidence?: ConfidenceLevel): StrokeStyle {
-  switch (confidence) {
-    case 'approximate':
-      return { dash: '4 3', opacity: 1 }
-    case 'speculative':
-      return { dash: '4 3', opacity: 0.6 }
-    case 'definite':
-    default:
-      return { dash: undefined, opacity: 1 }
+// ---------------------------------------------------------------------------
+// Text fitting (collision strategy: abbreviation)
+//
+// Text placed INSIDE a shape body must respect the shape bounds, so it is
+// truncated with an ellipsis. Width is estimated, not measured, so this stays a
+// pure function: a slightly conservative average advance keeps truncation from
+// overflowing. Above-shape labels live in negative space and are left intact.
+// ---------------------------------------------------------------------------
+
+// Average glyph advance as a fraction of font size for Inter at small sizes.
+// Deliberately a touch generous so estimates never under-shoot real width.
+const AVG_CHAR_ADVANCE = 0.58
+const ELLIPSIS = '…'
+
+/** Rough pixel width of `text` at `fontPx`. Estimate, not a measurement. */
+export function estimateTextWidth(text: string, fontPx: number): number {
+  return text.length * fontPx * AVG_CHAR_ADVANCE
+}
+
+/**
+ * Truncate `text` so it fits within `maxWidthPx` at `fontPx`, appending an
+ * ellipsis when shortened. Returns '' when not even one character plus the
+ * ellipsis fits (the caller then renders nothing — full text remains available
+ * in the metadata panel and the span's title tooltip).
+ */
+export function truncateToWidth(text: string, fontPx: number, maxWidthPx: number): string {
+  if (!text) return ''
+  if (maxWidthPx <= 0) return ''
+  if (estimateTextWidth(text, fontPx) <= maxWidthPx) return text
+  const ellipsisW = estimateTextWidth(ELLIPSIS, fontPx)
+  // Largest prefix whose width + ellipsis still fits.
+  let n = 0
+  while (
+    n < text.length &&
+    estimateTextWidth(text.slice(0, n + 1), fontPx) + ellipsisW <= maxWidthPx
+  ) {
+    n++
   }
+  return n === 0 ? '' : text.slice(0, n).trimEnd() + ELLIPSIS
+}
+
+// ---------------------------------------------------------------------------
+// Above-label layout (neighbour-aware truncation — §7 collision strategy)
+//
+// Above-shape labels live in "negative space": each is drawn just above its span,
+// overhanging up into the open interior of the layer above. Within a layer, all
+// labels share one horizontal band, so a label wider than its span overhangs
+// SIDEWAYS into its neighbours' labels (the `Beat-match intr·Intro` collision).
+//
+// The fix is a single left-to-right layout pass per layer. Each label gets a
+// horizontal "lane" bounded by the midpoints to its neighbours' centers; a
+// centered label may grow until it reaches a neighbour's half of that midpoint,
+// then it truncates. Where there is room the label stays whole — truncation only
+// kicks in under genuine pressure. Full text always survives in the tooltip and
+// the metadata panel, so abbreviation loses nothing.
+//
+// We deliberately do NOT stagger labels vertically: the flush stack leaves almost
+// no vertical room (a label sits in the shallow void of the layer above), so the
+// horizontal axis is the only safe place to give. Truncation is also deterministic
+// and reuses estimateTextWidth/truncateToWidth, keeping the whole pass pure.
+// ---------------------------------------------------------------------------
+
+export type Justification = 'left' | 'center' | 'right'
+
+export const ANCHOR: Record<Justification, 'start' | 'middle' | 'end'> = {
+  left: 'start',
+  center: 'middle',
+  right: 'end',
+}
+
+/** Horizontal inset for left/right-justified text from the span edge. */
+export const TEXT_PAD = 5
+
+/**
+ * Per-side clear space pulled inward from a shared lane midpoint, so neighbouring
+ * labels never touch. Two adjacent labels each inset by this much → ~2× this many
+ * px of gap between them. It also absorbs the gap between estimated and rendered
+ * text width (the ellipsis glyph runs a touch wider than the average advance), so
+ * a heavily-truncated `Bu…` beside another `Bu…` stays clearly separated.
+ */
+export const LABEL_GUTTER = 4
+
+/** Local x of a label's anchor point given its justification. */
+export function textX(spanX: number, width: number, just: Justification): number {
+  if (just === 'center') return spanX + width / 2
+  if (just === 'right') return spanX + width - TEXT_PAD
+  return spanX + TEXT_PAD
+}
+
+/**
+ * Re-anchor an above-label so it never bleeds past a timeline edge. A centered
+ * label on the first/last span overhangs into the header column (left) or off the
+ * track end (right); re-anchoring it to that edge keeps the whole label readable
+ * with no clip. Interior labels are unaffected. Returns the resolved justification.
+ */
+export function edgeAwareJustification(
+  just: Justification,
+  textWidth: number,
+  spanX: number,
+  spanWidth: number,
+  totalWidth: number,
+): Justification {
+  const localX = textX(0, spanWidth, just)
+  const anchor = ANCHOR[just]
+  const absLeft =
+    anchor === 'start'
+      ? spanX + localX
+      : anchor === 'middle'
+        ? spanX + localX - textWidth / 2
+        : spanX + localX - textWidth
+  if (absLeft < 0) return 'left'
+  if (absLeft + textWidth > totalWidth) return 'right'
+  return just
+}
+
+export interface SpanLabelInput {
+  id: string
+  /** Left edge of the span, in px. */
+  x: number
+  /** Span width, in px. */
+  width: number
+  /** Full label text (untruncated). */
+  label: string
+}
+
+export interface ResolvedLabel {
+  /** Label after neighbour-aware truncation ('' → render nothing). */
+  text: string
+  /** Justification after edge re-anchoring. */
+  justification: Justification
+}
+
+/**
+ * Lay out one layer's above-shape labels so adjacent labels don't collide.
+ *
+ * Returns a map from span id to its resolved {text, justification}. The spans may
+ * arrive in any order; neighbour relationships are computed from on-screen x.
+ *
+ * Budget model: a label's lane is bounded by the midpoints between its own span
+ * center and its neighbours' centers (clamped to the track), pulled in by
+ * LABEL_GUTTER on each neighbour side. Two centered labels can never overlap —
+ * each stays on its side of the shared midpoint, with the gutter keeping a clear
+ * gap between them.
+ */
+export function layoutLayerLabels(
+  spans: SpanLabelInput[],
+  fontPx: number,
+  totalWidth: number,
+  baseJust: Justification,
+): Map<string, ResolvedLabel> {
+  const result = new Map<string, ResolvedLabel>()
+  const ordered = [...spans].sort((a, b) => a.x - b.x)
+  const centers = ordered.map((s) => s.x + s.width / 2)
+
+  for (let i = 0; i < ordered.length; i++) {
+    const s = ordered[i]
+    if (!s.label) {
+      result.set(s.id, { text: '', justification: baseJust })
+      continue
+    }
+
+    // Lane edges: midpoint to each neighbour's center, pulled in by the gutter so
+    // adjacent labels keep clear of one another. Track edges (no neighbour) get the
+    // full extent — nothing to collide with there.
+    const leftBound = i > 0 ? (centers[i - 1] + centers[i]) / 2 + LABEL_GUTTER : 0
+    const rightBound =
+      i < ordered.length - 1 ? (centers[i] + centers[i + 1]) / 2 - LABEL_GUTTER : totalWidth
+
+    // Decide justification first (edge re-anchoring uses the full text width), then
+    // measure how much horizontal room that anchor actually has inside the lane.
+    const just = edgeAwareJustification(
+      baseJust,
+      estimateTextWidth(s.label, fontPx),
+      s.x,
+      s.width,
+      totalWidth,
+    )
+    const anchorX = textX(s.x, s.width, just)
+    const availW =
+      just === 'center'
+        ? 2 * Math.min(anchorX - leftBound, rightBound - anchorX)
+        : just === 'left'
+          ? rightBound - anchorX
+          : anchorX - leftBound
+
+    result.set(s.id, {
+      text: truncateToWidth(s.label, fontPx, availW),
+      justification: just,
+    })
+  }
+  return result
 }
 
 // ---------------------------------------------------------------------------

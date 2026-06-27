@@ -1212,3 +1212,183 @@ deeply zoomed.
 condensed, and the taller pitch also gives the collapsed-rail hover bubble room to
 clear the ruler. Proportions are preserved (uniform bracket height across layers);
 this only increases the per-row drawing height — the documented lever.
+
+---
+
+## Correctness Pass (post-Phase 2 polish)
+
+*Session 2026-06-25 (second). A targeted correctness/contract-accuracy pass over the
+existing work — no new features. Outputs: `src/store/uiStore.ts`,
+`widgets/_contract.md`, `widgets/form-diagram.md`, `src/store/documentStore.ts`,
+`src/hooks/useTimeline.ts`, `src/test/documentStore.test.ts`.*
+
+---
+
+**Decision:** The documented `ViewState` pixel-position formula is corrected to match
+the Phase 2 zoom rework everywhere it appears: `pps = BASE_PPS * zoom`,
+`px = timestamp * pps - scrollOffset`, with `scrollOffset` in **pixels** (not seconds)
+and `zoom = 1.0` the fixed standard scale (not "the whole track fits").
+**Rationale:** The zoom rework (above) changed the formula to `px = timestamp *
+BASE_PPS * zoom - scrollOffset`, but three docs still carried the pre-rework
+`px = (timestamp / duration) * viewportWidth * zoom - scrollOffset` and mislabeled
+`scrollOffset` as seconds: the `ViewState` JSDoc in `uiStore.ts`, the `ViewState`
+block + prose in `widgets/_contract.md`, and the pixel-formula block in
+`widgets/form-diagram.md`. `ViewState` exists precisely so every widget converts
+timestamps the same way (see "ViewState is a dedicated interface…" above); a wrong
+formula there would make any future widget author mis-place every element and
+misread the units of `scrollOffset`. The runtime code was already correct — this is
+a documentation/contract reconciliation only.
+
+---
+
+**Decision:** Auto-fit-on-load re-fits once per *document load* (keyed on a new
+`DocumentState.loadId` counter), not once per distinct *duration*. This amends the
+"auto-fits… once (keyed on duration)" decision above.
+**Rationale:** Keying the fit on duration meant reloading the same document — the
+Demo button, re-opening a file, restoring a crash session — or loading a different
+track of identical length did **not** re-fit; the analyst's prior zoom/scroll stuck
+on a freshly loaded document. The decision's intent was always "fit on load," and
+duration was an incidental proxy that collides. `loadId` is a monotonic counter
+bumped only by `loadDocument` (every load path funnels through it). It lives on the
+store next to `document` but is excluded from undo history (`partialize` tracks
+`document` only) and from dirty/save comparisons (`selectIsDirty` and `savedSnapshot`
+are document-only), so it never pollutes the file or the undo stack. Verified
+in-browser on the Alive fixture: set zoom to 100%, reload Demo → re-fits to 28%
+(would have stayed 100% under the duration keying).
+
+---
+
+## Form Diagram Shape Model — Adjoin Rework (2026-06-27)
+
+*Session 2026-06-27. An attempted "adjoin renderer" — decomposing each bracket into
+separate fill / shared-vertical-boundary / top passes to stop adjacent dashed tails
+double-stamping — was built and rejected on sight ("this looks awful"). A design pass
+then re-examined BriFormer's bracket palette (Brian Jarvis's tool, the quality north
+star) and reset the shape model. Outputs: this section; `widgets/form-diagram.md` §4;
+pending implementation in `src/types/strata.ts`, `schema/strata.schema.json`,
+`schema/alive.strata`, `src/lib/formShape.ts`, `src/components/FormLayers.tsx`.*
+
+---
+
+**Decision:** A span renders as ONE path (fill + stroke in a single path). The
+decomposition into separate fill / shared-boundary-tail / top passes is rejected.
+**Rationale:** Splitting the bracket created seams (corner-meets-vertical joins),
+z-order juggling, and independent dash phases — fragile and ugly. Brian draws each
+bracket as one path; the decomposition specifically manufactured the solid-corner-
+meets-dashed-vertical seam he deliberately avoids. Reverses the in-progress adjoin-
+decomposition approach (never merged).
+
+---
+
+**Decision:** Spans are drawn as discrete islands separated by a *miniscule* (~2px)
+gap, not pixel-abutted at shared boundaries. Stored `startTime`/`endTime` remain
+exact; the drawn shape insets within its time range.
+**Rationale:** The gap is what makes BriFormer read clean — adjacent tails never
+occupy the same pixels, so the double-stamp/collision problem disappears at the
+source (it was the collision, not the data, that looked bad). This decouples the
+*render* from pixel-exactness while keeping the *data* exact, so corpus queryability
+is untouched. Amends the Phase 0.7 "hierarchy reads through boundary alignment /
+continuous vertical lines" decisions (above): islands break those lines — hierarchy
+now reads from the shapes themselves plus explicit grouping (below).
+
+---
+
+**Decision:** No domes / arcs, ever. The top line is always flat. `lineType:
+'arc' | 'flat'` is retired (top is always flat).
+**Rationale:** Devin's call — domes "look bad." The flat bracket with varied corner
+styles is the workhorse and reads cleanest. Reverses the "spans are arcs and
+brackets… `lineType` default `'arc'`" decision (Phase 0.4) and the "phrase spans
+default to a rounded bracket; the dome remains opt-in" decision (Phase 2 Milestone A).
+
+---
+
+**Decision:** Visual style is an explicit analyst choice, decoupled from analytical
+data. New presentation fields: `Span.startCap` / `Span.endCap` of type `CapStyle =
+'rounded' | 'square' | 'angled' | 'open' | 'elision'` (default `'rounded'`, layer-
+overridable), and `Span.lineStyle: 'solid' | 'dashed'` (default `'solid'`).
+`confidence` and `startBoundaryType` / `endBoundaryType` remain as pure, queryable
+DATA and NO LONGER drive rendering.
+**Rationale:** The visual choice is itself an analytical act — the analyst is
+communicating with it — and it is impossible to enumerate every case where a visual
+decision equals a data decision. Decoupling lets them draw freely while we *nudge*
+(ambiently — never an interrupting dialog) toward also recording the queryable data.
+Reverses confidence→stroke (Phase 0.7 §6.1) and boundaryType→geometry (Phase 0.4).
+**Back-compat:** when a visual field is absent the renderer derives a sensible default
+from the data field (`definite`→`rounded`, `gradual`→`angled`, `elided`→`elision`),
+so existing `.strata` files render correctly with no migration; `square` is reachable
+only as an explicit visual choice (it has no data analog).
+
+---
+
+**Decision:** Stroke (solid / dashed) is whole-shape uniform; solid and dashed are
+never mixed at a shared or adjoining edge. The dashed *vertical* is a standalone
+boundary marker — its own construct — not a modifier on a bracket tail.
+**Rationale:** Brian offers a standalone dashed vertical but never a bracket-with-
+dashed-tail, because solid meeting dashed at a shared edge looks broken. One uniform-
+stroke path per shape avoids it; "combining" spans into one visual unit is done by
+adjacent shapes connecting end-to-end or by a grouping bracket, never by a colliding
+mixed stroke.
+
+---
+
+**Decision:** Grouping ("additional groupings") is stored as an ordinary span on a
+higher layer — a wide bracket spanning its children — not a new construct.
+**Rationale:** Reuses the entire shape / label / color / interaction stack; cross-
+layer overlap is already legal in Strata's model. A dedicated construct would only
+buy auto-resize-to-children, which is not a v1 need.
+
+---
+
+**Decision:** The nudge toward recording analytical data is ambient, never an
+interrupting dialog.
+**Rationale:** A popup ("tag this approximate so it's queryable?") interrupts the
+listening/annotation flow. The push to data is delivered through good defaults and by
+making the queryable payoff visible where the analyst already looks, not via a prompt.
+
+---
+
+## App Shell & Inspector (2026-06-27)
+
+*Session 2026-06-27 (same session as the shape rework). Triggered by the metadata
+panel overlapping the media player after the content-sized shell landed. Outputs:
+`src/App.tsx`, `src/components/Inspector.tsx` (new), `src/components/FormDiagram.tsx`,
+`src/components/MetadataPanel.tsx`.*
+
+---
+
+**Decision:** The app uses a full-height shell with an app-level **Inspector** — a
+persistent, collapsible right-hand column that pushes the diagram, transport, and
+video to its left. This reverses the Phase-2 "content-sized shell, no dead space"
+decision.
+**Rationale:** The metadata panel had no height bound, so under the content-sized
+shell it grew past the diagram and the media player overlapped it. A persistent
+full-height inspector column gives the panel a real height to scroll within — the
+overlap is fixed structurally rather than patched. It is also the conventional,
+scalable layout as more widgets/panels arrive. Cost accepted: a short diagram now
+leaves some empty space in the left column (see the bottom-anchor decision, which
+turns that space into something purposeful).
+
+**Decision:** The Inspector is a **context-dependent host slot**, not wired to the
+form diagram. It owns the chrome (width, border, full height, internal scroll, a
+single header with collapse + contextual title + deselect); the active widget
+supplies only field content. v1 mounts the form-diagram's span `MetadataPanel`;
+future widgets (energy contour, written analysis) mount their own edit UI here.
+**Rationale:** Matches the widget-contract render/edit split already in the log — the
+inspector is host chrome that hosts a widget's contextual editor. Keeping content
+components header-less (chrome lives on the Inspector) is what removed the redundant
+double-header. `MetadataPanel`'s two `<aside>` wrappers became plain content blocks.
+
+**Decision:** The form diagram is **bottom-anchored** in the left work area; extra
+vertical space accumulates **above** it (between the toolbar and the widgets), and
+that space is reserved for additional widgets stacking upward.
+**Rationale:** Keeps the widgets glued to the timeline ruler at any window height
+(the concern with going full-height), and gives the blank space a purpose — it is the
+multi-widget future, not dead space. Reaffirms the earlier "form-layer stack is
+bottom-anchored on the ruler; empty room accumulates above" decision, now load-
+bearing under the full-height shell. Vertical order of the left column, bottom→top:
+transport + video, timeline ruler, widgets, blank.
+
+**Decision:** Layout is designed as flex regions with relative behavior + internal
+scroll, not pixel-pinned positions.
+**Rationale:** Full-height means viewport height is a variable; the layout must adapt
+across heights rather than assume a fixed frame.
