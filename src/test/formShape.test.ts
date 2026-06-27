@@ -6,6 +6,9 @@ import {
   capFromBoundaryType,
   lineStyleDash,
   elisionInnerLine,
+  layoutLayerLabels,
+  edgeAwareJustification,
+  type SpanLabelInput,
   CORNER_RADIUS,
 } from '@/lib/formShape'
 
@@ -125,6 +128,104 @@ describe('buildShapePath', () => {
 
   it('returns empty when the inset slot collapses', () => {
     expect(buildShapePath({ width: 3, startCap: 'square', endCap: 'square', inset: 2 })).toBe('')
+  })
+})
+
+describe('layoutLayerLabels', () => {
+  const FONT = 11
+
+  it('leaves labels whole when each span has room for its own', () => {
+    // Three equal wide spans, short labels → no collision pressure.
+    const spans: SpanLabelInput[] = [
+      { id: 'a', x: 0, width: 200, label: 'Intro' },
+      { id: 'b', x: 200, width: 200, label: 'Drop' },
+      { id: 'c', x: 400, width: 200, label: 'Outro' },
+    ]
+    const out = layoutLayerLabels(spans, FONT, 600, 'center')
+    expect(out.get('a')!.text).toBe('Intro')
+    expect(out.get('b')!.text).toBe('Drop')
+    expect(out.get('c')!.text).toBe('Outro')
+    expect(out.get('b')!.justification).toBe('center')
+  })
+
+  it('truncates the label on a narrow span squeezed between wide neighbours', () => {
+    // Middle span is only 40px wide; its budget comes from the midpoints to the
+    // wide neighbours' centers, but a long enough label still overruns it.
+    const spans: SpanLabelInput[] = [
+      { id: 'a', x: 0, width: 300, label: 'A' },
+      { id: 'b', x: 300, width: 40, label: 'A very long beat-matched intro label here' },
+      { id: 'c', x: 340, width: 300, label: 'C' },
+    ]
+    const out = layoutLayerLabels(spans, FONT, 640, 'center')
+    // Lane for b: leftBound 235, rightBound 405, center 320 → availW = 170.
+    const availW = 170
+    const b = out.get('b')!
+    expect(b.text.endsWith('…')).toBe(true)
+    expect(estimateTextWidth(b.text, FONT)).toBeLessThanOrEqual(availW)
+  })
+
+  it('keeps adjacent centered labels from overlapping (gutter clearance)', () => {
+    // Two narrow neighbours with long labels: both truncate, and their estimated
+    // rendered extents must stay apart — the core collision guarantee.
+    const spans: SpanLabelInput[] = [
+      { id: 'a', x: 0, width: 300, label: 'A' },
+      { id: 'b', x: 300, width: 44, label: 'Buildup section one' },
+      { id: 'c', x: 344, width: 44, label: 'Buildup section two' },
+      { id: 'd', x: 388, width: 300, label: 'D' },
+    ]
+    const out = layoutLayerLabels(spans, FONT, 688, 'center')
+    const ext = (id: string, x: number, w: number) => {
+      const t = out.get(id)!.text
+      const half = estimateTextWidth(t, FONT) / 2
+      const center = x + w / 2
+      return { left: center - half, right: center + half }
+    }
+    const b = ext('b', 300, 44)
+    const c = ext('c', 344, 44)
+    // Right edge of b sits left of the left edge of c — no overlap.
+    expect(b.right).toBeLessThanOrEqual(c.left)
+  })
+
+  it('re-anchors a long first-span label to the left edge instead of gutting it', () => {
+    // Centered, the long label would overhang the track start (x<0); edge-aware
+    // logic flips it to left-justified, which has the whole rest of the track.
+    const spans: SpanLabelInput[] = [
+      { id: 'a', x: 0, width: 60, label: 'Beat-match intro' },
+      { id: 'b', x: 60, width: 540, label: 'Main' },
+    ]
+    const out = layoutLayerLabels(spans, FONT, 600, 'center')
+    expect(out.get('a')!.justification).toBe('left')
+    expect(out.get('a')!.text).toBe('Beat-match intro') // left lane is roomy → whole
+  })
+
+  it('yields empty text for an empty label', () => {
+    const out = layoutLayerLabels([{ id: 'a', x: 0, width: 100, label: '' }], FONT, 100, 'center')
+    expect(out.get('a')!.text).toBe('')
+  })
+
+  it('is order-independent (neighbours come from on-screen x, not array order)', () => {
+    const spans: SpanLabelInput[] = [
+      { id: 'c', x: 400, width: 200, label: 'Outro' },
+      { id: 'a', x: 0, width: 200, label: 'Intro' },
+      { id: 'b', x: 200, width: 200, label: 'Drop' },
+    ]
+    const out = layoutLayerLabels(spans, FONT, 600, 'center')
+    expect(out.get('b')!.text).toBe('Drop')
+    expect(out.size).toBe(3)
+  })
+})
+
+describe('edgeAwareJustification', () => {
+  it('keeps an interior label centered', () => {
+    expect(edgeAwareJustification('center', 40, 300, 100, 600)).toBe('center')
+  })
+
+  it('left-anchors a label overhanging the track start', () => {
+    expect(edgeAwareJustification('center', 120, 0, 60, 600)).toBe('left')
+  })
+
+  it('right-anchors a label overhanging the track end', () => {
+    expect(edgeAwareJustification('center', 120, 560, 40, 600)).toBe('right')
   })
 })
 

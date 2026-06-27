@@ -23,7 +23,10 @@ import {
   elisionInnerLine,
   textOnFill,
   truncateToWidth,
-  estimateTextWidth,
+  layoutLayerLabels,
+  textX,
+  ANCHOR,
+  TEXT_PAD,
   FONT_SIZES,
   LABEL_RISE,
   SHAPE_HEIGHT,
@@ -32,6 +35,8 @@ import {
   stackHeight,
   shapeTopY,
   type FontScale,
+  type Justification,
+  type ResolvedLabel,
 } from '@/lib/formShape'
 import { MIN_SPAN_WIDTH, MIN_BOUNDARY_DRAG_PX } from '@/lib/spanEdit'
 import type { Layer, Span, FormDiagramData, CapStyle } from '@/types/strata'
@@ -41,7 +46,6 @@ const ELISION_INK = '#94a3b8'
 
 const INK_PRIMARY = 'var(--ink-primary)'
 const INK_SECONDARY = '#475569'
-const TEXT_PAD = 5 // horizontal inset for left/right-justified text
 
 // Selection styling (BriFormer convention): a light grey box fills the selected
 // span's rectangle with a blue outline — the blue reads even when the span
@@ -59,59 +63,16 @@ const TEXT_HALO = {
   paintOrder: 'stroke' as const,
 }
 
-type Justification = 'left' | 'center' | 'right'
-
-const ANCHOR: Record<Justification, 'start' | 'middle' | 'end'> = {
-  left: 'start',
-  center: 'middle',
-  right: 'end',
-}
-
-/** Resolve the x and text-anchor for a piece of text given justification. */
-function textX(spanX: number, width: number, just: Justification): number {
-  if (just === 'center') return spanX + width / 2
-  if (just === 'right') return spanX + width - TEXT_PAD
-  return spanX + TEXT_PAD
-}
-
-/**
- * Choose a justification for an above-shape label so it never bleeds past a
- * timeline edge. A centered label on the first/last span overhangs into the
- * header column (left) or off the track end / under the zoom controls (right);
- * re-anchoring it to that edge keeps the whole label readable with no clip and
- * no awkward gap. Interior labels are unaffected — they overhang freely into
- * negative space (§3.2), where residual neighbour collisions are handled
- * separately (§7). Returns the (possibly overridden) justification.
- */
-function edgeAwareJustification(
-  just: Justification,
-  textWidth: number,
-  spanX: number,
-  spanWidth: number,
-  totalWidth: number,
-): Justification {
-  const localX = textX(0, spanWidth, just)
-  const anchor = ANCHOR[just]
-  const absLeft =
-    anchor === 'start'
-      ? spanX + localX
-      : anchor === 'middle'
-        ? spanX + localX - textWidth / 2
-        : spanX + localX - textWidth
-  if (absLeft < 0) return 'left'
-  if (absLeft + textWidth > totalWidth) return 'right'
-  return just
-}
-
 interface SpanShapeProps {
   span: Span
   layer: Layer
   pps: number
-  totalWidth: number
   fontScale: FontScale
+  /** Resolved above-label from the layer's neighbour-aware layout pass. */
+  labelLayout?: ResolvedLabel
 }
 
-function SpanShape({ span, layer, pps, totalWidth, fontScale }: SpanShapeProps) {
+function SpanShape({ span, layer, pps, fontScale, labelLayout }: SpanShapeProps) {
   // Per-span subscription: a span only re-renders when ITS own selected/hovered
   // state flips, not on every selection change across the diagram.
   const isSelected = useUIStore((s) => s.selectedSpanIds.includes(span.id))
@@ -193,11 +154,13 @@ function SpanShape({ span, layer, pps, totalWidth, fontScale }: SpanShapeProps) 
   const innerMax = width - 2 * TEXT_PAD
   const labelAbove = labelPosition !== 'inside'
   const annotationAbove = annotationPosition === 'above'
-  const labelText = span.label
-    ? labelAbove
-      ? span.label
-      : truncateToWidth(span.label, fonts.label, innerMax)
-    : ''
+  // Above-labels are resolved by the layer-level layout pass (neighbour-aware
+  // truncation + edge re-anchoring). Inside-labels truncate to the shape body.
+  const labelText = labelAbove
+    ? (labelLayout?.text ?? '')
+    : span.label
+      ? truncateToWidth(span.label, fonts.label, innerMax)
+      : ''
   const annotationText = span.annotation
     ? annotationAbove
       ? span.annotation
@@ -205,12 +168,7 @@ function SpanShape({ span, layer, pps, totalWidth, fontScale }: SpanShapeProps) 
     : ''
   const titleText = [span.label, span.type].filter(Boolean).join(' · ')
 
-  // Re-anchor an above-label that would overhang a timeline edge (the track-start
-  // "Beatmatch intro" clip and the track-end "Beatmatch outro" clip).
-  const effLabelJust =
-    labelAbove && labelText
-      ? edgeAwareJustification(labelJust, estimateTextWidth(labelText, fonts.label), x, width, totalWidth)
-      : labelJust
+  const effLabelJust = labelAbove ? (labelLayout?.justification ?? labelJust) : labelJust
   const labelLocalX = textX(0, width, effLabelJust)
   const annotationLocalX = textX(0, width, annotationJust)
 
@@ -327,6 +285,26 @@ function FormLayerGroup({
   const data = layer.data as FormDiagramData
   const fontScale: FontScale = 'md' // schema fontScale field pending — default md
   const spans = data.spans
+
+  // Neighbour-aware label layout: one pass over the whole layer so each above-label
+  // is truncated to the room it actually has between its neighbours (§7). Only the
+  // "above" case needs it — inside-labels are bounded by their own shape body.
+  const labelAbove = (layer.rendering?.labelPosition ?? 'above') !== 'inside'
+  const baseJust = (layer.rendering?.labelJustification ?? 'center') as Justification
+  const labelLayout = labelAbove
+    ? layoutLayerLabels(
+        spans.map((s) => ({
+          id: s.id,
+          x: s.startTime * pps,
+          width: (s.endTime - s.startTime) * pps,
+          label: s.label ?? '',
+        })),
+        FONT_SIZES[fontScale].label,
+        totalWidth,
+        baseJust,
+      )
+    : null
+
   return (
     <g transform={`translate(0, ${shapeTopY(index)})`}>
       {spans.map((span) => (
@@ -335,8 +313,8 @@ function FormLayerGroup({
           span={span}
           layer={layer}
           pps={pps}
-          totalWidth={totalWidth}
           fontScale={fontScale}
+          labelLayout={labelLayout?.get(span.id)}
         />
       ))}
 
