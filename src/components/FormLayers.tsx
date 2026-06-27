@@ -18,6 +18,8 @@ import { useUIStore } from '@/store/uiStore'
 import { computePps, totalContentWidth } from '@/lib/timeline'
 import {
   buildShapePath,
+  buildTopPath,
+  boundaryTails,
   confidenceStroke,
   textOnFill,
   truncateToWidth,
@@ -28,6 +30,7 @@ import {
   FONT_SIZES,
   LABEL_RISE,
   SHAPE_HEIGHT,
+  CORNER_RADIUS,
   STROKE_WIDTH,
   stackHeight,
   shapeTopY,
@@ -153,11 +156,15 @@ function SpanShape({ span, layer, pps, totalWidth, fontScale }: SpanShapeProps) 
   const startBoundary: BoundaryType = span.startBoundaryType ?? 'definite'
   const endBoundary: BoundaryType = span.endBoundaryType ?? 'definite'
 
+  // `fill` is still needed here to choose a legible on-shape text color; the fill
+  // shape itself is painted by SpanFill in an earlier pass (see FormLayerGroup).
   const fill = span.fillColor ?? layer.fillColorDefault
   const stroke = span.strokeColor ?? layer.strokeColorDefault
   const { dash, opacity } = confidenceStroke(span.confidence)
 
-  const path = buildShapePath({ width, lineType, startBoundary, endBoundary })
+  // The TOP stroke only — top line / dome + corners + gradual diagonals. The
+  // definite/elided verticals are the shared boundary tails (LayerBoundaryTails).
+  const topPath = buildTopPath({ width, lineType, startBoundary, endBoundary })
   const fonts = FONT_SIZES[fontScale]
 
   // Rendering config — defaults per Phase 0.4 §4 (label above, annotation inside).
@@ -219,8 +226,8 @@ function SpanShape({ span, layer, pps, totalWidth, fontScale }: SpanShapeProps) 
       {titleText && <title>{titleText}</title>}
 
       <path
-        d={path}
-        fill={fill}
+        d={topPath}
+        fill="none"
         stroke={stroke}
         strokeWidth={STROKE_WIDTH}
         strokeDasharray={dash}
@@ -282,6 +289,63 @@ function SpanShape({ span, layer, pps, totalWidth, fontScale }: SpanShapeProps) 
   )
 }
 
+/**
+ * The fill pass — the closed bracket interior, fill only, no stroke. Split out
+ * from SpanShape because a fill never depends on selection/hover, so it does not
+ * subscribe to the UI store (cheaper) and it can be drawn UNDER the shared
+ * boundary tails and tops without disturbing the per-span interaction layer.
+ */
+function SpanFill({ span, layer, pps }: { span: Span; layer: Layer; pps: number }) {
+  const x = span.startTime * pps
+  const width = (span.endTime - span.startTime) * pps
+  if (width <= 0) return null
+  const lineType = span.lineType ?? 'arc'
+  const startBoundary: BoundaryType = span.startBoundaryType ?? 'definite'
+  const endBoundary: BoundaryType = span.endBoundaryType ?? 'definite'
+  const fill = span.fillColor ?? layer.fillColorDefault
+  const { opacity } = confidenceStroke(span.confidence)
+  const path = buildShapePath({ width, lineType, startBoundary, endBoundary })
+  return (
+    <path d={path} transform={`translate(${x}, 0)`} fill={fill} stroke="none" opacity={opacity} />
+  )
+}
+
+/**
+ * The shared boundary pass — each definite/elided boundary drawn ONCE as a
+ * vertical from the corner foot (y = CORNER_RADIUS) to the baseline. This is the
+ * adjoin model: adjacent tails collapse to a single line, so solid tails are
+ * visible and dashed tails don't fight. The vertical uses the LAYER stroke color
+ * (a boundary belongs to the layer, not to either neighbouring span). Dash comes
+ * from the shared-boundary rule (dashed if either neighbour is non-definite); the
+ * extreme tails are inset inward by ½ stroke so they don't clip the canvas edge.
+ */
+function LayerBoundaryTails({ layer, pps }: { layer: Layer; pps: number }) {
+  const spans = (layer.data as FormDiagramData).spans
+  const tails = boundaryTails(spans)
+  return (
+    <g>
+      {tails.map((t) => {
+        let x = t.time * pps
+        if (t.edge === 'start') x += STROKE_WIDTH / 2
+        else if (t.edge === 'end') x -= STROKE_WIDTH / 2
+        return (
+          <line
+            key={`tail-${t.time.toFixed(4)}`}
+            x1={x}
+            y1={CORNER_RADIUS}
+            x2={x}
+            y2={SHAPE_HEIGHT}
+            stroke={layer.strokeColorDefault}
+            strokeWidth={STROKE_WIDTH}
+            strokeDasharray={t.dashed ? '4 3' : undefined}
+            strokeLinecap="round"
+          />
+        )
+      })}
+    </g>
+  )
+}
+
 /** Begins a boundary drag for the shared edge between two adjacent spans. */
 type BoundaryDragStart = (
   layerId: string,
@@ -308,6 +372,15 @@ function FormLayerGroup({
   const spans = data.spans
   return (
     <g transform={`translate(0, ${shapeTopY(index)})`}>
+      {/* Pass 1 — fills (under everything; no selection subscription). */}
+      {spans.map((span) => (
+        <SpanFill key={`fill-${span.id}`} span={span} layer={layer} pps={pps} />
+      ))}
+
+      {/* Pass 2 — shared boundary tails (drawn once, over fills, under tops). */}
+      <LayerBoundaryTails layer={layer} pps={pps} />
+
+      {/* Pass 3 — tops + labels + interaction (per-span selection subscription). */}
       {spans.map((span) => (
         <SpanShape
           key={span.id}

@@ -285,6 +285,134 @@ export function buildTailPaths({
   return { left, right }
 }
 
+/**
+ * The stroke path for a span's TOP — the part that carries `confidence` (dashed
+ * for approximate/speculative). It is the top line / dome plus the rounded
+ * corners and any GRADUAL (diagonal) tails, but NOT the vertical part of a
+ * definite/elided tail: those verticals are the *shared boundary* between adjacent
+ * spans and are drawn once by the boundary pass (see `boundaryTails`) so adjacent
+ * tails never double-stamp a pixel.
+ *
+ * Corners stay here rather than moving to the boundary pass because an interior
+ * boundary has TWO corners — one curving into each neighbour's top — that genuinely
+ * belong to different spans and curve apart; only the bare vertical is shared.
+ * Arcs have no tails, so the dome is returned whole (and carries confidence).
+ */
+export function buildTopPath({
+  width,
+  height = SHAPE_HEIGHT,
+  lineType,
+  startBoundary,
+  endBoundary,
+}: ShapePathOptions): string {
+  const w = Math.max(width, 0)
+  const H = height
+
+  if (lineType === 'arc') {
+    if (w <= 0) return ''
+    return `M 0 ${H} A ${w / 2} ${H} 0 0 1 ${w} ${H}`
+  }
+
+  const r = Math.min(CORNER_RADIUS, w / 2, H)
+  const inset = Math.min(GRADUAL_INSET, w / 2)
+  const parts: string[] = []
+
+  // --- Left ---
+  if (startBoundary === 'gradual') {
+    // Angled tail stays with the top (diagonals angle apart, never double-stamp).
+    parts.push(`M ${inset} ${H}`, `L 0 0`)
+  } else {
+    // Definite/elided: corner only, starting at the top of the shared vertical.
+    parts.push(`M 0 ${r}`, `A ${r} ${r} 0 0 1 ${r} 0`)
+  }
+
+  // --- Top line ---
+  const topRightX = endBoundary === 'gradual' ? w : w - r
+  parts.push(`L ${topRightX} 0`)
+
+  // --- Right ---
+  if (endBoundary === 'gradual') {
+    parts.push(`L ${w - inset} ${H}`)
+  } else {
+    // Corner only — stop at the top of the shared vertical (no `L w H`).
+    parts.push(`A ${r} ${r} 0 0 1 ${w} ${r}`)
+  }
+
+  return parts.join(' ')
+}
+
+// ---------------------------------------------------------------------------
+// Shared boundary tails (the adjoin model)
+//
+// Each definite/elided boundary in a layer is drawn ONCE as a vertical segment
+// from the corner foot (y = r) down to the baseline (y = H). Adjacent spans that
+// share a boundary collapse to a single tail — that is the whole point: solid
+// tails stop being invisible doublings and dashed tails stop fighting each other.
+// Gradual tails are diagonal and stay on the span top; arcs have no tail.
+// ---------------------------------------------------------------------------
+
+export interface BoundaryTailInput {
+  startTime: number
+  endTime: number
+  lineType?: LineType | null
+  startBoundaryType?: BoundaryType | null
+  endBoundaryType?: BoundaryType | null
+  confidence?: ConfidenceLevel | null
+}
+
+export interface BoundaryTail {
+  /** Boundary time (seconds). The renderer maps this to px and applies edge inset. */
+  time: number
+  /** Dashed if EITHER neighbour at this boundary is approximate/speculative. */
+  dashed: boolean
+  /** The extreme tails — inset inward by ½ stroke so they don't clip the canvas. */
+  edge: 'start' | 'end' | null
+}
+
+function isDashedConfidence(c?: ConfidenceLevel | null): boolean {
+  return c === 'approximate' || c === 'speculative'
+}
+
+/**
+ * The shared vertical boundary tails for one layer's spans, sorted ascending and
+ * collapsed within epsilon. A flat bracket with a definite/elided boundary
+ * contributes a tail; gradual boundaries and arcs do not. A collapsed tail is
+ * dashed if ANY contributing span is approximate/speculative (the shared-boundary
+ * confidence rule). The first and last tails are flagged as edges.
+ */
+export function boundaryTails(spans: BoundaryTailInput[]): BoundaryTail[] {
+  const events: { time: number; dashed: boolean }[] = []
+  for (const s of spans) {
+    if ((s.lineType ?? 'arc') !== 'flat') continue
+    const dashed = isDashedConfidence(s.confidence)
+    if ((s.startBoundaryType ?? 'definite') !== 'gradual') {
+      events.push({ time: s.startTime, dashed })
+    }
+    if ((s.endBoundaryType ?? 'definite') !== 'gradual') {
+      events.push({ time: s.endTime, dashed })
+    }
+  }
+  events.sort((a, b) => a.time - b.time)
+
+  const tails: BoundaryTail[] = []
+  for (const e of events) {
+    const last = tails[tails.length - 1]
+    if (last && Math.abs(e.time - last.time) <= TIME_EPS) {
+      last.dashed = last.dashed || e.dashed
+    } else {
+      tails.push({ time: e.time, dashed: e.dashed, edge: null })
+    }
+  }
+  if (tails.length > 0) tails[0].edge = 'start'
+  if (tails.length > 1) tails[tails.length - 1].edge = 'end'
+  return tails
+}
+
+/** Foot of the corner / top of the shared vertical for a span of the given width. */
+export function tailVerticalTopY(width: number, height: number = SHAPE_HEIGHT): number {
+  return Math.min(CORNER_RADIUS, Math.max(width, 0) / 2, height)
+}
+
 // ---------------------------------------------------------------------------
 // Confidence → stroke styling (Phase 0.7 §6.1)
 // ---------------------------------------------------------------------------
