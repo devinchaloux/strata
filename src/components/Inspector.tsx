@@ -66,10 +66,13 @@ export function Inspector({ collapsed, onToggle }: { collapsed: boolean; onToggl
         <span className="flex-1" />
         {hasSelection && (
           <button
-            onClick={() => clearSelection()}
+            onClick={() => {
+              clearSelection()
+              onToggle()
+            }}
             className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-            title="Deselect"
-            aria-label="Deselect"
+            title="Deselect and collapse"
+            aria-label="Deselect and collapse"
           >
             <X size={15} />
           </button>

@@ -1537,3 +1537,73 @@ box-drag selection ignoring the span click.
 
 **Decision:** The `ColorPicker` component accepts a `nullLabel` prop that controls the label of the "reset to null" action button. Default: "Use layer default." Layer settings context uses "Reset to default."
 **Rationale:** The per-span Advanced panel resets to `null` meaning "inherit from the layer" — "Use layer default" is the honest description. The layer settings popover resets to the factory default color — "Reset to default" is correct there. One component, two labels, no duplication.
+
+---
+
+## Global Settings & Toolbar Cleanup (2026-06-30)
+
+*Session 2026-06-30. Outputs: `src/components/DocumentSettingsDialog.tsx` (new),
+`src/App.tsx`, `src/components/Inspector.tsx`.*
+
+---
+
+**Decision:** Top-level `StrataDocument` metadata (title, artist, context, composer,
+work, BPM, time signature, notes, project, analysis author, source sync offset) is
+edited through a new `DocumentSettingsDialog`, opened from a "Document settings"
+icon button in the main toolbar. Built on the existing `Dialog` primitive
+(`src/components/ui/dialog.tsx`), not a new `Sheet`/panel primitive.
+**Rationale:** This metadata had no editor at all. A modal dialog is the correct
+weight for an occasional, whole-document settings action (vs. a persistent panel,
+which would compete with the Inspector for screen real estate). Reusing the
+existing shadcn `Dialog` over Radix matches the "use the proper primitive, don't
+hand-roll" rule and required no new component. Read-only identity fields
+(duration, source, created/updated, file format version) are shown in a quiet
+footer rather than omitted, since they're useful context even though they aren't
+edited here.
+
+---
+
+**Decision:** Main toolbar gets Undo/Redo icon buttons (new); the Merge button is
+removed from the toolbar entirely; zoom controls stay where they already were
+(`FormDiagram`'s widget-local top bar), not promoted to the main toolbar.
+**Rationale:** Undo/redo previously existed only as keyboard shortcuts (Ctrl+Z /
+Ctrl+Shift+Z) with no discoverable UI — that's a real gap for a primitive this
+fundamental. Merge is span-specific, not document-global, and is already fully
+covered by three other surfaces (Ctrl+J, the span right-click context menu, and
+the metadata-panel action strip) — keeping it in the main toolbar was redundant
+chrome that didn't belong at the document level. Zoom is inherently a property of
+the form-diagram widget's timeline view, not the document, so it correctly stays
+widget-local; promoting it to the main toolbar would misrepresent it as a
+document-level setting and wouldn't generalize to other widgets with their own
+zoom/view needs.
+
+---
+
+**Decision:** Selecting a span automatically expands the Inspector if it's
+collapsed. The Inspector's deselect (X) button now both clears the selection and
+collapses the panel, instead of leaving an empty, blank panel open.
+**Rationale:** Restores prior behavior that had silently regressed — clicking a
+span is supposed to surface its details without a separate manual expand step.
+For the X button: a panel with nothing selected and nothing to show has no reason
+to stay open: the prior behavior (deselect only) left a blank, purposeless panel
+on screen, which is a clear UX defect under any standard "don't show empty state
+chrome the user didn't ask for" heuristic. No global setting gates either
+behavior — both are unconditional defaults.
+
+---
+
+**Investigation note:** A recurring dev-console warning (`Cannot update a
+component (YouTubePlayer) while rendering a different component (FormLayers)`,
+confirmed pre-existing and unrelated to this session's changes via a git
+stash/pop A-B test) was investigated but not fixed. No synchronous
+render-phase `setState` call was found anywhere in `FormLayers.tsx`,
+`FormDiagram.tsx`, or `useYouTubePlayer.ts` — every store-setter call in the
+YouTube player integration runs inside a `useEffect`, an async `.then()`, an
+IFrame API callback (`postMessage`-driven, genuinely async), or a `rAF` loop.
+The warning also did not reproduce across several fresh attempts with
+`console.error` directly hooked. Most likely cause: `StrictMode` (enabled in
+`src/main.tsx`) double-invoking renders/effects around the YouTube IFrame API's
+async, imperative callback integration — a known class of dev-only false
+positive for third-party API integrations, not expected in production builds.
+Left as a known, non-blocking dev-mode artifact rather than chased further
+without a reliable repro.
