@@ -1,20 +1,21 @@
 /**
  * FormLayers — the stack of form-diagram layers rendered above the timeline ruler.
  *
- * This is the read render path: it draws spans from the document store, sharing
- * the timeline's pixel contract (px = time * pps - scrollOffset) with the ruler
- * so shapes line up exactly with tick marks. It reads view state (zoom, scroll,
- * viewport width) from the UI store; the TimelineAxis below owns the controller
- * that writes those values, so this component stays purely presentational for now.
- *
- * Interactions arrive incrementally in Milestone B. Slice 1 (here): click a span
- * to select it, hover to preview; click empty canvas to deselect. Placement and
- * boundary drag come in later slices.
+ * Interactions:
+ *   Click span          → single-select
+ *   Shift+click span    → range-select within layer
+ *   Ctrl/Cmd+click span → toggle span in/out of selection
+ *   Click empty space   → deselect all
+ *   Box-drag empty space → select all spans that overlap the rectangle (within the
+ *                          layer row where the drag started)
+ *   Right-click span    → context menu (Split / Merge / Duplicate / Delete)
+ *   Drag boundary handle → move the shared edge between two adjacent spans
  */
 
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
+import { useMerge } from '@/hooks/useMerge'
 import { computePps, totalContentWidth } from '@/lib/timeline'
 import {
   buildShapePath,
@@ -30,6 +31,8 @@ import {
   FONT_SIZES,
   LABEL_RISE,
   SHAPE_HEIGHT,
+  LAYER_PITCH,
+  STACK_TOP_PAD,
   STROKE_WIDTH,
   ISLAND_INSET,
   stackHeight,
@@ -40,6 +43,13 @@ import {
 } from '@/lib/formShape'
 import { MIN_SPAN_WIDTH, MIN_BOUNDARY_DRAG_PX } from '@/lib/spanEdit'
 import type { Layer, Span, FormDiagramData, CapStyle } from '@/types/strata'
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+} from '@/components/ui/context-menu'
 
 // Lighter ink for the elision cap's inner overlap line (--ink-faint).
 const ELISION_INK = '#94a3b8'
@@ -63,6 +73,101 @@ const TEXT_HALO = {
   paintOrder: 'stroke' as const,
 }
 
+// ---------------------------------------------------------------------------
+// Context menu for a single span — used by SpanShape
+// ---------------------------------------------------------------------------
+
+function SpanContextMenuContent({ span, layer }: { span: Span; layer: Layer }) {
+  const selectedIds = useUIStore((s) => s.selectedSpanIds)
+  const selectSpan = useUIStore((s) => s.selectSpan)
+  const currentTime = useUIStore((s) => s.currentTime)
+  const removeSpan = useDocumentStore((s) => s.removeSpan)
+  const addSpan = useDocumentStore((s) => s.addSpan)
+  const placeBoundary = useDocumentStore((s) => s.placeBoundary)
+  const { eligibility, performMerge, neighborId } = useMerge()
+
+  const isInSelection = selectedIds.includes(span.id)
+  const isMulti = isInSelection && selectedIds.length > 1
+
+  const prevId = neighborId(span.id, 'prev')
+  const nextId = neighborId(span.id, 'next')
+  const canSplit = currentTime > span.startTime && currentTime < span.endTime
+
+  function handleDelete() {
+    removeSpan(layer.id, span.id)
+    selectSpan(null)
+  }
+
+  function handleDuplicate() {
+    const copy: Span = { ...span, id: crypto.randomUUID() }
+    addSpan(layer.id, copy)
+    selectSpan(copy.id)
+  }
+
+  if (isMulti) {
+    // Multi-span: show merge (when eligible) + Duplicate + Delete.
+    // Merge entry is absent when ineligible (spec §3.3).
+    return (
+      <ContextMenuContent>
+        {eligibility.ok && (
+          <>
+            <ContextMenuItem onClick={() => performMerge()}>
+              Merge {selectedIds.length} spans
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+          </>
+        )}
+        <ContextMenuItem onClick={handleDuplicate}>Duplicate</ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem
+          onClick={handleDelete}
+          className="text-destructive focus:text-destructive"
+        >
+          Delete
+        </ContextMenuItem>
+      </ContextMenuContent>
+    )
+  }
+
+  // Single span: Split / Merge-with-neighbour / Duplicate / Delete.
+  return (
+    <ContextMenuContent>
+      <ContextMenuItem
+        disabled={!canSplit}
+        onClick={canSplit ? () => placeBoundary(layer.id, currentTime) : undefined}
+      >
+        Split at playhead
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem
+        disabled={!prevId}
+        onClick={prevId ? () => performMerge([prevId, span.id]) : undefined}
+      >
+        Merge with previous
+      </ContextMenuItem>
+      <ContextMenuItem
+        disabled={!nextId}
+        onClick={nextId ? () => performMerge([span.id, nextId]) : undefined}
+      >
+        Merge with next
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem onClick={handleDuplicate}>Duplicate</ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem
+        onClick={handleDelete}
+        className="text-destructive focus:text-destructive"
+      >
+        Delete
+      </ContextMenuItem>
+    </ContextMenuContent>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// SpanShape
+// ---------------------------------------------------------------------------
+
 interface SpanShapeProps {
   span: Span
   layer: Layer
@@ -70,13 +175,16 @@ interface SpanShapeProps {
   fontScale: FontScale
   /** Resolved above-label from the layer's neighbour-aware layout pass. */
   labelLayout?: ResolvedLabel
+  /** Shared ref: true while a box-drag was just committed — suppresses onClick. */
+  dragCommittedRef: React.RefObject<boolean>
 }
 
-function SpanShape({ span, layer, pps, fontScale, labelLayout }: SpanShapeProps) {
+function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef }: SpanShapeProps) {
   // Per-span subscription: a span only re-renders when ITS own selected/hovered
   // state flips, not on every selection change across the diagram.
   const isSelected = useUIStore((s) => s.selectedSpanIds.includes(span.id))
   const isHovered = useUIStore((s) => s.hoveredSpanId === span.id)
+  const selectedSpanIds = useUIStore((s) => s.selectedSpanIds)
   const selectSpan = useUIStore((s) => s.selectSpan)
   const toggleSpan = useUIStore((s) => s.toggleSpan)
   const setSelection = useUIStore((s) => s.setSelection)
@@ -87,6 +195,9 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout }: SpanShapeProps)
   //   ctrl/cmd-click → toggle this span in/out of the set
   //   shift-click → range-select from the anchor to here, within this layer
   function handleClick(e: React.MouseEvent) {
+    // A box-drag just finished — don't override the rect-based selection.
+    // Let the click bubble so the container's handler can reset the ref.
+    if (dragCommittedRef.current) return
     e.stopPropagation() // don't let the click bubble to the deselect handler
     if (e.shiftKey) {
       const anchorId = useUIStore.getState().selectionAnchorId
@@ -105,6 +216,15 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout }: SpanShapeProps)
     } else if (e.metaKey || e.ctrlKey) {
       toggleSpan(span.id)
     } else {
+      selectSpan(span.id)
+    }
+  }
+
+  // Right-click: if this span isn't in the current selection, single-select it
+  // so the context menu reflects this span. Right-click on an already-selected
+  // span (single or multi) leaves the selection intact so multi-merge still works.
+  function handleContextMenu() {
+    if (!selectedSpanIds.includes(span.id)) {
       selectSpan(span.id)
     }
   }
@@ -173,93 +293,103 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout }: SpanShapeProps)
   const annotationLocalX = textX(0, width, annotationJust)
 
   return (
-    <g
-      transform={`translate(${x}, 0)`}
-      style={{ cursor: 'pointer' }}
-      onMouseEnter={() => hoverSpan(span.id)}
-      onMouseLeave={() => hoverSpan(null)}
-      onClick={handleClick}
-    >
-      {/* Native tooltip — full label/type, always reachable on hover even when
-          the on-shape text is truncated. */}
-      {titleText && <title>{titleText}</title>}
-
-      <path
-        d={path}
-        fill={fill}
-        stroke={stroke}
-        strokeWidth={STROKE_WIDTH}
-        strokeDasharray={dash}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-
-      {/* Elision caps: a lighter inner line marking the overlap (separate stroke,
-          never a dash on the bracket itself). */}
-      {elisionLines.map((d, i) => (
-        <path
-          key={`elision-${i}`}
-          d={d}
-          fill="none"
-          stroke={ELISION_INK}
-          strokeWidth={STROKE_WIDTH}
-          strokeLinecap="round"
-        />
-      ))}
-
-      {/* Selection / hover box — drawn OVER the shape so it reads on white or
-          colored fills. Hover: faint grey wash. Selected: grey box + blue
-          outline (BriFormer convention). Text renders after, staying crisp. */}
-      {(isSelected || isHovered) && (
-        <rect
-          x={-1}
-          y={-1}
-          width={width + 2}
-          height={SHAPE_HEIGHT + 2}
-          rx={3}
-          fill={SELECT_GREY}
-          fillOpacity={isSelected ? 0.2 : 0.08}
-          stroke={isSelected ? SELECT_BLUE : 'none'}
-          strokeWidth={isSelected ? 1.5 : 0}
-        />
-      )}
-
-      {/* Transparent hit area — generous, covers the whole shape body so the
-          open (white-filled) brackets are easy to click, not just the stroke. */}
-      <rect x={0} y={0} width={width} height={SHAPE_HEIGHT} fill="transparent" />
-
-      {/* Section label — above (negative space, haloed) or inside (centered) */}
-      {labelText && (
-        <text
-          x={labelLocalX}
-          y={labelAbove ? aboveLabelY : insideLabelY}
-          textAnchor={ANCHOR[effLabelJust]}
-          fontSize={fonts.label}
-          fontWeight={500}
-          fill={labelAbove ? INK_PRIMARY : textOnFill(fill, INK_PRIMARY)}
-          {...(labelAbove ? TEXT_HALO : {})}
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <g
+          transform={`translate(${x}, 0)`}
+          style={{ cursor: 'pointer' }}
+          onMouseEnter={() => hoverSpan(span.id)}
+          onMouseLeave={() => hoverSpan(null)}
+          onClick={handleClick}
+          onContextMenu={handleContextMenu}
         >
-          {labelText}
-        </text>
-      )}
+          {/* Native tooltip — full label/type, always reachable on hover even when
+              the on-shape text is truncated. */}
+          {titleText && <title>{titleText}</title>}
 
-      {/* Annotation — above (haloed) or inside, upper part of the body */}
-      {annotationText && (
-        <text
-          x={annotationLocalX}
-          y={annotationAbove ? aboveAnnotY : insideAnnotY}
-          textAnchor={ANCHOR[annotationJust]}
-          fontSize={fonts.annotation}
-          fontWeight={400}
-          fill={annotationAbove ? INK_SECONDARY : textOnFill(fill, INK_SECONDARY)}
-          {...(annotationAbove ? TEXT_HALO : {})}
-        >
-          {annotationText}
-        </text>
-      )}
-    </g>
+          <path
+            d={path}
+            fill={fill}
+            stroke={stroke}
+            strokeWidth={STROKE_WIDTH}
+            strokeDasharray={dash}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+
+          {/* Elision caps: a lighter inner line marking the overlap (separate stroke,
+              never a dash on the bracket itself). */}
+          {elisionLines.map((d, i) => (
+            <path
+              key={`elision-${i}`}
+              d={d}
+              fill="none"
+              stroke={ELISION_INK}
+              strokeWidth={STROKE_WIDTH}
+              strokeLinecap="round"
+            />
+          ))}
+
+          {/* Selection / hover box — drawn OVER the shape so it reads on white or
+              colored fills. Hover: faint grey wash. Selected: grey box + blue
+              outline (BriFormer convention). Text renders after, staying crisp. */}
+          {(isSelected || isHovered) && (
+            <rect
+              x={-1}
+              y={-1}
+              width={width + 2}
+              height={SHAPE_HEIGHT + 2}
+              rx={3}
+              fill={SELECT_GREY}
+              fillOpacity={isSelected ? 0.2 : 0.08}
+              stroke={isSelected ? SELECT_BLUE : 'none'}
+              strokeWidth={isSelected ? 1.5 : 0}
+            />
+          )}
+
+          {/* Transparent hit area — generous, covers the whole shape body so the
+              open (white-filled) brackets are easy to click, not just the stroke. */}
+          <rect x={0} y={0} width={width} height={SHAPE_HEIGHT} fill="transparent" />
+
+          {/* Section label — above (negative space, haloed) or inside (centered) */}
+          {labelText && (
+            <text
+              x={labelLocalX}
+              y={labelAbove ? aboveLabelY : insideLabelY}
+              textAnchor={ANCHOR[effLabelJust]}
+              fontSize={fonts.label}
+              fontWeight={500}
+              fill={labelAbove ? INK_PRIMARY : textOnFill(fill, INK_PRIMARY)}
+              {...(labelAbove ? TEXT_HALO : {})}
+            >
+              {labelText}
+            </text>
+          )}
+
+          {/* Annotation — above (haloed) or inside, upper part of the body */}
+          {annotationText && (
+            <text
+              x={annotationLocalX}
+              y={annotationAbove ? aboveAnnotY : insideAnnotY}
+              textAnchor={ANCHOR[annotationJust]}
+              fontSize={fonts.annotation}
+              fontWeight={400}
+              fill={annotationAbove ? INK_SECONDARY : textOnFill(fill, INK_SECONDARY)}
+              {...(annotationAbove ? TEXT_HALO : {})}
+            >
+              {annotationText}
+            </text>
+          )}
+        </g>
+      </ContextMenuTrigger>
+      <SpanContextMenuContent span={span} layer={layer} />
+    </ContextMenu>
   )
 }
+
+// ---------------------------------------------------------------------------
+// FormLayerGroup
+// ---------------------------------------------------------------------------
 
 /** Begins a boundary drag for the shared edge between two adjacent spans. */
 type BoundaryDragStart = (
@@ -274,12 +404,14 @@ function FormLayerGroup({
   pps,
   totalWidth,
   onBoundaryDragStart,
+  dragCommittedRef,
 }: {
   layer: Layer
   index: number
   pps: number
   totalWidth: number
   onBoundaryDragStart: BoundaryDragStart
+  dragCommittedRef: React.RefObject<boolean>
 }) {
   if (!layer.visibility) return null
   const data = layer.data as FormDiagramData
@@ -315,6 +447,7 @@ function FormLayerGroup({
           pps={pps}
           fontScale={fontScale}
           labelLayout={labelLayout?.get(span.id)}
+          dragCommittedRef={dragCommittedRef}
         />
       ))}
 
@@ -344,6 +477,28 @@ function FormLayerGroup({
   )
 }
 
+// ---------------------------------------------------------------------------
+// FormLayers
+// ---------------------------------------------------------------------------
+
+/** Box-drag state — tracked while the user drags on empty canvas space. */
+interface BoxDragState {
+  /** Content-space x at drag start (matches SVG coordinates). */
+  startX: number
+  /** Content-space x at current pointer position. */
+  endX: number
+  /** Container-local y at drag start. */
+  startY: number
+  /** Index of the layer row where the drag began. */
+  layerIdx: number
+  /** True once the pointer has moved more than the commit threshold. */
+  committed: boolean
+}
+
+// Minimum pointer movement (px) before a pointerdown is treated as a drag
+// rather than a click. Keeps accidental micro-drags from overriding clicks.
+const BOX_DRAG_THRESHOLD = 4
+
 /**
  * @param layers  already sorted for display (macro-on-top: highest displayOrder first)
  */
@@ -354,6 +509,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   const viewportWidth = useUIStore((s) => s.viewportWidth)
   const currentTime = useUIStore((s) => s.currentTime)
   const clearSelection = useUIStore((s) => s.clearSelection)
+  const setSelection = useUIStore((s) => s.setSelection)
   const setAdjacentBoundary = useDocumentStore((s) => s.setAdjacentBoundary)
   const duration = useDocumentStore((s) => s.document?.duration ?? 0)
 
@@ -366,6 +522,19 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
 
   const cursorPx = pps > 0 ? currentTime * pps - scrollOffset : -1
   const cursorVisible = cursorPx >= 0 && cursorPx <= viewportWidth
+
+  // Box-drag selection state.
+  const [boxDrag, setBoxDrag] = useState<BoxDragState | null>(null)
+  // True when a drag was committed on this pointer sequence — used to suppress
+  // the subsequent onClick from clearing the selection we just built.
+  const dragCommittedRef = useRef(false)
+
+  // Convert a screen x to a timeline content-space position (SVG x coordinate).
+  function clientXToContent(clientX: number): number {
+    const rect = containerRef.current?.getBoundingClientRect()
+    if (!rect || pps <= 0) return 0
+    return scrollOffset + (clientX - rect.left)
+  }
 
   // Convert a screen x to a timeline time, accounting for the container's left
   // edge and the horizontal scroll. (A span at time t is painted at
@@ -395,12 +564,90 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
       window.addEventListener('pointerup', onUp)
     }
 
+  // Box-drag: start on pointerdown on empty canvas space (spans and boundary
+  // handles stop propagation so this only fires on truly empty areas).
+  function handleContainerPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (e.button !== 0) return // left button only
+    const rect = containerRef.current?.getBoundingClientRect()
+    if (!rect || pps <= 0 || layers.length === 0) return
+
+    e.preventDefault() // prevent text-selection cursor during drag
+
+    const startX = clientXToContent(e.clientX)
+    const startY = e.clientY - rect.top
+    // Capture the scroll offset at drag start so the rect stays anchored to
+    // content even if the analyst scrolls (consistent with boundary drag).
+    const capturedScrollOffset = scrollOffset
+    const layerIdx = Math.max(
+      0,
+      Math.min(layers.length - 1, Math.floor((startY - STACK_TOP_PAD) / LAYER_PITCH)),
+    )
+
+    dragCommittedRef.current = false
+    setBoxDrag({ startX, endX: startX, startY, layerIdx, committed: false })
+
+    const onMove = (ev: PointerEvent) => {
+      const endX = capturedScrollOffset + (ev.clientX - rect.left)
+      const dx = endX - startX
+      const dy = (ev.clientY - rect.top) - startY
+      const committed = Math.abs(dx) > BOX_DRAG_THRESHOLD || Math.abs(dy) > BOX_DRAG_THRESHOLD
+      setBoxDrag({ startX, endX, startY, layerIdx, committed })
+    }
+
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+
+      // Read the current drag state from the setter to avoid stale closure.
+      setBoxDrag((prev) => {
+        if (prev?.committed) {
+          dragCommittedRef.current = true
+          const lo = Math.min(prev.startX, prev.endX)
+          const hi = Math.max(prev.startX, prev.endX)
+          const layer = layers[prev.layerIdx]
+          if (layer?.type === 'form-diagram') {
+            const spans = (layer.data as FormDiagramData).spans
+            const overlapping = spans
+              .filter((s) => s.startTime * pps < hi && s.endTime * pps > lo)
+              .map((s) => s.id)
+            if (overlapping.length > 0) setSelection(overlapping)
+            else clearSelection()
+          }
+        }
+        return null
+      })
+    }
+
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
+
+  function handleContainerClick() {
+    // Skip clearSelection when this click is the tail of a committed box-drag.
+    if (dragCommittedRef.current) {
+      dragCommittedRef.current = false
+      return
+    }
+    clearSelection()
+  }
+
+  // Selection rectangle rendered during an active box-drag.
+  const selRect = boxDrag?.committed
+    ? {
+        x: Math.min(boxDrag.startX, boxDrag.endX),
+        y: shapeTopY(boxDrag.layerIdx),
+        width: Math.abs(boxDrag.endX - boxDrag.startX),
+        height: SHAPE_HEIGHT,
+      }
+    : null
+
   return (
     <div
       ref={containerRef}
       className="relative min-w-0 flex-1 overflow-hidden"
       style={{ background: 'var(--canvas)', height: svgHeight }}
-      onClick={() => clearSelection()}
+      onPointerDown={handleContainerPointerDown}
+      onClick={handleContainerClick}
     >
       <svg
         style={{
@@ -422,8 +669,25 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
               pps={pps}
               totalWidth={totalWidth}
               onBoundaryDragStart={beginBoundaryDrag}
+              dragCommittedRef={dragCommittedRef}
             />
           ))}
+
+        {/* Box-drag selection rectangle */}
+        {selRect && (
+          <rect
+            x={selRect.x}
+            y={selRect.y}
+            width={selRect.width}
+            height={selRect.height}
+            fill={SELECT_BLUE}
+            fillOpacity={0.08}
+            stroke={SELECT_BLUE}
+            strokeWidth={1}
+            strokeDasharray="3 2"
+            pointerEvents="none"
+          />
+        )}
       </svg>
 
       {/* Playback cursor — mirrors the ruler cursor so the two read as one line */}
