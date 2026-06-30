@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
+import { useStore } from 'zustand'
+import { Undo2, Redo2, Settings } from 'lucide-react'
 import { useFileIO } from '@/hooks/useFileIO'
 import { useMerge } from '@/hooks/useMerge'
 import { YouTubePlayer } from '@/components/YouTubePlayer'
 import { FormDiagram } from '@/components/FormDiagram'
 import { Inspector } from '@/components/Inspector'
 import { MergeConflictDialog } from '@/components/MergeConflictDialog'
+import { DocumentSettingsDialog } from '@/components/DocumentSettingsDialog'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { cn } from '@/lib/utils'
@@ -42,6 +45,34 @@ function ToolbarButton({
         disabled:opacity-40 disabled:pointer-events-none`,
         muted ? 'text-muted-foreground' : 'text-foreground',
       )}
+    >
+      {children}
+    </button>
+  )
+}
+
+/** Icon-only toolbar button — square, for compact chrome actions (undo, redo, settings). */
+function IconToolbarButton({
+  onClick,
+  disabled,
+  title,
+  children,
+}: {
+  onClick: () => void
+  disabled?: boolean
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      aria-label={title}
+      className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors
+        hover:bg-accent hover:text-accent-foreground
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background
+        disabled:opacity-40 disabled:pointer-events-none"
     >
       {children}
     </button>
@@ -178,13 +209,25 @@ export default function App() {
   const loadDocument = useDocumentStore((s) => s.loadDocument)
   const setActiveLayer = useUIStore((s) => s.setActiveLayer)
   const clearSelection = useUIStore((s) => s.clearSelection)
+  const selectedCount = useUIStore((s) => s.selectedSpanIds.length)
 
   // Inspector collapse is pure view-state; local to the shell.
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
-  // Merge: eligibility drives the toolbar button; performMerge is held in a ref
-  // so the keydown effect can call the latest closure without re-subscribing.
-  const { eligibility: mergeEligibility, performMerge } = useMerge()
+  // Auto-expand the Inspector whenever a selection is made, so clicking a span
+  // always surfaces its details — matches the editor's pre-existing behavior.
+  useEffect(() => {
+    if (selectedCount > 0) setInspectorCollapsed(false)
+  }, [selectedCount])
+
+  // Undo/redo availability, read reactively off zundo's temporal store.
+  const canUndo = useStore(useDocumentStore.temporal, (s) => s.pastStates.length > 0)
+  const canRedo = useStore(useDocumentStore.temporal, (s) => s.futureStates.length > 0)
+
+  // Merge: eligibility drives the Ctrl+J keyboard shortcut; performMerge is held
+  // in a ref so the keydown effect can call the latest closure without re-subscribing.
+  const { performMerge } = useMerge()
   const performMergeRef = useRef(performMerge)
   performMergeRef.current = performMerge
 
@@ -288,13 +331,28 @@ export default function App() {
 
         <div className="mx-1.5 h-4 w-px bg-border" />
 
-        <ToolbarButton
-          onClick={() => performMerge()}
-          disabled={!mergeEligibility.ok}
-          title={mergeEligibility.ok ? 'Merge selected spans (Ctrl+J)' : mergeEligibility.reason}
+        <IconToolbarButton
+          onClick={() => useDocumentStore.temporal.getState().undo()}
+          disabled={!canUndo}
+          title="Undo (Ctrl+Z)"
         >
-          Merge
-        </ToolbarButton>
+          <Undo2 size={14} />
+        </IconToolbarButton>
+        <IconToolbarButton
+          onClick={() => useDocumentStore.temporal.getState().redo()}
+          disabled={!canRedo}
+          title="Redo (Ctrl+Shift+Z)"
+        >
+          <Redo2 size={14} />
+        </IconToolbarButton>
+
+        <IconToolbarButton
+          onClick={() => setSettingsOpen(true)}
+          disabled={!doc}
+          title="Document settings"
+        >
+          <Settings size={14} />
+        </IconToolbarButton>
 
         {isDirty && (
           <span
@@ -334,6 +392,9 @@ export default function App() {
 
       {/* Merge conflict dialog — renders only when a merge has conflicts */}
       <MergeConflictDialog />
+
+      {/* Document settings — top-level StrataDocument metadata */}
+      <DocumentSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
 
       {/* Crash recovery modal */}
       {pendingRecovery && (
