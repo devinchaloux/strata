@@ -1445,3 +1445,62 @@ anchor map, `TEXT_PAD`) moved from `FormLayers.tsx` into `formShape.ts`.
 unit-tested function rather than logic embedded in the React component. The component
 now consumes a resolved `{text, justification}` per span and does no label fitting of
 its own (for above-labels); inside-shape labels still fit to their own body.
+
+---
+
+## Phase 2.5 Merge — Interaction Completion (2026-06-30)
+
+*Session 2026-06-30. Completed the three missing interaction pieces for the merge
+feature (core logic, hooks, and dialog were already built). Outputs:
+`src/App.tsx`, `src/components/FormLayers.tsx`,
+`src/components/ui/context-menu.tsx` (new).*
+
+---
+
+**Decision:** Right-click context menu covers **all span operations** — Split at
+playhead, Merge with previous, Merge with next, Duplicate, and Delete — not just
+merge-related operations.
+**Rationale:** Merge was the immediate need, but a context menu that appears only
+for merge-related items creates an inconsistent surface: why does right-click
+sometimes show merge options but never show delete or duplicate? Ripping off the
+band-aid and putting all structural span operations in the menu makes right-click
+a complete, predictable affordance. Mobile users are covered by the metadata
+panel action strip (already built), so there is no mobile regression. Future span
+operations have a natural home. The cost is implementing Duplicate early, but
+that's a design discussion deferred to the next session.
+
+---
+
+**Decision:** `@radix-ui/react-context-menu` (Radix UI) is used for the context
+menu, wrapped in a shadcn-style primitive (`src/components/ui/context-menu.tsx`).
+**Rationale:** Consistent with the codebase's existing pattern — every interactive
+primitive (dialog, popover, dropdown) uses Radix UI via shadcn wrappers. A
+hand-rolled positioned-div context menu would bypass Radix's portal rendering,
+positioning engine, Escape-to-close, focus management, and ARIA roles — trading
+short-term convenience for long-term fragility. The correct primitive for
+context menus is `@radix-ui/react-context-menu`; using it matches the
+"do it correctly, not quickly" principle already established in the project.
+
+---
+
+**Decision:** `ContextMenuTrigger asChild` renders the trigger as the SVG `<g>`
+element directly (no extra DOM wrapper in the SVG tree).
+**Rationale:** SVG does not allow arbitrary HTML elements as children of `<g>`.
+A wrapper `<div>` inside SVG would be invalid and would break the SVG layout.
+Radix's `asChild` prop delegates the trigger's event handling to the child
+element — here the span's `<g>` — so Radix correctly intercepts `contextmenu`
+events on SVG elements without polluting the SVG tree.
+
+---
+
+**Decision:** Box-drag selection can be initiated by pressing down on a span body
+and dragging (not just on empty space).
+**Rationale:** Form diagram rows are typically fully covered by consecutive spans
+with no empty space between them. A box-drag feature that requires empty space to
+start is nearly unusable in practice — the primary use case (selecting two
+adjacent spans to merge) requires dragging across spans. The fix: remove the
+`stopPropagation` from the span's `onPointerDown`, pass `dragCommittedRef` to
+`SpanShape`, and bail early in `handleClick` when a drag was committed (without
+calling `stopPropagation` so the click bubbles to the container to reset the
+ref). Short click → selects the span as before; drag past 4px threshold →
+box-drag selection ignoring the span click.
