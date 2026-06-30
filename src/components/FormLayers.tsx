@@ -8,7 +8,7 @@
  *   Click empty space   → deselect all
  *   Box-drag empty space → select all spans that overlap the rectangle (within the
  *                          layer row where the drag started)
- *   Right-click span    → context menu (Split / Merge / Duplicate / Delete)
+ *   Right-click span    → context menu (Split / Merge / Delete)
  *   Drag boundary handle → move the shared edge between two adjacent spans
  */
 
@@ -82,7 +82,6 @@ function SpanContextMenuContent({ span, layer }: { span: Span; layer: Layer }) {
   const selectSpan = useUIStore((s) => s.selectSpan)
   const currentTime = useUIStore((s) => s.currentTime)
   const removeSpan = useDocumentStore((s) => s.removeSpan)
-  const addSpan = useDocumentStore((s) => s.addSpan)
   const placeBoundary = useDocumentStore((s) => s.placeBoundary)
   const { eligibility, performMerge, neighborId } = useMerge()
 
@@ -98,14 +97,8 @@ function SpanContextMenuContent({ span, layer }: { span: Span; layer: Layer }) {
     selectSpan(null)
   }
 
-  function handleDuplicate() {
-    const copy: Span = { ...span, id: crypto.randomUUID() }
-    addSpan(layer.id, copy)
-    selectSpan(copy.id)
-  }
-
   if (isMulti) {
-    // Multi-span: show merge (when eligible) + Duplicate + Delete.
+    // Multi-span: show merge (when eligible) + Delete.
     // Merge entry is absent when ineligible (spec §3.3).
     return (
       <ContextMenuContent>
@@ -117,8 +110,6 @@ function SpanContextMenuContent({ span, layer }: { span: Span; layer: Layer }) {
             <ContextMenuSeparator />
           </>
         )}
-        <ContextMenuItem onClick={handleDuplicate}>Duplicate</ContextMenuItem>
-        <ContextMenuSeparator />
         <ContextMenuItem
           onClick={handleDelete}
           className="text-destructive focus:text-destructive"
@@ -129,7 +120,7 @@ function SpanContextMenuContent({ span, layer }: { span: Span; layer: Layer }) {
     )
   }
 
-  // Single span: Split / Merge-with-neighbour / Duplicate / Delete.
+  // Single span: Split / Merge-with-neighbour / Delete.
   return (
     <ContextMenuContent>
       <ContextMenuItem
@@ -151,8 +142,6 @@ function SpanContextMenuContent({ span, layer }: { span: Span; layer: Layer }) {
       >
         Merge with next
       </ContextMenuItem>
-      <ContextMenuSeparator />
-      <ContextMenuItem onClick={handleDuplicate}>Duplicate</ContextMenuItem>
       <ContextMenuSeparator />
       <ContextMenuItem
         onClick={handleDelete}

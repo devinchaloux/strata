@@ -1504,3 +1504,9 @@ adjacent spans to merge) requires dragging across spans. The fix: remove the
 calling `stopPropagation` so the click bubbles to the container to reset the
 ref). Short click → selects the span as before; drag past 4px threshold →
 box-drag selection ignoring the span click.
+
+---
+
+**Decision:** Duplicate is removed from the context menu and metadata panel action strip. Not implemented in v1.
+**Rationale:** The feature was added speculatively. The realistic use cases require design that isn't in place yet: cross-layer copy requires a layer picker; same-layer copy is invalid (overlapping spans within a single layer are not allowed); multi-span "copy the selection to the space immediately after" would require whole-span dragging, which is explicitly not implemented (boundary-only drag). The right design will emerge from real use of v1. Revisit in v1.5 or v2 with concrete use cases in hand.
+**Deferred ideas:** (1) Cross-layer copy — select a span, copy it to a chosen layer as a starting point for a second analytical reading. Useful for e.g. the break/silence layer in EDM. (2) Multi-span duplicate-and-place — select a run of spans, duplicate the entire selection into the space immediately following it; requires whole-span drag or a snap-to-end placement mechanism not currently designed.

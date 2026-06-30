@@ -47,6 +47,23 @@ describe('truncateToWidth', () => {
     expect(truncateToWidth('Drop', 11, 0)).toBe('')
   })
 
+  it('returns empty string when only a single-char stub would survive (not useful)', () => {
+    // Width fits "D…" but not "Dr…" — stub is suppressed in favour of nothing.
+    const ellipsisW = estimateTextWidth('…', 11)
+    const oneCharW = estimateTextWidth('D', 11)
+    const twoCharW = estimateTextWidth('Dr', 11)
+    const max = oneCharW + ellipsisW + 0.5 // fits "D…" but not "Dr…"
+    if (max < twoCharW + ellipsisW) {
+      expect(truncateToWidth('Drop', 11, max)).toBe('')
+    }
+  })
+
+  it('single-letter labels return the full label when they fit', () => {
+    const labelW = estimateTextWidth('A', 11)
+    expect(truncateToWidth('A', 11, labelW + 4)).toBe('A')
+    expect(truncateToWidth("A'", 11, estimateTextWidth("A'", 11) + 4)).toBe("A'")
+  })
+
   it('is empty for empty input', () => {
     expect(truncateToWidth('', 11, 100)).toBe('')
   })
