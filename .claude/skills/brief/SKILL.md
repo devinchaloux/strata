@@ -17,7 +17,11 @@ Then use Glob to check for any other files in `_private/` (`_private/*.md`) and 
 
 ## Step 2 — Check git state
 
-Run `git status` and `git branch` to confirm the current branch and whether there are uncommitted changes from a prior session.
+Run these commands in order:
+
+1. `git fetch origin` — update all remote refs before any comparison
+2. `git status` — confirm current branch and any uncommitted changes
+3. `git log origin/main..HEAD --oneline` — commits on the current branch not yet in main (uses remote ref, not stale local)
 
 **Reconcile the handoff against git — git is the source of truth.** The handoff is
 written *before* Devin commits, so its "uncommitted work / proposed commit" section

@@ -177,6 +177,7 @@ export default function App() {
 
   const loadDocument = useDocumentStore((s) => s.loadDocument)
   const setActiveLayer = useUIStore((s) => s.setActiveLayer)
+  const clearSelection = useUIStore((s) => s.clearSelection)
 
   // Inspector collapse is pure view-state; local to the shell.
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false)
@@ -200,6 +201,19 @@ export default function App() {
   // Keyboard shortcuts
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
+      // Escape — deselect all spans (skip when focus is inside a text field so
+      // Escape can still cancel an edit without collapsing the panel).
+      if (e.key === 'Escape') {
+        const el = e.target as HTMLElement | null
+        const tag = el?.tagName
+        const inField =
+          tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable
+        if (!inField) {
+          clearSelection()
+          return
+        }
+      }
+
       const mod = e.metaKey || e.ctrlKey
       if (!mod) return
 
@@ -241,7 +255,7 @@ export default function App() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [newFile, openFile, saveFile, saveFileAs])
+  }, [clearSelection, newFile, openFile, saveFile, saveFileAs])
 
   return (
     // Full-height app shell: header on top, then a main row of [left work area |
