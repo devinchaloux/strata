@@ -203,7 +203,6 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   const doc = useDocumentStore((s) => s.document)
   const updateSpan = useDocumentStore((s) => s.updateSpan)
   const removeSpan = useDocumentStore((s) => s.removeSpan)
-  const addSpan = useDocumentStore((s) => s.addSpan)
   const placeBoundary = useDocumentStore((s) => s.placeBoundary)
   const selectSpan = useUIStore((s) => s.selectSpan)
   const currentTime = useUIStore((s) => s.currentTime)
@@ -219,12 +218,6 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   function handleDelete() {
     removeSpan(layer.id, span.id)
     selectSpan(null)
-  }
-
-  function handleDuplicate() {
-    const copy: Span = { ...span, id: crypto.randomUUID() }
-    addSpan(layer.id, copy)
-    selectSpan(copy.id)
   }
 
   const canSplit = currentTime > span.startTime && currentTime < span.endTime
@@ -504,12 +497,6 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             className="flex-1 rounded border border-border px-2 py-1 text-[11px] text-foreground hover:bg-accent disabled:opacity-40"
           >
             Split
-          </button>
-          <button
-            onClick={handleDuplicate}
-            className="flex-1 rounded border border-border px-2 py-1 text-[11px] text-foreground hover:bg-accent"
-          >
-            Duplicate
           </button>
           <button
             onClick={handleDelete}

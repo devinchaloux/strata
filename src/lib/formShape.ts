@@ -234,7 +234,7 @@ export function truncateToWidth(text: string, fontPx: number, maxWidthPx: number
   ) {
     n++
   }
-  return n === 0 ? '' : text.slice(0, n).trimEnd() + ELLIPSIS
+  return n <= 1 ? '' : text.slice(0, n).trimEnd() + ELLIPSIS
 }
 
 // ---------------------------------------------------------------------------
