@@ -526,15 +526,12 @@ export function FormDiagram() {
     <div className="flex min-h-0 flex-1 flex-col justify-end px-2 pb-1">
       {/* The widget is a framed card: the top bar (collapse / add / hidden
           chips) and the layer stack read as one object distinct from the shared
-          timeline below. The frame is an inset outline so it paints on top of the
-          canvas and adds no layout box — the ruler↔span alignment is preserved. */}
+          timeline below. The border overlay (absolute, pointer-events-none, z-10)
+          paints above the absolutely-positioned FormLayers SVG so all four edges
+          are visible — an inset outline would be covered by the SVG on bottom/right. */}
       <div
-        className="shrink-0 overflow-hidden rounded-md bg-[var(--canvas)]"
-        style={{
-          outline: '1px solid var(--hairline)',
-          outlineOffset: '-1px',
-          marginBottom: 4,
-        }}
+        className="relative shrink-0 overflow-hidden rounded-md bg-[var(--canvas)]"
+        style={{ marginBottom: 4 }}
       >
         <WidgetTopBar
           collapsed={collapsed}
@@ -546,6 +543,11 @@ export function FormDiagram() {
           <LayerHeaders layers={visible} collapsed={collapsed} />
           <FormLayers layers={visible} />
         </div>
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 rounded-md"
+          style={{ border: '1px solid var(--ruler)' }}
+        />
       </div>
 
       {/* Ruler row — offset cell matches header width so zero aligns with spans */}
