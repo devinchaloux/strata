@@ -65,3 +65,15 @@ After the brief, ask:
 ## Step 5 — Wait
 
 Do not read any additional files, write any files, run any commands, or begin any work until Devin confirms the scope.
+
+## Step 6 — Cut a feature branch (after scope confirmed)
+
+Once Devin confirms scope, immediately run:
+
+```bash
+git checkout dev && git pull origin dev && git checkout -b feat/<short-description>
+```
+
+**Do this before touching any files.** No exceptions. Branch naming: `feat/<short-description>` (e.g. `feat/color-picker`, `feat/label-fix`).
+
+This step exists because a session committed directly to `dev` on 2026-06-30 — the brief confirmed scope but the branch was never cut. The branch cut is the first action of every work session, not an afterthought.

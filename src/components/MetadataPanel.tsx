@@ -18,6 +18,7 @@ import { parseTimecode } from '@/lib/timecode'
 import { MIN_SPAN_WIDTH } from '@/lib/spanEdit'
 import { capFromBoundaryType } from '@/lib/formShape'
 import { slugify } from '@/lib/slug'
+import { ColorPicker } from '@/components/ui/color-picker'
 import type {
   Span,
   Layer,
@@ -431,7 +432,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         <div className="flex gap-2">
           <div className="flex-1">
             <Field label="Fill">
-              <ColorControl
+              <ColorPicker
                 value={span.fillColor}
                 fallback={layer.fillColorDefault}
                 onChange={(c) => update({ fillColor: c })}
@@ -440,7 +441,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           </div>
           <div className="flex-1">
             <Field label="Stroke">
-              <ColorControl
+              <ColorPicker
                 value={span.strokeColor}
                 fallback={layer.strokeColorDefault}
                 onChange={(c) => update({ strokeColor: c })}
@@ -726,7 +727,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
         <div className="flex gap-2">
           <div className="flex-1">
             <Field label="Fill" helper={fill === MIXED ? 'Mixed' : undefined}>
-              <ColorControl
+              <ColorPicker
                 value={fill === MIXED ? null : fill}
                 fallback={fillFallback}
                 onChange={(c) => setAll({ fillColor: c })}
@@ -735,7 +736,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
           </div>
           <div className="flex-1">
             <Field label="Stroke" helper={stroke === MIXED ? 'Mixed' : undefined}>
-              <ColorControl
+              <ColorPicker
                 value={stroke === MIXED ? null : stroke}
                 fallback={strokeFallback}
                 onChange={(c) => setAll({ strokeColor: c })}
@@ -748,38 +749,3 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
   )
 }
 
-// ---------------------------------------------------------------------------
-// Color control — a swatch input plus a "layer default" clear (null = inherit).
-// The curated swatch palette (Phase 0.6) is a later refinement.
-// ---------------------------------------------------------------------------
-
-function ColorControl({
-  value,
-  fallback,
-  onChange,
-}: {
-  value: string | null | undefined
-  fallback: string
-  onChange: (c: string | null) => void
-}) {
-  const inheriting = value == null
-  return (
-    <div className="flex items-center gap-1.5">
-      <input
-        type="color"
-        value={value ?? fallback}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-6 w-7 shrink-0 cursor-pointer rounded border border-border bg-card p-0.5"
-        title={inheriting ? `Layer default ${fallback}` : value ?? ''}
-      />
-      <button
-        onClick={() => onChange(null)}
-        disabled={inheriting}
-        className="flex-1 truncate rounded border border-border px-1 py-0.5 text-[10px] text-muted-foreground hover:bg-accent disabled:opacity-50"
-        title="Reset to layer default"
-      >
-        {inheriting ? 'Default' : 'Reset'}
-      </button>
-    </div>
-  )
-}
