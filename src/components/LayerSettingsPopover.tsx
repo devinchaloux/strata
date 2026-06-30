@@ -1,10 +1,7 @@
 /**
  * LayerSettingsPopover — the `⋯` layer settings menu in the expanded track header.
  *
- * Core controls (Phase 2.4): rename, description, lock, and delete. Color defaults
- * and rendering config are intentionally absent — fills come only from per-span
- * choices in the metadata panel's Advanced section (no layer-level color default as
- * a user feature), and rendering config is deferred to a later pass.
+ * Controls: rename, description, fill/stroke default colors, lock, and delete.
  *
  * Hierarchical enforcement is deliberately NOT here: it was redefined as a
  * cross-layer nesting constraint scoped to the form-diagram widget (not per-layer),
@@ -27,8 +24,13 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { Switch } from '@/components/ui/switch'
+import { ColorPicker } from '@/components/ui/color-picker'
 import { cn } from '@/lib/utils'
 import type { Layer } from '@/types/strata'
+
+// Factory defaults — used as the fallback preview in the reset button.
+const FILL_DEFAULT = '#ffffff'
+const STROKE_DEFAULT = '#475569'
 
 export function LayerSettingsPopover({
   layer,
@@ -87,6 +89,35 @@ export function LayerSettingsPopover({
               className={cn(fieldClass, 'resize-none')}
               style={fieldStyle}
             />
+          </div>
+
+          <div className="h-px" style={{ background: 'var(--hairline)' }} />
+
+          {/* Default colors */}
+          <div className="space-y-2">
+            <p className="text-[11px] font-medium" style={labelStyle}>Default colors</p>
+            <div className="flex items-center gap-2">
+              <span className="w-12 shrink-0 text-[11px]" style={labelStyle}>Fill</span>
+              <ColorPicker
+                value={layer.fillColorDefault}
+                fallback={FILL_DEFAULT}
+                nullLabel="Reset to default"
+                onChange={(c) =>
+                  updateLayer(layer.id, { fillColorDefault: c ?? FILL_DEFAULT })
+                }
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-12 shrink-0 text-[11px]" style={labelStyle}>Stroke</span>
+              <ColorPicker
+                value={layer.strokeColorDefault}
+                fallback={STROKE_DEFAULT}
+                nullLabel="Reset to default"
+                onChange={(c) =>
+                  updateLayer(layer.id, { strokeColorDefault: c ?? STROKE_DEFAULT })
+                }
+              />
+            </div>
           </div>
 
           <div className="h-px" style={{ background: 'var(--hairline)' }} />

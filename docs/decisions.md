@@ -1510,3 +1510,30 @@ box-drag selection ignoring the span click.
 **Decision:** Duplicate is removed from the context menu and metadata panel action strip. Not implemented in v1.
 **Rationale:** The feature was added speculatively. The realistic use cases require design that isn't in place yet: cross-layer copy requires a layer picker; same-layer copy is invalid (overlapping spans within a single layer are not allowed); multi-span "copy the selection to the space immediately after" would require whole-span dragging, which is explicitly not implemented (boundary-only drag). The right design will emerge from real use of v1. Revisit in v1.5 or v2 with concrete use cases in hand.
 **Deferred ideas:** (1) Cross-layer copy — select a span, copy it to a chosen layer as a starting point for a second analytical reading. Useful for e.g. the break/silence layer in EDM. (2) Multi-span duplicate-and-place — select a run of spans, duplicate the entire selection into the space immediately following it; requires whole-span drag or a snap-to-end placement mechanism not currently designed.
+
+---
+
+## Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)
+
+*Session 2026-06-30. Outputs: `src/components/ui/color-picker.tsx` (new),
+`src/components/MetadataPanel.tsx`, `src/components/LayerSettingsPopover.tsx`.*
+
+---
+
+**Decision (reversal):** ~~Layer-level color defaults are not a user-facing feature~~ — **superseded.** `fillColorDefault` and `strokeColorDefault` are now editable in the layer settings popover (⋯ menu), under a "Default colors" section. Factory defaults: white fill (`#ffffff`), slate stroke (`#475569`).
+**Rationale:** The 2026-06-22 rejection was motivated by not wanting a "paint the whole layer one color" command — that concern stands. What changed: the introduction of `"none"` as an explicit no-color per-span sentinel made the null-vs-none model require the layer default to be visible and editable. When a span's fill is `null` (inherit layer default), the analyst needs to know what they are inheriting and be able to change it. Without an editable layer default, the layer's floor color is invisible to the user. The distinction is still per-bracket control (per-span overrides), not per-layer painting.
+
+---
+
+**Decision:** `"none"` is the per-span sentinel for "explicitly no color," distinct from `null` ("inherit layer default").
+**Rationale:** An analyst may want a span that shows no fill (just the bracket outline) without reverting to the layer default — for example, using "no fill" as a deliberate contrast against adjacent filled spans. `null` cannot serve this purpose because it already means "inherit the layer default," which may itself be a color. SVG natively understands `fill="none"` and `stroke="none"`, so no renderer changes were needed. `textOnFill("none", ink)` already returns the ink color (treats unparseable values as light), so label contrast also requires no changes.
+
+---
+
+**Decision:** The curated color picker shows 11 hue families × 2 shades = 22 swatches in a `grid-cols-11` grid. The 11th family ("neutral") is black (#000000) deep / white (#ffffff) bright. An inset `box-shadow` on all swatches makes white legible against the white popover background.
+**Rationale:** Black and white are needed for high-contrast analysis choices (e.g., white fill on a busy score; black text-on-white spans). Adding them as a natural 11th family keeps the palette structure consistent rather than requiring a separate special-case row. The box-shadow approach avoids adding a visible border element that would create visual noise on dark swatches; the inset shadow is only perceptible on very light colors.
+
+---
+
+**Decision:** The `ColorPicker` component accepts a `nullLabel` prop that controls the label of the "reset to null" action button. Default: "Use layer default." Layer settings context uses "Reset to default."
+**Rationale:** The per-span Advanced panel resets to `null` meaning "inherit from the layer" — "Use layer default" is the honest description. The layer settings popover resets to the factory default color — "Reset to default" is correct there. One component, two labels, no duplication.
