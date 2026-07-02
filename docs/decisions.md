@@ -1607,3 +1607,117 @@ async, imperative callback integration — a known class of dev-only false
 positive for third-party API integrations, not expected in production builds.
 Left as a known, non-blocking dev-mode artifact rather than chased further
 without a reliable repro.
+
+---
+
+## Source Linking (2026-07-02)
+
+*Session 2026-07-02. Outputs: `src/components/LinkSourceDialog.tsx` (new),
+`src/components/PlayerDock.tsx` (new, replaces `YouTubePlayer.tsx`),
+`src/hooks/useAudioPlayer.ts` (new), `src/hooks/useYouTubePlayer.ts`,
+`src/lib/youtube.ts`, `src/components/DocumentSettingsDialog.tsx`,
+`src/App.tsx`, `src/store/uiStore.ts`. This closes the MVP hard blocker: a
+first-time user previously had no UI path to connect a video or audio source
+without hand-editing the `.strata` JSON.*
+
+---
+
+**Decision:** Source linking lives in a reusable `SourceLinkForm`, hosted in two
+places: a standalone `LinkSourceDialog` opened from the transport bar (a
+prominent "Link video or audio…" button when the document has no playable
+source; a compact link icon for swap once linked), and embedded as an editable
+"Source" section inside `DocumentSettingsDialog`. The "New" action now creates
+the blank document AND immediately opens the settings dialog in a "New
+analysis" framing (same fields, setup copy) so naming the track and linking
+media happen in one step.
+**Rationale:** The transport bar is where the player lives — the natural place
+to notice and fix a missing source. The settings dialog is the natural place to
+audit and change document-level facts. One form, two hosts avoids divergence.
+The new-analysis modal exists because dropping a first-time user into a dead
+editor with a disabled transport was the discoverability failure at the heart
+of the MVP gap (per Devin's direction this session).
+
+---
+
+**Decision:** YouTube linking is paste-to-detect — one input accepts any
+YouTube URL shape (watch, shorts, embed, live, youtu.be, music/m subdomains,
+protocol-less) or a bare 11-character video ID, validated live
+(`parseYouTubeInput` in `lib/youtube.ts`, unit-tested). The stored URL is
+normalized to the canonical `https://www.youtube.com/watch?v=<id>` form. No
+explicit source-type selector is needed for detection; the YouTube/Audio choice
+is a two-option segmented control, not a type dropdown.
+**Rationale:** Analysts paste whatever share link they have. Making them
+identify the URL shape is machine work. Canonical normalization keeps `.strata`
+files consistent and diff-friendly regardless of what was pasted. Video IDs are
+validated to the 11-char `[A-Za-z0-9_-]` shape so a malformed paste fails
+visibly at link time, not silently at playback time.
+
+---
+
+**Decision:** Local audio file sources ship now (v1), not deferred. A second
+playback engine (`useAudioPlayer`, HTML5 audio) mirrors the YouTube engine's
+command surface (`play/pause/seek/setRate`); `PlayerDock` (replacing
+`YouTubePlayer.tsx`) selects the engine from `doc.source.type` and is otherwise
+source-agnostic, including engine-level keyboard shortcuts (K/J/L/Home) which
+moved up from the YouTube hook to the dock. The picked `File` lives in the UI
+store (runtime-only); the document stores only `source.filename` per schema.
+Opening a `.strata` with a local source shows a "Locate {filename}…" transport
+affordance to re-pick the file (browsers cannot reopen paths); the stored
+filename follows whatever file the analyst explicitly picks.
+**Rationale:** Devin's scope call this session — YouTube-only would have left
+the second half of the source story (already in the schema as
+`type: "local"`) unusable. The two-engine/one-command-surface architecture is
+the same render/edit separation discipline as the widget contract: the
+transport doesn't know what's playing.
+
+---
+
+**Decision:** Duration adoption: when media metadata reports a duration and
+`doc.duration === 0` (a fresh analysis), the media's duration (in recording
+time, offset-corrected) is adopted into the document, outside undo history
+(zundo `pause()`/`resume()`). Swapping the source on a document whose duration
+is already set never touches it.
+**Rationale:** The timeline is driven by `doc.duration`; before this, a new
+document had duration 0 and a permanently dead timeline — nothing ever wrote
+the player's duration back to the document. Adoption is a system act, not an
+analyst edit, so it doesn't belong on the undo stack. On swap, span timestamps
+are recording-time truth and the recording's duration is a property of the
+recording, not of whichever video currently represents it.
+
+---
+
+**Decision:** `sourceOffset` is now actually applied, at the engine boundary:
+`seek(recording_time)` → player seeks to `recording_time + offset`; the
+time-poll loop and duration reports subtract the offset on the way out. All
+times crossing either engine's API are recording time; span data and the UI
+store never see player time.
+**Rationale:** Bug fix — the offset was editable in document settings but
+applied nowhere, so editing it did nothing (found during this session's survey;
+the schema comment `player_time = recording_time + sourceOffset` was the
+documented intent all along). Converting at the engine boundary means exactly
+two call sites per engine instead of offset-awareness spread through every
+consumer.
+
+---
+
+**Decision:** Offset reset rule: relinking the SAME media (same video ID or
+same filename) keeps the current `sourceOffset`; linking different media resets
+it to 0. Unlink resets the source to the empty shape
+(`{ type: "youtube", url: "", sourceOffset: 0 }`, matching
+`createEmptyDocument`).
+**Rationale:** The offset is a property of a specific source (existing
+decision). Pasting a differently-shaped URL for the same video is a no-op on
+the media, so the calibrated offset survives; a different video/file has its
+own alignment and inheriting a stale offset would silently mis-seek every span.
+
+---
+
+**Decision (bug fixes surfaced by this feature):** (1) The YouTube player is
+destroyed when the video is unlinked — previously the `YT.Player` instance
+survived its container's unmount, so a re-link would have cued into a dead
+iframe (unreachable before source linking existed; live the moment swap/unlink
+shipped). (2) The J/K/L/Home shortcut handler now ignores modifier-key
+combinations — previously Ctrl+J triggered both merge AND a 10-second
+seek-back, since the player hook's handler never checked modifiers.
+**Rationale:** Both found during the session survey; both in the blast radius
+of this feature. Fixed at the source rather than worked around.

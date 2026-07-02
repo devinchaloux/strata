@@ -1,13 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 import { Undo2, Redo2, Settings } from 'lucide-react'
 import { useFileIO } from '@/hooks/useFileIO'
 import { useMerge } from '@/hooks/useMerge'
-import { YouTubePlayer } from '@/components/YouTubePlayer'
+import { PlayerDock } from '@/components/PlayerDock'
 import { FormDiagram } from '@/components/FormDiagram'
 import { Inspector } from '@/components/Inspector'
 import { MergeConflictDialog } from '@/components/MergeConflictDialog'
 import { DocumentSettingsDialog } from '@/components/DocumentSettingsDialog'
+import { LinkSourceDialog } from '@/components/LinkSourceDialog'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { cn } from '@/lib/utils'
@@ -214,6 +215,9 @@ export default function App() {
   // Inspector collapse is pure view-state; local to the shell.
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // "New analysis" framing for the settings dialog — set when the dialog was
+  // opened by the New action, cleared when opened as plain settings.
+  const [settingsIsNew, setSettingsIsNew] = useState(false)
 
   // Auto-expand the Inspector whenever a selection is made, so clicking a span
   // always surfaces its details — matches the editor's pre-existing behavior.
@@ -230,6 +234,16 @@ export default function App() {
   const { performMerge } = useMerge()
   const performMergeRef = useRef(performMerge)
   performMergeRef.current = performMerge
+
+  // New analysis = create the blank document AND open the setup modal (the
+  // settings dialog in "new" framing) so naming the track and linking a video
+  // or audio source happen in one step — a first-time user is never dropped
+  // into a dead editor with no visible path to a playable source.
+  const newAnalysis = useCallback(() => {
+    newFile()
+    setSettingsIsNew(true)
+    setSettingsOpen(true)
+  }, [newFile])
 
   // Dev affordance — load the bundled "Alive" fixture to exercise the render path.
   function loadDemo() {
@@ -284,7 +298,7 @@ export default function App() {
 
       if (e.key === 'n' || e.key === 'N') {
         e.preventDefault()
-        newFile()
+        newAnalysis()
       } else if (e.key === 'o' || e.key === 'O') {
         e.preventDefault()
         openFile()
@@ -298,7 +312,7 @@ export default function App() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [clearSelection, newFile, openFile, saveFile, saveFileAs])
+  }, [clearSelection, newAnalysis, openFile, saveFile, saveFileAs])
 
   return (
     // Full-height app shell: header on top, then a main row of [left work area |
@@ -314,7 +328,7 @@ export default function App() {
 
         <div className="mx-1.5 h-4 w-px bg-border" />
 
-        <ToolbarButton onClick={newFile}>New</ToolbarButton>
+        <ToolbarButton onClick={newAnalysis}>New</ToolbarButton>
         <ToolbarButton onClick={openFile}>Open</ToolbarButton>
         <ToolbarButton onClick={loadDemo} muted title="Load the bundled demo analysis">
           Demo
@@ -347,7 +361,10 @@ export default function App() {
         </IconToolbarButton>
 
         <IconToolbarButton
-          onClick={() => setSettingsOpen(true)}
+          onClick={() => {
+            setSettingsIsNew(false)
+            setSettingsOpen(true)
+          }}
           disabled={!doc}
           title="Document settings"
         >
@@ -376,10 +393,10 @@ export default function App() {
           {doc ? (
             <FormDiagram />
           ) : (
-            <EmptyState onNew={newFile} onOpen={openFile} onDemo={loadDemo} />
+            <EmptyState onNew={newAnalysis} onOpen={openFile} onDemo={loadDemo} />
           )}
           {/* Transport bar + collapsible video panel — bottom of the left column */}
-          <YouTubePlayer />
+          <PlayerDock />
         </div>
 
         {doc && (
@@ -393,8 +410,16 @@ export default function App() {
       {/* Merge conflict dialog — renders only when a merge has conflicts */}
       <MergeConflictDialog />
 
-      {/* Document settings — top-level StrataDocument metadata */}
-      <DocumentSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      {/* Document settings — top-level StrataDocument metadata. Doubles as the
+          new-analysis setup modal when opened by the New action. */}
+      <DocumentSettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        isNew={settingsIsNew}
+      />
+
+      {/* Link source — set/swap/unlink the playback source (transport + settings open it) */}
+      <LinkSourceDialog />
 
       {/* Crash recovery modal */}
       {pendingRecovery && (

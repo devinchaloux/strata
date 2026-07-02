@@ -9,20 +9,73 @@ export type YTPlayerState =
   | 'buffering'
   | 'cued'
 
-/** Extract video ID from YouTube URL. Returns null for invalid/non-YouTube URLs. */
+/**
+ * YouTube video IDs are exactly 11 characters of [A-Za-z0-9_-]. Validating the
+ * shape (not just presence) matters because ?v= and path segments can carry
+ * arbitrary strings — a malformed ID would silently produce a dead player.
+ */
+const VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/
+
+export function isValidVideoId(id: string): boolean {
+  return VIDEO_ID_RE.test(id)
+}
+
+/** Extract video ID from a YouTube URL. Returns null for invalid/non-YouTube URLs. */
 export function extractVideoId(url: string): string | null {
+  let u: URL
   try {
-    const u = new URL(url)
-    if (u.hostname.includes('youtube.com')) {
-      return u.searchParams.get('v')
-    }
-    if (u.hostname === 'youtu.be') {
-      return u.pathname.slice(1).split('?')[0] || null
-    }
-    return null
+    u = new URL(url)
   } catch {
     return null
   }
+
+  let candidate: string | null = null
+
+  // youtu.be/<id> — short share links
+  if (u.hostname === 'youtu.be') {
+    candidate = u.pathname.slice(1).split('/')[0] || null
+  } else if (u.hostname === 'youtube.com' || u.hostname.endsWith('.youtube.com')) {
+    // Covers www / m / music subdomains.
+    // watch?v=<id> is the canonical form; shorts/embed/live/v carry the ID as
+    // the path segment after the prefix.
+    const pathMatch = u.pathname.match(/^\/(shorts|embed|live|v)\/([^/?]+)/)
+    if (pathMatch) {
+      candidate = pathMatch[2]
+    } else {
+      candidate = u.searchParams.get('v')
+    }
+  }
+
+  return candidate && isValidVideoId(candidate) ? candidate : null
+}
+
+/**
+ * Paste-to-detect parser for the link-source flow. Accepts anything an analyst
+ * might paste: any YouTube URL shape (with or without protocol) or a bare
+ * 11-character video ID. Returns the validated video ID, or null.
+ */
+export function parseYouTubeInput(input: string): string | null {
+  const text = input.trim()
+  if (!text) return null
+
+  // Bare video ID
+  if (isValidVideoId(text)) return text
+
+  // Full URL
+  const fromUrl = extractVideoId(text)
+  if (fromUrl) return fromUrl
+
+  // Protocol-less URL ("youtube.com/watch?v=…", "youtu.be/…")
+  if (/^(www\.|m\.|music\.)?(youtube\.com|youtu\.be)\//i.test(text)) {
+    return extractVideoId(`https://${text}`)
+  }
+
+  return null
+}
+
+/** Canonical shareable URL for a video ID — what gets stored in the .strata file. */
+export function canonicalYouTubeUrl(videoId: string): string {
+  return `https://www.youtube.com/watch?v=${videoId}`
 }
 
 /**
