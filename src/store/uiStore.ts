@@ -82,6 +82,16 @@ export interface UIState {
   // Link-source dialog — openable from the transport bar and document settings
   linkSourceOpen: boolean
 
+  // Document settings dialog (also hosts the new-analysis setup modal), and
+  // the unsaved-changes discard confirmation. Both live here, not as
+  // App-local state, so PlayerDock can see them too — a linked YouTube
+  // iframe renders in its own compositing layer that ignores a dialog
+  // overlay's dimming, so PlayerDock needs to cover it while any modal sits
+  // on top (see PlayerDock's videoPanel curtain).
+  documentSettingsOpen: boolean
+  unsavedGuardOpen: boolean
+  recoveryModalOpen: boolean
+
   // Actions — playback
   setCurrentTime: (time: number) => void
   setDuration: (duration: number) => void
@@ -114,6 +124,11 @@ export interface UIState {
 
   // Actions — link-source dialog
   setLinkSourceOpen: (open: boolean) => void
+
+  // Actions — document settings dialog
+  setDocumentSettingsOpen: (open: boolean) => void
+  setUnsavedGuardOpen: (open: boolean) => void
+  setRecoveryModalOpen: (open: boolean) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -145,6 +160,9 @@ const useUIStore = create<UIState>()((set) => ({
 
   mergeDialog: null,
   linkSourceOpen: false,
+  documentSettingsOpen: false,
+  unsavedGuardOpen: false,
+  recoveryModalOpen: false,
 
   setCurrentTime: (time) => set({ currentTime: time }),
   setDuration: (duration) => set({ duration }),
@@ -183,6 +201,9 @@ const useUIStore = create<UIState>()((set) => ({
   closeMergeDialog: () => set({ mergeDialog: null }),
 
   setLinkSourceOpen: (open) => set({ linkSourceOpen: open }),
+  setDocumentSettingsOpen: (open) => set({ documentSettingsOpen: open }),
+  setUnsavedGuardOpen: (open) => set({ unsavedGuardOpen: open }),
+  setRecoveryModalOpen: (open) => set({ recoveryModalOpen: open }),
 }))
 
 export { useUIStore }

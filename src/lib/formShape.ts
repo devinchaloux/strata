@@ -210,6 +210,13 @@ export function elisionInnerLine(
 const AVG_CHAR_ADVANCE = 0.58
 const ELLIPSIS = '…'
 
+// Below this many pixels, a truncated stub ("Dr…", "Ver…") isn't worth
+// showing — it reads as clutter rather than information at extreme zoom-out,
+// and the full label is always one hover/click away (tooltip, metadata
+// panel). Whole labels that already fit are unaffected by this floor — it
+// only gates the truncation path. (improvement-backlog #12.)
+const MIN_STUB_WIDTH_PX = 26
+
 /** Rough pixel width of `text` at `fontPx`. Estimate, not a measurement. */
 export function estimateTextWidth(text: string, fontPx: number): number {
   return text.length * fontPx * AVG_CHAR_ADVANCE
@@ -218,13 +225,15 @@ export function estimateTextWidth(text: string, fontPx: number): number {
 /**
  * Truncate `text` so it fits within `maxWidthPx` at `fontPx`, appending an
  * ellipsis when shortened. Returns '' when not even one character plus the
- * ellipsis fits (the caller then renders nothing — full text remains available
- * in the metadata panel and the span's title tooltip).
+ * ellipsis fits, or when the available lane is below MIN_STUB_WIDTH_PX (the
+ * caller then renders nothing — full text remains available in the metadata
+ * panel and the span's title tooltip).
  */
 export function truncateToWidth(text: string, fontPx: number, maxWidthPx: number): string {
   if (!text) return ''
   if (maxWidthPx <= 0) return ''
   if (estimateTextWidth(text, fontPx) <= maxWidthPx) return text
+  if (maxWidthPx < MIN_STUB_WIDTH_PX) return ''
   const ellipsisW = estimateTextWidth(ELLIPSIS, fontPx)
   // Largest prefix whose width + ellipsis still fits.
   let n = 0
@@ -238,7 +247,8 @@ export function truncateToWidth(text: string, fontPx: number, maxWidthPx: number
 }
 
 // ---------------------------------------------------------------------------
-// Above-label layout (neighbour-aware truncation — §7 collision strategy)
+// Above-label layout (neighbour-aware whole-label-or-marker — §7 collision
+// strategy, revised 2026-07-03 per improvement-backlog #12)
 //
 // Above-shape labels live in "negative space": each is drawn just above its span,
 // overhanging up into the open interior of the layer above. Within a layer, all
@@ -246,11 +256,18 @@ export function truncateToWidth(text: string, fontPx: number, maxWidthPx: number
 // SIDEWAYS into its neighbours' labels (the `Beat-match intr·Intro` collision).
 //
 // The fix is a single left-to-right layout pass per layer. Each label gets a
-// horizontal "lane" bounded by the midpoints to its neighbours' centers; a
-// centered label may grow until it reaches a neighbour's half of that midpoint,
-// then it truncates. Where there is room the label stays whole — truncation only
-// kicks in under genuine pressure. Full text always survives in the tooltip and
-// the metadata panel, so abbreviation loses nothing.
+// horizontal "lane" bounded by the midpoints to its neighbours' centers (never
+// tighter than the span's own footprint — see the leftBound/rightBound clamps
+// below); a centered label may grow until it reaches a neighbour's half of that
+// midpoint. Where there is room the label stays whole.
+//
+// Unlike inside-shape text, above-labels are NEVER algorithmically truncated
+// with an ellipsis — a machine-chopped "Dr…"/"Ver…" stub reads as clutter, not
+// information, at extreme zoom-out. Instead: show the full label if it fits,
+// else the analyst-authored `shortLabel` if it fits (shown whole, never itself
+// abbreviated further), else nothing — with `hidden: true` on the result so the
+// renderer can draw a small marker indicating a label exists but has no room.
+// Full text always survives in the tooltip and the metadata panel.
 //
 // We deliberately do NOT stagger labels vertically: the flush stack leaves almost
 // no vertical room (a label sits in the shallow void of the layer above), so the
@@ -319,20 +336,26 @@ export interface SpanLabelInput {
   width: number
   /** Full label text (untruncated). */
   label: string
+  /** Analyst-authored abbreviation, tried when the full label doesn't fit. */
+  shortLabel?: string | null
 }
 
 export interface ResolvedLabel {
-  /** Label after neighbour-aware truncation ('' → render nothing). */
+  /** Label or shortLabel, always shown whole ('' → render nothing). */
   text: string
   /** Justification after edge re-anchoring. */
   justification: Justification
+  /** True when a label exists but neither it nor shortLabel fit the lane —
+   *  the renderer draws a small marker instead of leaving a silent gap. */
+  hidden: boolean
 }
 
 /**
  * Lay out one layer's above-shape labels so adjacent labels don't collide.
  *
- * Returns a map from span id to its resolved {text, justification}. The spans may
- * arrive in any order; neighbour relationships are computed from on-screen x.
+ * Returns a map from span id to its resolved {text, justification, hidden}. The
+ * spans may arrive in any order; neighbour relationships are computed from
+ * on-screen x.
  *
  * Budget model: a label's lane is bounded by the midpoints between its own span
  * center and its neighbours' centers (clamped to the track), pulled in by
@@ -353,16 +376,35 @@ export function layoutLayerLabels(
   for (let i = 0; i < ordered.length; i++) {
     const s = ordered[i]
     if (!s.label) {
-      result.set(s.id, { text: '', justification: baseJust })
+      result.set(s.id, { text: '', justification: baseJust, hidden: false })
       continue
     }
 
     // Lane edges: midpoint to each neighbour's center, pulled in by the gutter so
     // adjacent labels keep clear of one another. Track edges (no neighbour) get the
     // full extent — nothing to collide with there.
-    const leftBound = i > 0 ? (centers[i - 1] + centers[i]) / 2 + LABEL_GUTTER : 0
+    //
+    // Floored to the span's OWN footprint (min/max against its own edge) so an
+    // abnormally narrow neighbour can never shrink a lane below what the span
+    // already owns. The center-midpoint alone conflates "neighbour is narrow"
+    // with "neighbour needs less room" — a half-width neighbour (e.g. a short
+    // "Break" span) pulls the midpoint inside THIS span's own boundary, evicting
+    // an otherwise-fitting single-letter label for no visual-collision reason
+    // (the narrow neighbour's own label was never going to reach that far
+    // anyway). The midpoint can still GRANT extra room by extending past the
+    // span's own edge when a neighbour is wider — that borrowing behavior is
+    // unchanged; this only stops it taking room away.
+    const leftBound =
+      i > 0
+        ? Math.min((centers[i - 1] + centers[i]) / 2 + LABEL_GUTTER, s.x + LABEL_GUTTER)
+        : 0
     const rightBound =
-      i < ordered.length - 1 ? (centers[i] + centers[i + 1]) / 2 - LABEL_GUTTER : totalWidth
+      i < ordered.length - 1
+        ? Math.max(
+            (centers[i] + centers[i + 1]) / 2 - LABEL_GUTTER,
+            s.x + s.width - LABEL_GUTTER,
+          )
+        : totalWidth
 
     // Decide justification first (edge re-anchoring uses the full text width), then
     // measure how much horizontal room that anchor actually has inside the lane.
@@ -381,9 +423,19 @@ export function layoutLayerLabels(
           ? rightBound - anchorX
           : anchorX - leftBound
 
+    // Whole label, else whole shortLabel, else nothing — never an
+    // algorithmic ellipsis stub (see the header comment above).
+    let text = ''
+    if (availW > 0 && estimateTextWidth(s.label, fontPx) <= availW) {
+      text = s.label
+    } else if (s.shortLabel && estimateTextWidth(s.shortLabel, fontPx) <= availW) {
+      text = s.shortLabel
+    }
+
     result.set(s.id, {
-      text: truncateToWidth(s.label, fontPx, availW),
+      text,
       justification: just,
+      hidden: text === '',
     })
   }
   return result

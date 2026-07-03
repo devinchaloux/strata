@@ -112,6 +112,11 @@ export interface SharedTimePoint {
 export interface Span {
   id: string
   label?: string | null          // Optional; null for unlabeled (e.g. bar-level hypermeter)
+  shortLabel?: string | null     // Optional analyst-authored abbreviation (e.g. "Verse 1" → "V1").
+                                  // Shown above-shape in place of the full label when the full
+                                  // label doesn't fit; never itself truncated. No algorithmic
+                                  // abbreviation is attempted — if neither fits, nothing renders
+                                  // (a small marker indicates a hidden label; see FormLayers).
   slug?: string | null           // Auto-generated from label; null until label is set
   startTime: number              // Recording time, seconds (float)
   endTime: number                // Must exceed startTime
