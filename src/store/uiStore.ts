@@ -67,6 +67,11 @@ export interface UIState {
   hoveredSpanId: string | null
   activeLayerId: string | null
 
+  // Local audio source — the picked File for a source of type "local".
+  // Runtime-only: the document stores just the filename (browsers can't reopen
+  // a path), so the analyst re-picks the file each session ("Locate audio…").
+  audioFile: File | null
+
   // Panels
   videoPanelVisible: boolean
   headersCollapsed: boolean // layer-header column collapsed to the icon rail
@@ -74,12 +79,16 @@ export interface UIState {
   // Merge conflict dialog (null = closed)
   mergeDialog: MergeDialogState | null
 
+  // Link-source dialog — openable from the transport bar and document settings
+  linkSourceOpen: boolean
+
   // Actions — playback
   setCurrentTime: (time: number) => void
   setDuration: (duration: number) => void
   setPlaybackState: (state: YTPlayerState) => void
   setPlaybackRate: (rate: PlaybackRate) => void
   setPlayerStatus: (status: PlayerStatus, error?: string | null) => void
+  setAudioFile: (file: File | null) => void
 
   // Actions — timeline view
   setZoom: (zoom: number) => void
@@ -102,6 +111,9 @@ export interface UIState {
   // Actions — merge dialog
   openMergeDialog: (state: MergeDialogState) => void
   closeMergeDialog: () => void
+
+  // Actions — link-source dialog
+  setLinkSourceOpen: (open: boolean) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -125,17 +137,21 @@ const useUIStore = create<UIState>()((set) => ({
   hoveredSpanId: null,
   activeLayerId: null,
 
+  audioFile: null,
+
   // Default true — the panel is expanded when a video first loads
   videoPanelVisible: true,
   headersCollapsed: false,
 
   mergeDialog: null,
+  linkSourceOpen: false,
 
   setCurrentTime: (time) => set({ currentTime: time }),
   setDuration: (duration) => set({ duration }),
   setPlaybackState: (playbackState) => set({ playbackState }),
   setPlaybackRate: (rate) => set({ playbackRate: rate }),
   setPlayerStatus: (status, error = null) => set({ playerStatus: status, playerError: error }),
+  setAudioFile: (file) => set({ audioFile: file }),
 
   setZoom: (zoom) => set({ zoom }),
   setScrollOffset: (offset) => set({ scrollOffset: offset }),
@@ -165,6 +181,8 @@ const useUIStore = create<UIState>()((set) => ({
 
   openMergeDialog: (state) => set({ mergeDialog: state }),
   closeMergeDialog: () => set({ mergeDialog: null }),
+
+  setLinkSourceOpen: (open) => set({ linkSourceOpen: open }),
 }))
 
 export { useUIStore }

@@ -1,8 +1,11 @@
 import { useRef, useEffect } from 'react'
+import { Link2 } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { useYouTubePlayer } from '@/hooks/useYouTubePlayer'
-import { extractVideoId, formatTime } from '@/lib/youtube'
+import { useAudioPlayer } from '@/hooks/useAudioPlayer'
+import { extractVideoId, formatTime, isInputFocused } from '@/lib/youtube'
+import { pickAudioFile } from '@/lib/fileIO'
 import { SeekBar } from './SeekBar'
 import type { PlaybackRate } from '@/store/uiStore'
 
@@ -127,13 +130,30 @@ function TransportButton({
 }
 
 // ---------------------------------------------------------------------------
-// YouTubePlayer
+// PlayerDock — source-agnostic transport bar + media panel
 // ---------------------------------------------------------------------------
 
 const RATES: PlaybackRate[] = [0.5, 0.75, 1, 1.25]
 
-export function YouTubePlayer() {
+/**
+ * The bottom dock: transport bar plus the collapsible video panel. Source-
+ * agnostic — it reads doc.source, activates the matching playback engine
+ * (YouTube IFrame or HTML5 audio), and exposes one command surface to the
+ * transport controls and keyboard shortcuts.
+ *
+ * Also owns two pieces of source-linking behavior:
+ * - The link affordance: "Link video or audio…" when the document has no
+ *   playable source; a swap icon once linked; "Locate…" when a local-source
+ *   document needs its audio file re-picked this session.
+ * - Duration adoption: when a document with duration 0 (fresh analysis) gets
+ *   a source whose metadata reports a duration, that duration is adopted into
+ *   the document — the timeline is dead without it. Swaps on a document with
+ *   a real duration never touch it (span timestamps are recording-time truth).
+ */
+export function PlayerDock() {
   const doc = useDocumentStore((s) => s.document)
+  const loadId = useDocumentStore((s) => s.loadId)
+  const updateMeta = useDocumentStore((s) => s.updateMeta)
 
   const {
     currentTime,
@@ -141,20 +161,45 @@ export function YouTubePlayer() {
     playbackState,
     playbackRate,
     playerStatus,
+    playerError,
     videoPanelVisible,
     toggleVideoPanel,
+    audioFile,
+    setAudioFile,
+    setLinkSourceOpen,
   } = useUIStore()
 
-  const youtubeUrl =
-    doc?.source.type === 'youtube' ? (doc.source.url ?? null) : null
-  const videoId = youtubeUrl ? extractVideoId(youtubeUrl) : null
+  const source = doc?.source ?? null
+  const sourceOffset = source?.sourceOffset ?? 0
 
+  const videoId =
+    source?.type === 'youtube' && source.url ? extractVideoId(source.url) : null
+  const isLocal = source?.type === 'local' && !!source.filename
+  // Linked = the document names a playable source (even if the local file
+  // still needs locating this session).
+  const isLinked = videoId != null || isLocal
+
+  // A loaded document's audio File never survives into another document —
+  // clear the runtime handle whenever a different document loads.
+  useEffect(() => {
+    setAudioFile(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadId])
+
+  // Both engines are always mounted (hooks can't be conditional); exactly one
+  // receives a non-null input, the other stays inert.
   const containerRef = useRef<HTMLDivElement>(null)
-  const { play, pause, seek, setRate } = useYouTubePlayer(containerRef, videoId)
+  const ytEngine = useYouTubePlayer(containerRef, videoId, sourceOffset)
+  const audioEngine = useAudioPlayer(isLocal ? audioFile : null, sourceOffset)
+  const engine = source?.type === 'local' ? audioEngine : ytEngine
+  const engineRef = useRef(engine)
+  engineRef.current = engine
 
   const isReady = playerStatus === 'ready'
   const isPlaying = playbackState === 'playing'
   const isBuffering = playbackState === 'buffering'
+
+  const { play, pause, seek, setRate } = engine
 
   function handlePlayPause() {
     if (isPlaying) {
@@ -163,6 +208,56 @@ export function YouTubePlayer() {
       play()
     }
   }
+
+  // ── Duration adoption ──────────────────────────────────────────────────────
+  // Runs outside undo history (temporal pause): adopting the media's duration
+  // is a system act on a fresh document, not an analyst edit to walk back.
+  useEffect(() => {
+    const d = useDocumentStore.getState().document
+    if (!d || d.duration !== 0 || duration <= 0) return
+    const temporal = useDocumentStore.temporal.getState()
+    temporal.pause()
+    updateMeta({ duration })
+    temporal.resume()
+  }, [duration, updateMeta])
+
+  // ── Keyboard shortcuts (engine-agnostic) ──────────────────────────────────
+  // K play/pause · J back 10s · L forward 10s · Home rewind. Modifier check
+  // matters: Ctrl+J is merge — without the guard both actions would fire.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (isInputFocused()) return
+      const ui = useUIStore.getState()
+      if (ui.playerStatus !== 'ready') return
+      const cmds = engineRef.current
+
+      switch (e.key) {
+        case 'k':
+        case 'K':
+          e.preventDefault()
+          if (ui.playbackState === 'playing') cmds.pause()
+          else cmds.play()
+          break
+        case 'Home':
+          e.preventDefault()
+          cmds.seek(0)
+          break
+        case 'j':
+        case 'J':
+          e.preventDefault()
+          cmds.seek(Math.max(0, ui.currentTime - 10))
+          break
+        case 'l':
+        case 'L':
+          e.preventDefault()
+          cmds.seek(Math.min(ui.duration, ui.currentTime + 10))
+          break
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   // Spacebar (Phase 0.4 §8): while playing, place a boundary at the playhead on
   // the active layer; while paused, start playback. Live state is read via
@@ -183,12 +278,25 @@ export function YouTubePlayer() {
           useDocumentStore.getState().placeBoundary(ui.activeLayerId, ui.currentTime)
         }
       } else {
-        play()
+        engineRef.current.play()
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [play])
+  }, [])
+
+  // "Locate" flow: a local-source document was opened but the browser can't
+  // reopen the file by name — the analyst re-picks it.
+  async function handleLocate() {
+    const file = await pickAudioFile()
+    if (!file || !doc) return
+    setAudioFile(file)
+    // The analyst explicitly chose this file; if its name differs from the
+    // stored reference, the stored reference follows it.
+    if (doc.source.filename !== file.name) {
+      updateMeta({ source: { ...doc.source, filename: file.name } })
+    }
+  }
 
   return (
     <>
@@ -250,6 +358,49 @@ export function YouTubePlayer() {
             </option>
           ))}
         </select>
+
+        {/* Playback error — bad video ID, unsupported audio file, etc. */}
+        {playerStatus === 'error' && (
+          <span
+            className="shrink-0 text-xs text-destructive"
+            title={playerError ?? undefined}
+          >
+            Playback error
+          </span>
+        )}
+
+        {/* ── Source linking affordances ── */}
+        {doc && !isLinked && (
+          <button
+            onClick={() => setLinkSourceOpen(true)}
+            className="ml-auto shrink-0 rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground
+              transition-colors hover:bg-primary/90
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card"
+          >
+            Link video or audio…
+          </button>
+        )}
+
+        {doc && isLocal && !audioFile && (
+          <button
+            onClick={handleLocate}
+            title={`This analysis references "${source?.filename}" — pick the file to enable playback`}
+            className="ml-auto max-w-[16rem] shrink-0 truncate rounded-md border border-border px-3 py-1 text-xs font-medium text-foreground
+              transition-colors hover:bg-accent
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card"
+          >
+            Locate {source?.filename}…
+          </button>
+        )}
+
+        {doc && isLinked && (
+          <TransportButton
+            onClick={() => setLinkSourceOpen(true)}
+            title="Change source…"
+          >
+            <Link2 size={15} strokeWidth={1.75} />
+          </TransportButton>
+        )}
 
         {/* Video panel toggle — only shown when a video is loaded */}
         {videoId && (

@@ -196,10 +196,13 @@ export interface PointMarker {
  */
 export interface FormDiagramData {
   /**
-   * Opt-in, per-layer toggle that prevents overlapping spans during editing.
-   * NEVER the default — Strata's theoretical posture is that overlapping
-   * frameworks are valid. Applied at the UI level only; the schema allows
-   * overlapping spans regardless of this flag.
+   * STALE — unused by the UI, kept for file compatibility. Hierarchical
+   * enforcement was redefined (2026-06-22) as a CROSS-LAYER nesting constraint
+   * scoped to the form-diagram widget type, so it cannot live on one layer's
+   * data. This field will be relocated when that feature is built. See
+   * docs/decisions.md → the hierarchical enforcement reversal entry.
+   * Strata's theoretical posture is unchanged: overlapping frameworks are
+   * valid; any enforcement is UI-level only and off by default.
    */
   hierarchicalEnforcement: boolean;
   spans: Span[];

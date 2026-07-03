@@ -156,6 +156,26 @@ export async function saveFileAs(doc: StrataDocument): Promise<FileSystemFileHan
 }
 
 // ---------------------------------------------------------------------------
+// Audio file picking (source linking)
+// ---------------------------------------------------------------------------
+
+/**
+ * Picks a local audio file for a source of type "local". Plain <input> picker
+ * everywhere (no File System Access API) — the file is read-only media, so a
+ * writable handle buys nothing. Resolves null on cancel.
+ */
+export function pickAudioFile(): Promise<File | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'audio/*'
+    input.onchange = () => resolve(input.files?.[0] ?? null)
+    input.addEventListener('cancel', () => resolve(null))
+    input.click()
+  })
+}
+
+// ---------------------------------------------------------------------------
 // New document
 // ---------------------------------------------------------------------------
 

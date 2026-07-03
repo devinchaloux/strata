@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { useUIStore } from '@/store/uiStore'
-import { mapYTState, loadYTApi, isInputFocused } from '@/lib/youtube'
+import { mapYTState, loadYTApi } from '@/lib/youtube'
 import type { PlaybackRate } from '@/store/uiStore'
 
 // ---------------------------------------------------------------------------
@@ -8,24 +8,38 @@ import type { PlaybackRate } from '@/store/uiStore'
 // ---------------------------------------------------------------------------
 
 /**
- * Manages the YouTube IFrame API player lifecycle.
+ * Manages the YouTube IFrame API player lifecycle. One of the two playback
+ * engines behind PlayerDock (the other is useAudioPlayer); both expose the
+ * same command surface so the transport bar is source-agnostic.
  *
  * - Creates the YT.Player when videoId first appears, targeting containerRef.
  * - Calls cueVideoById (no autoplay) when videoId changes on an existing player.
+ * - DESTROYS the player when videoId goes null (source unlinked) — the video
+ *   panel unmounts with it, so a later re-link must build a fresh player on
+ *   the freshly mounted container rather than cue into a dead iframe.
  * - Runs a requestAnimationFrame loop to poll currentTime into the UI store.
- * - Registers K / Home / J / L keyboard shortcuts at the document level.
- * - Returns stable command functions (play, pause, seek, setRate) for the transport bar.
+ * - Returns stable command functions (play, pause, seek, setRate).
  *
- * Space is NOT handled here — it belongs to the form diagram editor.
+ * Source offset: player_time = recording_time + sourceOffset (schema rule).
+ * All times crossing this hook's boundary are RECORDING time — the offset is
+ * applied on the way into the player (seek) and removed on the way out
+ * (currentTime poll, duration). Span data and the UI store never see player time.
+ *
+ * Keyboard shortcuts are NOT handled here — they live in PlayerDock, where
+ * they can drive whichever engine is active.
  */
 export function useYouTubePlayer(
   containerRef: React.RefObject<HTMLDivElement | null>,
   videoId: string | null,
+  sourceOffset: number,
 ) {
   const playerRef = useRef<YT.Player | null>(null)
   const rafRef = useRef<number>(0)
   // Signals the rAF loop to stop on unmount
   const aliveRef = useRef(true)
+  // Latest offset, readable from the rAF loop and commands without re-subscribing
+  const offsetRef = useRef(sourceOffset)
+  offsetRef.current = sourceOffset
 
   const {
     setCurrentTime,
@@ -45,7 +59,7 @@ export function useYouTubePlayer(
       if (playerRef.current) {
         try {
           const t = playerRef.current.getCurrentTime()
-          if (isFinite(t)) setCurrentTime(t)
+          if (isFinite(t)) setCurrentTime(Math.max(0, t - offsetRef.current))
         } catch {
           // Player may not be fully ready on first tick; ignore
         }
@@ -55,13 +69,38 @@ export function useYouTubePlayer(
     rafRef.current = requestAnimationFrame(tick)
   }
 
+  /** Report the player's duration to the UI store, in recording time. */
+  function reportDuration(player: YT.Player) {
+    const dur = player.getDuration()
+    if (isFinite(dur) && dur > 0) {
+      setDuration(Math.max(0, dur - offsetRef.current))
+    } else {
+      setDuration(0)
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Player lifecycle — keyed on videoId
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
+    // Unlinked → tear the player down and reset playback state. The video
+    // panel container unmounts alongside, so the instance can't be reused.
     if (!videoId) {
-      setPlayerStatus('uninitialized')
+      if (playerRef.current) {
+        cancelAnimationFrame(rafRef.current)
+        playerRef.current.destroy()
+        playerRef.current = null
+        setCurrentTime(0)
+        setDuration(0)
+        setPlaybackState('unstarted')
+        storeSetRate(1)
+      }
+      // Leave a 'loading' status alone — it means the other engine is already
+      // spinning up after a source-type switch (video → audio).
+      if (useUIStore.getState().playerStatus !== 'loading') {
+        setPlayerStatus('uninitialized')
+      }
       return
     }
 
@@ -97,8 +136,7 @@ export function useYouTubePlayer(
         },
         events: {
           onReady: (e) => {
-            const dur = e.target.getDuration()
-            setDuration(isFinite(dur) ? dur : 0)
+            reportDuration(e.target)
             setPlayerStatus('ready')
             startLoop()
           },
@@ -106,8 +144,7 @@ export function useYouTubePlayer(
             setPlaybackState(mapYTState(e.data))
             // Refresh duration after cuing — it may have been 0 before metadata loaded
             if (e.data === 5) {
-              const dur = e.target.getDuration()
-              if (isFinite(dur) && dur > 0) setDuration(dur)
+              reportDuration(e.target)
             }
           },
           onError: () => {
@@ -127,6 +164,13 @@ export function useYouTubePlayer(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoId])
 
+  // Offset edits in document settings re-scale the reported duration; the rAF
+  // loop picks the new offset up on its own via offsetRef.
+  useEffect(() => {
+    if (playerRef.current && videoId) reportDuration(playerRef.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceOffset])
+
   // ---------------------------------------------------------------------------
   // Cleanup on unmount
   // ---------------------------------------------------------------------------
@@ -144,58 +188,7 @@ export function useYouTubePlayer(
   }, [])
 
   // ---------------------------------------------------------------------------
-  // Keyboard shortcuts
-  // ---------------------------------------------------------------------------
-
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (isInputFocused()) return
-      const player = playerRef.current
-      if (!player) return
-
-      switch (e.key) {
-        case 'k':
-        case 'K': {
-          e.preventDefault()
-          if (player.getPlayerState() === 1) {
-            player.pauseVideo()
-          } else {
-            player.playVideo()
-          }
-          break
-        }
-        case 'Home': {
-          e.preventDefault()
-          player.seekTo(0, true)
-          setCurrentTime(0)
-          break
-        }
-        case 'j':
-        case 'J': {
-          e.preventDefault()
-          const back = Math.max(0, player.getCurrentTime() - 10)
-          player.seekTo(back, true)
-          setCurrentTime(back)
-          break
-        }
-        case 'l':
-        case 'L': {
-          e.preventDefault()
-          const dur = player.getDuration()
-          const fwd = Math.min(isFinite(dur) ? dur : 0, player.getCurrentTime() + 10)
-          player.seekTo(fwd, true)
-          setCurrentTime(fwd)
-          break
-        }
-      }
-    }
-
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [setCurrentTime])
-
-  // ---------------------------------------------------------------------------
-  // Stable command functions for the transport bar
+  // Stable command functions for the transport bar (recording time in/out)
   // ---------------------------------------------------------------------------
 
   const play = useCallback(() => {
@@ -208,8 +201,8 @@ export function useYouTubePlayer(
 
   const seek = useCallback(
     (time: number) => {
-      playerRef.current?.seekTo(time, true)
-      setCurrentTime(time)
+      playerRef.current?.seekTo(Math.max(0, time + offsetRef.current), true)
+      setCurrentTime(Math.max(0, time))
     },
     [setCurrentTime],
   )

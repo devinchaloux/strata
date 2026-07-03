@@ -7,14 +7,18 @@
  * live-dispatches to documentStore.updateMeta on commit, so edits are
  * undo-covered automatically — same pattern as MetadataPanel.
  *
- * Read-only identity fields (duration, source, created/updated, file format
- * version) are shown in a quiet footer; they're derived or set elsewhere
- * (player load, file I/O), not edited here.
+ * The Source section embeds SourceLinkForm (set/swap/unlink) — so this dialog
+ * doubles as the new-analysis setup modal: "New" opens it with isNew, which
+ * only swaps the framing copy. Same fields, same live-edit behavior.
+ *
+ * Read-only identity fields (duration, created/updated, file format version)
+ * are shown in a quiet footer; they're derived, not edited here.
  */
 
 import { useEffect, useState } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { formatTime } from '@/lib/youtube'
+import { SourceLinkForm } from '@/components/LinkSourceDialog'
 import {
   Dialog,
   DialogContent,
@@ -97,9 +101,12 @@ const CONTEXT_OPTIONS: { value: AnalysisContext | 'unset'; label: string }[] = [
 export function DocumentSettingsDialog({
   open,
   onOpenChange,
+  isNew = false,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** New-analysis framing: same dialog, setup copy instead of settings copy. */
+  isNew?: boolean
 }) {
   const doc = useDocumentStore((s) => s.document)
   const updateMeta = useDocumentStore((s) => s.updateMeta)
@@ -160,9 +167,11 @@ export function DocumentSettingsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Document settings</DialogTitle>
+          <DialogTitle>{isNew ? 'New analysis' : 'Document settings'}</DialogTitle>
           <DialogDescription>
-            Track metadata that applies to the whole analysis, not any single layer.
+            {isNew
+              ? 'Name the track and link the video or audio it plays against. Everything here can be changed later in document settings.'
+              : 'Track metadata that applies to the whole analysis, not any single layer.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -202,6 +211,15 @@ export function DocumentSettingsDialog({
               />
             </Field>
           )}
+
+          <Field
+            label="Source"
+            helper="Span timestamps store recording time — swapping the source never touches analysis data"
+          >
+            <div className="rounded border border-border p-2">
+              <SourceLinkForm />
+            </div>
+          </Field>
 
           <Field label="Work" helper={'E.g. "Op. 13" — enables cross-file corpus comparison'}>
             <input
@@ -285,11 +303,6 @@ export function DocumentSettingsDialog({
           {/* Read-only identity footer */}
           <div className="mt-4 border-t border-border pt-3 text-[10px] leading-relaxed text-muted-foreground">
             <p>Duration: {formatTime(doc.duration)}</p>
-            <p>
-              Source: {doc.source.type}
-              {doc.source.url ? ` — ${doc.source.url}` : ''}
-              {doc.source.filename ? ` — ${doc.source.filename}` : ''}
-            </p>
             <p>
               Created {new Date(doc.createdAt).toLocaleString()} · Updated{' '}
               {new Date(doc.updatedAt).toLocaleString()}
