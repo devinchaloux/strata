@@ -165,29 +165,53 @@ describe('layoutLayerLabels', () => {
     expect(out.get('b')!.justification).toBe('center')
   })
 
-  it('truncates the label on a narrow span squeezed between wide neighbours', () => {
-    // Middle span is only 40px wide; its budget comes from the midpoints to the
-    // wide neighbours' centers, but a long enough label still overruns it.
+  it('hides the label (with a marker flag) rather than truncating it, when neither label nor shortLabel fits', () => {
+    // Middle span is only 40px wide; a long label has no shortLabel to fall
+    // back to, so it renders nothing — never an algorithmic ellipsis stub.
     const spans: SpanLabelInput[] = [
       { id: 'a', x: 0, width: 300, label: 'A' },
       { id: 'b', x: 300, width: 40, label: 'A very long beat-matched intro label here' },
       { id: 'c', x: 340, width: 300, label: 'C' },
     ]
     const out = layoutLayerLabels(spans, FONT, 640, 'center')
-    // Lane for b: leftBound 235, rightBound 405, center 320 → availW = 170.
-    const availW = 170
     const b = out.get('b')!
-    expect(b.text.endsWith('…')).toBe(true)
-    expect(estimateTextWidth(b.text, FONT)).toBeLessThanOrEqual(availW)
+    expect(b.text).toBe('')
+    expect(b.hidden).toBe(true)
+  })
+
+  it('falls back to a whole shortLabel when the full label does not fit', () => {
+    const spans: SpanLabelInput[] = [
+      { id: 'a', x: 0, width: 300, label: 'A' },
+      {
+        id: 'b',
+        x: 300,
+        width: 40,
+        label: 'A very long beat-matched intro label here',
+        shortLabel: 'BMI',
+      },
+      { id: 'c', x: 340, width: 300, label: 'C' },
+    ]
+    const out = layoutLayerLabels(spans, FONT, 640, 'center')
+    const b = out.get('b')!
+    expect(b.text).toBe('BMI')
+    expect(b.hidden).toBe(false)
+  })
+
+  it('does not flag hidden for a span with no label at all', () => {
+    const spans: SpanLabelInput[] = [{ id: 'a', x: 0, width: 10, label: '' }]
+    const out = layoutLayerLabels(spans, FONT, 10, 'center')
+    expect(out.get('a')!.text).toBe('')
+    expect(out.get('a')!.hidden).toBe(false)
   })
 
   it('keeps adjacent centered labels from overlapping (gutter clearance)', () => {
-    // Two narrow neighbours with long labels: both truncate, and their estimated
-    // rendered extents must stay apart — the core collision guarantee.
+    // Two narrow neighbours whose full labels don't fit, but whose shortLabels
+    // do — both show, and their extents must stay apart (the core collision
+    // guarantee still holds for shortLabel fallbacks).
     const spans: SpanLabelInput[] = [
       { id: 'a', x: 0, width: 300, label: 'A' },
-      { id: 'b', x: 300, width: 44, label: 'Buildup section one' },
-      { id: 'c', x: 344, width: 44, label: 'Buildup section two' },
+      { id: 'b', x: 300, width: 44, label: 'Buildup section one', shortLabel: 'Bu1' },
+      { id: 'c', x: 344, width: 44, label: 'Buildup section two', shortLabel: 'Bu2' },
       { id: 'd', x: 388, width: 300, label: 'D' },
     ]
     const out = layoutLayerLabels(spans, FONT, 688, 'center')
@@ -199,6 +223,8 @@ describe('layoutLayerLabels', () => {
     }
     const b = ext('b', 300, 44)
     const c = ext('c', 344, 44)
+    expect(out.get('b')!.text).toBe('Bu1')
+    expect(out.get('c')!.text).toBe('Bu2')
     // Right edge of b sits left of the left edge of c — no overlap.
     expect(b.right).toBeLessThanOrEqual(c.left)
   })

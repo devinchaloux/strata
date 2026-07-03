@@ -271,6 +271,20 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           />
         </Field>
 
+        {/* Short label — shown in place of the full label when the diagram is
+            too zoomed out to fit it; never abbreviated further by the app. */}
+        <Field
+          label="Short label"
+          helper="Used above the shape when the full label doesn't fit, e.g. 'Verse 1' → 'V1'"
+        >
+          <input
+            className={inputClass}
+            value={span.shortLabel ?? ''}
+            placeholder="None"
+            onChange={(e) => update({ shortLabel: e.target.value || null })}
+          />
+        </Field>
+
         {/* Slug (read-only, click to copy) */}
         <Field label="Slug">
           <button

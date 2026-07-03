@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react'
-import { Link2 } from 'lucide-react'
+import { Link2, CircleAlert } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { useYouTubePlayer } from '@/hooks/useYouTubePlayer'
@@ -167,7 +167,21 @@ export function PlayerDock() {
     audioFile,
     setAudioFile,
     setLinkSourceOpen,
+    linkSourceOpen,
+    documentSettingsOpen,
+    unsavedGuardOpen,
+    recoveryModalOpen,
   } = useUIStore()
+
+  // A linked YouTube iframe renders in its own GPU compositing layer that
+  // ignores a Dialog overlay's dimming — it visibly punches through instead
+  // of sitting behind the modal like the rest of the app. Since the iframe
+  // can't be unmounted without killing the YT.Player, cover it with an opaque
+  // curtain (in the same local stacking context, so it isn't subject to the
+  // same cross-context quirk) whenever a modal that can be open at the same
+  // time is up.
+  const anyModalOpen =
+    linkSourceOpen || documentSettingsOpen || unsavedGuardOpen || recoveryModalOpen
 
   const source = doc?.source ?? null
   const sourceOffset = source?.sourceOffset ?? 0
@@ -198,6 +212,7 @@ export function PlayerDock() {
   const isReady = playerStatus === 'ready'
   const isPlaying = playbackState === 'playing'
   const isBuffering = playbackState === 'buffering'
+  const isLoading = playerStatus === 'loading'
 
   const { play, pause, seek, setRate } = engine
 
@@ -312,13 +327,15 @@ export function PlayerDock() {
           <RewindIcon />
         </TransportButton>
 
-        {/* Play / Pause */}
+        {/* Play / Pause — spinner covers both mid-playback buffering and the
+            initial source-loading window, so a loading source doesn't just
+            look like an inert disabled button. */}
         <TransportButton
           onClick={handlePlayPause}
           disabled={!isReady}
-          title={isPlaying ? 'Pause (K)' : 'Play (K)'}
+          title={isLoading ? 'Loading…' : isPlaying ? 'Pause (K)' : 'Play (K)'}
         >
-          {isBuffering ? (
+          {isBuffering || isLoading ? (
             <SpinnerIcon />
           ) : isPlaying ? (
             <PauseIcon />
@@ -359,12 +376,22 @@ export function PlayerDock() {
           ))}
         </select>
 
+        {/* Spacebar context indicator (Phase 0.4 §8 — required UI clarity):
+            persistent, updates with playback state so the analyst never has to
+            guess whether Space will place a boundary or start playback. */}
+        {isReady && (
+          <span className="hidden shrink-0 text-xs text-muted-foreground select-none sm:inline">
+            Space: {isPlaying ? 'boundary' : 'play'}
+          </span>
+        )}
+
         {/* Playback error — bad video ID, unsupported audio file, etc. */}
         {playerStatus === 'error' && (
           <span
-            className="shrink-0 text-xs text-destructive"
+            className="flex shrink-0 items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-xs text-destructive"
             title={playerError ?? undefined}
           >
+            <CircleAlert size={12} strokeWidth={1.75} aria-hidden />
             Playback error
           </span>
         )}
@@ -415,14 +442,22 @@ export function PlayerDock() {
 
       {/* ── Video panel ── */}
       {/* Only rendered when a YouTube URL is set. Height transitions 200↔0;
-          the iframe stays in the DOM (CSS clip) so the IFrame API stays alive. */}
+          the iframe stays in the DOM (CSS clip) so the IFrame API stays alive.
+          position: relative hosts the modal-open curtain below. */}
       {videoId && (
         <div
-          className="overflow-hidden border-t border-border transition-[height] duration-200 ease-in-out"
+          className="relative overflow-hidden border-t border-border transition-[height] duration-200 ease-in-out"
           style={{ height: videoPanelVisible ? 200 : 0 }}
         >
           {/* Inner target for YT.Player — always 200px so the player has dimensions */}
           <div ref={containerRef} className="w-full" style={{ height: 200 }} />
+
+          {/* Curtain — see the anyModalOpen comment above. Opaque, blocks
+              interaction, sits in this div's own stacking context so it isn't
+              affected by the same iframe-compositing quirk it's working around. */}
+          {anyModalOpen && (
+            <div className="absolute inset-0 bg-card" aria-hidden />
+          )}
         </div>
       )}
     </>

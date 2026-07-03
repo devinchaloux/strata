@@ -1721,3 +1721,164 @@ combinations — previously Ctrl+J triggered both merge AND a 10-second
 seek-back, since the player hook's handler never checked modifiers.
 **Rationale:** Both found during the session survey; both in the blast radius
 of this feature. Fixed at the source rather than worked around.
+
+---
+
+## Improvement Backlog Batch 1 (2026-07-03)
+
+*Decisions made shipping improvement-backlog.md items #1, #2, #17.*
+
+---
+
+**Decision:** Video panel modal curtain — whenever a modal dialog is open
+(document settings / new-analysis setup, link-source, the unsaved-changes
+discard confirm, or the crash-recovery prompt) and a YouTube source is linked,
+`PlayerDock` renders an opaque `bg-card` div over its video panel for the
+duration.
+**Rationale:** A linked YouTube iframe renders in its own GPU compositing
+layer in most browsers, and that layer ignores a `Dialog` overlay's
+`bg-black/50` dimming — the video visibly punches through on top of the
+overlay instead of sitting behind it like the rest of the app, which reads as
+broken and is distracting mid-setup. The iframe can't be unmounted to fix this
+(it would kill the live `YT.Player` instance), so the fix covers it with a
+normal DOM element local to the same stacking context as the iframe's
+container — that curtain isn't subject to the compositing quirk, so it
+reliably paints on top. Each dialog's open/closed boolean lives in `uiStore`
+(`documentSettingsOpen`, `linkSourceOpen`, `unsavedGuardOpen`,
+`recoveryModalOpen`) rather than as component-local state, specifically so
+`PlayerDock` — which has no other reason to know about any of these dialogs —
+can subscribe and react. Any future modal that can coexist with a linked video
+should register itself the same way. Originally flagged in the backlog as
+minor polish ("video appears behind the New modal"); investigation found it
+was a real rendering bug, not a framing/copy issue.
+
+---
+
+**Decision:** New / Open / Demo route through a `guardDiscard` wrapper that
+checks `isDirty` before running. When dirty, the action and a short label are
+held in state and only executed if the analyst confirms an `AlertDialog`
+("Discard unsaved changes?"). Clean documents — including the empty-state
+case, where `isDirty` is always `false` — run immediately with no dialog.
+**Rationale:** A single misclick previously discarded unsaved work with no
+confirmation; the 30s localStorage crash-recovery autosave softens the cost
+but doesn't prevent the surprise. Closes improvement-backlog #2.
+
+---
+
+**Decision:** The spacebar context indicator ("Space: boundary" while
+playing, "Space: play" while paused) is shown in the transport bar whenever
+the player is ready, per the Phase 0.4 §8 spec. The play/pause button also
+shows the spinner (previously buffering-only) while `playerStatus === 'loading'`,
+so a loading source reads as active rather than merely disabled, and the
+playback-error indicator is now a proper icon+text chip instead of plain text.
+**Rationale:** Closes improvement-backlog #1 and the remaining #17 items not
+covered by the modal-curtain fix above.
+
+---
+
+## Improvement Backlog Batch 2 (2026-07-03)
+
+*Decisions made shipping improvement-backlog.md items #3, #7, #8, #12, #14, #16.*
+
+---
+
+**Decision:** Inline span label editing (double-click on span body) and the
+duplicate-span action are dropped from scope — not deferred, dropped.
+**Rationale:** Devin's call. Inline editing: analysts are guided to the
+metadata panel instead of a second edit surface. Duplicate: no concrete use
+case has emerged to justify the design cost. Both should be removed from
+`_private/form-diagram-ux-spec.md` (§6, §7) on the next spec-maintenance pass.
+
+---
+
+**Decision:** The active-layer indicator gets a full-row background tint
+(`hsl(var(--primary) / 0.07)`) in addition to the existing 2.5px left accent
+bar, in both the expanded header and the collapsed rail.
+**Rationale:** Phase 0.4 §2 called the active-layer indicator "load-bearing,
+not decorative" and specified "left accent bar, background tint, or similar"
+— only the bar half of that was ever built. A 2.5px edge bar reads as
+decorative in peripheral vision during fast spacebar-driven annotation; a
+full-row tint is what actually answers "which layer am I about to place a
+boundary in?" without requiring focused attention on the header column.
+
+---
+
+**Decision:** The zoom-control toggle button (bottom-right of the widget top
+bar) is labeled with the state a click would switch TO, not the current
+state: "100%" when the timeline is already at the fit-to-window zoom, "Fit"
+otherwise. Fit-on-load remains the default (confirmed, unchanged).
+**Rationale:** The button previously always read "Fit" regardless of state,
+so clicking it while already fit was a no-op with no indication why. Standard
+toggle-button convention (mute/unmute, play/pause) is to label the target
+state, not the current one.
+
+---
+
+**Decision:** A quiet centered hint ("More analytical layers will stack here
+as they're added") fills the leftover vertical space above the bottom-anchored
+form-diagram widget, implemented as a `flex-1` sibling so it naturally
+vanishes once a tall layer stack claims that room.
+**Rationale:** With only one widget built, the ~60% of blank canvas above the
+bounded widget read as unfinished rather than intentional. The hint is
+disposable by construction — no visibility logic to maintain as more widgets
+ship; it simply stops rendering when there's no space left for it to occupy.
+
+---
+
+**Decision:** Fixed a lane-bound geometry bug in `layoutLayerLabels`
+(`lib/formShape.ts`) — a span's above-label lane is now floored to the span's
+own physical footprint on each side, never narrower, regardless of how narrow
+an adjacent neighbor is.
+**Rationale:** The lane formula bounded each side by the midpoint to a
+neighbor's *center*. When a neighbor span was abnormally narrow relative to
+its siblings (e.g. a short "Break" span sitting between normal-width phrase
+spans), that midpoint fell *inside* the surviving span's own boundary —
+stealing lane space from a label that was never at risk of colliding with
+anything (the narrow neighbor's own label was already guaranteed not to reach
+that far, being too long to fit its own narrower span). Confirmed and fixed by
+clamping: `leftBound = min(midpointBound, ownLeftEdge)`,
+`rightBound = max(midpointBound, ownRightEdge)` — the midpoint can still
+*grant* extra room when a neighbor is wider (that borrowing behavior, the
+whole point of the neighbor-aware pass, is unchanged); it can no longer *take*
+room away. Verified against the "Alive" fixture's Phrases layer, where two
+single-character labels ("D", "E") were being silently suppressed next to the
+narrow "Break" span — both now render correctly.
+
+---
+
+**Decision:** Above-shape labels are never algorithmically ellipsis-truncated.
+Resolution order is: full `label` if it fits the lane → whole `shortLabel` if
+it fits (a new optional `Span` field, analyst-authored, never itself
+abbreviated further) → a small marker dot indicating a label exists but has no
+room. `truncateToWidth`'s `MIN_STUB_WIDTH_PX` floor (added earlier this
+session) is retained for the separate inside-shape truncation path only.
+**Rationale:** Supersedes the initial improvement-backlog #12 approach (a
+pixel-width floor on algorithmic truncation). That floor eliminated junk stubs
+("Dr…", "Ver…") but couldn't fix the deeper problem: in a dense layer with
+mixed label lengths, some spans show a letter and others show nothing, and the
+pattern reads as arbitrary/broken regardless of where the truncation floor
+sits — because it *is* arbitrary, being a function of neighbor geometry the
+analyst has no control over. Handing abbreviation to the analyst (`shortLabel`)
+turns an algorithmic guess into a deliberate authorial choice, which is more
+consistent with how `label`/`type`/`slug` are already three deliberately
+separate, analyst-controlled fields. The marker dot (rather than a silent gap)
+signals "there's a label here, it just doesn't fit" instead of looking like a
+rendering bug — chosen over a document-wide "whole labels only, nothing else"
+policy because it preserves per-span nuance (a genuinely unlabeled span and a
+label-that-doesn't-fit span now look different, which is real information).
+`Span.shortLabel` participates in merge resolution the same way `annotation`
+does: lone value wins, competing non-null values conflict.
+
+---
+
+**Decision:** The hidden-label marker dot's horizontal position is always the
+span's base-justified position (`labelJust`, the layer's configured
+justification before edge correction) — never the edge-re-anchored
+justification (`effLabelJust`) used for actual label/shortLabel text.
+**Rationale:** Bug found by Devin immediately after #12 shipped: edge
+re-anchoring exists to keep long TEXT from overhanging past the first/last
+span's track boundary, by flipping a centered label to left/right
+justification near the edges. A 1.5px dot never overhangs regardless of
+justification, so inheriting that correction just shifted it off-center for
+no reason — it was reusing the text's computed x position wholesale instead
+of computing its own.

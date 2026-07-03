@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button'
 
 const FIELD_LABEL: Record<ConflictField, string> = {
   label: 'Label',
+  shortLabel: 'Short label',
   type: 'Type',
   annotation: 'Annotation',
   fillColor: 'Fill',

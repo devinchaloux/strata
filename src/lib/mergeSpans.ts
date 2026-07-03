@@ -12,7 +12,7 @@
  * the fillColor/strokeColor split, annotation, lyrics, boundary types, caps):
  *
  *   label, type            lone value wins; 2+ distinct non-null → conflict
- *   annotation             lone value wins; 2+ distinct non-null → conflict
+ *   shortLabel, annotation lone value wins; 2+ distinct non-null → conflict
  *   fillColor, strokeColor each independent; lone override wins; 2+ distinct → conflict
  *   parentId               all same → keep; differ → conflict (incl. "None")
  *   notes, lyrics          concatenate non-null with `\n\n---\n\n`
@@ -91,7 +91,14 @@ export function mergeEligibility(
 // Resolution
 // ---------------------------------------------------------------------------
 
-export type ConflictField = 'label' | 'type' | 'annotation' | 'fillColor' | 'strokeColor' | 'parentId'
+export type ConflictField =
+  | 'label'
+  | 'shortLabel'
+  | 'type'
+  | 'annotation'
+  | 'fillColor'
+  | 'strokeColor'
+  | 'parentId'
 
 export interface MergeConflict {
   field: ConflictField
@@ -152,6 +159,9 @@ export function resolveMerge(spans: Span[], mkId: () => string): MergeResolution
   const labels = distinct(sorted.map((s) => s.label))
   if (labels.length > 1) conflicts.push({ field: 'label', options: labels })
 
+  const shortLabels = distinct(sorted.map((s) => s.shortLabel))
+  if (shortLabels.length > 1) conflicts.push({ field: 'shortLabel', options: shortLabels })
+
   const types = distinct(sorted.map((s) => s.type))
   if (types.length > 1) conflicts.push({ field: 'type', options: types })
 
@@ -199,6 +209,7 @@ export function resolveMerge(spans: Span[], mkId: () => string): MergeResolution
   // A conflict field's provisional value is the field's first candidate; a
   // non-conflict field takes its lone value (or null).
   const label = labels[0] ?? null
+  const shortLabel = shortLabels[0] ?? null
   const type = types[0] ?? null
   const annotation = annotations[0] ?? null
   const fillColor = fills[0] ?? null
@@ -210,6 +221,7 @@ export function resolveMerge(spans: Span[], mkId: () => string): MergeResolution
     startTime: first.startTime,
     endTime: last.endTime,
     label,
+    shortLabel,
     slug: label ? slugify(label) : null,
     type,
     fillColor,
