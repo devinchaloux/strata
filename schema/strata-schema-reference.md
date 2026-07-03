@@ -172,7 +172,7 @@ The `data` field for a form-diagram layer contains:
 
 | Field | Type | Required | What it means |
 |---|---|---|---|
-| `hierarchicalEnforcement` | true/false | Yes | Opt-in toggle that prevents overlapping spans during editing. **Off by default.** When on, the app will not allow the analyst to draw a span that overlaps with an existing one in this layer. Buried in layer settings with a warning on activation, because Strata's default theoretical position is that overlapping analytical frameworks are valid. |
+| `hierarchicalEnforcement` | true/false | Yes | **Stale — unused by the app, kept for file compatibility.** Hierarchical enforcement was redefined (2026-06-22) as a cross-layer nesting constraint scoped to the form-diagram widget type, so it cannot live on one layer's data; the field will be relocated when that feature is built (see `docs/decisions.md`). Strata's default theoretical position is unchanged: overlapping analytical frameworks are valid, and the schema always allows overlapping spans. |
 | `spans` | list of Span objects | Yes | All formal sections in this layer. See [Spans](#6-spans) below. |
 
 ---

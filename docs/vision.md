@@ -321,15 +321,23 @@ All three correction mechanisms — nudge, drag, merge — operate on a *selecte
 
 ### 4.6 The Hierarchical Enforcement Toggle
 
+> *Redefined 2026-06-22 (see `docs/decisions.md` → the hierarchical enforcement
+> reversal entry). An earlier version of this section described a weaker,
+> per-layer constraint (preventing overlap within a single layer); that
+> definition is superseded.*
+
 Strata's default is non-hierarchical: overlapping spans are valid data, and no constraint is enforced at the editing level. This is itself a theoretical statement — made transparently, not silently. BriFormer's non-overlapping constraint is also a theoretical statement, but it presents itself as a neutral default. Strata inverts the assumption and names it.
 
-For analysts whose theoretical commitments require hierarchical thinking — Schenkerian analysis being the clearest example — a **hierarchical enforcement toggle** is available as an opt-in setting, buried in layer settings rather than surfaced prominently. When enabled on a specific layer, the editing UI will prevent the analyst from drawing a span that overlaps with an existing span in that layer.
+For analysts whose theoretical commitments require hierarchical thinking — Schenkerian analysis being the clearest example — a **hierarchical enforcement toggle** is available as an opt-in setting. When enabled, it constrains the relationship *between* layers: **cross-layer nesting**. A span must nest within the boundaries a coarser layer has already established — it cannot cross a coarser layer's boundary.
+
+**The formal rule:** layers order by analytical grain — bottom = finest subdivisions, top = coarsest (matching the macro-on-top render order). Each layer's boundary set must be a **superset** of the layer above it: finer layers may add boundaries (subdivide) but must keep every boundary the coarser layer has. Nesting is inclusive — a child span may be coextensive with its parent (the same span appearing at every level is valid).
 
 **Design requirements for this toggle:**
 - Opt-in only. Never the default.
-- Per-layer, not per-document. An analyst can have one hierarchically-constrained layer and two unconstrained layers in the same file.
+- Scoped to the **form-diagram widget type** — not per-layer (a relationship between layers cannot live on one layer's data) and not per-document (the planned instrumentation widget is inherently non-hierarchical, so a document-wide flag would be wrong).
 - Activating it presents a warning that explains what functionality is being given up and asks for confirmation. The warning is not punitive — it is informational. The analyst may have excellent reasons to want this constraint.
-- The underlying data model does not change. Hierarchical enforcement is a UI editing constraint, not a schema constraint. A file with a hierarchically-constrained layer is identical in format to one without it.
+- Intentionally strict. The demandingness of the constraint is part of the design: off-by-default is the theoretical statement, and the strictness dissuades casual use.
+- The underlying data model does not change. Hierarchical enforcement is a UI editing constraint, not a schema constraint. A file authored under the constraint is identical in format to one authored without it.
 
 **The design philosophy:** analysts who believe deeply that music is hierarchical are welcome to enforce that constraint on themselves. The tool makes the cost of that constraint explicit rather than hiding it. If a scholar turns on hierarchical enforcement and finds they can represent everything they need to represent — the tool has served them. If they find themselves unable to represent something analytically true — the tool has made an argument more effectively than any paper could.
 

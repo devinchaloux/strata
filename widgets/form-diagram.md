@@ -27,7 +27,7 @@ description: "Layered section-level formal analysis synchronized to the timeline
 
 ```typescript
 interface FormDiagramData {
-  hierarchicalEnforcement: boolean; // Opt-in per-layer constraint; never the default
+  hierarchicalEnforcement: boolean; // STALE — unused; kept for file compatibility (see §5.4)
   spans: Span[];
 }
 ```
@@ -221,9 +221,12 @@ Merged spans receive a new UUID. The source IDs are stored in `mergedFrom: strin
 
 ### 5.4 Hierarchical Enforcement
 
-When `data.hierarchicalEnforcement` is true, the `EditComponent` prevents span placement or boundary dragging that would cause the new span to overlap with any existing span in the same layer. The constraint is applied at interaction time (the boundary cannot be moved to an overlapping position). The underlying data is unchanged — it still supports overlapping spans.
+> *Superseded 2026-06-22 (see `docs/decisions.md` → the hierarchical enforcement
+> reversal entry). The per-layer definition below is no longer the design.*
 
-Activation requires user confirmation (warning about what is being given up). The warning is presented by the editor shell, not by the widget. The toggle is buried in layer settings, not surfaced prominently.
+Hierarchical enforcement is redefined as a **cross-layer nesting** constraint scoped to the **form-diagram widget type**: when enabled, a span must nest within the boundaries a coarser layer has established (each layer's boundary set must be a superset of the layer above it; bottom = finest, top = coarsest; coextensive spans allowed). It is therefore not a per-layer flag — the `FormDiagramData.hierarchicalEnforcement` field is unused pending relocation when the feature is built. The underlying data is unchanged either way — the schema always supports overlapping spans.
+
+Activation requires user confirmation (warning about what is being given up). The warning is presented by the editor shell, not by the widget. The constraint is intentionally strict and off by default — the default is the theoretical statement.
 
 ---
 

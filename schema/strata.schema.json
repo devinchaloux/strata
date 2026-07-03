@@ -374,7 +374,7 @@
       "properties": {
         "hierarchicalEnforcement": {
           "type": "boolean",
-          "description": "Opt-in per-layer toggle preventing overlapping spans during editing. Never the default — Strata's theoretical position is that overlapping analytical frameworks are valid. Applied at the UI level only; the schema always allows overlapping spans."
+          "description": "STALE — unused by the UI, kept for file compatibility. Hierarchical enforcement was redefined (2026-06-22) as a cross-layer nesting constraint scoped to the form-diagram widget type; this field will be relocated when that feature is built (see docs/decisions.md). The schema always allows overlapping spans regardless."
         },
         "spans": {
           "type": "array",

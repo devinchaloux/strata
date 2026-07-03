@@ -188,8 +188,11 @@ export interface LayerRenderingConfig {
 
 export interface FormDiagramData {
   /**
-   * Opt-in, per-layer toggle that prevents overlapping spans during editing.
-   * NEVER the default. Applied at UI level only — schema allows overlapping regardless.
+   * STALE — unused by the UI, kept for file compatibility. Hierarchical
+   * enforcement was redefined (2026-06-22) as a CROSS-LAYER nesting constraint
+   * scoped to the form-diagram widget type, so it cannot live on one layer's
+   * data. This field will be relocated when that feature is built. See
+   * docs/decisions.md → the hierarchical enforcement reversal entry.
    */
   hierarchicalEnforcement: boolean
   spans: Span[]
