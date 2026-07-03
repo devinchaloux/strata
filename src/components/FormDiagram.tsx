@@ -43,6 +43,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { useTimeline } from '@/hooks/useTimeline'
+import { computeFitZoom } from '@/lib/timeline'
 import { TimelineAxis } from './TimelineAxis'
 import { FormLayers } from './FormLayers'
 import { LayerSettingsPopover } from './LayerSettingsPopover'
@@ -129,6 +130,13 @@ function SortableLayerHeaderRow({
     opacity: isDragging ? 0.6 : 1,
     zIndex: isDragging ? 10 : undefined,
     position: 'relative',
+    // Background tint (in addition to the accent bar below) — a thin 2.5px
+    // edge bar reads as decorative in peripheral vision during fast
+    // annotation; a full-row tint is what actually answers "which layer am I
+    // about to place a boundary in?" at a glance. Matches the original 0.4 §2
+    // spec ("left accent bar, background tint, or similar") — only the bar
+    // half of that was built.
+    backgroundColor: active ? 'hsl(var(--primary) / 0.07)' : undefined,
   }
 
   return (
@@ -330,6 +338,7 @@ interface ZoomControlProps {
   zoomOut: () => void
   resetTo100: () => void
   fitToWindow: () => void
+  isFit: boolean
 }
 
 /** Small +/− icon button with a disabled (faded) state. */
@@ -376,6 +385,7 @@ function ZoomControls({
   zoomOut,
   resetTo100,
   fitToWindow,
+  isFit,
 }: ZoomControlProps) {
   return (
     <div className="flex items-center gap-0.5" style={{ color: 'var(--ink-secondary)' }}>
@@ -384,7 +394,7 @@ function ZoomControls({
       </ZoomButton>
       <button
         onClick={resetTo100}
-        aria-label="Reset to 100%"
+        aria-label="Current zoom level — click to reset to 100%"
         title="Reset to 100% (standard scale)"
         className="rounded px-1 hover:bg-accent"
         style={{
@@ -408,10 +418,13 @@ function ZoomControls({
         aria-hidden
         style={{ width: 1, height: 12, background: 'var(--hairline)', margin: '0 2px' }}
       />
+      {/* Labeled with the state a click would switch TO, not the current
+          state — already at fit, so this offers "100%" instead of a
+          redundant "Fit". */}
       <button
-        onClick={fitToWindow}
-        aria-label="Fit to window"
-        title="Fit the whole track to the window"
+        onClick={isFit ? resetTo100 : fitToWindow}
+        aria-label={isFit ? 'Reset to 100%' : 'Fit to window'}
+        title={isFit ? 'Reset to 100% (standard scale)' : 'Fit the whole track to the window'}
         className="rounded px-1 hover:bg-accent"
         style={{
           height: 16,
@@ -422,7 +435,7 @@ function ZoomControls({
           border: 'none',
         }}
       >
-        Fit
+        {isFit ? '100%' : 'Fit'}
       </button>
     </div>
   )
@@ -499,6 +512,7 @@ export function FormDiagram() {
   const timeline = useTimeline()
   if (!doc) return null
 
+  const fitZoom = computeFitZoom(timeline.duration, timeline.viewportWidth)
   const zoomProps = {
     zoom: timeline.zoom,
     minZoomValue: timeline.minZoomValue,
@@ -507,6 +521,7 @@ export function FormDiagram() {
     zoomOut: timeline.zoomOut,
     resetTo100: timeline.resetTo100,
     fitToWindow: timeline.fitToWindow,
+    isFit: Math.abs(timeline.zoom - fitZoom) < 1e-3,
   }
 
   // Macro-on-top; hidden layers are pulled out of the stack (slot reclaimed).
@@ -524,6 +539,21 @@ export function FormDiagram() {
     // transport, and the extra vertical room accumulates ABOVE — that blank space
     // is where additional widgets will stack as they're added.
     <div className="flex min-h-0 flex-1 flex-col justify-end px-2 pb-1">
+      {/* Empty-canvas affordance: a quiet hint filling exactly the leftover
+          space above the widget card (flex-1, so it vanishes once a tall
+          layer stack claims that room). Explains the blank space is
+          intentional — reserved for future widgets — rather than reading as
+          unfinished. overflow-hidden so it clips cleanly instead of forcing
+          height when the stack leaves almost no room. */}
+      <div className="flex flex-1 min-h-0 items-center justify-center overflow-hidden">
+        <p
+          className="select-none text-xs"
+          style={{ color: 'var(--ink-faint)', opacity: 0.6 }}
+        >
+          More analytical layers will stack here as they're added
+        </p>
+      </div>
+
       {/* The widget is a framed card: the top bar (collapse / add / hidden
           chips) and the layer stack read as one object distinct from the shared
           timeline below. The border overlay (absolute, pointer-events-none, z-10)

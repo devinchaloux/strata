@@ -280,6 +280,11 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef 
   const effLabelJust = labelAbove ? (labelLayout?.justification ?? labelJust) : labelJust
   const labelLocalX = textX(0, width, effLabelJust)
   const annotationLocalX = textX(0, width, annotationJust)
+  // The hidden-label marker is a point, not text — it never overhangs, so the
+  // edge re-anchoring that shifts long labels off-center near the timeline
+  // ends doesn't apply to it. It always sits at the span's own base-justified
+  // position (labelJust, pre-edge-correction), never left/right-shifted.
+  const dotLocalX = textX(0, width, labelJust)
 
   return (
     <ContextMenu>
@@ -355,6 +360,20 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef 
             </text>
           )}
 
+          {/* Hidden-label marker — a label exists but neither it nor shortLabel
+              fit this lane. A quiet dot beats a silent gap: it reads as "there's
+              something here" rather than looking like a rendering bug. Full text
+              is still in the tooltip and metadata panel. */}
+          {labelAbove && labelLayout?.hidden && (
+            <circle
+              cx={dotLocalX}
+              cy={aboveLabelY - fonts.label * 0.32}
+              r={1.5}
+              fill="var(--ink-faint)"
+              {...TEXT_HALO}
+            />
+          )}
+
           {/* Annotation — above (haloed) or inside, upper part of the body */}
           {annotationText && (
             <text
@@ -408,8 +427,9 @@ function FormLayerGroup({
   const spans = data.spans
 
   // Neighbour-aware label layout: one pass over the whole layer so each above-label
-  // is truncated to the room it actually has between its neighbours (§7). Only the
-  // "above" case needs it — inside-labels are bounded by their own shape body.
+  // gets whichever of label/shortLabel fits the room it has between its neighbours
+  // (§7). Only the "above" case needs it — inside-labels are bounded by their own
+  // shape body.
   const labelAbove = (layer.rendering?.labelPosition ?? 'above') !== 'inside'
   const baseJust = (layer.rendering?.labelJustification ?? 'center') as Justification
   const labelLayout = labelAbove
@@ -419,6 +439,7 @@ function FormLayerGroup({
           x: s.startTime * pps,
           width: (s.endTime - s.startTime) * pps,
           label: s.label ?? '',
+          shortLabel: s.shortLabel,
         })),
         FONT_SIZES[fontScale].label,
         totalWidth,

@@ -398,6 +398,10 @@
           "type": ["string", "null"],
           "description": "Display name set by the analyst. Optional — null for unlabeled spans (e.g. bar-level hypermeter spans where the type carries the analytical meaning). Empty string is valid for a newly placed span awaiting a label."
         },
+        "shortLabel": {
+          "type": ["string", "null"],
+          "description": "Optional analyst-authored abbreviation of label (e.g. 'Verse 1' -> 'V1'). Shown above the shape in place of the full label when the full label doesn't fit at the current zoom; never itself truncated further. No algorithmic abbreviation is attempted for above-shape labels — if neither label nor shortLabel fits, nothing renders (the UI shows a small marker indicating a hidden label)."
+        },
         "slug": {
           "type": ["string", "null"],
           "pattern": "^[a-z0-9][a-z0-9-]*$",

@@ -9,6 +9,17 @@ import { Inspector } from '@/components/Inspector'
 import { MergeConflictDialog } from '@/components/MergeConflictDialog'
 import { DocumentSettingsDialog } from '@/components/DocumentSettingsDialog'
 import { LinkSourceDialog } from '@/components/LinkSourceDialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { buttonVariants } from '@/components/ui/button'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { cn } from '@/lib/utils'
@@ -115,7 +126,8 @@ function EmptyState({
         </h1>
         <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
           Create a new analysis or open a <code className="text-[0.8em]">.strata</code> file, then
-          link a YouTube video and build layered form diagrams on a shared timeline.
+          link a YouTube video or local audio file and build layered form diagrams on a
+          shared timeline.
         </p>
         <div className="mt-5 flex items-center gap-2">
           <button
@@ -214,10 +226,33 @@ export default function App() {
 
   // Inspector collapse is pure view-state; local to the shell.
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
+  // Lives in uiStore (not local state) so PlayerDock can see it too — see the
+  // videoPanel curtain comment in PlayerDock for why.
+  const settingsOpen = useUIStore((s) => s.documentSettingsOpen)
+  const setSettingsOpen = useUIStore((s) => s.setDocumentSettingsOpen)
   // "New analysis" framing for the settings dialog — set when the dialog was
   // opened by the New action, cleared when opened as plain settings.
   const [settingsIsNew, setSettingsIsNew] = useState(false)
+
+  // Unsaved-changes guard: New / Open / Demo all discard the current document.
+  // When dirty, the action is held here and only run if the analyst confirms.
+  const [pendingDiscard, setPendingDiscard] = useState<{
+    label: string
+    run: () => void
+  } | null>(null)
+  // Mirrored into uiStore so PlayerDock's video-panel curtain covers this
+  // dialog too (same iframe-compositing quirk as the other modals).
+  const setUnsavedGuardOpen = useUIStore((s) => s.setUnsavedGuardOpen)
+  useEffect(() => {
+    setUnsavedGuardOpen(pendingDiscard !== null)
+  }, [pendingDiscard, setUnsavedGuardOpen])
+
+  // Same mirroring for the crash-recovery modal — it can appear over a
+  // linked video (dirty session + reload) just as easily as the other three.
+  const setRecoveryModalOpen = useUIStore((s) => s.setRecoveryModalOpen)
+  useEffect(() => {
+    setRecoveryModalOpen(pendingRecovery !== null)
+  }, [pendingRecovery, setRecoveryModalOpen])
 
   // Auto-expand the Inspector whenever a selection is made, so clicking a span
   // always surfaces its details — matches the editor's pre-existing behavior.
@@ -243,17 +278,33 @@ export default function App() {
     newFile()
     setSettingsIsNew(true)
     setSettingsOpen(true)
-  }, [newFile])
+  }, [newFile, setSettingsOpen])
 
   // Dev affordance — load the bundled "Alive" fixture to exercise the render path.
-  function loadDemo() {
+  const loadDemo = useCallback(() => {
     const parsed = JSON.parse(aliveRaw) as StrataDocument
     loadDocument(parsed)
     useDocumentStore.temporal.getState().clear()
     // Make the macro layer (highest displayOrder) the active layer by default.
     const top = [...parsed.layers].sort((a, b) => b.displayOrder - a.displayOrder)[0]
     setActiveLayer(top?.id ?? null)
-  }
+  }, [loadDocument, setActiveLayer])
+
+  // Unsaved-changes guard: New / Open / Demo all discard whatever is currently
+  // loaded. When the document is dirty, hold the action and confirm first —
+  // crash recovery softens the cost of an accidental discard but doesn't
+  // prevent one. Clean documents (including the empty-state case, where
+  // isDirty is always false) run immediately, no dialog.
+  const guardDiscard = useCallback(
+    (label: string, run: () => void) => () => {
+      if (isDirty) setPendingDiscard({ label, run })
+      else run()
+    },
+    [isDirty],
+  )
+  const guardedNew = guardDiscard('Starting a new analysis', newAnalysis)
+  const guardedOpen = guardDiscard('Opening a different file', () => void openFile())
+  const guardedDemo = guardDiscard('Loading the demo analysis', loadDemo)
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -298,10 +349,10 @@ export default function App() {
 
       if (e.key === 'n' || e.key === 'N') {
         e.preventDefault()
-        newAnalysis()
+        guardedNew()
       } else if (e.key === 'o' || e.key === 'O') {
         e.preventDefault()
-        openFile()
+        guardedOpen()
       } else if ((e.key === 's' || e.key === 'S') && e.shiftKey) {
         e.preventDefault()
         saveFileAs()
@@ -312,7 +363,7 @@ export default function App() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [clearSelection, newAnalysis, openFile, saveFile, saveFileAs])
+  }, [clearSelection, guardedNew, guardedOpen, saveFile, saveFileAs])
 
   return (
     // Full-height app shell: header on top, then a main row of [left work area |
@@ -328,9 +379,9 @@ export default function App() {
 
         <div className="mx-1.5 h-4 w-px bg-border" />
 
-        <ToolbarButton onClick={newAnalysis}>New</ToolbarButton>
-        <ToolbarButton onClick={openFile}>Open</ToolbarButton>
-        <ToolbarButton onClick={loadDemo} muted title="Load the bundled demo analysis">
+        <ToolbarButton onClick={guardedNew}>New</ToolbarButton>
+        <ToolbarButton onClick={guardedOpen}>Open</ToolbarButton>
+        <ToolbarButton onClick={guardedDemo} muted title="Load the bundled demo analysis">
           Demo
         </ToolbarButton>
 
@@ -393,7 +444,7 @@ export default function App() {
           {doc ? (
             <FormDiagram />
           ) : (
-            <EmptyState onNew={newAnalysis} onOpen={openFile} onDemo={loadDemo} />
+            <EmptyState onNew={guardedNew} onOpen={guardedOpen} onDemo={guardedDemo} />
           )}
           {/* Transport bar + collapsible video panel — bottom of the left column */}
           <PlayerDock />
@@ -429,6 +480,36 @@ export default function App() {
           onDiscard={dismissRecovery}
         />
       )}
+
+      {/* Unsaved-changes guard — confirms before New / Open / Demo discard the
+          current document. Crash recovery (above) is a safety net, not a
+          substitute for asking first. */}
+      <AlertDialog
+        open={pendingDiscard !== null}
+        onOpenChange={(o) => !o && setPendingDiscard(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDiscard?.label} will discard your unsaved changes. This can't be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                pendingDiscard?.run()
+                setPendingDiscard(null)
+              }}
+              className={cn(buttonVariants({ variant: 'destructive', size: 'sm' }))}
+            >
+              Discard and continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
