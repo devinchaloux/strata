@@ -48,6 +48,7 @@ import { TimelineAxis } from './TimelineAxis'
 import { FormLayers } from './FormLayers'
 import { LayerSettingsPopover } from './LayerSettingsPopover'
 import { AddLayerPopover } from './AddLayerPopover'
+import { DiagramControlBar } from './DiagramControlBar'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,6 +62,7 @@ import {
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { STACK_TOP_PAD, stackHeight, layerPitch } from '@/lib/formShape'
+import { markerBandHeight } from '@/lib/markerBand'
 import type { Layer, FormDiagramData } from '@/types/strata'
 
 const HEADER_WIDTH_EXPANDED = 140
@@ -507,10 +509,6 @@ export function FormDiagram() {
   const doc = useDocumentStore((s) => s.document)
   const collapsed = useUIStore((s) => s.headersCollapsed)
   const toggleCollapsed = useUIStore((s) => s.toggleHeadersCollapsed)
-  const selectedMarkerId = useUIStore((s) => s.selectedPointMarkerId)
-  const selectPointMarker = useUIStore((s) => s.selectPointMarker)
-  const addPointMarker = useDocumentStore((s) => s.addPointMarker)
-  const updatePointMarker = useDocumentStore((s) => s.updatePointMarker)
   // Timeline state lives here so the zoom controls can render in the widget top
   // bar while the ruler (TimelineAxis) renders below. One shared instance.
   const timeline = useTimeline()
@@ -533,7 +531,13 @@ export function FormDiagram() {
   const visible = sorted.filter((l) => l.visibility)
   const hidden = sorted.filter((l) => !l.visibility)
 
-  const stackH = stackHeight(visible)
+  // The widget card must also make room for the marker band that FormLayers
+  // draws below the stack, or the band is clipped by the card.
+  const stackH = stackHeight(visible) + markerBandHeight(
+    doc.pointMarkers,
+    doc.vocabulary.pointMarkerTypes,
+    timeline.pps,
+  )
   const headerWidth = collapsed ? HEADER_WIDTH_RAIL : HEADER_WIDTH_EXPANDED
 
   return (
@@ -577,6 +581,7 @@ export function FormDiagram() {
           <LayerHeaders layers={visible} collapsed={collapsed} />
           <FormLayers layers={visible} />
         </div>
+        <DiagramControlBar />
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 rounded-md"
@@ -600,16 +605,6 @@ export function FormDiagram() {
             currentTime={timeline.currentTime}
             duration={timeline.duration}
             setScrollOffset={timeline.setScrollOffset}
-            pointMarkers={doc.pointMarkers}
-            sharedTimePoints={doc.sharedTimePoints}
-            selectedMarkerId={selectedMarkerId}
-            onSelectMarker={selectPointMarker}
-            onPlaceMarker={(time) => {
-              const id = crypto.randomUUID()
-              addPointMarker({ id, timestamp: time })
-              selectPointMarker(id)
-            }}
-            onMoveMarker={(id, time) => updatePointMarker(id, { timestamp: time })}
           />
         </div>
       </div>

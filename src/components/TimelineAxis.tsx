@@ -1,22 +1,9 @@
-import { useRef } from 'react'
-import { generateTicks, snapTime } from '@/lib/timeline'
+import { generateTicks } from '@/lib/timeline'
 import { TimelineScrollbar } from './TimelineScrollbar'
-import type { PointMarker, SharedTimePoint } from '@/types/strata'
 
 const RULER_HEIGHT = 24  // px — condensed ruler (the timeline reads tighter now)
 const TICK_HEIGHT = 7    // px — tick line length at bottom of ruler
 const LABEL_Y = 11       // px — text baseline from top of SVG
-
-// Marker lane — a distinct strip ABOVE the time ruler, dedicated to point
-// markers (document-level events, separate from span boundaries). Clicking
-// empty space in the lane places a marker at that time (snapping to nearby
-// existing time points); clicking an existing marker selects it; dragging one
-// repositions it (also snapping).
-const MARKER_LANE_HEIGHT = 14
-const MARKER_RADIUS = 3
-// Screen-pixel movement before a marker pointerdown is treated as a drag
-// rather than a click-to-select.
-const MARKER_DRAG_THRESHOLD_PX = 3
 
 export interface TimelineAxisProps {
   containerRef: React.RefObject<HTMLDivElement>
@@ -27,17 +14,15 @@ export interface TimelineAxisProps {
   currentTime: number
   duration: number
   setScrollOffset: (offset: number) => void
-  pointMarkers?: PointMarker[]
-  sharedTimePoints?: SharedTimePoint[]
-  selectedMarkerId?: string | null
-  onSelectMarker?: (id: string) => void
-  onPlaceMarker?: (time: number) => void
-  onMoveMarker?: (id: string, time: number) => void
 }
 
 // Presentational ruler. The timeline state lives in useTimeline, lifted to
 // FormDiagram so the zoom controls can render in the widget top bar (off the
 // time labels) — the ruler just draws ticks, cursor, and the scrollbar.
+//
+// Point markers used to live in a lane above the ticks. They now render inside
+// the form diagram (FormLayers) so they belong to the exported graphic rather
+// than the editor chrome — see docs/decisions.md, 2026-07-24.
 export function TimelineAxis({
   containerRef,
   pps,
@@ -47,70 +32,8 @@ export function TimelineAxis({
   currentTime,
   duration,
   setScrollOffset,
-  pointMarkers = [],
-  sharedTimePoints = [],
-  selectedMarkerId = null,
-  onSelectMarker,
-  onPlaceMarker,
-  onMoveMarker,
 }: TimelineAxisProps) {
   const ticks = generateTicks(duration, pps, scrollOffset, viewportWidth)
-  const laneRef = useRef<HTMLDivElement>(null)
-
-  // Snap candidates: existing span boundaries / shared time points, plus
-  // other point markers already on the timeline (excluding `excludeId`, the
-  // marker being dragged, so it never "snaps" to its own current position).
-  function snapCandidates(excludeId?: string): number[] {
-    return [
-      ...sharedTimePoints.map((p) => p.timestamp),
-      ...pointMarkers.filter((m) => m.id !== excludeId).map((m) => m.timestamp),
-    ]
-  }
-
-  function laneClientXToTime(clientX: number): number | null {
-    const lane = laneRef.current
-    if (!lane || pps <= 0) return null
-    const rect = lane.getBoundingClientRect()
-    const x = clientX - rect.left
-    return Math.max(0, Math.min(duration, (x + scrollOffset) / pps))
-  }
-
-  function handleLaneClick(e: React.MouseEvent) {
-    if (!onPlaceMarker) return
-    const time = laneClientXToTime(e.clientX)
-    if (time == null) return
-    onPlaceMarker(snapTime(time, snapCandidates(), pps))
-  }
-
-  // Drag-to-reposition an existing marker. A pointerdown that never moves
-  // past the threshold is treated as a click (select); one that does is a
-  // drag (live-updates the marker's timestamp, snapping as it goes).
-  function beginMarkerDrag(marker: PointMarker) {
-    return (e: React.PointerEvent) => {
-      e.stopPropagation()
-      if (pps <= 0) return
-      const startClientX = e.clientX
-      let dragged = false
-      const candidates = snapCandidates(marker.id)
-
-      const onMove = (ev: PointerEvent) => {
-        if (!dragged && Math.abs(ev.clientX - startClientX) > MARKER_DRAG_THRESHOLD_PX) {
-          dragged = true
-        }
-        if (!dragged) return
-        const time = laneClientXToTime(ev.clientX)
-        if (time == null) return
-        onMoveMarker?.(marker.id, snapTime(time, candidates, pps))
-      }
-      const onUp = () => {
-        window.removeEventListener('pointermove', onMove)
-        window.removeEventListener('pointerup', onUp)
-        if (!dragged) onSelectMarker?.(marker.id)
-      }
-      window.addEventListener('pointermove', onMove)
-      window.addEventListener('pointerup', onUp)
-    }
-  }
 
   // Cursor pixel position in the visible area (negative = off-screen left)
   const cursorPx = pps > 0 ? currentTime * pps - scrollOffset : -1
@@ -126,74 +49,6 @@ export function TimelineAxis({
       className="shrink-0 border-b select-none"
       style={{ borderColor: 'hsl(var(--border))' }}
     >
-      {/* Marker lane — ABOVE the tick/number row. Document-level point
-          markers, distinct from the span boundary ticks below. Click empty
-          space to place one at that time (snapping to nearby existing time
-          points); click a marker to select it; drag one to reposition it
-          (also snapping). */}
-      {hasDocument && (
-        <div
-          ref={laneRef}
-          onClick={handleLaneClick}
-          role="presentation"
-          title="Click to place a point marker"
-          className="relative cursor-crosshair select-none"
-          style={{
-            height: MARKER_LANE_HEIGHT,
-            backgroundColor: 'hsl(var(--muted) / 0.3)',
-          }}
-        >
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: -scrollOffset,
-              width: Math.max(totalWidth, viewportWidth),
-              height: MARKER_LANE_HEIGHT,
-            }}
-          >
-            {pointMarkers.map((marker) => {
-              const x = marker.timestamp * pps
-              const selected = marker.id === selectedMarkerId
-              const label = marker.label || marker.type || null
-              return (
-                <div
-                  key={marker.id}
-                  onPointerDown={beginMarkerDrag(marker)}
-                  title={label ?? `Marker at ${marker.timestamp.toFixed(2)}s`}
-                  className="absolute select-none"
-                  style={{
-                    left: x - 6,
-                    top: 0,
-                    width: 12,
-                    height: MARKER_LANE_HEIGHT,
-                    display: 'flex',
-                    justifyContent: 'center',
-                    cursor: 'ew-resize',
-                    touchAction: 'none',
-                  }}
-                >
-                  <div
-                    aria-hidden
-                    style={{
-                      width: MARKER_RADIUS * 2,
-                      height: MARKER_RADIUS * 2,
-                      marginTop: (MARKER_LANE_HEIGHT - MARKER_RADIUS * 2) / 2,
-                      borderRadius: 1,
-                      transform: 'rotate(45deg)',
-                      backgroundColor: marker.flagged
-                        ? 'hsl(var(--destructive))'
-                        : 'hsl(var(--primary))',
-                      boxShadow: selected ? '0 0 0 2px hsl(var(--ring))' : undefined,
-                    }}
-                  />
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
       <div
         ref={containerRef}
         className="relative overflow-hidden"

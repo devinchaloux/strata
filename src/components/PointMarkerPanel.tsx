@@ -10,37 +10,22 @@
  * Selector" for the rationale.
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { formatTime } from '@/lib/youtube'
 import { parseTimecode } from '@/lib/timecode'
 import type { ConfidenceLevel, PointMarker } from '@/types/strata'
+import { Field, inputClass } from '@/components/Field'
+import { toAccidentals } from '@/lib/musicSymbols'
+import {
+  BUILT_IN_POINT_MARKER_TYPE_GROUPS,
+  findPointMarkerType,
+  formatMarkerCaption,
+  pickerLabel,
+} from '@/lib/pointMarkerTypes'
 
-const inputClass =
-  'w-full rounded border border-border bg-card px-2 py-1 text-xs text-foreground ' +
-  'focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground'
-
-function Field({
-  label,
-  helper,
-  children,
-}: {
-  label: string
-  helper?: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="mb-3">
-      <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </label>
-      {children}
-      {helper && <p className="mt-0.5 text-[10px] text-muted-foreground">{helper}</p>}
-    </div>
-  )
-}
 
 function Segmented<T extends string>({
   options,
@@ -124,7 +109,7 @@ function TimeInput({
 // ---------------------------------------------------------------------------
 
 type MarkerKind = NonNullable<PointMarker['kind']>
-type OptionalFieldKey = 'type' | 'harmonicContext' | 'flagged' | 'confidence'
+type OptionalFieldKey = 'type' | 'harmonicContext' | 'flagged' | 'confidence' | 'absent'
 
 const KIND_OPTIONS: { value: MarkerKind; label: string }[] = [
   { value: 'other', label: 'Other' },
@@ -134,10 +119,19 @@ const KIND_OPTIONS: { value: MarkerKind; label: string }[] = [
   { value: 'flag', label: 'Flag / Note' },
 ]
 
-const ALL_OPTIONAL_FIELDS: OptionalFieldKey[] = ['type', 'harmonicContext', 'flagged', 'confidence']
+const ALL_OPTIONAL_FIELDS: OptionalFieldKey[] = [
+  'type',
+  'harmonicContext',
+  'flagged',
+  'confidence',
+  'absent',
+]
 
+// `absent` leads on a cadence because the evaded/failed cadence is the case it
+// exists for — an expected cadence that does not arrive is the analytical
+// claim, not a missing record.
 const KIND_PROMINENT_FIELDS: Record<MarkerKind, OptionalFieldKey[]> = {
-  cadence: ['type', 'harmonicContext', 'confidence'],
+  cadence: ['type', 'harmonicContext', 'absent', 'confidence'],
   'key-change': ['type', 'harmonicContext', 'confidence'],
   'tempo-change': ['type', 'confidence'],
   flag: ['flagged', 'confidence'],
@@ -159,6 +153,15 @@ export function PointMarkerPanel() {
   const [moreExpanded, setMoreExpanded] = useState(false)
   useEffect(() => setMoreExpanded(false), [marker?.id])
 
+  // Place-and-type: a marker arrives unlabeled, so put the caret in the label
+  // field rather than making the analyst travel to the Inspector for every
+  // one. Selecting an already-labelled marker leaves focus alone.
+  const labelRef = useRef<HTMLInputElement>(null)
+  const unlabelled = !marker?.label
+  useEffect(() => {
+    if (unlabelled) labelRef.current?.focus()
+  }, [marker?.id, unlabelled])
+
   if (!doc || !marker) return null
 
   const update = (patch: Partial<Omit<PointMarker, 'id'>>) => updatePointMarker(marker.id, patch)
@@ -178,6 +181,12 @@ export function PointMarkerPanel() {
   const prominent = KIND_PROMINENT_FIELDS[kind]
   const hidden = ALL_OPTIONAL_FIELDS.filter((f) => !prominent.includes(f))
 
+  // What this marker will actually draw. Shown live so the analyst can see the
+  // V:PAC notation assemble as they fill the two fields, rather than having to
+  // know the convention in advance or hunt for the result on the diagram.
+  const caption = formatMarkerCaption(marker, markerTypes)
+  const captionsVisible = doc.showCadenceCaptions ?? true
+
   function fieldNode(key: OptionalFieldKey) {
     switch (key) {
       case 'type':
@@ -188,13 +197,29 @@ export function PointMarkerPanel() {
               value={marker!.type ?? ''}
               onChange={(e) => update({ type: e.target.value || null })}
             >
-              <option value="">— none —</option>
-              {markerTypes.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.label}
-                </option>
+              <option value="">None</option>
+              {BUILT_IN_POINT_MARKER_TYPE_GROUPS.map((g) => (
+                <optgroup key={g.label} label={g.label}>
+                  {g.terms.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {pickerLabel(t)}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
-              {marker!.type && !markerTypes.some((t) => t.id === marker!.type) && (
+              {markerTypes.length > 0 && (
+                <optgroup label="This document">
+                  {markerTypes.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {pickerLabel(t)}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {/* Escape hatch: a type from a pack or a future build that this
+                  version doesn't know about still shows, rather than silently
+                  resetting the marker's data to none. */}
+              {marker!.type && !findPointMarkerType(marker!.type, markerTypes) && (
                 <option value={marker!.type}>{marker!.type}</option>
               )}
             </select>
@@ -204,20 +229,37 @@ export function PointMarkerPanel() {
         return (
           <Field
             key="harmonicContext"
-            label="Harmonic context"
-            helper="Free text, conventionally a Roman numeral relative to the document's home key — e.g. 'V' for a half cadence in the dominant"
+            label="In key"
+            tooltip="The key this event lands in, as a Roman numeral relative to the home key. Written together with the type, so V plus PAC reads V:PAC."
           >
             <input
               className={inputClass}
               value={marker!.harmonicContext ?? ''}
-              placeholder="None"
-              onChange={(e) => update({ harmonicContext: e.target.value || null })}
+              placeholder="e.g. V, vi, ♭VI"
+              onChange={(e) => update({ harmonicContext: toAccidentals(e.target.value) || null })}
+            />
+          </Field>
+        )
+      case 'absent':
+        return (
+          <Field
+            key="absent"
+            label="Absent"
+            tooltip="The event was expected at this point but does not occur. Its caption is drawn struck through."
+          >
+            <Segmented
+              options={[
+                { value: 'no', label: 'No' },
+                { value: 'yes', label: 'Yes' },
+              ]}
+              value={marker!.absent ? 'yes' : 'no'}
+              onChange={(v) => update({ absent: v === 'yes' })}
             />
           </Field>
         )
       case 'flagged':
         return (
-          <Field key="flagged" label="Flagged" helper="Come back to this">
+          <Field key="flagged" label="Flagged" tooltip="Shown in red on the timeline.">
             <Segmented
               options={[
                 { value: 'no', label: 'No' },
@@ -258,6 +300,7 @@ export function PointMarkerPanel() {
         {/* Label */}
         <Field label="Label">
           <input
+            ref={labelRef}
             className={inputClass}
             value={marker.label ?? ''}
             placeholder="Unlabeled"
@@ -266,7 +309,7 @@ export function PointMarkerPanel() {
         </Field>
 
         {/* Kind — soft preset, picks which fields below lead the panel */}
-        <Field label="Kind" helper="Changes which fields lead below — every field stays reachable">
+        <Field label="Kind">
           <select
             className={inputClass}
             value={kind}
@@ -282,6 +325,21 @@ export function PointMarkerPanel() {
 
         {/* Kind-prominent fields */}
         {prominent.map((k) => fieldNode(k))}
+
+        {/* Live preview of the diagram caption */}
+        {caption && (
+          <div className="mb-3 rounded border border-border bg-muted/30 px-2 py-1.5">
+            <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              On the diagram
+            </div>
+            <div className="mt-0.5 text-xs font-medium text-foreground">{caption}</div>
+            {!captionsVisible && (
+              <div className="mt-1 text-[10px] text-muted-foreground">
+                Captions are turned off for this document, so this is recorded but not drawn.
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Notes — always shown regardless of kind */}
         <Field label="Notes">

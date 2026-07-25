@@ -40,6 +40,27 @@ import {
   type Justification,
   type ResolvedLabel,
 } from '@/lib/formShape'
+import {
+  layoutMarkerBand,
+  BAND_TOP_GAP,
+  BAND_ROW_HEIGHT,
+  BAND_FONT_PX,
+  GLYPH_HALF,
+  BOX_PAD_X,
+  type MarkerPlacement,
+} from '@/lib/markerBand'
+import { snapTime } from '@/lib/timeline'
+import type { PointMarker, VocabTerm } from '@/types/strata'
+
+// Stable empty references, so a null document doesn't produce a new array on
+// every render (which would defeat the store's identity comparison).
+const EMPTY_MARKERS: PointMarker[] = []
+const EMPTY_TERMS: VocabTerm[] = []
+
+const MARKER_COLOR = 'hsl(var(--primary))'
+const MARKER_FLAGGED_COLOR = 'hsl(var(--destructive))'
+/** Screen-pixel movement before a marker pointerdown counts as a drag. */
+const MARKER_DRAG_THRESHOLD_PX = 3
 import { MIN_SPAN_WIDTH, MIN_BOUNDARY_DRAG_PX } from '@/lib/spanEdit'
 import type { Layer, Span, FormDiagramData, CapStyle } from '@/types/strata'
 import {
@@ -544,6 +565,119 @@ const BOX_DRAG_THRESHOLD = 4
 /**
  * @param layers  already sorted for display (macro-on-top: highest displayOrder first)
  */
+/**
+ * One marker: a boxed caption for a cadence, otherwise a diamond with its
+ * caption beside it. When a caption sits on a lower row, a hairline leader
+ * connects it back to its glyph so the association survives the offset.
+ */
+function BandMarker({
+  placement,
+  bandTop,
+  selected,
+  showCaptions,
+  onPointerDown,
+}: {
+  placement: MarkerPlacement
+  bandTop: number
+  selected: boolean
+  showCaptions: boolean
+  onPointerDown: (e: React.PointerEvent) => void
+}) {
+  const { marker, x, row, caption, style, struck } = placement
+  const color = marker.flagged ? MARKER_FLAGGED_COLOR : MARKER_COLOR
+  const glyphY = bandTop + BAND_TOP_GAP + BAND_ROW_HEIGHT / 2
+  const rowY = bandTop + BAND_TOP_GAP + row * BAND_ROW_HEIGHT + BAND_ROW_HEIGHT / 2
+  const visibleCaption = showCaptions ? caption : null
+  const width = placement.right - placement.left
+
+  return (
+    <g
+      onPointerDown={onPointerDown}
+      // The container's click clears the span selection, and a click on a
+      // marker bubbles to it — which would wipe the selection the pointerup
+      // just made. Same trap as the band's place-on-click.
+      onClick={(e) => e.stopPropagation()}
+      style={{ cursor: 'ew-resize' }}
+      role="presentation"
+    >
+      <title>{marker.label || caption || `Marker at ${marker.timestamp.toFixed(2)}s`}</title>
+
+      {visibleCaption && style === 'boxed' ? (
+        <>
+          <rect
+            x={placement.left}
+            y={rowY - BAND_ROW_HEIGHT / 2 + 1}
+            width={width}
+            height={BAND_ROW_HEIGHT - 2}
+            rx={1}
+            fill="var(--canvas)"
+            stroke={color}
+            strokeWidth={selected ? 1.5 : 1}
+          />
+          <text
+            x={x}
+            y={rowY}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={BAND_FONT_PX}
+            fill={color}
+          >
+            {visibleCaption}
+          </text>
+          {struck && (
+            <line
+              x1={placement.left + BOX_PAD_X}
+              x2={placement.right - BOX_PAD_X}
+              y1={rowY}
+              y2={rowY}
+              stroke={color}
+              strokeWidth={1}
+            />
+          )}
+        </>
+      ) : (
+        <>
+          {/* Leader from the glyph down to an offset caption row */}
+          {visibleCaption && row > 0 && (
+            <line
+              x1={x}
+              x2={x}
+              y1={glyphY}
+              y2={rowY}
+              stroke={color}
+              strokeWidth={0.5}
+              strokeOpacity={0.4}
+            />
+          )}
+          <rect
+            x={-GLYPH_HALF}
+            y={-GLYPH_HALF}
+            width={GLYPH_HALF * 2}
+            height={GLYPH_HALF * 2}
+            rx={0.5}
+            fill={color}
+            stroke={selected ? 'hsl(var(--ring))' : 'none'}
+            strokeWidth={selected ? 2 : 0}
+            transform={`translate(${x}, ${glyphY}) rotate(45)`}
+          />
+          {visibleCaption && (
+            <text
+              x={x + GLYPH_HALF + 3}
+              y={rowY}
+              dominantBaseline="central"
+              fontSize={BAND_FONT_PX}
+              fill={selected ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))'}
+              textDecoration={struck ? 'line-through' : undefined}
+            >
+              {visibleCaption}
+            </text>
+          )}
+        </>
+      )}
+    </g>
+  )
+}
+
 export function FormLayers({ layers }: { layers: Layer[] }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const zoom = useUIStore((s) => s.zoom)
@@ -555,12 +689,28 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   const setAdjacentBoundary = useDocumentStore((s) => s.setAdjacentBoundary)
   const duration = useDocumentStore((s) => s.document?.duration ?? 0)
 
+  // Marker band state. Selected via the whole document object rather than
+  // `?? []` selectors, which would return a fresh array on every render.
+  const doc = useDocumentStore((s) => s.document)
+  const addPointMarker = useDocumentStore((s) => s.addPointMarker)
+  const updatePointMarker = useDocumentStore((s) => s.updatePointMarker)
+  const selectedMarkerId = useUIStore((s) => s.selectedPointMarkerId)
+  const selectPointMarker = useUIStore((s) => s.selectPointMarker)
+  const pointMarkers = doc?.pointMarkers ?? EMPTY_MARKERS
+  const markerTypes = doc?.vocabulary.pointMarkerTypes ?? EMPTY_TERMS
+  const showCaptions = doc?.showCadenceCaptions ?? true
+
   const pps = computePps(zoom)
   const totalWidth = totalContentWidth(duration, zoom)
   const svgWidth = Math.max(totalWidth, viewportWidth)
   // Every layer keeps a slot (hidden ones render empty) so the header column and
   // the canvas stay row-aligned; FormLayerGroup draws nothing for hidden layers.
-  const svgHeight = stackHeight(layers)
+  const stackH = stackHeight(layers)
+
+  // Marker band — document-level point markers live inside the diagram (so
+  // they export with it), in a band below the layer stack.
+  const bandLayout = layoutMarkerBand(pointMarkers, markerTypes, pps)
+  const svgHeight = stackH + bandLayout.height
 
   const cursorPx = pps > 0 ? currentTime * pps - scrollOffset : -1
   const cursorVisible = cursorPx >= 0 && cursorPx <= viewportWidth
@@ -613,6 +763,11 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
     const rect = containerRef.current?.getBoundingClientRect()
     if (!rect || pps <= 0 || layers.length === 0) return
 
+    // Below the layer stack is the marker band, which owns its own gestures.
+    // layerIndexAtY clamps, so without this guard a band pointerdown would
+    // start a box-drag on the bottom layer.
+    if (e.clientY - rect.top >= stackH) return
+
     e.preventDefault() // prevent text-selection cursor during drag
 
     const startX = clientXToContent(e.clientX)
@@ -659,6 +814,60 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
 
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
+  }
+
+  // --- Marker band gestures -------------------------------------------------
+  // Mirrors the ruler lane's old model: click empty band to place (snapping),
+  // click a marker to select, drag one to reposition. A pointerdown that
+  // landed on a marker suppresses the band's place-on-click, since
+  // stopPropagation on pointerdown does not stop the click that follows.
+  const pointerDownOnMarkerRef = useRef(false)
+
+  function markerSnapCandidates(excludeId?: string): number[] {
+    return [
+      ...(doc?.sharedTimePoints ?? []).map((p) => p.timestamp),
+      ...pointMarkers.filter((m) => m.id !== excludeId).map((m) => m.timestamp),
+    ]
+  }
+
+  function clampToTrack(t: number): number {
+    return Math.max(0, Math.min(duration, t))
+  }
+
+  function handleBandClick(e: React.MouseEvent) {
+    e.stopPropagation() // the container's click clears the span selection
+    if (pointerDownOnMarkerRef.current || pps <= 0) return
+    const time = clampToTrack(clientXToTime(e.clientX))
+    const id = crypto.randomUUID()
+    addPointMarker({ id, timestamp: snapTime(time, markerSnapCandidates(), pps) })
+    selectPointMarker(id)
+  }
+
+  function beginMarkerDrag(marker: PointMarker) {
+    return (e: React.PointerEvent) => {
+      e.stopPropagation()
+      pointerDownOnMarkerRef.current = true
+      if (pps <= 0) return
+      const startClientX = e.clientX
+      let dragged = false
+      const candidates = markerSnapCandidates(marker.id)
+
+      const onMove = (ev: PointerEvent) => {
+        if (!dragged && Math.abs(ev.clientX - startClientX) > MARKER_DRAG_THRESHOLD_PX) {
+          dragged = true
+        }
+        if (!dragged) return
+        const t = clampToTrack(clientXToTime(ev.clientX))
+        updatePointMarker(marker.id, { timestamp: snapTime(t, candidates, pps) })
+      }
+      const onUp = () => {
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', onUp)
+        if (!dragged) selectPointMarker(marker.id)
+      }
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', onUp)
+    }
   }
 
   function handleContainerClick() {
@@ -711,6 +920,35 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
               dragCommittedRef={dragCommittedRef}
             />
           ))}
+
+        {/* Marker band — document-level markers, inside the diagram so they
+            belong to the exported graphic rather than the editor chrome. */}
+        {pps > 0 && (
+          <g>
+            <rect
+              x={0}
+              y={stackH}
+              width={svgWidth}
+              height={bandLayout.height}
+              fill="transparent"
+              style={{ cursor: 'crosshair' }}
+              onPointerDown={() => {
+                pointerDownOnMarkerRef.current = false
+              }}
+              onClick={handleBandClick}
+            />
+            {bandLayout.placements.map((p) => (
+              <BandMarker
+                key={p.marker.id}
+                placement={p}
+                bandTop={stackH}
+                selected={p.marker.id === selectedMarkerId}
+                showCaptions={showCaptions}
+                onPointerDown={beginMarkerDrag(p.marker)}
+              />
+            ))}
+          </g>
+        )}
 
         {/* Box-drag selection rectangle */}
         {selRect && (

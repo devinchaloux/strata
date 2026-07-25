@@ -21,6 +21,8 @@ import { formatTime } from '@/lib/youtube'
 import { BUILT_IN_MODES } from '@/lib/modes'
 import { SourceLinkForm } from '@/components/LinkSourceDialog'
 import { Switch } from '@/components/ui/switch'
+import { Field, inputClass } from '@/components/Field'
+import { toAccidentals } from '@/lib/musicSymbols'
 import {
   Dialog,
   DialogContent,
@@ -29,34 +31,6 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import type { AnalysisContext, TimeSignature, HomeKey } from '@/types/strata'
-
-// ---------------------------------------------------------------------------
-// Field primitives (local copies of MetadataPanel's — small, not worth sharing)
-// ---------------------------------------------------------------------------
-
-function Field({
-  label,
-  helper,
-  children,
-}: {
-  label: string
-  helper?: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="mb-3">
-      <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </label>
-      {children}
-      {helper && <p className="mt-0.5 text-[10px] text-muted-foreground">{helper}</p>}
-    </div>
-  )
-}
-
-const inputClass =
-  'w-full rounded border border-border bg-card px-2 py-1 text-xs text-foreground ' +
-  'focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground'
 
 function Segmented<T extends string>({
   options,
@@ -347,9 +321,9 @@ export function DocumentSettingsDialog({
             <Field label="Home key — tonic">
               <input
                 className={inputClass}
-                placeholder="e.g. A, F#, Bb"
+                placeholder="e.g. A, F♯, B♭"
                 value={doc.homeKey?.tonic ?? ''}
-                onChange={(e) => commitHomeKey({ tonic: e.target.value })}
+                onChange={(e) => commitHomeKey({ tonic: toAccidentals(e.target.value) })}
               />
             </Field>
             <Field label="Home key — mode">

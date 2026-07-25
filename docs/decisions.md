@@ -2142,3 +2142,265 @@ are separate decisions. Document-level rather than per-layer because point
 markers are already a document-level concept (not owned by any layer) — see
 the original point-marker schema decision. There is no per-layer surface a
 marker-display toggle could sensibly live on.
+
+---
+
+## UI Copy Pass & Point Marker Vocabulary (2026-07-24)
+
+*Two threads that turned out to be one. The copy audit (backlog #23) reached
+the point-marker panel and found that its worst copy was describing a feature
+that was never fully built — which is why the wording was unfixable in place.*
+
+---
+
+**Decision:** Six house rules govern user-facing copy.
+1. Never explain the schema or the UI's own mechanics.
+2. Examples belong in the placeholder.
+3. Non-obvious domain facts and reassurance belong in a tooltip.
+4. Inline helper text survives only when it carries an instruction that
+   prevents an error.
+5. One concept, one string.
+6. Write sentences, not dash-spliced fragments ("X — Y").
+
+**Rationale:** Devin's framing was "written like a technical writer would
+write (not an AI)." The diagnosable pattern behind the verbose strings was
+that they carried *rationale from this document* rather than *instructions for
+the task* — e.g. "Point markers are document-level, not per-layer, so this is
+a single switch for the whole file" on a toggle. Naming the pattern made most
+of the audit mechanical rather than sixty separate debates. Rule 6 is Devin's
+addition, and it invalidated several of the first-pass rewrites: the
+appositive-dash splice is itself a strong AI tell.
+
+---
+
+**Decision:** `Field` (label + control + helper row) is one shared component
+at `src/components/Field.tsx`, with an optional `tooltip` rendering an info
+affordance beside the label. `inputClass` moves with it.
+
+**Rationale:** It had been copy-pasted identically into `MetadataPanel`,
+`PointMarkerPanel`, and `DocumentSettingsDialog` — the last of which carried
+the comment "local copies of MetadataPanel's — small, not worth sharing." The
+copies then drifted: `Span.keyArea` had three different helper strings in one
+file. Rule 5 is unenforceable while the component that renders helper text
+exists in triplicate. Tooltip support also had to be written once rather than
+three times.
+
+---
+
+**Decision:** Tooltips are hover/focus only and may never be the sole route to
+information needed to complete a task.
+
+**Rationale:** Radix deliberately does not open tooltips on touch, and mobile
+is on the roadmap (backlog #20). The trap in a verbosity pass is converting a
+verbosity problem into a hidden-verbosity problem — the same prose, now behind
+a hover. Most audited strings should be deleted, not relocated.
+
+---
+
+**Decision:** A built-in point marker type vocabulary ships in code
+(`src/lib/pointMarkerTypes.ts`), mirroring `lib/modes.ts`: seven cadences
+(PAC, IAC, HC, DC, EC, Phrygian half, Plagal), the three Hepokoski/Darcy
+terms, and four general events. `label` is the form written on a diagram
+("PAC"); `description` is the full name, and the picker composes "Perfect
+authentic cadence (PAC)".
+
+**Rationale:** Devin: "Cadence needs work — there are a bunch of different
+cadences." The `kind: 'cadence'` preset existed with no cadence types behind
+it, because no built-in point-marker vocabulary shipped anywhere and the
+fixtures' `pointMarkerTypes` were empty. The full tradition-grouped picker
+with custom types and pack import is still backlog #6; shipping the starter
+set in code follows the precedent already set for modes and unblocks the
+workflow without building #6. Grouping lives in the built-in list rather than
+on `VocabTerm`, so the schema does not have to anticipate #6's final shape.
+Phrygian and Plagal are additions to the Phase 0.6 starter set, from Devin.
+The `flag` type ("!") from that set was dropped: `PointMarker.flagged` is
+already a boolean field, so a `flag` *type* duplicates it.
+
+---
+
+**Decision (refines the 2026-07-04 harmonicContext reversal):** The
+conventional `{key}:{type}` notation is restored, but **conditionally** — both
+present renders `V:PAC`, a type alone renders `PAC`, a key alone renders `V`,
+neither renders nothing. `formatMarkerCaption` (`lib/pointMarkerTypes.ts`) is
+the only place the two are joined.
+
+**Rationale:** Devin, revisiting his own "harmonic context is a complete miss"
+feedback: "I was thinking V:PAC — like it is a PAC in the dominant key, but
+it's written that way and not below it." Both earlier positions were half
+right. The 07-04 fix correctly identified that the *unconditional* format was
+the bug — it assumed a cadence type always accompanies a key — but it
+over-corrected by removing the notation entirely, when the notation is simply
+how theorists write it. Storing two queryable fields and rendering the
+conventional string is the project's established split (label vs. type vs.
+slug) applied to this case.
+
+---
+
+**Decision:** The UI label for `PointMarker.harmonicContext` is **"In key"**.
+The schema field name is unchanged.
+
+**Rationale:** Devin: "I'm not sure what I meant by 'harmonic context'." If
+the author of the field cannot recall its meaning, the label has failed. What
+it holds is the key an event lands in, as a Roman numeral relative to
+`homeKey`. Renaming the schema field would break existing `.strata` files for
+a cosmetic gain; the divergence is logged for a future migration.
+
+---
+
+**Decision:** Accidentals are transliterated to Unicode on input in the
+Roman-numeral and tonic fields (`Span.keyArea`, `PointMarker.harmonicContext`,
+`homeKey.tonic`): `bVI` becomes `♭VI`, `F#` becomes `F♯`. The **canonical
+Unicode form is what gets stored.**
+
+**Rationale:** Devin: "there's probably something that needs to be done about
+making 'bVI' into '♭VI'." Storing one canonical form means a corpus query
+never has to match two spellings of the same analytical claim, which is the
+whole point of these fields being separate from free text. Accepting ASCII on
+input keeps typing fast. The cost is marginally less typeable raw JSON, which
+is the right trade for a format whose purpose is queryability. Deliberately
+scoped to fields whose contents are known to be note names or Roman numerals —
+it must never run over free text, where `b` is a letter. A symbol palette for
+free-text fields is tracked separately (backlog #27).
+
+---
+
+**Decision:** Point markers move out of the timeline ruler and into the form
+diagram as a bottom-anchored annotation band. This reverses the 2026-07-04
+decision that placed the marker lane above the ruler's tick row.
+
+**Rationale:** Devin asked for it on visual grounds ("I wanted it to be part
+of the form diagram"), but the deciding argument is architectural: the ruler
+is editor chrome, and `_private/open-questions.md` already requires that
+export serialize the render path only. Markers in the ruler therefore sit
+outside the export boundary and could never appear in an exported graphic —
+while the whole point of a `V:PAC` caption is that it is part of the figure.
+The 07-04 placement was not wrong for the reasons it was decided; the export
+requirement simply outranks them. Implementation tracked as backlog #25.
+
+---
+
+**Decision:** Label *placement* is the application's job; label *content* is
+the analyst's. No manual placement controls in v1.
+
+**Rationale:** BriFormer offers a 3x3 grid of text boxes per marker plus
+cardinal nudge arrows; Devin: "I freaking hate this setup... a pain in the
+butt to actually work with." That grid exists because BriFormer has no layout
+engine and outsources layout to the human — in the Mendelssohn reference, one
+label ("marked diversion") is manually split across two cells purely to dodge
+a neighbouring bracket. Strata already runs a neighbour-aware layout pass
+(`layoutLayerLabels`), so importing that workaround would mean adopting a
+manual solution to a solved problem. The precedent is `shortLabel`
+(2026-07-03): when a label would not fit, the escape hatch was different
+*content*, never analyst-supplied coordinates. Manual nudging returns in copy
+mode (v2), where presentation is the explicit purpose.
+
+---
+
+**Fix:** Clicking an existing point marker created a duplicate at the same
+timestamp. `beginMarkerDrag` called `stopPropagation()` on `pointerdown`,
+which does not stop the subsequent `click` from reaching the lane's
+place-marker handler, so selecting a marker also placed one. The lane now
+defers to a pointerdown that landed on a marker.
+
+**Rationale:** Recorded because the failure was invisible in the obvious way —
+placement snaps to nearby markers, so the duplicate landed exactly on top of
+the original, and the only symptom was an unexplained dirty-document flag.
+
+---
+
+## Marker Band, Absent Events, and the Diagram Control Bar (2026-07-24, cont.)
+
+---
+
+**Decision:** The marker band reserves no vertical space when a document has
+no point markers.
+
+**Rationale:** An empty band was originally kept as a click target for placing
+a first marker. Devin's call: the space is better spent on a control bar, and
+placement is still reachable from the `M` key and the transport button, so
+nothing becomes unreachable. Exactly 24px is reclaimed (top gap + one row +
+bottom gap).
+
+---
+
+**Decision:** `PointMarker.absent` gets a UI control, leading the panel on
+`kind: 'cadence'`. Its caption renders struck through.
+
+**Rationale:** The field has been in the schema since Phase 0.1 with no UI, on
+the reasoning that surfacing it risked premature design. The BriFormer
+Mendelssohn reference resolved that: a struck-through `CAD` is the conventional
+notation for a cadence that was promised and evaded, so both the control and
+its rendering have an established form to follow. It leads on a cadence because
+the evaded cadence is the case the field exists for — an expected cadence that
+does not arrive is the analytical claim, not a missing record. This also keeps
+the strike **semantic** rather than a formatting toggle, so "how many evaded
+cadences" stays a query rather than a search for styling (see the
+per-label-typography split in open-questions.md).
+
+---
+
+**Decision:** A thin `DiagramControlBar` runs along the bottom of the form
+diagram widget, carrying Boundary, Marker, and Merge, each labelled with its
+keyboard shortcut and disabled when unavailable.
+
+**Rationale:** Devin asked for "some kind of thin control bar to have the
+shortcuts on" in the space the empty band gave up. It also closes a gap the
+Phase 0.5 merge decisions had already specified but which was never built —
+"a persistent toolbar button is always visible; its disabled/enabled state
+communicates merge eligibility at a glance." Until now Ctrl+J, the context
+menu, and the metadata panel were the only routes to merge, and none of them
+answers "can I merge right now?" at a glance. The disabled state carries the
+eligibility reason as its tooltip.
+
+---
+
+**Decision:** Spacebar's shortcut chip lives on the control bar's Boundary
+button and is **live** — it appears only while playback is running. The
+persistent `Space: boundary / Space: play` indicator is removed from the
+transport bar.
+
+**Rationale:** Space is context-dependent: it places a boundary while playing
+and starts playback while paused (Phase 0.4 §8). An earlier draft of this
+decision excluded Space from the bar entirely, on the grounds that a fixed
+label would be wrong half the time and the transport already carried a live
+indicator. Devin's correction: that indicator sitting in the player chrome is
+itself the problem the control bar is meant to solve. A live chip resolves both
+concerns — it is never wrong, because it is present exactly when Space does
+that job, and the shortcut now reads next to the operation it performs instead
+of in the transport. Phase 0.4 §8's requirement that the current meaning of
+Space always be visible is still satisfied, just in a better location.
+
+---
+
+**Decision:** The point-marker button is removed from the transport bar. Marker
+placement is offered by the control bar and the `M` key only.
+
+**Rationale:** The same consolidation, spotted by Devin immediately after the
+Space one. Now that markers render inside the form diagram rather than in the
+ruler, the controls that create them belong to the diagram too — a transport
+button for a diagram operation was a leftover from when the marker lane lived
+in the player chrome's neighbourhood. The `M` handler itself stays in
+`PlayerDock` (it is a global shortcut and needs no active layer); only the
+button moved.
+
+The general principle these two share, worth applying to anything added later:
+**a control belongs to the surface that owns the thing it acts on.** The
+transport owns playback; the diagram owns spans, markers, and their structure.
+
+---
+
+**Fix:** Clicking a marker in the band cleared the span selection instead of
+selecting the marker. The marker's `<g>` stopped `pointerdown`, but the `click`
+still bubbled to the canvas container's clear-selection handler.
+
+**Rationale:** Second instance of the same trap in one session (the first
+produced duplicate markers in the ruler lane). The general rule for this
+codebase: when a child element handles `pointerdown` and an ancestor handles
+`click`, `stopPropagation` on the former does not protect against the latter —
+both handlers need to agree, or the child must stop the click too.
+
+---
+
+**Fix:** A boxed cadence caption sat flush against the widget card's bottom
+border and read as clipped. The band had a top gap but no bottom gap;
+`BAND_BOTTOM_GAP` now gives it 5px of clearance.
