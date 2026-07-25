@@ -20,6 +20,8 @@ import { MIN_SPAN_WIDTH } from '@/lib/spanEdit'
 import { capFromBoundaryType } from '@/lib/formShape'
 import { slugify } from '@/lib/slug'
 import { ColorPicker } from '@/components/ui/color-picker'
+import { Field, inputClass } from '@/components/Field'
+import { toAccidentals } from '@/lib/musicSymbols'
 import type {
   Span,
   Layer,
@@ -30,33 +32,11 @@ import type {
   LineStyle,
 } from '@/types/strata'
 
-// ---------------------------------------------------------------------------
-// Small field primitives
-// ---------------------------------------------------------------------------
-
-function Field({
-  label,
-  helper,
-  children,
-}: {
-  label: string
-  helper?: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="mb-3">
-      <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </label>
-      {children}
-      {helper && <p className="mt-0.5 text-[10px] text-muted-foreground">{helper}</p>}
-    </div>
-  )
-}
-
-const inputClass =
-  'w-full rounded border border-border bg-card px-2 py-1 text-xs text-foreground ' +
-  'focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground'
+// Key area is offered in two places (leading the panel on a bar layer, tucked
+// into Advanced otherwise) and again for multi-select. One string each, so the
+// three can't drift apart the way they previously did.
+const KEY_AREA_TIP = 'Relative to the home key.'
+const KEY_AREA_PLACEHOLDER = 'e.g. vi, III'
 
 /**
  * Editable timecode field. Shows the formatted value; on Enter/blur it parses
@@ -338,14 +318,11 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
 
         {/* Short label — shown in place of the full label when the diagram is
             too zoomed out to fit it; never abbreviated further by the app. */}
-        <Field
-          label="Short label"
-          helper="Used above the shape when the full label doesn't fit, e.g. 'Verse 1' → 'V1'"
-        >
+        <Field label="Short label" tooltip="Shown when the full label doesn't fit.">
           <input
             className={inputClass}
             value={span.shortLabel ?? ''}
-            placeholder="None"
+            placeholder="e.g. V1"
             onChange={(e) => update({ shortLabel: e.target.value || null })}
           />
         </Field>
@@ -353,15 +330,12 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         {/* Key area — leads the panel on a key-area (bar) layer, since that's
             the whole point of the layer; tucked into Advanced otherwise. */}
         {isBar && (
-          <Field
-            label="Key area"
-            helper="Free text, conventionally a Roman numeral relative to the document's home key — e.g. 'vi', 'V/V'"
-          >
+          <Field label="Key area" tooltip={KEY_AREA_TIP}>
             <input
               className={inputClass}
               value={span.keyArea ?? ''}
-              placeholder="None"
-              onChange={(e) => update({ keyArea: e.target.value || null })}
+              placeholder={KEY_AREA_PLACEHOLDER}
+              onChange={(e) => update({ keyArea: toAccidentals(e.target.value) || null })}
             />
           </Field>
         )}
@@ -402,7 +376,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         </Field>
 
         {/* Annotation */}
-        <Field label="Annotation" helper="Diagram-visible — renders inside the shape">
+        <Field label="Annotation" helper="Renders inside the shape.">
           <textarea
             className={`${inputClass} resize-y`}
             rows={2}
@@ -479,7 +453,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         )}
 
         {/* Notes */}
-        <Field label="Notes" helper="Tooltip only — not shown on the diagram">
+        <Field label="Notes" helper="Not shown on the diagram.">
           <textarea
             className={`${inputClass} resize-y`}
             rows={2}
@@ -528,15 +502,12 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         {/* Key area — secondary here since this layer isn't shape-dedicated to
             it; leads the panel instead on a key-area (bar) layer, above. */}
         {!isBar && (
-          <Field
-            label="Key area"
-            helper="Free text, conventionally a Roman numeral relative to the document's home key — e.g. 'vi', 'V/V'"
-          >
+          <Field label="Key area" tooltip={KEY_AREA_TIP}>
             <input
               className={inputClass}
               value={span.keyArea ?? ''}
-              placeholder="None"
-              onChange={(e) => update({ keyArea: e.target.value || null })}
+              placeholder={KEY_AREA_PLACEHOLDER}
+              onChange={(e) => update({ keyArea: toAccidentals(e.target.value) || null })}
             />
           </Field>
         )}
@@ -675,7 +646,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
           <input
             className={inputClass}
             value={label === MIXED ? '' : label}
-            placeholder={label === MIXED ? 'Mixed — type to set all' : 'Unlabeled'}
+            placeholder={label === MIXED ? 'Mixed. Type to set all.' : 'Unlabeled'}
             onChange={(e) => {
               const v = e.target.value
               const next = v === '' ? null : v
@@ -701,18 +672,18 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
         </Field>
 
         {/* Annotation */}
-        <Field label="Annotation" helper="Diagram-visible — renders inside the shape">
+        <Field label="Annotation" helper="Renders inside the shape.">
           <textarea
             className={`${inputClass} resize-y`}
             rows={2}
             value={annotation === MIXED ? '' : annotation}
-            placeholder={annotation === MIXED ? 'Mixed — type to set all' : ''}
+            placeholder={annotation === MIXED ? 'Mixed. Type to set all.' : ''}
             onChange={(e) => setAll({ annotation: e.target.value || null })}
           />
         </Field>
 
         {/* Confidence */}
-        <Field label="Confidence" helper={confidence === MIXED ? 'Mixed across selection' : undefined}>
+        <Field label="Confidence" helper={confidence === MIXED ? 'Mixed' : undefined}>
           <Segmented
             options={CONFIDENCE_OPTS}
             value={confidence === MIXED ? ('' as ConfidenceLevel) : confidence}
@@ -793,7 +764,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
         </div>
 
         {/* Stroke */}
-        <Field label="Stroke" helper={lineStyle === MIXED ? 'Mixed across selection' : undefined}>
+        <Field label="Stroke" helper={lineStyle === MIXED ? 'Mixed' : undefined}>
           <Segmented
             options={LINESTYLE_OPTS}
             value={lineStyle === MIXED ? ('' as LineStyle) : lineStyle}
@@ -807,18 +778,22 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
             className={`${inputClass} resize-y`}
             rows={2}
             value={lyrics === MIXED ? '' : lyrics}
-            placeholder={lyrics === MIXED ? 'Mixed — type to set all' : ''}
+            placeholder={lyrics === MIXED ? 'Mixed. Type to set all.' : ''}
             onChange={(e) => setAll({ lyrics: e.target.value || null })}
           />
         </Field>
 
         {/* Key area — free text, conventionally a Roman numeral relative to homeKey */}
-        <Field label="Key area" helper={keyArea === MIXED ? 'Mixed' : 'Corpus-queryable'}>
+        <Field
+          label="Key area"
+          tooltip={KEY_AREA_TIP}
+          helper={keyArea === MIXED ? 'Mixed' : 'Corpus-queryable'}
+        >
           <input
             className={inputClass}
             value={keyArea === MIXED ? '' : keyArea}
-            placeholder={keyArea === MIXED ? 'Mixed — type to set all' : 'None'}
-            onChange={(e) => setAll({ keyArea: e.target.value || null })}
+            placeholder={keyArea === MIXED ? 'Mixed. Type to set all.' : KEY_AREA_PLACEHOLDER}
+            onChange={(e) => setAll({ keyArea: toAccidentals(e.target.value) || null })}
           />
         </Field>
 

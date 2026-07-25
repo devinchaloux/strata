@@ -602,6 +602,8 @@ export function FormDiagram() {
             setScrollOffset={timeline.setScrollOffset}
             pointMarkers={doc.pointMarkers}
             sharedTimePoints={doc.sharedTimePoints}
+            pointMarkerTypes={doc.vocabulary.pointMarkerTypes}
+            showCaptions={doc.showCadenceCaptions ?? true}
             selectedMarkerId={selectedMarkerId}
             onSelectMarker={selectPointMarker}
             onPlaceMarker={(time) => {

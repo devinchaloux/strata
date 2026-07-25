@@ -1,7 +1,9 @@
+import * as React from 'react'
 import { useRef } from 'react'
 import { generateTicks, snapTime } from '@/lib/timeline'
+import { formatMarkerCaption } from '@/lib/pointMarkerTypes'
 import { TimelineScrollbar } from './TimelineScrollbar'
-import type { PointMarker, SharedTimePoint } from '@/types/strata'
+import type { PointMarker, SharedTimePoint, VocabTerm } from '@/types/strata'
 
 const RULER_HEIGHT = 24  // px — condensed ruler (the timeline reads tighter now)
 const TICK_HEIGHT = 7    // px — tick line length at bottom of ruler
@@ -33,6 +35,10 @@ export interface TimelineAxisProps {
   onSelectMarker?: (id: string) => void
   onPlaceMarker?: (time: number) => void
   onMoveMarker?: (id: string, time: number) => void
+  /** Document-level custom marker types, for resolving a caption's abbreviation. */
+  pointMarkerTypes?: VocabTerm[]
+  /** StrataDocument.showCadenceCaptions. Absent in the document means true. */
+  showCaptions?: boolean
 }
 
 // Presentational ruler. The timeline state lives in useTimeline, lifted to
@@ -53,6 +59,8 @@ export function TimelineAxis({
   onSelectMarker,
   onPlaceMarker,
   onMoveMarker,
+  pointMarkerTypes = [],
+  showCaptions = true,
 }: TimelineAxisProps) {
   const ticks = generateTicks(duration, pps, scrollOffset, viewportWidth)
   const laneRef = useRef<HTMLDivElement>(null)
@@ -75,7 +83,15 @@ export function TimelineAxis({
     return Math.max(0, Math.min(duration, (x + scrollOffset) / pps))
   }
 
+  // A pointerdown on an existing marker calls stopPropagation, but that only
+  // stops the pointerdown — the click event that follows still reaches the
+  // lane, which would place a duplicate marker on top of the one just
+  // selected. Both gestures start with a pointerdown, so record which target
+  // it landed on and let the lane's click defer to it.
+  const pointerDownOnMarker = useRef(false)
+
   function handleLaneClick(e: React.MouseEvent) {
+    if (pointerDownOnMarker.current) return
     if (!onPlaceMarker) return
     const time = laneClientXToTime(e.clientX)
     if (time == null) return
@@ -88,6 +104,7 @@ export function TimelineAxis({
   function beginMarkerDrag(marker: PointMarker) {
     return (e: React.PointerEvent) => {
       e.stopPropagation()
+      pointerDownOnMarker.current = true
       if (pps <= 0) return
       const startClientX = e.clientX
       let dragged = false
@@ -134,6 +151,9 @@ export function TimelineAxis({
       {hasDocument && (
         <div
           ref={laneRef}
+          onPointerDown={() => {
+            pointerDownOnMarker.current = false
+          }}
           onClick={handleLaneClick}
           role="presentation"
           title="Click to place a point marker"
@@ -155,39 +175,60 @@ export function TimelineAxis({
             {pointMarkers.map((marker) => {
               const x = marker.timestamp * pps
               const selected = marker.id === selectedMarkerId
-              const label = marker.label || marker.type || null
+              const caption = formatMarkerCaption(marker, pointMarkerTypes)
+              const label = marker.label || caption || null
               return (
-                <div
-                  key={marker.id}
-                  onPointerDown={beginMarkerDrag(marker)}
-                  title={label ?? `Marker at ${marker.timestamp.toFixed(2)}s`}
-                  className="absolute select-none"
-                  style={{
-                    left: x - 6,
-                    top: 0,
-                    width: 12,
-                    height: MARKER_LANE_HEIGHT,
-                    display: 'flex',
-                    justifyContent: 'center',
-                    cursor: 'ew-resize',
-                    touchAction: 'none',
-                  }}
-                >
+                <React.Fragment key={marker.id}>
                   <div
-                    aria-hidden
+                    onPointerDown={beginMarkerDrag(marker)}
+                    title={label ?? `Marker at ${marker.timestamp.toFixed(2)}s`}
+                    className="absolute select-none"
                     style={{
-                      width: MARKER_RADIUS * 2,
-                      height: MARKER_RADIUS * 2,
-                      marginTop: (MARKER_LANE_HEIGHT - MARKER_RADIUS * 2) / 2,
-                      borderRadius: 1,
-                      transform: 'rotate(45deg)',
-                      backgroundColor: marker.flagged
-                        ? 'hsl(var(--destructive))'
-                        : 'hsl(var(--primary))',
-                      boxShadow: selected ? '0 0 0 2px hsl(var(--ring))' : undefined,
+                      left: x - 6,
+                      top: 0,
+                      width: 12,
+                      height: MARKER_LANE_HEIGHT,
+                      display: 'flex',
+                      justifyContent: 'center',
+                      cursor: 'ew-resize',
+                      touchAction: 'none',
                     }}
-                  />
-                </div>
+                  >
+                    <div
+                      aria-hidden
+                      style={{
+                        width: MARKER_RADIUS * 2,
+                        height: MARKER_RADIUS * 2,
+                        marginTop: (MARKER_LANE_HEIGHT - MARKER_RADIUS * 2) / 2,
+                        borderRadius: 1,
+                        transform: 'rotate(45deg)',
+                        backgroundColor: marker.flagged
+                          ? 'hsl(var(--destructive))'
+                          : 'hsl(var(--primary))',
+                        boxShadow: selected ? '0 0 0 2px hsl(var(--ring))' : undefined,
+                      }}
+                    />
+                  </div>
+                  {/* Caption sits to the right of the diamond. pointer-events
+                      off so it never intercepts a lane click or a drag on a
+                      marker underneath it. */}
+                  {showCaptions && caption && (
+                    <div
+                      className="absolute select-none whitespace-nowrap"
+                      style={{
+                        left: x + 6,
+                        top: 0,
+                        height: MARKER_LANE_HEIGHT,
+                        lineHeight: `${MARKER_LANE_HEIGHT}px`,
+                        fontSize: 9,
+                        pointerEvents: 'none',
+                        color: selected ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))',
+                      }}
+                    >
+                      {caption}
+                    </div>
+                  )}
+                </React.Fragment>
               )
             })}
           </div>
