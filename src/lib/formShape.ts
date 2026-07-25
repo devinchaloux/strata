@@ -28,13 +28,16 @@
  * colored fill reads as a solid block. One path, two idioms, no special-casing.
  */
 
-import type { BoundaryType, CapStyle, LineStyle } from '@/types/strata'
+import type { BoundaryType, CapStyle, LineStyle, Layer } from '@/types/strata'
 
 // ---------------------------------------------------------------------------
 // Metrics (starting values; tweakable once seen on real data)
 // ---------------------------------------------------------------------------
 
-export const SHAPE_HEIGHT = 28 // uniform across all layers (the BriFormer cue)
+export const SHAPE_HEIGHT = 28 // bracket layers (the BriFormer cue)
+// Key-area ("bar") layers: a thin flat rect, not a bracket — the shape doesn't
+// need the full bracket height (docs/decisions.md "Key-Area Bar Layers").
+export const BAR_HEIGHT = 10
 export const CORNER_RADIUS = 10 // rounded-cap corner curve — deliberately round vs square
 export const ANGLE_INSET = 9 // horizontal run of an angled cap's diagonal tail
 export const STROKE_WIDTH = 1.5
@@ -47,23 +50,51 @@ export const ISLAND_INSET = 1.5 // px inset per side → ~3px gap (2px read as a
  * reserved row — it is drawn just above the shape, overhanging up into the open
  * interior (negative space) of the bracket above it.
  *
- *   LAYER_PITCH   vertical advance per layer = shape + hairline gap
+ *   LAYER_PITCH   vertical advance for a bracket-shape layer = shape + hairline gap
  *   STACK_TOP_PAD headroom above the top layer for its label
  *   LABEL_RISE    how far a label baseline sits above its shape's top edge
+ *
+ * Bar-shape (key-area) layers are thinner, so the stack is no longer uniform
+ * per-layer height — layerBodyHeight/layerPitch resolve each layer's own
+ * height from its spanShape; stackHeight/shapeTopY sum across the actual list.
  */
 export const LAYER_GAP = 3
 export const LAYER_PITCH = SHAPE_HEIGHT + LAYER_GAP
 export const STACK_TOP_PAD = 18
 export const LABEL_RISE = 4
 
-/** Total pixel height of a flush stack of n visible layers. */
-export function stackHeight(layerCount: number): number {
-  return STACK_TOP_PAD + layerCount * LAYER_PITCH
+/** A layer's shape body height, resolved from its spanShape (bracket = default). */
+export function layerBodyHeight(layer: Layer): number {
+  return layer.spanShape === 'bar' ? BAR_HEIGHT : SHAPE_HEIGHT
+}
+
+/** A layer's vertical advance in the stack = its body height + the hairline gap. */
+export function layerPitch(layer: Layer): number {
+  return layerBodyHeight(layer) + LAYER_GAP
+}
+
+/** Total pixel height of a flush stack of the given (visible) layers. */
+export function stackHeight(layers: Layer[]): number {
+  return STACK_TOP_PAD + layers.reduce((sum, l) => sum + layerPitch(l), 0)
 }
 
 /** Top-edge y of the shape for layer index i (0 = top of the stack). */
-export function shapeTopY(i: number): number {
-  return STACK_TOP_PAD + i * LAYER_PITCH
+export function shapeTopY(layers: Layer[], i: number): number {
+  let y = STACK_TOP_PAD
+  for (let j = 0; j < i; j++) y += layerPitch(layers[j])
+  return y
+}
+
+/** Which layer index a given y (container-local, px) falls within. Clamps to
+ *  the valid range; returns 0 for an empty layer list. */
+export function layerIndexAtY(layers: Layer[], y: number): number {
+  if (layers.length === 0) return 0
+  let acc = STACK_TOP_PAD
+  for (let i = 0; i < layers.length; i++) {
+    acc += layerPitch(layers[i])
+    if (y < acc) return i
+  }
+  return layers.length - 1
 }
 
 // ---------------------------------------------------------------------------

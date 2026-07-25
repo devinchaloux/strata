@@ -14,15 +14,25 @@
 import { PanelRightClose, PanelRightOpen, X } from 'lucide-react'
 import { useUIStore } from '@/store/uiStore'
 import { MetadataPanel } from './MetadataPanel'
+import { PointMarkerPanel } from './PointMarkerPanel'
 
 const PANEL_WIDTH = 288
 const RAIL_WIDTH = 32
 
 export function Inspector({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   const count = useUIStore((s) => s.selectedSpanIds.length)
+  const selectedMarkerId = useUIStore((s) => s.selectedPointMarkerId)
   const clearSelection = useUIStore((s) => s.clearSelection)
-  const hasSelection = count > 0
-  const title = !hasSelection ? 'Inspector' : count === 1 ? 'Span' : `${count} spans`
+  const selectPointMarker = useUIStore((s) => s.selectPointMarker)
+  const hasMarkerSelection = selectedMarkerId !== null
+  const hasSelection = count > 0 || hasMarkerSelection
+  const title = hasMarkerSelection
+    ? 'Marker'
+    : count === 0
+      ? 'Inspector'
+      : count === 1
+        ? 'Span'
+        : `${count} spans`
 
   if (collapsed) {
     return (
@@ -68,6 +78,7 @@ export function Inspector({ collapsed, onToggle }: { collapsed: boolean; onToggl
           <button
             onClick={() => {
               clearSelection()
+              selectPointMarker(null)
               onToggle()
             }}
             className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -81,7 +92,9 @@ export function Inspector({ collapsed, onToggle }: { collapsed: boolean; onToggl
 
       {/* Contextual content — owns the scroll so it can be arbitrarily long. */}
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {hasSelection ? (
+        {hasMarkerSelection ? (
+          <PointMarkerPanel />
+        ) : hasSelection ? (
           <MetadataPanel />
         ) : (
           <div className="flex h-full items-center justify-center px-6 text-center">

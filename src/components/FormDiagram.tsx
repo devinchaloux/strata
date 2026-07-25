@@ -48,6 +48,7 @@ import { TimelineAxis } from './TimelineAxis'
 import { FormLayers } from './FormLayers'
 import { LayerSettingsPopover } from './LayerSettingsPopover'
 import { AddLayerPopover } from './AddLayerPopover'
+import { DiagramControlBar } from './DiagramControlBar'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,7 +61,8 @@ import {
 } from '@/components/ui/alert-dialog'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { LAYER_PITCH, STACK_TOP_PAD, stackHeight } from '@/lib/formShape'
+import { STACK_TOP_PAD, stackHeight, layerPitch } from '@/lib/formShape'
+import { markerBandHeight } from '@/lib/markerBand'
 import type { Layer, FormDiagramData } from '@/types/strata'
 
 const HEADER_WIDTH_EXPANDED = 140
@@ -124,7 +126,7 @@ function SortableLayerHeaderRow({
   }
 
   const style: React.CSSProperties = {
-    height: LAYER_PITCH,
+    height: layerPitch(layer),
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.6 : 1,
@@ -529,7 +531,13 @@ export function FormDiagram() {
   const visible = sorted.filter((l) => l.visibility)
   const hidden = sorted.filter((l) => !l.visibility)
 
-  const stackH = stackHeight(visible.length)
+  // The widget card must also make room for the marker band that FormLayers
+  // draws below the stack, or the band is clipped by the card.
+  const stackH = stackHeight(visible) + markerBandHeight(
+    doc.pointMarkers,
+    doc.vocabulary.pointMarkerTypes,
+    timeline.pps,
+  )
   const headerWidth = collapsed ? HEADER_WIDTH_RAIL : HEADER_WIDTH_EXPANDED
 
   return (
@@ -573,6 +581,7 @@ export function FormDiagram() {
           <LayerHeaders layers={visible} collapsed={collapsed} />
           <FormLayers layers={visible} />
         </div>
+        <DiagramControlBar />
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 rounded-md"

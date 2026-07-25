@@ -8,9 +8,34 @@ import {
   elisionInnerLine,
   layoutLayerLabels,
   edgeAwareJustification,
+  layerBodyHeight,
+  layerPitch,
+  stackHeight,
+  shapeTopY,
+  layerIndexAtY,
   type SpanLabelInput,
   CORNER_RADIUS,
+  SHAPE_HEIGHT,
+  BAR_HEIGHT,
+  LAYER_GAP,
+  STACK_TOP_PAD,
 } from '@/lib/formShape'
+import type { Layer } from '@/types/strata'
+
+function makeLayer(spanShape?: 'bracket' | 'bar'): Layer {
+  return {
+    id: `layer-${spanShape ?? 'bracket'}-${Math.random()}`,
+    type: 'form-diagram',
+    label: 'L',
+    visibility: true,
+    locked: false,
+    fillColorDefault: '#ffffff',
+    strokeColorDefault: '#475569',
+    displayOrder: 0,
+    spanShape,
+    data: { hierarchicalEnforcement: false, spans: [] },
+  }
+}
 
 describe('estimateTextWidth', () => {
   it('scales with length and font size', () => {
@@ -283,5 +308,47 @@ describe('elisionInnerLine', () => {
     const end = elisionInnerLine('elision', 'end', 100, 28, 0)!
     expect(start).toContain('M 3 28')
     expect(end).toContain('M 97 28')
+  })
+})
+
+describe('layer stacking with variable (bracket vs. bar) heights', () => {
+  it('layerBodyHeight resolves bracket (default) vs. bar', () => {
+    expect(layerBodyHeight(makeLayer())).toBe(SHAPE_HEIGHT)
+    expect(layerBodyHeight(makeLayer('bracket'))).toBe(SHAPE_HEIGHT)
+    expect(layerBodyHeight(makeLayer('bar'))).toBe(BAR_HEIGHT)
+  })
+
+  it('layerPitch adds the hairline gap to the body height', () => {
+    expect(layerPitch(makeLayer())).toBe(SHAPE_HEIGHT + LAYER_GAP)
+    expect(layerPitch(makeLayer('bar'))).toBe(BAR_HEIGHT + LAYER_GAP)
+  })
+
+  it('stackHeight sums each layer\'s own pitch, not a uniform one', () => {
+    const layers = [makeLayer(), makeLayer('bar'), makeLayer()]
+    const expected = STACK_TOP_PAD + 2 * (SHAPE_HEIGHT + LAYER_GAP) + (BAR_HEIGHT + LAYER_GAP)
+    expect(stackHeight(layers)).toBe(expected)
+  })
+
+  it('shapeTopY accumulates preceding layers\' actual pitches', () => {
+    const layers = [makeLayer('bar'), makeLayer(), makeLayer('bar')]
+    expect(shapeTopY(layers, 0)).toBe(STACK_TOP_PAD)
+    expect(shapeTopY(layers, 1)).toBe(STACK_TOP_PAD + (BAR_HEIGHT + LAYER_GAP))
+    expect(shapeTopY(layers, 2)).toBe(
+      STACK_TOP_PAD + (BAR_HEIGHT + LAYER_GAP) + (SHAPE_HEIGHT + LAYER_GAP),
+    )
+  })
+
+  it('layerIndexAtY finds the band a y-coordinate falls in', () => {
+    const layers = [makeLayer('bar'), makeLayer(), makeLayer('bar')]
+    // Row 0 spans [STACK_TOP_PAD, STACK_TOP_PAD + BAR_HEIGHT + LAYER_GAP)
+    expect(layerIndexAtY(layers, STACK_TOP_PAD + 1)).toBe(0)
+    // Row 1 (bracket) starts right after row 0's pitch
+    expect(layerIndexAtY(layers, STACK_TOP_PAD + BAR_HEIGHT + LAYER_GAP + 1)).toBe(1)
+    // Far past the end clamps to the last row
+    expect(layerIndexAtY(layers, 10_000)).toBe(2)
+  })
+
+  it('layerIndexAtY returns 0 for an empty layer list', () => {
+    expect(layerIndexAtY([], 500)).toBe(0)
   })
 })

@@ -12,7 +12,7 @@ describe('StrataDocument shape', () => {
       artist: ['Avicii'],
       duration: 201.6,
       source: { type: 'youtube', url: 'https://www.youtube.com/watch?v=_ovdm2yX4MA', sourceOffset: 0 },
-      vocabulary: { spanTypes: [], pointMarkerTypes: [] },
+      vocabulary: { spanTypes: [], pointMarkerTypes: [], modes: [] },
       sharedTimePoints: [],
       layers: [],
       pointMarkers: [],

@@ -86,6 +86,9 @@
     "timeSignature": {
       "$ref": "#/$defs/TimeSignature"
     },
+    "homeKey": {
+      "$ref": "#/$defs/HomeKey"
+    },
 
     "source": {
       "$ref": "#/$defs/SourceReference"
@@ -116,6 +119,10 @@
       "type": "array",
       "items": { "$ref": "#/$defs/PointMarker" },
       "description": "Document-level point markers. Events in the recording (medial caesura, energy peak, flagged observation). Stored at the document level so they are visible across all layers without duplication."
+    },
+    "showCadenceCaptions": {
+      "type": "boolean",
+      "description": "Whether cadence-related point marker detail (type abbreviation, harmonic context) renders on the diagram. Point markers aren't layer-owned, so this is document-level rather than per-layer. Omit/absent = true (shown)."
     }
 
   },
@@ -168,6 +175,28 @@
       ]
     },
 
+    "HomeKey": {
+      "description": "The document's tonic and mode. Lets Span.keyArea and PointMarker.harmonicContext store a Roman-numeral RELATIONSHIP (e.g. 'vi', 'V/V') rather than an absolute key name, since the relationship is what's corpus-queryable across pieces in different keys. Null if not set.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["tonic", "mode"],
+          "additionalProperties": false,
+          "properties": {
+            "tonic": {
+              "type": "string",
+              "description": "Free text — e.g. 'A', 'F#', 'Bb'. Spelling (sharp vs. flat) is the analyst's call, not enum-constrained."
+            },
+            "mode": {
+              "type": ["string", "null"],
+              "description": "A VocabTerm id, resolved against vocabulary.modes plus the built-in modes list shipped in code (major, minor, and the church modes). Project-level custom modes (e.g. Renaissance 8-mode/12-mode systems) go in vocabulary.modes."
+            }
+          }
+        }
+      ]
+    },
+
     "SourceReference": {
       "type": "object",
       "required": ["type", "sourceOffset"],
@@ -198,7 +227,7 @@
 
     "Vocabulary": {
       "type": "object",
-      "required": ["spanTypes", "pointMarkerTypes"],
+      "required": ["spanTypes", "pointMarkerTypes", "modes"],
       "additionalProperties": false,
       "description": "Project-level custom vocabulary terms. pointMarkerTypes has v1 UI (required for classical scholars); spanTypes UI deferred to v2.",
       "properties": {
@@ -209,6 +238,11 @@
         "pointMarkerTypes": {
           "type": "array",
           "items": { "$ref": "#/$defs/VocabTerm" }
+        },
+        "modes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/VocabTerm" },
+          "description": "Project-level custom modes (e.g. Renaissance 8-mode/12-mode systems, or any terminology beyond the built-in major/minor/church-mode starter list shipped in code)."
         }
       }
     },
@@ -239,8 +273,8 @@
         },
         "kind": {
           "type": "string",
-          "enum": ["span", "point-marker"],
-          "description": "Whether this term applies to spans or point markers. Required for vocabulary pack import to route terms correctly."
+          "enum": ["span", "point-marker", "mode"],
+          "description": "Whether this term applies to spans, point markers, or modes. Required for vocabulary pack import to route terms correctly."
         },
         "source": {
           "type": "string",
@@ -357,6 +391,11 @@
           "$ref": "#/$defs/LayerRenderingConfig",
           "description": "Text rendering defaults for spans in this layer. Omit to use system defaults (label above/center, annotation inside/left)."
         },
+        "spanShape": {
+          "type": "string",
+          "enum": ["bracket", "bar"],
+          "description": "Visual style for this layer's spans. Absent/'bracket' = today's rendering (analytical bracket/arc shapes). 'bar' draws thin flat rects instead — intended for key-area layers (Span.keyArea captions), but the field is generic, not key-area-specific. A layer setting, buried in layer settings, not surfaced in the main add-layer flow. Purely visual; the same Span data model and interactions (spacebar, drag, merge) apply either way."
+        },
         "data": {
           "description": "Widget-specific data payload. Shape is determined by the type field.",
           "oneOf": [
@@ -443,6 +482,10 @@
           "type": ["string", "null"],
           "description": "Lyric text occurring during this span. Not displayed on the form diagram by default. Corpus-queryable. Feeds into the Written Analysis widget."
         },
+        "keyArea": {
+          "type": ["string", "null"],
+          "description": "Free text, conventionally a Roman numeral relative to StrataDocument.homeKey (e.g. 'vi', 'V/V'). Corpus-queryable independently of label/type. Renders as a caption spanning the span — most naturally on a layer with spanShape = 'bar', but the field applies to any span."
+        },
         "confidence": {
           "type": "string",
           "enum": ["definite", "approximate", "speculative"],
@@ -521,12 +564,17 @@
         },
         "harmonicContext": {
           "type": ["string", "null"],
-          "description": "Roman numeral key context for cadence point markers — e.g. 'V', 'I', 'bVI'. Display: '{harmonicContext}:{typeAbbreviation}' when set (e.g. 'V:HC', 'I:PAC'). Corpus-queryable independently of the cadence type field."
+          "description": "Free text, conventionally a Roman numeral relative to StrataDocument.homeKey (e.g. 'V' for a half cadence in the dominant). Rendered as its own text near the marker — never force-concatenated with type. Corpus-queryable independently of the cadence type field."
         },
         "confidence": {
           "type": "string",
           "enum": ["definite", "approximate", "speculative"],
           "description": "Analyst's confidence in the identification and placement of this event. Optional — omit for 'definite' (default)."
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["cadence", "key-change", "tempo-change", "flag", "other"],
+          "description": "Soft UI preset — picks which fields the Inspector panel leads with. Never restricts what data a marker can carry; every field remains reachable via 'more fields' regardless of kind. Omit/absent behaves like 'other'."
         }
       }
     }

@@ -12,6 +12,7 @@ import {
   clampScrollOffset,
   scrollbarMetrics,
   scrollOffsetFromThumbX,
+  snapTime,
 } from '@/lib/timeline'
 
 describe('computePps', () => {
@@ -144,5 +145,29 @@ describe('zoom bounds sanity', () => {
   it('absolute bounds bracket 100%', () => {
     expect(ABS_MIN_ZOOM).toBeLessThan(1)
     expect(ABS_MAX_ZOOM).toBeGreaterThan(1)
+  })
+})
+
+describe('snapTime', () => {
+  const pps = 10 // 10px/s → 6px threshold = 0.6s
+
+  it('snaps to the nearest candidate within the pixel threshold', () => {
+    expect(snapTime(10.5, [10.0, 20.0], pps)).toBe(10.0)
+  })
+
+  it('leaves time unchanged when no candidate is within threshold', () => {
+    expect(snapTime(10.5, [5.0, 20.0], pps)).toBe(10.5)
+  })
+
+  it('picks the closer of two candidates within threshold', () => {
+    expect(snapTime(10.2, [10.0, 10.3], pps)).toBe(10.3)
+  })
+
+  it('returns time unchanged with no candidates', () => {
+    expect(snapTime(10.5, [], pps)).toBe(10.5)
+  })
+
+  it('returns time unchanged when pps is not positive', () => {
+    expect(snapTime(10.5, [10.4], 0)).toBe(10.5)
   })
 })

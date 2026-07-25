@@ -19,6 +19,10 @@ export interface TimelineAxisProps {
 // Presentational ruler. The timeline state lives in useTimeline, lifted to
 // FormDiagram so the zoom controls can render in the widget top bar (off the
 // time labels) — the ruler just draws ticks, cursor, and the scrollbar.
+//
+// Point markers used to live in a lane above the ticks. They now render inside
+// the form diagram (FormLayers) so they belong to the exported graphic rather
+// than the editor chrome — see docs/decisions.md, 2026-07-24.
 export function TimelineAxis({
   containerRef,
   pps,

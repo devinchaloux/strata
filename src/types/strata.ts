@@ -64,6 +64,21 @@ export interface TimeSignature {
 }
 
 // ---------------------------------------------------------------------------
+// Home Key
+// ---------------------------------------------------------------------------
+
+/**
+ * The document's tonic and mode. Lets Span.keyArea and PointMarker.harmonicContext
+ * store a Roman-numeral RELATIONSHIP (e.g. "vi", "V/V") rather than an absolute
+ * key name — the relationship is what's corpus-queryable across a corpus of
+ * different pieces in different keys.
+ */
+export interface HomeKey {
+  tonic: string        // Free text — "A", "F#", "Bb" — spelling is the analyst's call
+  mode: string | null  // VocabTerm id, resolved against vocabulary.modes (+ built-in modes list)
+}
+
+// ---------------------------------------------------------------------------
 // Vocabulary
 // ---------------------------------------------------------------------------
 
@@ -73,8 +88,8 @@ export interface VocabTerm {
   label: string
   description?: string
   color?: string | null
-  /** Whether this term applies to spans or point markers. Required for vocab pack import. */
-  kind?: 'span' | 'point-marker'
+  /** Whether this term applies to spans, point markers, or modes. Required for vocab pack import. */
+  kind?: 'span' | 'point-marker' | 'mode'
   /** Pack provenance string, e.g. "My Pack v1.0.0". Set on import; absent for built-ins. */
   source?: string
 }
@@ -82,6 +97,8 @@ export interface VocabTerm {
 export interface Vocabulary {
   spanTypes: VocabTerm[]
   pointMarkerTypes: VocabTerm[]
+  /** Project-level custom modes (e.g. Renaissance 8-mode/12-mode systems). See lib/modes.ts for the built-in starter list, which ships in code rather than here. */
+  modes: VocabTerm[]
 }
 
 // ---------------------------------------------------------------------------
@@ -126,6 +143,9 @@ export interface Span {
   annotation?: string | null     // Diagram-visible analytical text (on span body)
   notes?: string | null          // Tooltip-only; not rendered on diagram
   lyrics?: string | null         // Lyric text; corpus-queryable
+  keyArea?: string | null        // Free text, conventionally a Roman numeral relative to
+                                  // StrataDocument.homeKey (e.g. "vi", "V/V"). Corpus-queryable.
+                                  // Renders as a caption spanning the span (see Layer.spanShape).
   confidence?: ConfidenceLevel   // Queryable data; omit for "definite". Does NOT affect rendering.
   startBoundaryType?: BoundaryType | null // Queryable data; does NOT affect rendering
   endBoundaryType?: BoundaryType | null   // Queryable data; does NOT affect rendering
@@ -156,7 +176,16 @@ export interface PointMarker {
   flagged?: boolean            // "Come back to this." Omit for false (default)
   absent?: boolean             // "Expected event explicitly absent." No v1 UI. Omit for false.
   confidence?: ConfidenceLevel // Omit for "definite" (default)
-  harmonicContext?: string | null // Roman numeral key context, e.g. "V", "I", "bVI". Display: "{hc}:{typeAbbr}"
+  harmonicContext?: string | null // Free text, conventionally a Roman numeral relative to
+                                   // StrataDocument.homeKey (e.g. "V" for a half cadence in the
+                                   // dominant). Rendered as its own text near the marker — never
+                                   // force-concatenated with `type`.
+  /**
+   * Soft UI preset — picks which fields the Inspector panel leads with. Never
+   * restricts what data a marker can carry; every field remains reachable via
+   * "more fields" regardless of kind. Omit/undefined behaves like 'other'.
+   */
+  kind?: 'cadence' | 'key-change' | 'tempo-change' | 'flag' | 'other'
 }
 
 // ---------------------------------------------------------------------------
@@ -232,6 +261,15 @@ export interface Layer {
   position?: 'above' | 'below'
   /** Text rendering defaults for spans in this layer. */
   rendering?: LayerRenderingConfig
+  /**
+   * Visual style for this layer's spans. Absent/'bracket' = today's rendering
+   * (the analytical bracket/arc shapes). 'bar' draws thin flat rects instead —
+   * intended for key-area layers (Span.keyArea captions), but the field is
+   * generic, not key-area-specific. A layer setting, buried in Layer Settings,
+   * not surfaced in the main "add layer" flow. Purely visual — no data-model
+   * implication; the same Span/spacebar/drag/merge interactions apply either way.
+   */
+  spanShape?: 'bracket' | 'bar'
   data: LayerData
 }
 
@@ -258,6 +296,7 @@ export interface StrataDocument {
   notes?: string | null
   bpm?: number | null
   timeSignature?: TimeSignature | null
+  homeKey?: HomeKey | null
 
   source: SourceReference
 
@@ -268,4 +307,11 @@ export interface StrataDocument {
   sharedTimePoints: SharedTimePoint[]
   layers: Layer[]
   pointMarkers: PointMarker[]
+
+  /**
+   * Whether cadence-related point marker detail (type abbreviation, harmonic
+   * context) renders on the diagram. Point markers aren't layer-owned, so this
+   * is document-level rather than per-layer. Omit/absent = true (shown).
+   */
+  showCadenceCaptions?: boolean
 }

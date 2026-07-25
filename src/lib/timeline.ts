@@ -103,6 +103,32 @@ export function scrollbarMetrics(
   return { visible: true, thumbWidth, thumbX, maxThumbX, maxScroll }
 }
 
+/**
+ * Snap `time` to the nearest of `candidates` if one is within `thresholdPx`
+ * screen pixels (converted to seconds via `pps`); otherwise return `time`
+ * unchanged. Used for point-marker placement/drag — snapping to existing
+ * span boundaries and other markers already on the timeline.
+ */
+export function snapTime(
+  time: number,
+  candidates: number[],
+  pps: number,
+  thresholdPx = 6,
+): number {
+  if (pps <= 0 || candidates.length === 0) return time
+  const thresholdSec = thresholdPx / pps
+  let nearest: number | null = null
+  let nearestDist = Infinity
+  for (const c of candidates) {
+    const d = Math.abs(c - time)
+    if (d < nearestDist) {
+      nearestDist = d
+      nearest = c
+    }
+  }
+  return nearest !== null && nearestDist <= thresholdSec ? nearest : time
+}
+
 /** Inverse of thumbX: map a thumb left position back to a clamped scrollOffset. */
 export function scrollOffsetFromThumbX(
   thumbX: number,

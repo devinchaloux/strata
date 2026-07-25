@@ -18,7 +18,11 @@
 import { useEffect, useState } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { formatTime } from '@/lib/youtube'
+import { BUILT_IN_MODES } from '@/lib/modes'
 import { SourceLinkForm } from '@/components/LinkSourceDialog'
+import { Switch } from '@/components/ui/switch'
+import { Field, inputClass } from '@/components/Field'
+import { toAccidentals } from '@/lib/musicSymbols'
 import {
   Dialog,
   DialogContent,
@@ -26,35 +30,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
-import type { AnalysisContext, TimeSignature } from '@/types/strata'
-
-// ---------------------------------------------------------------------------
-// Field primitives (local copies of MetadataPanel's — small, not worth sharing)
-// ---------------------------------------------------------------------------
-
-function Field({
-  label,
-  helper,
-  children,
-}: {
-  label: string
-  helper?: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="mb-3">
-      <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </label>
-      {children}
-      {helper && <p className="mt-0.5 text-[10px] text-muted-foreground">{helper}</p>}
-    </div>
-  )
-}
-
-const inputClass =
-  'w-full rounded border border-border bg-card px-2 py-1 text-xs text-foreground ' +
-  'focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground'
+import type { AnalysisContext, TimeSignature, HomeKey } from '@/types/strata'
 
 function Segmented<T extends string>({
   options,
@@ -84,6 +60,77 @@ function Segmented<T extends string>({
           </button>
         )
       })}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Mode picker — Major/Minor cover ~90% of analyses in one click; a quiet
+// "More modes…" link expands to the full list (built-in church modes +
+// project-level custom modes, e.g. Renaissance 8-mode/12-mode systems) via
+// the same VocabTerm mechanism as span/point-marker type pickers.
+// ---------------------------------------------------------------------------
+
+const MAJOR_MINOR: { value: 'major' | 'minor'; label: string }[] = [
+  { value: 'major', label: 'Major' },
+  { value: 'minor', label: 'Minor' },
+]
+
+function ModePicker({
+  value,
+  customModes,
+  onChange,
+}: {
+  value: string | null
+  customModes: { id: string; label: string }[]
+  onChange: (v: string | null) => void
+}) {
+  const isMajorMinor = value === 'major' || value === 'minor'
+  const [expanded, setExpanded] = useState(value != null && !isMajorMinor)
+
+  // If the mode changes to something other than Major/Minor (e.g. undo, or a
+  // freshly loaded document), auto-expand so it isn't hidden behind the link.
+  useEffect(() => {
+    if (value != null && !isMajorMinor) setExpanded(true)
+  }, [value, isMajorMinor])
+
+  const allModes = [...BUILT_IN_MODES, ...customModes]
+
+  return (
+    <div className="space-y-1.5">
+      <Segmented
+        options={MAJOR_MINOR}
+        value={(isMajorMinor ? value : '') as 'major' | 'minor'}
+        onChange={(v) => {
+          onChange(v)
+          setExpanded(false)
+        }}
+      />
+      {expanded ? (
+        <select
+          className={inputClass}
+          value={value ?? ''}
+          onChange={(e) => onChange(e.target.value || null)}
+        >
+          <option value="">— none —</option>
+          {allModes.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.label}
+            </option>
+          ))}
+          {value && !allModes.some((m) => m.id === value) && (
+            <option value={value}>{value}</option>
+          )}
+        </select>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="text-[10px] text-muted-foreground underline-offset-2 hover:underline"
+        >
+          More modes…
+        </button>
+      )}
     </div>
   )
 }
@@ -151,6 +198,14 @@ export function DocumentSettingsDialog({
         ? null
         : { numerator: num, denominator: den }
     updateMeta({ timeSignature: ts })
+  }
+
+  function commitHomeKey(patch: Partial<HomeKey>) {
+    if (!doc) return
+    const current = doc.homeKey ?? { tonic: '', mode: null }
+    const next = { ...current, ...patch }
+    const isEmpty = next.tonic.trim() === '' && next.mode === null
+    updateMeta({ homeKey: isEmpty ? null : next })
   }
 
   function commitOffset() {
@@ -261,6 +316,38 @@ export function DocumentSettingsDialog({
               </div>
             </Field>
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Home key — tonic">
+              <input
+                className={inputClass}
+                placeholder="e.g. A, F♯, B♭"
+                value={doc.homeKey?.tonic ?? ''}
+                onChange={(e) => commitHomeKey({ tonic: toAccidentals(e.target.value) })}
+              />
+            </Field>
+            <Field label="Home key — mode">
+              <ModePicker
+                value={doc.homeKey?.mode ?? null}
+                customModes={doc.vocabulary.modes}
+                onChange={(mode) => commitHomeKey({ mode })}
+              />
+            </Field>
+          </div>
+
+          <Field
+            label="Cadence marker captions"
+            helper="Point markers are document-level, not per-layer, so this is a single switch for the whole file"
+          >
+            <label className="flex cursor-pointer items-center justify-between rounded border border-border px-2 py-1.5">
+              <span className="text-xs text-foreground">Show on diagram</span>
+              <Switch
+                checked={doc.showCadenceCaptions ?? true}
+                onCheckedChange={(v) => updateMeta({ showCadenceCaptions: v })}
+                aria-label="Show cadence marker captions on diagram"
+              />
+            </label>
+          </Field>
 
           <Field label="Notes">
             <textarea

@@ -222,7 +222,10 @@ export default function App() {
   const loadDocument = useDocumentStore((s) => s.loadDocument)
   const setActiveLayer = useUIStore((s) => s.setActiveLayer)
   const clearSelection = useUIStore((s) => s.clearSelection)
-  const selectedCount = useUIStore((s) => s.selectedSpanIds.length)
+  const selectedSpanCount = useUIStore((s) => s.selectedSpanIds.length)
+  const selectedMarkerId = useUIStore((s) => s.selectedPointMarkerId)
+  const selectPointMarker = useUIStore((s) => s.selectPointMarker)
+  const selectedCount = selectedSpanCount + (selectedMarkerId ? 1 : 0)
 
   // Inspector collapse is pure view-state; local to the shell.
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false)
@@ -318,6 +321,7 @@ export default function App() {
           tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable
         if (!inField) {
           clearSelection()
+          selectPointMarker(null)
           return
         }
       }
@@ -363,7 +367,7 @@ export default function App() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [clearSelection, guardedNew, guardedOpen, saveFile, saveFileAs])
+  }, [clearSelection, selectPointMarker, guardedNew, guardedOpen, saveFile, saveFileAs])
 
   return (
     // Full-height app shell: header on top, then a main row of [left work area |

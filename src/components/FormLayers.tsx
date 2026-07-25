@@ -30,17 +30,37 @@ import {
   TEXT_PAD,
   FONT_SIZES,
   LABEL_RISE,
-  SHAPE_HEIGHT,
-  LAYER_PITCH,
-  STACK_TOP_PAD,
   STROKE_WIDTH,
   ISLAND_INSET,
   stackHeight,
   shapeTopY,
+  layerBodyHeight,
+  layerIndexAtY,
   type FontScale,
   type Justification,
   type ResolvedLabel,
 } from '@/lib/formShape'
+import {
+  layoutMarkerBand,
+  BAND_TOP_GAP,
+  BAND_ROW_HEIGHT,
+  BAND_FONT_PX,
+  GLYPH_HALF,
+  BOX_PAD_X,
+  type MarkerPlacement,
+} from '@/lib/markerBand'
+import { snapTime } from '@/lib/timeline'
+import type { PointMarker, VocabTerm } from '@/types/strata'
+
+// Stable empty references, so a null document doesn't produce a new array on
+// every render (which would defeat the store's identity comparison).
+const EMPTY_MARKERS: PointMarker[] = []
+const EMPTY_TERMS: VocabTerm[] = []
+
+const MARKER_COLOR = 'hsl(var(--primary))'
+const MARKER_FLAGGED_COLOR = 'hsl(var(--destructive))'
+/** Screen-pixel movement before a marker pointerdown counts as a drag. */
+const MARKER_DRAG_THRESHOLD_PX = 3
 import { MIN_SPAN_WIDTH, MIN_BOUNDARY_DRAG_PX } from '@/lib/spanEdit'
 import type { Layer, Span, FormDiagramData, CapStyle } from '@/types/strata'
 import {
@@ -222,8 +242,15 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef 
   const width = (span.endTime - span.startTime) * pps
   if (width <= 0) return null
 
+  // Key-area ("bar") layers draw a thin flat rect instead of a bracket — no
+  // caps/tails, and the caption is keyArea (falling back to label) rather
+  // than label. Purely a rendering choice (docs/decisions.md "Key-Area Bar
+  // Layers"); the same Span data and interactions apply either way.
+  const isBar = layer.spanShape === 'bar'
+  const bodyHeight = layerBodyHeight(layer)
+
   // Visual caps are the analyst's drawing choice; fall back to the analytical
-  // boundary type for files authored before startCap/endCap existed.
+  // boundary type for files authored before startCap/endCap existed. N/A for bars.
   const startCap: CapStyle = span.startCap ?? capFromBoundaryType(span.startBoundaryType)
   const endCap: CapStyle = span.endCap ?? capFromBoundaryType(span.endBoundaryType)
 
@@ -232,11 +259,15 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef 
   const dash = lineStyleDash(span.lineStyle)
 
   // One path per span (fill + stroke), inset so adjacent spans read as islands.
-  const path = buildShapePath({ width, startCap, endCap, inset: ISLAND_INSET })
-  const elisionLines = [
-    elisionInnerLine(startCap, 'start', width, SHAPE_HEIGHT, ISLAND_INSET),
-    elisionInnerLine(endCap, 'end', width, SHAPE_HEIGHT, ISLAND_INSET),
-  ].filter((d): d is string => d !== null)
+  const path = isBar
+    ? ''
+    : buildShapePath({ width, startCap, endCap, inset: ISLAND_INSET })
+  const elisionLines = isBar
+    ? []
+    : [
+        elisionInnerLine(startCap, 'start', width, bodyHeight, ISLAND_INSET),
+        elisionInnerLine(endCap, 'end', width, bodyHeight, ISLAND_INSET),
+      ].filter((d): d is string => d !== null)
   const fonts = FONT_SIZES[fontScale]
 
   // Rendering config — defaults per Phase 0.4 §4 (label above, annotation inside).
@@ -245,13 +276,13 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef 
   const annotationPosition = layer.rendering?.annotationPosition ?? 'inside'
   const annotationJust = (layer.rendering?.annotationJustification ?? 'left') as Justification
 
-  // Local coords: the shape occupies y ∈ [0, SHAPE_HEIGHT]. A label "above" sits
+  // Local coords: the shape occupies y ∈ [0, bodyHeight]. A label "above" sits
   // at a negative y, overhanging up into the open bracket of the layer above.
   // An inside LABEL (e.g. an A/B/C bubble letter) is optically centered, but an
   // inside ANNOTATION sits in the UPPER part of the body — that leaves the lower
   // interior free for the child label rising up from the layer below, which is
   // where most label/annotation collisions came from.
-  const insideLabelY = SHAPE_HEIGHT / 2 + fonts.label * 0.36
+  const insideLabelY = bodyHeight / 2 + fonts.label * 0.36
   const insideAnnotY = fonts.annotation + 6
   const aboveLabelY = -LABEL_RISE
   const aboveAnnotY = -LABEL_RISE - fonts.label // stack annotation above the label if both go up
@@ -263,19 +294,22 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef 
   const innerMax = width - 2 * TEXT_PAD
   const labelAbove = labelPosition !== 'inside'
   const annotationAbove = annotationPosition === 'above'
+  // On a bar (key-area) layer, the caption is keyArea first, label as a
+  // fallback — the whole point of the layer is to surface the key relationship.
+  const displayLabel = isBar ? span.keyArea || span.label : span.label
   // Above-labels are resolved by the layer-level layout pass (neighbour-aware
   // truncation + edge re-anchoring). Inside-labels truncate to the shape body.
   const labelText = labelAbove
     ? (labelLayout?.text ?? '')
-    : span.label
-      ? truncateToWidth(span.label, fonts.label, innerMax)
+    : displayLabel
+      ? truncateToWidth(displayLabel, fonts.label, innerMax)
       : ''
   const annotationText = span.annotation
     ? annotationAbove
       ? span.annotation
       : truncateToWidth(span.annotation, fonts.annotation, innerMax)
     : ''
-  const titleText = [span.label, span.type].filter(Boolean).join(' · ')
+  const titleText = [displayLabel, span.type].filter(Boolean).join(' · ')
 
   const effLabelJust = labelAbove ? (labelLayout?.justification ?? labelJust) : labelJust
   const labelLocalX = textX(0, width, effLabelJust)
@@ -301,18 +335,34 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef 
               the on-shape text is truncated. */}
           {titleText && <title>{titleText}</title>}
 
-          <path
-            d={path}
-            fill={fill}
-            stroke={stroke}
-            strokeWidth={STROKE_WIDTH}
-            strokeDasharray={dash}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
+          {isBar ? (
+            /* Bar (key-area) layer: a plain flat rect, no caps/tails — islands
+               via the same inset gap as brackets, for a consistent visual
+               language between layer styles. */
+            <rect
+              x={ISLAND_INSET}
+              y={0}
+              width={Math.max(0, width - 2 * ISLAND_INSET)}
+              height={bodyHeight}
+              rx={1.5}
+              fill={fill}
+              stroke={stroke}
+              strokeWidth={STROKE_WIDTH}
+            />
+          ) : (
+            <path
+              d={path}
+              fill={fill}
+              stroke={stroke}
+              strokeWidth={STROKE_WIDTH}
+              strokeDasharray={dash}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+          )}
 
           {/* Elision caps: a lighter inner line marking the overlap (separate stroke,
-              never a dash on the bracket itself). */}
+              never a dash on the bracket itself). N/A for bar layers. */}
           {elisionLines.map((d, i) => (
             <path
               key={`elision-${i}`}
@@ -332,7 +382,7 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef 
               x={-1}
               y={-1}
               width={width + 2}
-              height={SHAPE_HEIGHT + 2}
+              height={bodyHeight + 2}
               rx={3}
               fill={SELECT_GREY}
               fillOpacity={isSelected ? 0.2 : 0.08}
@@ -343,7 +393,7 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef 
 
           {/* Transparent hit area — generous, covers the whole shape body so the
               open (white-filled) brackets are easy to click, not just the stroke. */}
-          <rect x={0} y={0} width={width} height={SHAPE_HEIGHT} fill="transparent" />
+          <rect x={0} y={0} width={width} height={bodyHeight} fill="transparent" />
 
           {/* Section label — above (negative space, haloed) or inside (centered) */}
           {labelText && (
@@ -408,14 +458,15 @@ type BoundaryDragStart = (
 
 function FormLayerGroup({
   layer,
-  index,
+  topY,
   pps,
   totalWidth,
   onBoundaryDragStart,
   dragCommittedRef,
 }: {
   layer: Layer
-  index: number
+  /** Precomputed top-edge y for this layer's row (accounts for bracket/bar variable heights). */
+  topY: number
   pps: number
   totalWidth: number
   onBoundaryDragStart: BoundaryDragStart
@@ -425,11 +476,13 @@ function FormLayerGroup({
   const data = layer.data as FormDiagramData
   const fontScale: FontScale = 'md' // schema fontScale field pending — default md
   const spans = data.spans
+  const isBar = layer.spanShape === 'bar'
+  const bodyHeight = layerBodyHeight(layer)
 
   // Neighbour-aware label layout: one pass over the whole layer so each above-label
   // gets whichever of label/shortLabel fits the room it has between its neighbours
   // (§7). Only the "above" case needs it — inside-labels are bounded by their own
-  // shape body.
+  // shape body. A bar (key-area) layer's caption is keyArea first, label as fallback.
   const labelAbove = (layer.rendering?.labelPosition ?? 'above') !== 'inside'
   const baseJust = (layer.rendering?.labelJustification ?? 'center') as Justification
   const labelLayout = labelAbove
@@ -438,8 +491,8 @@ function FormLayerGroup({
           id: s.id,
           x: s.startTime * pps,
           width: (s.endTime - s.startTime) * pps,
-          label: s.label ?? '',
-          shortLabel: s.shortLabel,
+          label: (isBar ? s.keyArea || s.label : s.label) ?? '',
+          shortLabel: isBar ? null : s.shortLabel,
         })),
         FONT_SIZES[fontScale].label,
         totalWidth,
@@ -448,7 +501,7 @@ function FormLayerGroup({
     : null
 
   return (
-    <g transform={`translate(0, ${shapeTopY(index)})`}>
+    <g transform={`translate(0, ${topY})`}>
       {spans.map((span) => (
         <SpanShape
           key={span.id}
@@ -475,7 +528,7 @@ function FormLayerGroup({
             x={span.endTime * pps - 3}
             y={-2}
             width={6}
-            height={SHAPE_HEIGHT + 4}
+            height={bodyHeight + 4}
             fill="transparent"
             style={{ cursor: 'ew-resize' }}
             onPointerDown={onBoundaryDragStart(layer.id, span.id, next.id)}
@@ -512,6 +565,119 @@ const BOX_DRAG_THRESHOLD = 4
 /**
  * @param layers  already sorted for display (macro-on-top: highest displayOrder first)
  */
+/**
+ * One marker: a boxed caption for a cadence, otherwise a diamond with its
+ * caption beside it. When a caption sits on a lower row, a hairline leader
+ * connects it back to its glyph so the association survives the offset.
+ */
+function BandMarker({
+  placement,
+  bandTop,
+  selected,
+  showCaptions,
+  onPointerDown,
+}: {
+  placement: MarkerPlacement
+  bandTop: number
+  selected: boolean
+  showCaptions: boolean
+  onPointerDown: (e: React.PointerEvent) => void
+}) {
+  const { marker, x, row, caption, style, struck } = placement
+  const color = marker.flagged ? MARKER_FLAGGED_COLOR : MARKER_COLOR
+  const glyphY = bandTop + BAND_TOP_GAP + BAND_ROW_HEIGHT / 2
+  const rowY = bandTop + BAND_TOP_GAP + row * BAND_ROW_HEIGHT + BAND_ROW_HEIGHT / 2
+  const visibleCaption = showCaptions ? caption : null
+  const width = placement.right - placement.left
+
+  return (
+    <g
+      onPointerDown={onPointerDown}
+      // The container's click clears the span selection, and a click on a
+      // marker bubbles to it — which would wipe the selection the pointerup
+      // just made. Same trap as the band's place-on-click.
+      onClick={(e) => e.stopPropagation()}
+      style={{ cursor: 'ew-resize' }}
+      role="presentation"
+    >
+      <title>{marker.label || caption || `Marker at ${marker.timestamp.toFixed(2)}s`}</title>
+
+      {visibleCaption && style === 'boxed' ? (
+        <>
+          <rect
+            x={placement.left}
+            y={rowY - BAND_ROW_HEIGHT / 2 + 1}
+            width={width}
+            height={BAND_ROW_HEIGHT - 2}
+            rx={1}
+            fill="var(--canvas)"
+            stroke={color}
+            strokeWidth={selected ? 1.5 : 1}
+          />
+          <text
+            x={x}
+            y={rowY}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={BAND_FONT_PX}
+            fill={color}
+          >
+            {visibleCaption}
+          </text>
+          {struck && (
+            <line
+              x1={placement.left + BOX_PAD_X}
+              x2={placement.right - BOX_PAD_X}
+              y1={rowY}
+              y2={rowY}
+              stroke={color}
+              strokeWidth={1}
+            />
+          )}
+        </>
+      ) : (
+        <>
+          {/* Leader from the glyph down to an offset caption row */}
+          {visibleCaption && row > 0 && (
+            <line
+              x1={x}
+              x2={x}
+              y1={glyphY}
+              y2={rowY}
+              stroke={color}
+              strokeWidth={0.5}
+              strokeOpacity={0.4}
+            />
+          )}
+          <rect
+            x={-GLYPH_HALF}
+            y={-GLYPH_HALF}
+            width={GLYPH_HALF * 2}
+            height={GLYPH_HALF * 2}
+            rx={0.5}
+            fill={color}
+            stroke={selected ? 'hsl(var(--ring))' : 'none'}
+            strokeWidth={selected ? 2 : 0}
+            transform={`translate(${x}, ${glyphY}) rotate(45)`}
+          />
+          {visibleCaption && (
+            <text
+              x={x + GLYPH_HALF + 3}
+              y={rowY}
+              dominantBaseline="central"
+              fontSize={BAND_FONT_PX}
+              fill={selected ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))'}
+              textDecoration={struck ? 'line-through' : undefined}
+            >
+              {visibleCaption}
+            </text>
+          )}
+        </>
+      )}
+    </g>
+  )
+}
+
 export function FormLayers({ layers }: { layers: Layer[] }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const zoom = useUIStore((s) => s.zoom)
@@ -523,12 +689,28 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   const setAdjacentBoundary = useDocumentStore((s) => s.setAdjacentBoundary)
   const duration = useDocumentStore((s) => s.document?.duration ?? 0)
 
+  // Marker band state. Selected via the whole document object rather than
+  // `?? []` selectors, which would return a fresh array on every render.
+  const doc = useDocumentStore((s) => s.document)
+  const addPointMarker = useDocumentStore((s) => s.addPointMarker)
+  const updatePointMarker = useDocumentStore((s) => s.updatePointMarker)
+  const selectedMarkerId = useUIStore((s) => s.selectedPointMarkerId)
+  const selectPointMarker = useUIStore((s) => s.selectPointMarker)
+  const pointMarkers = doc?.pointMarkers ?? EMPTY_MARKERS
+  const markerTypes = doc?.vocabulary.pointMarkerTypes ?? EMPTY_TERMS
+  const showCaptions = doc?.showCadenceCaptions ?? true
+
   const pps = computePps(zoom)
   const totalWidth = totalContentWidth(duration, zoom)
   const svgWidth = Math.max(totalWidth, viewportWidth)
   // Every layer keeps a slot (hidden ones render empty) so the header column and
   // the canvas stay row-aligned; FormLayerGroup draws nothing for hidden layers.
-  const svgHeight = stackHeight(layers.length)
+  const stackH = stackHeight(layers)
+
+  // Marker band — document-level point markers live inside the diagram (so
+  // they export with it), in a band below the layer stack.
+  const bandLayout = layoutMarkerBand(pointMarkers, markerTypes, pps)
+  const svgHeight = stackH + bandLayout.height
 
   const cursorPx = pps > 0 ? currentTime * pps - scrollOffset : -1
   const cursorVisible = cursorPx >= 0 && cursorPx <= viewportWidth
@@ -581,6 +763,11 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
     const rect = containerRef.current?.getBoundingClientRect()
     if (!rect || pps <= 0 || layers.length === 0) return
 
+    // Below the layer stack is the marker band, which owns its own gestures.
+    // layerIndexAtY clamps, so without this guard a band pointerdown would
+    // start a box-drag on the bottom layer.
+    if (e.clientY - rect.top >= stackH) return
+
     e.preventDefault() // prevent text-selection cursor during drag
 
     const startX = clientXToContent(e.clientX)
@@ -588,10 +775,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
     // Capture the scroll offset at drag start so the rect stays anchored to
     // content even if the analyst scrolls (consistent with boundary drag).
     const capturedScrollOffset = scrollOffset
-    const layerIdx = Math.max(
-      0,
-      Math.min(layers.length - 1, Math.floor((startY - STACK_TOP_PAD) / LAYER_PITCH)),
-    )
+    const layerIdx = layerIndexAtY(layers, startY)
 
     dragCommittedRef.current = false
     setBoxDrag({ startX, endX: startX, startY, layerIdx, committed: false })
@@ -632,6 +816,60 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
     window.addEventListener('pointerup', onUp)
   }
 
+  // --- Marker band gestures -------------------------------------------------
+  // Mirrors the ruler lane's old model: click empty band to place (snapping),
+  // click a marker to select, drag one to reposition. A pointerdown that
+  // landed on a marker suppresses the band's place-on-click, since
+  // stopPropagation on pointerdown does not stop the click that follows.
+  const pointerDownOnMarkerRef = useRef(false)
+
+  function markerSnapCandidates(excludeId?: string): number[] {
+    return [
+      ...(doc?.sharedTimePoints ?? []).map((p) => p.timestamp),
+      ...pointMarkers.filter((m) => m.id !== excludeId).map((m) => m.timestamp),
+    ]
+  }
+
+  function clampToTrack(t: number): number {
+    return Math.max(0, Math.min(duration, t))
+  }
+
+  function handleBandClick(e: React.MouseEvent) {
+    e.stopPropagation() // the container's click clears the span selection
+    if (pointerDownOnMarkerRef.current || pps <= 0) return
+    const time = clampToTrack(clientXToTime(e.clientX))
+    const id = crypto.randomUUID()
+    addPointMarker({ id, timestamp: snapTime(time, markerSnapCandidates(), pps) })
+    selectPointMarker(id)
+  }
+
+  function beginMarkerDrag(marker: PointMarker) {
+    return (e: React.PointerEvent) => {
+      e.stopPropagation()
+      pointerDownOnMarkerRef.current = true
+      if (pps <= 0) return
+      const startClientX = e.clientX
+      let dragged = false
+      const candidates = markerSnapCandidates(marker.id)
+
+      const onMove = (ev: PointerEvent) => {
+        if (!dragged && Math.abs(ev.clientX - startClientX) > MARKER_DRAG_THRESHOLD_PX) {
+          dragged = true
+        }
+        if (!dragged) return
+        const t = clampToTrack(clientXToTime(ev.clientX))
+        updatePointMarker(marker.id, { timestamp: snapTime(t, candidates, pps) })
+      }
+      const onUp = () => {
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', onUp)
+        if (!dragged) selectPointMarker(marker.id)
+      }
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', onUp)
+    }
+  }
+
   function handleContainerClick() {
     // Skip clearSelection when this click is the tail of a committed box-drag.
     if (dragCommittedRef.current) {
@@ -645,9 +883,9 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   const selRect = boxDrag?.committed
     ? {
         x: Math.min(boxDrag.startX, boxDrag.endX),
-        y: shapeTopY(boxDrag.layerIdx),
+        y: shapeTopY(layers, boxDrag.layerIdx),
         width: Math.abs(boxDrag.endX - boxDrag.startX),
-        height: SHAPE_HEIGHT,
+        height: layerBodyHeight(layers[boxDrag.layerIdx]),
       }
     : null
 
@@ -675,13 +913,42 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
             <FormLayerGroup
               key={layer.id}
               layer={layer}
-              index={i}
+              topY={shapeTopY(layers, i)}
               pps={pps}
               totalWidth={totalWidth}
               onBoundaryDragStart={beginBoundaryDrag}
               dragCommittedRef={dragCommittedRef}
             />
           ))}
+
+        {/* Marker band — document-level markers, inside the diagram so they
+            belong to the exported graphic rather than the editor chrome. */}
+        {pps > 0 && (
+          <g>
+            <rect
+              x={0}
+              y={stackH}
+              width={svgWidth}
+              height={bandLayout.height}
+              fill="transparent"
+              style={{ cursor: 'crosshair' }}
+              onPointerDown={() => {
+                pointerDownOnMarkerRef.current = false
+              }}
+              onClick={handleBandClick}
+            />
+            {bandLayout.placements.map((p) => (
+              <BandMarker
+                key={p.marker.id}
+                placement={p}
+                bandTop={stackH}
+                selected={p.marker.id === selectedMarkerId}
+                showCaptions={showCaptions}
+                onPointerDown={beginMarkerDrag(p.marker)}
+              />
+            ))}
+          </g>
+        )}
 
         {/* Box-drag selection rectangle */}
         {selRect && (

@@ -68,7 +68,8 @@
         "kind": "span"
       }
     ],
-    "pointMarkerTypes": []
+    "pointMarkerTypes": [],
+    "modes": []
   },
   "sharedTimePoints": [
     {

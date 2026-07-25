@@ -154,6 +154,8 @@ export function PlayerDock() {
   const doc = useDocumentStore((s) => s.document)
   const loadId = useDocumentStore((s) => s.loadId)
   const updateMeta = useDocumentStore((s) => s.updateMeta)
+  const addPointMarker = useDocumentStore((s) => s.addPointMarker)
+  const selectPointMarker = useUIStore((s) => s.selectPointMarker)
 
   const {
     currentTime,
@@ -222,6 +224,14 @@ export function PlayerDock() {
     } else {
       play()
     }
+  }
+
+  // Place a point marker at the current playhead — document-level, so unlike
+  // Spacebar (which needs an active layer) this needs no layer context.
+  function placeMarkerAtPlayhead() {
+    const id = crypto.randomUUID()
+    addPointMarker({ id, timestamp: useUIStore.getState().currentTime })
+    selectPointMarker(id)
   }
 
   // ── Duration adoption ──────────────────────────────────────────────────────
@@ -300,6 +310,22 @@ export function PlayerDock() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
+  // M — place a point marker at the current playhead (document-level, so no
+  // active-layer requirement, unlike Spacebar). Works during playback or paused.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'm' && e.key !== 'M') return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (isInputFocused()) return
+      if (useUIStore.getState().playerStatus !== 'ready') return
+      e.preventDefault()
+      placeMarkerAtPlayhead()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // "Locate" flow: a local-source document was opened but the browser can't
   // reopen the file by name — the analyst re-picks it.
   async function handleLocate() {
@@ -376,14 +402,14 @@ export function PlayerDock() {
           ))}
         </select>
 
-        {/* Spacebar context indicator (Phase 0.4 §8 — required UI clarity):
-            persistent, updates with playback state so the analyst never has to
-            guess whether Space will place a boundary or start playback. */}
-        {isReady && (
-          <span className="hidden shrink-0 text-xs text-muted-foreground select-none sm:inline">
-            Space: {isPlaying ? 'boundary' : 'play'}
-          </span>
-        )}
+        {/* The point-marker button and the Spacebar context indicator both used
+            to sit here. They moved into the form diagram's control bar
+            (2026-07-24): markers now render inside the diagram, so the controls
+            that create them belong there too rather than in the player chrome.
+            The M shortcut still works globally — this handler stays, only its
+            button moved. Phase 0.4 §8's requirement that the current meaning of
+            Space always be visible is still met, by the Boundary button's live
+            Space chip. */}
 
         {/* Playback error — bad video ID, unsupported audio file, etc. */}
         {playerStatus === 'error' && (
