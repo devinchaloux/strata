@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react'
-import { Link2, CircleAlert, MapPin } from 'lucide-react'
+import { Link2, CircleAlert } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { useYouTubePlayer } from '@/hooks/useYouTubePlayer'
@@ -402,24 +402,14 @@ export function PlayerDock() {
           ))}
         </select>
 
-        {/* Place a point marker at the playhead — mirrors Spacebar's boundary
-            placement but document-level (no active-layer requirement). */}
-        <TransportButton
-          onClick={placeMarkerAtPlayhead}
-          disabled={!isReady}
-          title="Place a point marker at the playhead (M)"
-        >
-          <MapPin size={15} strokeWidth={1.75} />
-        </TransportButton>
-
-        {/* Spacebar context indicator (Phase 0.4 §8 — required UI clarity):
-            persistent, updates with playback state so the analyst never has to
-            guess whether Space will place a boundary or start playback. */}
-        {isReady && (
-          <span className="hidden shrink-0 text-xs text-muted-foreground select-none sm:inline">
-            Space: {isPlaying ? 'boundary' : 'play'}
-          </span>
-        )}
+        {/* The point-marker button and the Spacebar context indicator both used
+            to sit here. They moved into the form diagram's control bar
+            (2026-07-24): markers now render inside the diagram, so the controls
+            that create them belong there too rather than in the player chrome.
+            The M shortcut still works globally — this handler stays, only its
+            button moved. Phase 0.4 §8's requirement that the current meaning of
+            Space always be visible is still met, by the Boundary button's live
+            Space chip. */}
 
         {/* Playback error — bad video ID, unsupported audio file, etc. */}
         {playerStatus === 'error' && (

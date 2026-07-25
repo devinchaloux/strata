@@ -10,7 +10,7 @@
  * Selector" for the rationale.
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
@@ -109,7 +109,7 @@ function TimeInput({
 // ---------------------------------------------------------------------------
 
 type MarkerKind = NonNullable<PointMarker['kind']>
-type OptionalFieldKey = 'type' | 'harmonicContext' | 'flagged' | 'confidence'
+type OptionalFieldKey = 'type' | 'harmonicContext' | 'flagged' | 'confidence' | 'absent'
 
 const KIND_OPTIONS: { value: MarkerKind; label: string }[] = [
   { value: 'other', label: 'Other' },
@@ -119,10 +119,19 @@ const KIND_OPTIONS: { value: MarkerKind; label: string }[] = [
   { value: 'flag', label: 'Flag / Note' },
 ]
 
-const ALL_OPTIONAL_FIELDS: OptionalFieldKey[] = ['type', 'harmonicContext', 'flagged', 'confidence']
+const ALL_OPTIONAL_FIELDS: OptionalFieldKey[] = [
+  'type',
+  'harmonicContext',
+  'flagged',
+  'confidence',
+  'absent',
+]
 
+// `absent` leads on a cadence because the evaded/failed cadence is the case it
+// exists for — an expected cadence that does not arrive is the analytical
+// claim, not a missing record.
 const KIND_PROMINENT_FIELDS: Record<MarkerKind, OptionalFieldKey[]> = {
-  cadence: ['type', 'harmonicContext', 'confidence'],
+  cadence: ['type', 'harmonicContext', 'absent', 'confidence'],
   'key-change': ['type', 'harmonicContext', 'confidence'],
   'tempo-change': ['type', 'confidence'],
   flag: ['flagged', 'confidence'],
@@ -143,6 +152,15 @@ export function PointMarkerPanel() {
   // whether a marker is currently selected (Rules of Hooks).
   const [moreExpanded, setMoreExpanded] = useState(false)
   useEffect(() => setMoreExpanded(false), [marker?.id])
+
+  // Place-and-type: a marker arrives unlabeled, so put the caret in the label
+  // field rather than making the analyst travel to the Inspector for every
+  // one. Selecting an already-labelled marker leaves focus alone.
+  const labelRef = useRef<HTMLInputElement>(null)
+  const unlabelled = !marker?.label
+  useEffect(() => {
+    if (unlabelled) labelRef.current?.focus()
+  }, [marker?.id, unlabelled])
 
   if (!doc || !marker) return null
 
@@ -222,6 +240,23 @@ export function PointMarkerPanel() {
             />
           </Field>
         )
+      case 'absent':
+        return (
+          <Field
+            key="absent"
+            label="Absent"
+            tooltip="The event was expected at this point but does not occur. Its caption is drawn struck through."
+          >
+            <Segmented
+              options={[
+                { value: 'no', label: 'No' },
+                { value: 'yes', label: 'Yes' },
+              ]}
+              value={marker!.absent ? 'yes' : 'no'}
+              onChange={(v) => update({ absent: v === 'yes' })}
+            />
+          </Field>
+        )
       case 'flagged':
         return (
           <Field key="flagged" label="Flagged" tooltip="Shown in red on the timeline.">
@@ -265,6 +300,7 @@ export function PointMarkerPanel() {
         {/* Label */}
         <Field label="Label">
           <input
+            ref={labelRef}
             className={inputClass}
             value={marker.label ?? ''}
             placeholder="Unlabeled"
