@@ -21,8 +21,10 @@ type DocumentMeta = Pick<
   | 'notes'
   | 'bpm'
   | 'timeSignature'
+  | 'homeKey'
   | 'project'
   | 'analysisAuthor'
+  | 'showCadenceCaptions'
 >
 
 interface DocumentState {

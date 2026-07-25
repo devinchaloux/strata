@@ -10,6 +10,7 @@
  */
 
 import { useState, useEffect } from 'react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
@@ -182,6 +183,62 @@ const LINESTYLE_OPTS: { value: LineStyle; label: string }[] = [
   { value: 'dashed', label: 'Dashed' },
 ]
 
+/** Start/end cap + stroke — the visual (bracket-only) fields, factored out so
+ *  they can render either inline (bracket layers) or under a "more fields"
+ *  expander (bar layers) without duplicating the JSX. */
+function ShapeFields({
+  span,
+  update,
+}: {
+  span: Span
+  update: (patch: Partial<Omit<Span, 'id'>>) => void
+}) {
+  return (
+    <>
+      <div className="flex gap-2">
+        <div className="flex-1">
+          <Field label="Start cap">
+            <select
+              className={inputClass}
+              value={span.startCap ?? capFromBoundaryType(span.startBoundaryType)}
+              onChange={(e) => update({ startCap: e.target.value as CapStyle })}
+            >
+              {CAP_OPTS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+        <div className="flex-1">
+          <Field label="End cap">
+            <select
+              className={inputClass}
+              value={span.endCap ?? capFromBoundaryType(span.endBoundaryType)}
+              onChange={(e) => update({ endCap: e.target.value as CapStyle })}
+            >
+              {CAP_OPTS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      </div>
+
+      <Field label="Stroke">
+        <Segmented
+          options={LINESTYLE_OPTS}
+          value={span.lineStyle ?? 'solid'}
+          onChange={(v) => update({ lineStyle: v })}
+        />
+      </Field>
+    </>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // MetadataPanel
 // ---------------------------------------------------------------------------
@@ -215,6 +272,14 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   const update = (patch: Partial<Omit<Span, 'id'>>) => updateSpan(layer.id, span.id, patch)
 
   const spanTypes = doc?.vocabulary.spanTypes ?? []
+
+  // Key-area ("bar") layers lead with keyArea and tuck the bracket-only visual
+  // fields (caps, stroke — meaningless on a flat bar) under "more fields".
+  // Boundary type stays visible either way — it's analytical data, not a
+  // visual choice, and still applies to a key area's transition character.
+  const isBar = layer.spanShape === 'bar'
+  const [shapeFieldsExpanded, setShapeFieldsExpanded] = useState(false)
+  useEffect(() => setShapeFieldsExpanded(false), [span.id])
 
   function handleDelete() {
     removeSpan(layer.id, span.id)
@@ -285,6 +350,22 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           />
         </Field>
 
+        {/* Key area — leads the panel on a key-area (bar) layer, since that's
+            the whole point of the layer; tucked into Advanced otherwise. */}
+        {isBar && (
+          <Field
+            label="Key area"
+            helper="Free text, conventionally a Roman numeral relative to the document's home key — e.g. 'vi', 'V/V'"
+          >
+            <input
+              className={inputClass}
+              value={span.keyArea ?? ''}
+              placeholder="None"
+              onChange={(e) => update({ keyArea: e.target.value || null })}
+            />
+          </Field>
+        )}
+
         {/* Slug (read-only, click to copy) */}
         <Field label="Slug">
           <button
@@ -339,7 +420,8 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           />
         </Field>
 
-        {/* Boundaries */}
+        {/* Boundaries — analytical data (transition character), not a visual
+            choice, so these stay visible regardless of layer shape. */}
         <div className="flex gap-2">
           <div className="flex-1">
             <Field label="Start boundary">
@@ -373,49 +455,28 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           </div>
         </div>
 
-        {/* Shape — visual caps (the analyst's drawing choice; decoupled from the
-            boundary-type data above, with a sensible fallback from it). */}
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <Field label="Start cap">
-              <select
-                className={inputClass}
-                value={span.startCap ?? capFromBoundaryType(span.startBoundaryType)}
-                onChange={(e) => update({ startCap: e.target.value as CapStyle })}
-              >
-                {CAP_OPTS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
+        {/* Shape — visual caps + stroke (the analyst's drawing choice, decoupled
+            from the boundary-type data above). Meaningless on a flat key-area
+            bar, so tucked under "more fields" there — never removed, just
+            de-emphasized (docs/decisions.md "Key-Area Bar Layers"). */}
+        {isBar ? (
+          <div className="mb-3">
+            <button
+              onClick={() => setShapeFieldsExpanded((v) => !v)}
+              className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
+            >
+              {shapeFieldsExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+              More fields (shape)
+            </button>
+            {shapeFieldsExpanded && (
+              <div className="mt-2">
+                <ShapeFields span={span} update={update} />
+              </div>
+            )}
           </div>
-          <div className="flex-1">
-            <Field label="End cap">
-              <select
-                className={inputClass}
-                value={span.endCap ?? capFromBoundaryType(span.endBoundaryType)}
-                onChange={(e) => update({ endCap: e.target.value as CapStyle })}
-              >
-                {CAP_OPTS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
-        </div>
-
-        {/* Stroke */}
-        <Field label="Stroke">
-          <Segmented
-            options={LINESTYLE_OPTS}
-            value={span.lineStyle ?? 'solid'}
-            onChange={(v) => update({ lineStyle: v })}
-          />
-        </Field>
+        ) : (
+          <ShapeFields span={span} update={update} />
+        )}
 
         {/* Notes */}
         <Field label="Notes" helper="Tooltip only — not shown on the diagram">
@@ -463,6 +524,22 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             </Field>
           </div>
         </div>
+
+        {/* Key area — secondary here since this layer isn't shape-dedicated to
+            it; leads the panel instead on a key-area (bar) layer, above. */}
+        {!isBar && (
+          <Field
+            label="Key area"
+            helper="Free text, conventionally a Roman numeral relative to the document's home key — e.g. 'vi', 'V/V'"
+          >
+            <input
+              className={inputClass}
+              value={span.keyArea ?? ''}
+              placeholder="None"
+              onChange={(e) => update({ keyArea: e.target.value || null })}
+            />
+          </Field>
+        )}
 
         {/* Parent (read-only in v1) */}
         <Field label="Parent">
@@ -557,6 +634,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
   const type = commonValue(spans, (s) => s.type ?? '')
   const annotation = commonValue(spans, (s) => s.annotation ?? '')
   const lyrics = commonValue(spans, (s) => s.lyrics ?? '')
+  const keyArea = commonValue(spans, (s) => s.keyArea ?? '')
   const confidence = commonValue(spans, (s) => s.confidence ?? 'definite')
   const startB = commonValue(spans, (s) => s.startBoundaryType ?? 'definite')
   const endB = commonValue(spans, (s) => s.endBoundaryType ?? 'definite')
@@ -731,6 +809,16 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
             value={lyrics === MIXED ? '' : lyrics}
             placeholder={lyrics === MIXED ? 'Mixed — type to set all' : ''}
             onChange={(e) => setAll({ lyrics: e.target.value || null })}
+          />
+        </Field>
+
+        {/* Key area — free text, conventionally a Roman numeral relative to homeKey */}
+        <Field label="Key area" helper={keyArea === MIXED ? 'Mixed' : 'Corpus-queryable'}>
+          <input
+            className={inputClass}
+            value={keyArea === MIXED ? '' : keyArea}
+            placeholder={keyArea === MIXED ? 'Mixed — type to set all' : 'None'}
+            onChange={(e) => setAll({ keyArea: e.target.value || null })}
           />
         </Field>
 

@@ -35,7 +35,8 @@
         "description": "The moment of maximum perceived sonic energy in a section — typically the loudest, densest, most kinetically charged instant.",
         "color": "#FF4444"
       }
-    ]
+    ],
+    "modes": []
   },
 
   "sharedTimePoints": [

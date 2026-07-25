@@ -60,7 +60,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { LAYER_PITCH, STACK_TOP_PAD, stackHeight } from '@/lib/formShape'
+import { STACK_TOP_PAD, stackHeight, layerPitch } from '@/lib/formShape'
 import type { Layer, FormDiagramData } from '@/types/strata'
 
 const HEADER_WIDTH_EXPANDED = 140
@@ -124,7 +124,7 @@ function SortableLayerHeaderRow({
   }
 
   const style: React.CSSProperties = {
-    height: LAYER_PITCH,
+    height: layerPitch(layer),
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.6 : 1,
@@ -507,6 +507,10 @@ export function FormDiagram() {
   const doc = useDocumentStore((s) => s.document)
   const collapsed = useUIStore((s) => s.headersCollapsed)
   const toggleCollapsed = useUIStore((s) => s.toggleHeadersCollapsed)
+  const selectedMarkerId = useUIStore((s) => s.selectedPointMarkerId)
+  const selectPointMarker = useUIStore((s) => s.selectPointMarker)
+  const addPointMarker = useDocumentStore((s) => s.addPointMarker)
+  const updatePointMarker = useDocumentStore((s) => s.updatePointMarker)
   // Timeline state lives here so the zoom controls can render in the widget top
   // bar while the ruler (TimelineAxis) renders below. One shared instance.
   const timeline = useTimeline()
@@ -529,7 +533,7 @@ export function FormDiagram() {
   const visible = sorted.filter((l) => l.visibility)
   const hidden = sorted.filter((l) => !l.visibility)
 
-  const stackH = stackHeight(visible.length)
+  const stackH = stackHeight(visible)
   const headerWidth = collapsed ? HEADER_WIDTH_RAIL : HEADER_WIDTH_EXPANDED
 
   return (
@@ -596,6 +600,16 @@ export function FormDiagram() {
             currentTime={timeline.currentTime}
             duration={timeline.duration}
             setScrollOffset={timeline.setScrollOffset}
+            pointMarkers={doc.pointMarkers}
+            sharedTimePoints={doc.sharedTimePoints}
+            selectedMarkerId={selectedMarkerId}
+            onSelectMarker={selectPointMarker}
+            onPlaceMarker={(time) => {
+              const id = crypto.randomUUID()
+              addPointMarker({ id, timestamp: time })
+              selectPointMarker(id)
+            }}
+            onMoveMarker={(id, time) => updatePointMarker(id, { timestamp: time })}
           />
         </div>
       </div>

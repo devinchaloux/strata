@@ -194,7 +194,7 @@ export function createEmptyDocument(): StrataDocument {
     artist: [],
     duration: 0,
     source: { type: 'youtube', url: '', sourceOffset: 0 },
-    vocabulary: { spanTypes: [], pointMarkerTypes: [] },
+    vocabulary: { spanTypes: [], pointMarkerTypes: [], modes: [] },
     sharedTimePoints: [],
     layers: [],
     pointMarkers: [],
