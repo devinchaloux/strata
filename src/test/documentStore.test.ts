@@ -27,7 +27,7 @@ function doc(layers: Layer[]): StrataDocument {
     artist: ['Tester'],
     duration: 100,
     source: { type: 'youtube', url: 'https://youtu.be/x', sourceOffset: 0 },
-    vocabulary: { spanTypes: [], pointMarkerTypes: [] },
+    vocabulary: { spanTypes: [], pointMarkerTypes: [], modes: [] },
     sharedTimePoints: [],
     layers,
     pointMarkers: [],

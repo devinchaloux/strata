@@ -67,6 +67,11 @@ export interface UIState {
   hoveredSpanId: string | null
   activeLayerId: string | null
 
+  // Point marker selection — mutually exclusive with span selection (the
+  // Inspector shows one or the other). Selecting a marker clears span
+  // selection and vice versa.
+  selectedPointMarkerId: string | null
+
   // Local audio source — the picked File for a source of type "local".
   // Runtime-only: the document stores just the filename (browsers can't reopen
   // a path), so the analyst re-picks the file each session ("Locate audio…").
@@ -113,6 +118,9 @@ export interface UIState {
   hoverSpan: (id: string | null) => void
   setActiveLayer: (id: string | null) => void
 
+  // Actions — point marker selection
+  selectPointMarker: (id: string | null) => void
+
   // Actions — panels
   toggleVideoPanel: () => void
   setVideoPanelVisible: (visible: boolean) => void
@@ -151,6 +159,7 @@ const useUIStore = create<UIState>()((set) => ({
   selectionAnchorId: null,
   hoveredSpanId: null,
   activeLayerId: null,
+  selectedPointMarkerId: null,
 
   audioFile: null,
 
@@ -176,22 +185,28 @@ const useUIStore = create<UIState>()((set) => ({
   setViewportWidth: (width) => set({ viewportWidth: width }),
 
   selectSpan: (id) =>
-    set({ selectedSpanIds: id ? [id] : [], selectionAnchorId: id }),
+    set({ selectedSpanIds: id ? [id] : [], selectionAnchorId: id, selectedPointMarkerId: null }),
   toggleSpan: (id) =>
     set((s) => ({
       selectedSpanIds: s.selectedSpanIds.includes(id)
         ? s.selectedSpanIds.filter((x) => x !== id)
         : [...s.selectedSpanIds, id],
       selectionAnchorId: id,
+      selectedPointMarkerId: null,
     })),
   setSelection: (ids, anchorId) =>
     set({
       selectedSpanIds: ids,
       selectionAnchorId: anchorId !== undefined ? anchorId : ids[ids.length - 1] ?? null,
+      selectedPointMarkerId: null,
     }),
-  clearSelection: () => set({ selectedSpanIds: [], selectionAnchorId: null }),
+  clearSelection: () =>
+    set({ selectedSpanIds: [], selectionAnchorId: null, selectedPointMarkerId: null }),
   hoverSpan: (id) => set({ hoveredSpanId: id }),
   setActiveLayer: (id) => set({ activeLayerId: id }),
+
+  selectPointMarker: (id) =>
+    set({ selectedPointMarkerId: id, selectedSpanIds: [], selectionAnchorId: null }),
 
   toggleVideoPanel: () => set((s) => ({ videoPanelVisible: !s.videoPanelVisible })),
   setVideoPanelVisible: (visible) => set({ videoPanelVisible: visible }),

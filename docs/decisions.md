@@ -1882,3 +1882,263 @@ justification near the edges. A 1.5px dot never overhangs regardless of
 justification, so inheriting that correction just shifted it off-center for
 no reason — it was reusing the text's computed x position wholesale instead
 of computing its own.
+
+---
+
+## Point Markers — Implementation (2026-07-03)
+
+*Build-plan 3.2. Backlog item #5. First widget-independent, document-level
+timeline feature to ship — no layer/active-layer dependency, unlike spans.*
+
+---
+
+**Decision:** Point markers live in a dedicated **marker lane** — a distinct
+14px strip on the shared ruler, directly below the time-tick row and above the
+horizontal scrollbar. Clicking empty space in the lane places a marker at that
+time; clicking an existing marker selects it instead of placing a new one.
+**Rationale:** This answers the open design question from `docs/vision.md` §10
+("which zone on the timeline triggers placement, vs. span boundary
+placement?"). Point markers are document-level (not per-layer), so they can't
+live in the form-diagram widget's per-layer rows — they need their own
+always-visible zone on the shared ruler, parallel to how span boundary ticks
+render in the ruler's tick row. A dedicated lane makes the distinction between
+"placing a marker" and "placing a span boundary" spatially unambiguous: the
+marker lane is a strip the analyst clicks directly; span boundaries are placed
+via Spacebar, never by clicking the ruler.
+
+---
+
+**Decision:** `M` places a point marker at the current playhead, mirroring how
+`Spacebar` places a span boundary. A transport-bar button ("Place a point
+marker at the playhead") provides the same action for discoverability and
+mobile/no-keyboard paths.
+**Rationale:** Consistent with the existing capture-gesture model (Spacebar for
+spans, `K`/`J`/`L`/`Home` for transport). Unlike Spacebar, `M` needs no active
+layer — point markers are document-level, so the gesture works regardless of
+which (or whether any) layer is active. The transport button exists for the
+same reason the spacebar-context indicator and merge toolbar button exist:
+keyboard-only affordances undercut discoverability and mobile use.
+
+---
+
+**Decision:** A newly placed marker is immediately selected, opening the
+Inspector to its fields — same pattern as clicking a span.
+**Rationale:** The placement gesture (click lane, or `M`) is a capture
+action during active listening; the analyst's very next likely action is to
+name or type the marker they just heard. Selecting immediately removes a step.
+
+---
+
+**Decision:** Point marker selection and span selection are **mutually
+exclusive** — selecting one clears the other. The Inspector shows exactly one
+contextual panel at a time (`Span` / `N spans` / `Marker`), never both.
+**Rationale:** The Inspector's chrome (title, deselect button) assumes a
+single selection concept. Two independent selections with no combined UI would
+either require the Inspector to arbitrarily pick one to display (confusing —
+which one?) or grow a tabbed/split interface disproportionate to two selection
+kinds that are never edited together. Mutual exclusivity keeps the existing
+single-panel Inspector correct with no new chrome.
+
+---
+
+**Decision:** The point marker Inspector panel ships the full build-plan 3.2
+field set (timestamp, label, type, notes, flagged, confidence) plus
+`harmonicContext` — brought forward from its "v1 feature, no dedicated UI yet"
+status rather than deferred to a later pass.
+**Rationale:** `harmonicContext` was already a confirmed v1 schema field (see
+the Phase 0.6 "v1 Feature Scope" decision above) with no open design question
+attached — it's a single optional text input, identical in weight to any other
+field already in the panel. Deferring it would have meant a second edit to the
+same panel for no scoping reason.
+
+---
+
+**Decision:** The point marker `type` field reuses the same minimal picker
+pattern as the span `type` field: a plain `<select>` reading
+`document.vocabulary.pointMarkerTypes`, with an escape hatch that preserves
+and displays a `type` value not present in the current vocabulary list.
+**Rationale:** Full vocabulary UI (tradition grouping, "Add custom type",
+Letter… generator, pack import — backlog #6) is explicitly staged as its own,
+larger task. `pointMarkerTypes` ships empty by default in v1 (same as
+`spanTypes`), so today this picker mainly preserves whatever `type` value is
+already on a loaded document. Building the full picker now would mean solving
+#6 as a side effect of #5; reusing the existing span-type pattern keeps the
+two tasks decoupled and gives point markers the same forward-compatible
+escape hatch spans already have.
+
+---
+
+**Decision:** Marker visual treatment: a small rotated-square (diamond) glyph
+in the marker lane — accent color by default, destructive/red when
+`flagged: true`, with an accent ring when selected. No distinct glyph per
+marker `type` in this pass.
+**Rationale:** Flagged status ("come back to this") is the one binary,
+at-a-glance-useful distinction available today without vocabulary-driven
+iconography — most markers will have no `type` set until #6 ships a real
+picker. Per-type glyphs are better designed once the vocabulary system (and
+its icon/tradition metadata, if any) exists; adding ad hoc icons now would
+need reworking once #6 lands.
+
+---
+
+## Point Markers — Redesign (2026-07-04)
+
+*Revises "Point Markers — Implementation (2026-07-03)" the session after
+Devin's first look at the shipped feature (screenshot comparison against a
+BriFormer analysis graphic). Three things changed: marker placement UX, the
+harmonic-context/key-area data model, and discoverability. Reached
+collaboratively — see the session's design debate before any of this was
+built. Schema grew substantially as a result.*
+
+---
+
+**Decision:** The marker lane moves to sit **above** the ruler's time-tick
+row (still part of the ruler bar), not below it.
+**Rationale:** Devin's direct correction on first look. "Above the timeline"
+in the BriFormer reference reads as above the numeric ruler; the original
+placement (below ticks, above the scrollbar) buried markers beneath the part
+of the ruler analysts actually orient by.
+
+---
+
+**Decision (reverses part of the "v1 Scope" harmonicContext decision,
+`docs/decisions.md` Phase 0.6):** `PointMarker.harmonicContext` is no longer
+forced into the `{harmonicContext}:{typeAbbreviation}` concatenated display
+string. It renders as its own free-standing text near the marker, independent
+of `type`.
+**Rationale:** The forced concatenation was the actual bug behind Devin's
+"harmonic context is a complete miss" feedback — it assumed harmonic context
+only ever accompanies a cadence type, and baked in one specific string
+format. In practice an analyst may want a cadence type alone, a cadence type
+plus context, or free-standing key/harmony text with no cadence type at all.
+Decoupling the fields and their display serves all three without forcing a
+format.
+
+---
+
+**Decision:** Introduce a document-level `homeKey: { tonic: string; mode:
+string | null } | null`. `tonic` is free text (spelling is the analyst's
+call); `mode` is a `VocabTerm` id resolved against a **new third vocabulary
+tier**, `vocabulary.modes`, plus a built-in starter list shipped in code
+(Major, Minor, Dorian, Phrygian, Lydian, Mixolydian, Locrian, Ionian,
+Aeolian).
+**Rationale:** Devin's ask was specifically for the *relationship* to the
+home key (e.g. "vi") to be corpus-queryable, not necessarily the absolute key
+name — but interpreting a Roman numeral at all requires knowing the tonic
+and mode it's relative to, so `homeKey` has to exist. Reusing the vocabulary
+mechanism already built for `spanTypes`/`pointMarkerTypes` — rather than a
+hardcoded mode enum — is what makes this open-ended enough for Renaissance
+modal scholarship (Dorian, Phrygian, ...) and the 8-mode/12-mode systems
+Devin named, without hardcoding an exhaustive taxonomy the schema can't
+anticipate. Same extensibility argument that justified project-level custom
+span/point-marker types in the first place.
+
+---
+
+**Decision:** The mode picker leads with two large buttons, **Major** and
+**Minor**, plus a quiet "More modes…" link that expands to the full list
+(built-ins + `vocabulary.modes`, with the same preserve-unknown-value escape
+hatch as the span/marker type pickers). Auto-expands if the current mode is
+already something else.
+**Rationale:** Devin's estimate — 90%+ of analyses will be major/minor —
+argues for a one-click default path, with the long tail reachable but not
+in the way. Mirrors the existing `Segmented` control pattern already used for
+`context`/`confidence` elsewhere in the app.
+
+---
+
+**Decision:** `Span.keyArea: string | null` — free text, conventionally a
+Roman numeral relative to `homeKey` (e.g. `vi`, `V/V`), corpus-queryable
+independently of `label`/`type`/`annotation`.
+**Rationale:** The BriFormer reference image Devin pointed to shows key text
+("A major (I)", "F♯ minor (iii)") spanning an *entire formal section*, not
+attached to a single instant — that's structurally a span-level property, not
+a point marker. Putting it on `Span` (rather than trying to force it through
+`PointMarker.harmonicContext`, the original — wrong — implementation) fixes
+the root modeling error, not just the display bug. Follows the project's
+established pattern of splitting queryable data from display text (label vs.
+type vs. slug) rather than overloading an existing field.
+
+---
+
+**Decision:** `Layer.spanShape?: 'bracket' | 'bar'` — a per-layer rendering
+style, not a new `LayerType`/widget. `'bar'` draws a thin flat rect (10px,
+vs. 28px for brackets) instead of a bracket/arc shape; no caps, no tails.
+Buried in the Layer Settings popover (not offered when first creating a
+layer). The underlying data, and every existing interaction (spacebar
+placement, boundary drag, merge, undo), is identical either way.
+**Rationale:** Devin's proposal — key areas as "a separate kind of layer...
+but a layer among the other span layers" — is still exactly `FormDiagramData`
+/ `Span[]`; only the *rendering* differs. Modeling it as a whole second
+widget type would have meant a second data payload, a second contract entry,
+and duplicated interaction logic for no benefit, since the data underneath is
+unchanged. A rendering-style flag on the existing layer type is the correct
+level of abstraction, and reuses the layer's *existing* `visibility` toggle
+for show/hide — no new visibility field needed (an earlier draft of this
+plan proposed a `keyAreaVisible` `LayerRenderingConfig` field; superseded by
+this, since a bar layer's visibility is already exactly `Layer.visibility`).
+Bar height is a rendering choice only — "thinner shape," per Devin's
+clarification, not a smaller layer-panel row *slot* (the header row height
+still matches the body row height 1:1 for alignment; both simply consume
+less space when the layer is bar-styled).
+
+---
+
+**Decision:** `stackHeight`/`shapeTopY` (formShape.ts) take the actual
+`Layer[]` array and sum each layer's own `layerPitch` (bracket = 28+3px, bar
+= 10+3px), rather than a layer count × one uniform pitch constant.
+`layerIndexAtY` replaces the old fixed-pitch division for hit-testing which
+layer row a y-coordinate falls in (box-drag start, boundary handle sizing).
+**Rationale:** Necessary consequence of allowing per-layer variable height —
+`LAYER_PITCH` as a single constant no longer describes every row. Header rows
+(`SortableLayerHeaderRow`) now size from the same `layerPitch(layer)` call so
+the header column and the canvas column stay row-aligned regardless of which
+layers are bar-styled.
+
+---
+
+**Decision:** `PointMarker.kind?: 'cadence' | 'key-change' | 'tempo-change' |
+'flag' | 'other'` — a soft UI preset. Picks which of [`type`,
+`harmonicContext`, `flagged`, `confidence`] the Inspector panel leads with;
+everything not led-with is still reachable under a "more fields" expander.
+Never restricts what a marker can actually store.
+**Rationale:** Devin proposed a "dropdown with options like key area,
+cadence, flag/note" specifically so a marker could still "carry multiple
+pieces of information if needed" — i.e. he explicitly did not want a hard
+per-kind schema restriction. A soft preset satisfies both the tighter-UI want
+and the multi-purpose-marker want simultaneously. `kind` is deliberately
+independent of `type` (the vocabulary term) rather than derived from it,
+since the vocabulary system has no tradition/grouping metadata yet (#6) to
+derive a reliable mapping from — keeping `kind` a separate field decouples
+this from that unbuilt system. `key-change` is a marker kind (an instant —
+"the modulation happens here") distinct from `Span.keyArea` (a duration —
+"this section is in vi"); both are useful and answer different questions.
+`tempo-change` was added to the initially-proposed minimal set (cadence/
+flag/other) at Devin's request, useful for pop-EDM tempo-shift analysis.
+
+---
+
+**Decision:** Placing a marker (lane click or `M` key) snaps to the nearest
+existing span boundary or point marker within a small screen-pixel threshold
+(`snapTime`, `lib/timeline.ts`, default 6px). Existing markers can also be
+**dragged** along the lane to a new time, snapping the same way during the
+drag. A pointerdown that doesn't move past a threshold is treated as a
+click-to-select, not a drag.
+**Rationale:** Devin's ask — placement should "allow for snapping to
+timepoints already existing" — plus his choice (offered as an explicit
+either/or) of doing *both* snap-on-placement and drag-to-reposition rather
+than just one. Drag-to-reposition didn't exist before this session (markers
+could only be moved via the numeric Timestamp field); it's new scope this
+decision adds, not a fix to prior behavior.
+
+---
+
+**Decision:** `StrataDocument.showCadenceCaptions?: boolean` (omit/absent =
+`true`) — a single document-wide switch for whether cadence-related marker
+detail renders on the diagram, set in Document Settings.
+**Rationale:** Devin: "whether or not to surface that information visibly
+should be a choice too" — recording data and displaying it on the diagram
+are separate decisions. Document-level rather than per-layer because point
+markers are already a document-level concept (not owned by any layer) — see
+the original point-marker schema decision. There is no per-layer surface a
+marker-display toggle could sensibly live on.

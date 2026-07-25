@@ -30,13 +30,12 @@ import {
   TEXT_PAD,
   FONT_SIZES,
   LABEL_RISE,
-  SHAPE_HEIGHT,
-  LAYER_PITCH,
-  STACK_TOP_PAD,
   STROKE_WIDTH,
   ISLAND_INSET,
   stackHeight,
   shapeTopY,
+  layerBodyHeight,
+  layerIndexAtY,
   type FontScale,
   type Justification,
   type ResolvedLabel,
@@ -222,8 +221,15 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef 
   const width = (span.endTime - span.startTime) * pps
   if (width <= 0) return null
 
+  // Key-area ("bar") layers draw a thin flat rect instead of a bracket — no
+  // caps/tails, and the caption is keyArea (falling back to label) rather
+  // than label. Purely a rendering choice (docs/decisions.md "Key-Area Bar
+  // Layers"); the same Span data and interactions apply either way.
+  const isBar = layer.spanShape === 'bar'
+  const bodyHeight = layerBodyHeight(layer)
+
   // Visual caps are the analyst's drawing choice; fall back to the analytical
-  // boundary type for files authored before startCap/endCap existed.
+  // boundary type for files authored before startCap/endCap existed. N/A for bars.
   const startCap: CapStyle = span.startCap ?? capFromBoundaryType(span.startBoundaryType)
   const endCap: CapStyle = span.endCap ?? capFromBoundaryType(span.endBoundaryType)
 
@@ -232,11 +238,15 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef 
   const dash = lineStyleDash(span.lineStyle)
 
   // One path per span (fill + stroke), inset so adjacent spans read as islands.
-  const path = buildShapePath({ width, startCap, endCap, inset: ISLAND_INSET })
-  const elisionLines = [
-    elisionInnerLine(startCap, 'start', width, SHAPE_HEIGHT, ISLAND_INSET),
-    elisionInnerLine(endCap, 'end', width, SHAPE_HEIGHT, ISLAND_INSET),
-  ].filter((d): d is string => d !== null)
+  const path = isBar
+    ? ''
+    : buildShapePath({ width, startCap, endCap, inset: ISLAND_INSET })
+  const elisionLines = isBar
+    ? []
+    : [
+        elisionInnerLine(startCap, 'start', width, bodyHeight, ISLAND_INSET),
+        elisionInnerLine(endCap, 'end', width, bodyHeight, ISLAND_INSET),
+      ].filter((d): d is string => d !== null)
   const fonts = FONT_SIZES[fontScale]
 
   // Rendering config — defaults per Phase 0.4 §4 (label above, annotation inside).
@@ -245,13 +255,13 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef 
   const annotationPosition = layer.rendering?.annotationPosition ?? 'inside'
   const annotationJust = (layer.rendering?.annotationJustification ?? 'left') as Justification
 
-  // Local coords: the shape occupies y ∈ [0, SHAPE_HEIGHT]. A label "above" sits
+  // Local coords: the shape occupies y ∈ [0, bodyHeight]. A label "above" sits
   // at a negative y, overhanging up into the open bracket of the layer above.
   // An inside LABEL (e.g. an A/B/C bubble letter) is optically centered, but an
   // inside ANNOTATION sits in the UPPER part of the body — that leaves the lower
   // interior free for the child label rising up from the layer below, which is
   // where most label/annotation collisions came from.
-  const insideLabelY = SHAPE_HEIGHT / 2 + fonts.label * 0.36
+  const insideLabelY = bodyHeight / 2 + fonts.label * 0.36
   const insideAnnotY = fonts.annotation + 6
   const aboveLabelY = -LABEL_RISE
   const aboveAnnotY = -LABEL_RISE - fonts.label // stack annotation above the label if both go up
@@ -263,19 +273,22 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef 
   const innerMax = width - 2 * TEXT_PAD
   const labelAbove = labelPosition !== 'inside'
   const annotationAbove = annotationPosition === 'above'
+  // On a bar (key-area) layer, the caption is keyArea first, label as a
+  // fallback — the whole point of the layer is to surface the key relationship.
+  const displayLabel = isBar ? span.keyArea || span.label : span.label
   // Above-labels are resolved by the layer-level layout pass (neighbour-aware
   // truncation + edge re-anchoring). Inside-labels truncate to the shape body.
   const labelText = labelAbove
     ? (labelLayout?.text ?? '')
-    : span.label
-      ? truncateToWidth(span.label, fonts.label, innerMax)
+    : displayLabel
+      ? truncateToWidth(displayLabel, fonts.label, innerMax)
       : ''
   const annotationText = span.annotation
     ? annotationAbove
       ? span.annotation
       : truncateToWidth(span.annotation, fonts.annotation, innerMax)
     : ''
-  const titleText = [span.label, span.type].filter(Boolean).join(' · ')
+  const titleText = [displayLabel, span.type].filter(Boolean).join(' · ')
 
   const effLabelJust = labelAbove ? (labelLayout?.justification ?? labelJust) : labelJust
   const labelLocalX = textX(0, width, effLabelJust)
@@ -301,18 +314,34 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef 
               the on-shape text is truncated. */}
           {titleText && <title>{titleText}</title>}
 
-          <path
-            d={path}
-            fill={fill}
-            stroke={stroke}
-            strokeWidth={STROKE_WIDTH}
-            strokeDasharray={dash}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
+          {isBar ? (
+            /* Bar (key-area) layer: a plain flat rect, no caps/tails — islands
+               via the same inset gap as brackets, for a consistent visual
+               language between layer styles. */
+            <rect
+              x={ISLAND_INSET}
+              y={0}
+              width={Math.max(0, width - 2 * ISLAND_INSET)}
+              height={bodyHeight}
+              rx={1.5}
+              fill={fill}
+              stroke={stroke}
+              strokeWidth={STROKE_WIDTH}
+            />
+          ) : (
+            <path
+              d={path}
+              fill={fill}
+              stroke={stroke}
+              strokeWidth={STROKE_WIDTH}
+              strokeDasharray={dash}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+          )}
 
           {/* Elision caps: a lighter inner line marking the overlap (separate stroke,
-              never a dash on the bracket itself). */}
+              never a dash on the bracket itself). N/A for bar layers. */}
           {elisionLines.map((d, i) => (
             <path
               key={`elision-${i}`}
@@ -332,7 +361,7 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef 
               x={-1}
               y={-1}
               width={width + 2}
-              height={SHAPE_HEIGHT + 2}
+              height={bodyHeight + 2}
               rx={3}
               fill={SELECT_GREY}
               fillOpacity={isSelected ? 0.2 : 0.08}
@@ -343,7 +372,7 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef 
 
           {/* Transparent hit area — generous, covers the whole shape body so the
               open (white-filled) brackets are easy to click, not just the stroke. */}
-          <rect x={0} y={0} width={width} height={SHAPE_HEIGHT} fill="transparent" />
+          <rect x={0} y={0} width={width} height={bodyHeight} fill="transparent" />
 
           {/* Section label — above (negative space, haloed) or inside (centered) */}
           {labelText && (
@@ -408,14 +437,15 @@ type BoundaryDragStart = (
 
 function FormLayerGroup({
   layer,
-  index,
+  topY,
   pps,
   totalWidth,
   onBoundaryDragStart,
   dragCommittedRef,
 }: {
   layer: Layer
-  index: number
+  /** Precomputed top-edge y for this layer's row (accounts for bracket/bar variable heights). */
+  topY: number
   pps: number
   totalWidth: number
   onBoundaryDragStart: BoundaryDragStart
@@ -425,11 +455,13 @@ function FormLayerGroup({
   const data = layer.data as FormDiagramData
   const fontScale: FontScale = 'md' // schema fontScale field pending — default md
   const spans = data.spans
+  const isBar = layer.spanShape === 'bar'
+  const bodyHeight = layerBodyHeight(layer)
 
   // Neighbour-aware label layout: one pass over the whole layer so each above-label
   // gets whichever of label/shortLabel fits the room it has between its neighbours
   // (§7). Only the "above" case needs it — inside-labels are bounded by their own
-  // shape body.
+  // shape body. A bar (key-area) layer's caption is keyArea first, label as fallback.
   const labelAbove = (layer.rendering?.labelPosition ?? 'above') !== 'inside'
   const baseJust = (layer.rendering?.labelJustification ?? 'center') as Justification
   const labelLayout = labelAbove
@@ -438,8 +470,8 @@ function FormLayerGroup({
           id: s.id,
           x: s.startTime * pps,
           width: (s.endTime - s.startTime) * pps,
-          label: s.label ?? '',
-          shortLabel: s.shortLabel,
+          label: (isBar ? s.keyArea || s.label : s.label) ?? '',
+          shortLabel: isBar ? null : s.shortLabel,
         })),
         FONT_SIZES[fontScale].label,
         totalWidth,
@@ -448,7 +480,7 @@ function FormLayerGroup({
     : null
 
   return (
-    <g transform={`translate(0, ${shapeTopY(index)})`}>
+    <g transform={`translate(0, ${topY})`}>
       {spans.map((span) => (
         <SpanShape
           key={span.id}
@@ -475,7 +507,7 @@ function FormLayerGroup({
             x={span.endTime * pps - 3}
             y={-2}
             width={6}
-            height={SHAPE_HEIGHT + 4}
+            height={bodyHeight + 4}
             fill="transparent"
             style={{ cursor: 'ew-resize' }}
             onPointerDown={onBoundaryDragStart(layer.id, span.id, next.id)}
@@ -528,7 +560,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   const svgWidth = Math.max(totalWidth, viewportWidth)
   // Every layer keeps a slot (hidden ones render empty) so the header column and
   // the canvas stay row-aligned; FormLayerGroup draws nothing for hidden layers.
-  const svgHeight = stackHeight(layers.length)
+  const svgHeight = stackHeight(layers)
 
   const cursorPx = pps > 0 ? currentTime * pps - scrollOffset : -1
   const cursorVisible = cursorPx >= 0 && cursorPx <= viewportWidth
@@ -588,10 +620,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
     // Capture the scroll offset at drag start so the rect stays anchored to
     // content even if the analyst scrolls (consistent with boundary drag).
     const capturedScrollOffset = scrollOffset
-    const layerIdx = Math.max(
-      0,
-      Math.min(layers.length - 1, Math.floor((startY - STACK_TOP_PAD) / LAYER_PITCH)),
-    )
+    const layerIdx = layerIndexAtY(layers, startY)
 
     dragCommittedRef.current = false
     setBoxDrag({ startX, endX: startX, startY, layerIdx, committed: false })
@@ -645,9 +674,9 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   const selRect = boxDrag?.committed
     ? {
         x: Math.min(boxDrag.startX, boxDrag.endX),
-        y: shapeTopY(boxDrag.layerIdx),
+        y: shapeTopY(layers, boxDrag.layerIdx),
         width: Math.abs(boxDrag.endX - boxDrag.startX),
-        height: SHAPE_HEIGHT,
+        height: layerBodyHeight(layers[boxDrag.layerIdx]),
       }
     : null
 
@@ -675,7 +704,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
             <FormLayerGroup
               key={layer.id}
               layer={layer}
-              index={i}
+              topY={shapeTopY(layers, i)}
               pps={pps}
               totalWidth={totalWidth}
               onBoundaryDragStart={beginBoundaryDrag}

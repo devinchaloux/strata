@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react'
-import { Link2, CircleAlert } from 'lucide-react'
+import { Link2, CircleAlert, MapPin } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { useYouTubePlayer } from '@/hooks/useYouTubePlayer'
@@ -154,6 +154,8 @@ export function PlayerDock() {
   const doc = useDocumentStore((s) => s.document)
   const loadId = useDocumentStore((s) => s.loadId)
   const updateMeta = useDocumentStore((s) => s.updateMeta)
+  const addPointMarker = useDocumentStore((s) => s.addPointMarker)
+  const selectPointMarker = useUIStore((s) => s.selectPointMarker)
 
   const {
     currentTime,
@@ -222,6 +224,14 @@ export function PlayerDock() {
     } else {
       play()
     }
+  }
+
+  // Place a point marker at the current playhead — document-level, so unlike
+  // Spacebar (which needs an active layer) this needs no layer context.
+  function placeMarkerAtPlayhead() {
+    const id = crypto.randomUUID()
+    addPointMarker({ id, timestamp: useUIStore.getState().currentTime })
+    selectPointMarker(id)
   }
 
   // ── Duration adoption ──────────────────────────────────────────────────────
@@ -300,6 +310,22 @@ export function PlayerDock() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
+  // M — place a point marker at the current playhead (document-level, so no
+  // active-layer requirement, unlike Spacebar). Works during playback or paused.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'm' && e.key !== 'M') return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (isInputFocused()) return
+      if (useUIStore.getState().playerStatus !== 'ready') return
+      e.preventDefault()
+      placeMarkerAtPlayhead()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // "Locate" flow: a local-source document was opened but the browser can't
   // reopen the file by name — the analyst re-picks it.
   async function handleLocate() {
@@ -375,6 +401,16 @@ export function PlayerDock() {
             </option>
           ))}
         </select>
+
+        {/* Place a point marker at the playhead — mirrors Spacebar's boundary
+            placement but document-level (no active-layer requirement). */}
+        <TransportButton
+          onClick={placeMarkerAtPlayhead}
+          disabled={!isReady}
+          title="Place a point marker at the playhead (M)"
+        >
+          <MapPin size={15} strokeWidth={1.75} />
+        </TransportButton>
 
         {/* Spacebar context indicator (Phase 0.4 §8 — required UI clarity):
             persistent, updates with playback state so the analyst never has to

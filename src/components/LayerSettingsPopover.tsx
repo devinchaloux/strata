@@ -122,6 +122,28 @@ export function LayerSettingsPopover({
 
           <div className="h-px" style={{ background: 'var(--hairline)' }} />
 
+          {/* Shape — buried here rather than offered when first creating a
+              layer (per docs/decisions.md "Key-Area Bar Layers"). Purely
+              visual: same Span data model and interactions either way. */}
+          <label className="flex cursor-pointer items-center justify-between">
+            <span className="flex flex-col gap-0.5">
+              <span className="text-[12px]" style={{ color: 'var(--ink-primary)' }}>
+                Key-area layer (thin bars)
+              </span>
+              <span className="text-[10px]" style={{ color: 'var(--ink-faint)' }}>
+                Draws thin flat bars instead of brackets — for a layer of key-area
+                captions rather than formal sections
+              </span>
+            </span>
+            <Switch
+              checked={layer.spanShape === 'bar'}
+              onCheckedChange={(v) => updateLayer(layer.id, { spanShape: v ? 'bar' : 'bracket' })}
+              aria-label="Key-area layer (thin bars)"
+            />
+          </label>
+
+          <div className="h-px" style={{ background: 'var(--hairline)' }} />
+
           {/* Lock */}
           <label className="flex cursor-pointer items-center justify-between">
             <span className="flex items-center gap-1.5 text-[12px]" style={{ color: 'var(--ink-primary)' }}>

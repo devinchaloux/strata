@@ -80,6 +80,17 @@ These fields appear at the root of every `.strata` file.
 | `notes` | text or null | No | Document-level free text for the analyst. Methodological notes, analytical caveats, summary of findings. Not the same as the Written Analysis widget — this is a simple overview field, not timestamped prose. |
 | `bpm` | decimal number or null | No | Beats per minute of the track. Used by the BPM grid utility to generate bar-level time points in the shared pool so span boundaries can snap to beats and bars. Null if not applicable or not set. For variable-tempo tracks, set the dominant BPM and adjust individual time points manually. |
 | `timeSignature` | object or null | No | Time signature, used together with `bpm` to generate the BPM grid. Contains `numerator` (beats per measure, e.g. 4) and `denominator` (note value per beat, e.g. 4 for a quarter note). Null if not set. |
+| `homeKey` | object or null | No | The document's tonic and mode — see [Home Key](#home-key) below. Null if not set. |
+| `showCadenceCaptions` | true/false | No | Whether cadence-related point marker detail (type abbreviation, harmonic context) renders on the diagram. Point markers aren't owned by any layer, so this is a document-wide switch rather than a per-layer one. Omit for `true` (shown) — the default. |
+
+### Home Key
+
+| Field | Type | Required | What it means |
+|---|---|---|---|
+| `tonic` | text | Yes (within the object) | Free text — e.g. `A`, `F#`, `Bb`. Spelling (sharp vs. flat) is the analyst's call, not enum-constrained. |
+| `mode` | vocabulary term ID or null | No (within the object) | A term ID resolved against `vocabulary.modes` plus the built-in modes list shipped with the app (major, minor, and the church modes — Dorian, Phrygian, Lydian, Mixolydian, Locrian). Project-level custom modes (e.g. Renaissance 8-mode or 12-mode systems) live in `vocabulary.modes`. |
+
+> **Why this exists:** `Span.keyArea` and `PointMarker.harmonicContext` store a Roman-numeral *relationship* to the home key (e.g. `vi`, `V/V`) rather than an absolute key name. That relationship is what's corpus-queryable across a corpus of pieces in different keys — "how many B sections tonicize vi" is answerable without knowing or caring what the absolute pitch is in any given file. `homeKey` is what makes the numeral interpretable at all, and it's itself a useful corpus field on its own (e.g. major vs. minor across a corpus).
 
 ### Corpus / Author
 
@@ -109,12 +120,13 @@ The `source` field describes where the audio comes from and how to align it with
 
 The `vocabulary` field stores custom type terms defined specifically for this document. All spans and point markers have a `type` field that draws from a controlled vocabulary — these custom terms extend the global built-in list.
 
-The vocabulary is split into two lists:
+The vocabulary is split into three lists:
 
 | Field | What it contains | v1 UI? |
 |---|---|---|
 | `spanTypes` | Custom terms for span types (e.g. a custom section type used in this corpus) | Planned for v2 |
 | `pointMarkerTypes` | Custom terms for point marker types (e.g. `medial-caesura`, `EEC`, `energy-peak`) | Yes — v1 |
+| `modes` | Custom mode terms beyond the built-in major/minor/church-mode starter list (e.g. Renaissance 8-mode or 12-mode systems) | Yes — a minimal picker; same mechanism as the other two lists |
 
 ### Vocabulary Term
 
@@ -164,6 +176,7 @@ Every layer, regardless of type, has these fields:
 | `locked` | true/false | Yes | When true, the layer cannot be edited — only viewed and exported. |
 | `colorDefault` | hex color | Yes | Fallback color for all spans in this layer that have no individual color override. |
 | `displayOrder` | whole number | Yes | Rendering order. Lower numbers render first (at the bottom of the stack). |
+| `spanShape` | `bracket` or `bar` | No | Visual style for this layer's spans. Omit or `bracket` = today's rendering (the analytical bracket/arc shapes). `bar` draws thin flat rects instead — intended for key-area layers (spans carrying a `keyArea` caption), though the field itself is generic. A setting buried in layer settings, not offered when first creating a layer. Purely visual: the same span data model and interactions (placement, drag, merge) work identically either way. |
 | `data` | object | Yes | The layer's actual analytical data. Its structure depends on the `type` field — see below. |
 
 ### Form Diagram Layer Data (`type = "form-diagram"`)
@@ -194,6 +207,7 @@ A **span** is a time range that represents a formal section: a verse, a drop, a 
 | `annotation` | text or null | No | **Diagram-visible** text displayed on the span body alongside the label. For analytical observations the analyst wants to appear on the diagram itself — e.g. `filter sweep → snare roll`, `+Kick`, `Anthem gradually emerges`. Distinct from `notes` (tooltip only) and from `label` (the section name). Feeds into the Written Analysis widget when built. |
 | `notes` | text or null | No | Short freetext observation about this span. **Tooltip-level only** — not rendered on the diagram. A few words to a sentence. |
 | `lyrics` | text or null | No | Lyric text occurring during this span. Not displayed on the form diagram by default. Corpus-queryable. Feeds into the Written Analysis widget. |
+| `keyArea` | text or null | No | Free text, conventionally a Roman numeral relative to the document's `homeKey` (e.g. `vi`, `V/V`). Corpus-queryable independently of `label`/`type`. Renders as a caption spanning the span — most naturally on a layer with `spanShape = "bar"`, but the field applies to any span. |
 | `confidence` | one of three values | No | The analyst's confidence in the placement of this span's **boundaries**. Optional — omit to mean `definite`. Only set explicitly when marking a span as `approximate` or `speculative`. See [Confidence Levels](#8-confidence-levels) below. |
 | `startBoundaryType` | one of three values or null | No | The **character** of the formal transition at the start of this span. `definite` = hard, precise cut; `gradual` = the transition is inherently processual (a buildup that gradually becomes the section); `elided` = this span's start is formally simultaneous with the end of the preceding span. Null or omit to mean `definite`. See [Boundary Types](#9-boundary-types) below. |
 | `endBoundaryType` | one of three values or null | No | The **character** of the formal transition at the end of this span. `elided` pairs with `startBoundaryType = elided` on the following span to mark a reciprocal elision. Null or omit to mean `definite`. |
@@ -237,7 +251,9 @@ A **point marker** is a single timestamp in the recording — a moment rather th
 | `notes` | text or null | No | Longer freetext observation. Appropriate for analytical prose about a specific event. |
 | `flagged` | true/false | No | `true` = "come back to this." A simple bookmark for moments the analyst wants to revisit. Separate from `confidence` — flagged means *I want to return here*, not *I am uncertain about this*. Omit for false (default). |
 | `absent` | true/false | No | `true` = "this event was expected here and did not occur." Analytically significant in Hepokoski/Darcy and similar frameworks where a missing medial caesura or EEC has specific formal consequences. **No v1 UI** — the field is stored and preserved by the app but cannot be set from the interface in v1. Omit for false (default). |
+| `harmonicContext` | text or null | No | Free text, conventionally a Roman numeral relative to the document's `homeKey` (e.g. `V` for a half cadence in the dominant). Rendered as its own text near the marker — never force-combined with `type` into a single string. Corpus-queryable independently of `type`. |
 | `confidence` | one of three values | No | `definite`, `approximate`, or `speculative`. Same meaning as on spans — the analyst's certainty about the identification and placement of this event. Omit for `definite` (default). |
+| `kind` | one of five values or absent | No | `cadence`, `key-change`, `tempo-change`, `flag`, or `other`. A **soft UI preset** only — it picks which fields the Inspector panel leads with, but never restricts what a marker can actually store; every field stays reachable. Omit to behave like `other` (today's full field set). |
 
 ### Two kinds of point markers
 
