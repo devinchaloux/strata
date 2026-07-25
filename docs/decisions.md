@@ -2305,3 +2305,102 @@ defers to a pointerdown that landed on a marker.
 **Rationale:** Recorded because the failure was invisible in the obvious way —
 placement snaps to nearby markers, so the duplicate landed exactly on top of
 the original, and the only symptom was an unexplained dirty-document flag.
+
+---
+
+## Marker Band, Absent Events, and the Diagram Control Bar (2026-07-24, cont.)
+
+---
+
+**Decision:** The marker band reserves no vertical space when a document has
+no point markers.
+
+**Rationale:** An empty band was originally kept as a click target for placing
+a first marker. Devin's call: the space is better spent on a control bar, and
+placement is still reachable from the `M` key and the transport button, so
+nothing becomes unreachable. Exactly 24px is reclaimed (top gap + one row +
+bottom gap).
+
+---
+
+**Decision:** `PointMarker.absent` gets a UI control, leading the panel on
+`kind: 'cadence'`. Its caption renders struck through.
+
+**Rationale:** The field has been in the schema since Phase 0.1 with no UI, on
+the reasoning that surfacing it risked premature design. The BriFormer
+Mendelssohn reference resolved that: a struck-through `CAD` is the conventional
+notation for a cadence that was promised and evaded, so both the control and
+its rendering have an established form to follow. It leads on a cadence because
+the evaded cadence is the case the field exists for — an expected cadence that
+does not arrive is the analytical claim, not a missing record. This also keeps
+the strike **semantic** rather than a formatting toggle, so "how many evaded
+cadences" stays a query rather than a search for styling (see the
+per-label-typography split in open-questions.md).
+
+---
+
+**Decision:** A thin `DiagramControlBar` runs along the bottom of the form
+diagram widget, carrying Boundary, Marker, and Merge, each labelled with its
+keyboard shortcut and disabled when unavailable.
+
+**Rationale:** Devin asked for "some kind of thin control bar to have the
+shortcuts on" in the space the empty band gave up. It also closes a gap the
+Phase 0.5 merge decisions had already specified but which was never built —
+"a persistent toolbar button is always visible; its disabled/enabled state
+communicates merge eligibility at a glance." Until now Ctrl+J, the context
+menu, and the metadata panel were the only routes to merge, and none of them
+answers "can I merge right now?" at a glance. The disabled state carries the
+eligibility reason as its tooltip.
+
+---
+
+**Decision:** Spacebar's shortcut chip lives on the control bar's Boundary
+button and is **live** — it appears only while playback is running. The
+persistent `Space: boundary / Space: play` indicator is removed from the
+transport bar.
+
+**Rationale:** Space is context-dependent: it places a boundary while playing
+and starts playback while paused (Phase 0.4 §8). An earlier draft of this
+decision excluded Space from the bar entirely, on the grounds that a fixed
+label would be wrong half the time and the transport already carried a live
+indicator. Devin's correction: that indicator sitting in the player chrome is
+itself the problem the control bar is meant to solve. A live chip resolves both
+concerns — it is never wrong, because it is present exactly when Space does
+that job, and the shortcut now reads next to the operation it performs instead
+of in the transport. Phase 0.4 §8's requirement that the current meaning of
+Space always be visible is still satisfied, just in a better location.
+
+---
+
+**Decision:** The point-marker button is removed from the transport bar. Marker
+placement is offered by the control bar and the `M` key only.
+
+**Rationale:** The same consolidation, spotted by Devin immediately after the
+Space one. Now that markers render inside the form diagram rather than in the
+ruler, the controls that create them belong to the diagram too — a transport
+button for a diagram operation was a leftover from when the marker lane lived
+in the player chrome's neighbourhood. The `M` handler itself stays in
+`PlayerDock` (it is a global shortcut and needs no active layer); only the
+button moved.
+
+The general principle these two share, worth applying to anything added later:
+**a control belongs to the surface that owns the thing it acts on.** The
+transport owns playback; the diagram owns spans, markers, and their structure.
+
+---
+
+**Fix:** Clicking a marker in the band cleared the span selection instead of
+selecting the marker. The marker's `<g>` stopped `pointerdown`, but the `click`
+still bubbled to the canvas container's clear-selection handler.
+
+**Rationale:** Second instance of the same trap in one session (the first
+produced duplicate markers in the ruler lane). The general rule for this
+codebase: when a child element handles `pointerdown` and an ancestor handles
+`click`, `stopPropagation` on the former does not protect against the latter —
+both handlers need to agree, or the child must stop the click too.
+
+---
+
+**Fix:** A boxed cadence caption sat flush against the widget card's bottom
+border and read as clipped. The band had a top gap but no bottom gap;
+`BAND_BOTTOM_GAP` now gives it 5px of clearance.
