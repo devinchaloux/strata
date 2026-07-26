@@ -12,11 +12,19 @@
  *     - square  → flat top meeting a vertical tail at a sharp corner
  *     - angled  → a diagonal tail (processual feel)
  *     - open    → no tail on that side; the flat top just ends
- *     - elision → a vertical tail; the renderer adds a lighter inner overlap line
+ *     - elision → the SAME rounded corner, drawn displaced OUTWARD past the
+ *                 boundary so the bracket reaches into its neighbour
  *
  * Spans are drawn as discrete ISLANDS: the shape is inset by `inset` px on each
  * side so adjacent spans never share boundary pixels (no double-stamping). Stored
  * timestamps stay exact; only the rendered geometry insets.
+ *
+ * The elision cap is the one deliberate exception to that inset: instead of
+ * pulling in, it pushes out. An elision is the analyst's claim that two sections
+ * meld rather than cut cleanly, so the drawn boundary leaves the timepoint and
+ * overlaps the neighbour. The stored time never moves — same timepoint, different
+ * ink. It is per-boundary, not reciprocal: one layer can elide where the layer
+ * below does not, which is what makes the difference legible down the stack.
  *
  * Coordinate convention: every path is built in LOCAL space where the slot spans
  * x ∈ [0, width], the top edge is y = 0, and the baseline is y = H. The caller
@@ -38,10 +46,26 @@ export const SHAPE_HEIGHT = 28 // bracket layers (the BriFormer cue)
 // Key-area ("bar") layers: a thin flat rect, not a bracket — the shape doesn't
 // need the full bracket height (docs/decisions.md "Key-Area Bar Layers").
 export const BAR_HEIGHT = 10
-export const CORNER_RADIUS = 10 // rounded-cap corner curve — deliberately round vs square
+// Rounded-cap corner curve — deliberately round vs square. Raised 10 → 20 on
+// 2026-07-25: CORNER_MAX_RATIO already stops a narrow span from curving into a
+// bubble, so the base value only has to serve spans wide enough to carry it.
+// Below ~67px wide the ratio governs and this value never applies.
+export const CORNER_RADIUS = 20
 export const ANGLE_INSET = 9 // horizontal run of an angled cap's diagonal tail
 export const STROKE_WIDTH = 1.5
 export const ISLAND_INSET = 1.5 // px inset per side → ~3px gap (2px read as a grey seam, 4px too wide)
+// How far an `elision` cap pushes PAST the boundary, into the neighbour. A fixed
+// pixel amount, not derived from the data: an elision signals that something
+// overlaps here, it does not measure how much. Zoom-invariant for the same reason.
+export const ELISION_EXTEND = 8
+// ...but never more than half the span's own width, so a very narrow span can't
+// fling its tail clean past its neighbour and land somewhere meaningless. Below
+// ~16px the extension scales down with the span instead of staying fixed.
+export const ELISION_EXTEND_MAX_RATIO = 0.5
+// Max share of a span's width that ONE corner curve may consume. Two corners at
+// this ratio leave (1 - 2r) of flat top; at 0.5 they meet and the flat top is
+// gone, which is the dome the Adjoin Rework retired.
+export const CORNER_MAX_RATIO = 0.3
 
 /**
  * Vertical anatomy — flush stacking.
@@ -147,6 +171,15 @@ export interface ShapePathOptions {
   endCap: CapStyle
   /** Inset per side (px) — the island gap. Default 0 (tests / measuring). */
   inset?: number
+  /** Corner curve for rounded/elision caps. Defaults to CORNER_RADIUS.
+   *  Overridable so the shape lab can vary it live (see uiStore.shapeLab). */
+  cornerRadius?: number
+  /** How far an elision cap pushes past the boundary. Defaults to ELISION_EXTEND. */
+  elisionExtend?: number
+  /** Max fraction of the span's width one corner may consume. Defaults to
+   *  CORNER_MAX_RATIO. Raising it toward 0.5 makes the two corners meet and the
+   *  flat top disappear (a dome). Overridable for the shape lab. */
+  cornerRatio?: number
 }
 
 /**
@@ -160,23 +193,34 @@ export function buildShapePath({
   startCap,
   endCap,
   inset = 0,
+  cornerRadius = CORNER_RADIUS,
+  elisionExtend = ELISION_EXTEND,
+  cornerRatio = CORNER_MAX_RATIO,
 }: ShapePathOptions): string {
   const H = height
-  const L = inset
-  const R = width - inset
+  // An elision cap pushes outward past the boundary instead of insetting inward,
+  // so the bracket overlaps its neighbour. Everything downstream is unchanged —
+  // the cap draws its ordinary shape, just at a displaced x.
+  const ext = Math.min(elisionExtend, width * ELISION_EXTEND_MAX_RATIO)
+  const L = inset - (startCap === 'elision' ? ext : 0)
+  const R = width - inset + (endCap === 'elision' ? ext : 0)
   if (R <= L) return ''
 
   const span = R - L
   // Cap the corner radius at ~30% of the width so a real flat top always remains:
-  // a full CORNER_RADIUS on a narrow (portrait) span would consume the whole top
+  // a full cornerRadius on a narrow (portrait) span would consume the whole top
   // and read as a dome/bubble, which is exactly what we retired.
-  const r = Math.min(CORNER_RADIUS, span * 0.3, H)
+  const r = Math.min(cornerRadius, span * cornerRatio, H)
   const aInset = Math.min(ANGLE_INSET, span / 2)
 
   const parts: string[] = []
 
+  // `elision` draws the ordinary rounded corner — only its x is displaced (above).
+  const startRounded = startCap === 'rounded' || startCap === 'elision'
+  const endRounded = endCap === 'rounded' || endCap === 'elision'
+
   // --- Left cap ---
-  if (startCap === 'rounded') {
+  if (startRounded) {
     parts.push(`M ${L} ${H}`, `L ${L} ${r}`, `A ${r} ${r} 0 0 1 ${L + r} 0`)
   } else if (startCap === 'angled') {
     // "/" — bottom at the boundary, leaning up-and-right into the flat top
@@ -184,16 +228,16 @@ export function buildShapePath({
   } else if (startCap === 'open') {
     parts.push(`M ${L} 0`)
   } else {
-    // square, elision — a straight vertical tail
+    // square — a straight vertical tail
     parts.push(`M ${L} ${H}`, `L ${L} 0`)
   }
 
   // --- Top line ---
-  const rightTopX = endCap === 'rounded' ? R - r : endCap === 'angled' ? R - aInset : R
+  const rightTopX = endRounded ? R - r : endCap === 'angled' ? R - aInset : R
   parts.push(`L ${rightTopX} 0`)
 
   // --- Right cap ---
-  if (endCap === 'rounded') {
+  if (endRounded) {
     parts.push(`A ${r} ${r} 0 0 1 ${R} ${r}`, `L ${R} ${H}`)
   } else if (endCap === 'angled') {
     // "\" — leaning down-and-right from the flat top to the boundary
@@ -201,31 +245,13 @@ export function buildShapePath({
   } else if (endCap === 'open') {
     // no tail — the top simply ends
   } else {
-    // square, elision
+    // square
     parts.push(`L ${R} ${H}`)
   }
 
   return parts.join(' ')
 }
 
-/**
- * The lighter inner overlap line for an `elision` cap: a short vertical drawn
- * just inside the cap's tail. Returns null for non-elision caps. `side` selects
- * which end. Local coords; same `inset` convention as buildShapePath.
- */
-export function elisionInnerLine(
-  cap: CapStyle,
-  side: 'start' | 'end',
-  width: number,
-  height: number = SHAPE_HEIGHT,
-  inset = 0,
-): string | null {
-  if (cap !== 'elision') return null
-  const offset = 3
-  const x = side === 'start' ? inset + offset : width - inset - offset
-  if (x <= inset || x >= width - inset) return null
-  return `M ${x} ${height} L ${x} ${Math.min(CORNER_RADIUS, height)}`
-}
 
 // ---------------------------------------------------------------------------
 // Text fitting (collision strategy: abbreviation)

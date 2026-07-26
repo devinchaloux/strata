@@ -21,7 +21,6 @@ import {
   buildShapePath,
   capFromBoundaryType,
   lineStyleDash,
-  elisionInnerLine,
   textOnFill,
   truncateToWidth,
   layoutLayerLabels,
@@ -70,9 +69,6 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
 } from '@/components/ui/context-menu'
-
-// Lighter ink for the elision cap's inner overlap line (--ink-faint).
-const ELISION_INK = '#94a3b8'
 
 const INK_PRIMARY = 'var(--ink-primary)'
 const INK_SECONDARY = '#475569'
@@ -193,6 +189,7 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef 
   // state flips, not on every selection change across the diagram.
   const isSelected = useUIStore((s) => s.selectedSpanIds.includes(span.id))
   const isHovered = useUIStore((s) => s.hoveredSpanId === span.id)
+  const shapeLab = useUIStore((s) => s.shapeLab) // TEMPORARY — see uiStore.shapeLab
   const selectedSpanIds = useUIStore((s) => s.selectedSpanIds)
   const selectSpan = useUIStore((s) => s.selectSpan)
   const toggleSpan = useUIStore((s) => s.toggleSpan)
@@ -259,15 +256,19 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef 
   const dash = lineStyleDash(span.lineStyle)
 
   // One path per span (fill + stroke), inset so adjacent spans read as islands.
+  // cornerRadius/elisionExtend come from the TEMPORARY shape lab — remove both
+  // arguments when the values are settled (see uiStore.shapeLab).
   const path = isBar
     ? ''
-    : buildShapePath({ width, startCap, endCap, inset: ISLAND_INSET })
-  const elisionLines = isBar
-    ? []
-    : [
-        elisionInnerLine(startCap, 'start', width, bodyHeight, ISLAND_INSET),
-        elisionInnerLine(endCap, 'end', width, bodyHeight, ISLAND_INSET),
-      ].filter((d): d is string => d !== null)
+    : buildShapePath({
+        width,
+        startCap,
+        endCap,
+        inset: ISLAND_INSET,
+        cornerRadius: shapeLab.cornerRadius,
+        elisionExtend: shapeLab.elisionExtend,
+        cornerRatio: shapeLab.cornerRatio,
+      })
   const fonts = FONT_SIZES[fontScale]
 
   // Rendering config — defaults per Phase 0.4 §4 (label above, annotation inside).
@@ -360,19 +361,6 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef 
               strokeLinecap="round"
             />
           )}
-
-          {/* Elision caps: a lighter inner line marking the overlap (separate stroke,
-              never a dash on the bracket itself). N/A for bar layers. */}
-          {elisionLines.map((d, i) => (
-            <path
-              key={`elision-${i}`}
-              d={d}
-              fill="none"
-              stroke={ELISION_INK}
-              strokeWidth={STROKE_WIDTH}
-              strokeLinecap="round"
-            />
-          ))}
 
           {/* Selection / hover box — drawn OVER the shape so it reads on white or
               colored fills. Hover: faint grey wash. Selected: grey box + blue
