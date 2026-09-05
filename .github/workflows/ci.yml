@@ -1,0 +1,45 @@
+name: CI
+
+# Runs on every branch push so a session gets early signal, and again on the PR
+# into main — the PR run is the gate that matters, since main is the trunk.
+on:
+  push:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# A push to a branch with an open PR would otherwise queue two identical runs.
+# Cancelling superseded runs keeps the signal fast and the minutes cheap.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Pinned to the major version used locally (v24). `cache: npm` keys
+          # off package-lock.json, so installs stay fast between runs.
+          node-version: '24'
+          cache: npm
+
+      # `npm ci` (not `install`) so the lockfile is authoritative and a run can
+      # never silently pick up a newer transitive dependency than you tested with.
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tests
+        run: npm run test:run
+
+      # `build` is `tsc && vite build`, so this is also the type check. It
+      # catches what tests miss: a bad import path, a missing asset, a plugin
+      # misconfiguration.
+      - name: Build
+        run: npm run build
