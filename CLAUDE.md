@@ -29,6 +29,35 @@ the repo.
 
 ---
 
+## Repo contract
+
+| | |
+|---|---|
+| **Visibility** | **public** — anything pushed here is published, permanently |
+| **Owns** | Strata itself: the `.strata` format, the editor, the widgets |
+| **May read** | nothing outside this repo |
+| **May write** | itself only |
+| **Never contains** | anything that is not part of this project |
+
+**Strata integrates as a published artifact, not as source.** Other projects embed
+a *built* component, or read `.strata` files it produces. Nothing vendors this
+code, and this repo depends on nothing outside itself. If a task seems to need
+Strata source inside another codebase, the integration boundary is wrong — that is
+a reason to fix the boundary, not to merge the repos.
+
+**Provenance matters, because this repo is public and its history is permanent.**
+Anything committed is published, including anything committed by mistake, and
+deleting it later does not remove it from the history. Analysis files, notes,
+corpus data and sample documents often arrive from somewhere else — **if you did
+not create it here and its licence and origin are not clear, ask before committing
+it.** That applies to fixtures and test data as much as to documentation.
+
+**Do not propose a monorepo.** Visibility is per-repo, and this project is
+open-source while some of the work that uses it is not. Merging repos would force
+one visibility on both.
+
+---
+
 ## Who You Are in This Workflow
 
 Claude Code (you) handles this project end to end — strategy, design, and
