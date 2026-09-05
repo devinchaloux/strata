@@ -64,8 +64,8 @@ confirmation before any work begins.
 ### After scope is confirmed
 
 ```bash
-git checkout dev
-git pull origin dev
+git checkout main
+git pull origin main
 git checkout -b feat/<branch-name>
 ```
 
@@ -95,8 +95,10 @@ stale the moment the phase advances.
    `git commit`, or `git push` until Devin explicitly says to. When he does,
    propose a commit message in the format below and wait for confirmation.
 
-2. **Never push to `main`.** `main` only receives changes via pull request,
-   which Devin opens and merges on GitHub.
+2. **Never push to `main`.** `main` is the trunk and only receives changes via
+   pull request, which Devin opens and merges on GitHub. Pushing your own
+   `feat/*` branch to `origin` is how work gets reviewed — that is not a push
+   to `main`, and rule 1 still governs when it happens.
 
 3. **Ask before any destructive action.** File deletions, git resets, anything
    irreversible. When in doubt, ask. The cost of asking is low.
@@ -109,12 +111,29 @@ stale the moment the phase advances.
 
 ## Git
 
-- Always work on a feature branch cut from `dev`.
+- Always work on a feature branch cut from `main`.
 - Branch naming: `feat/<short-description>`
   (e.g. `feat/strata-schema-draft`, `feat/form-diagram-widget-spec`)
-- When a task is complete, merge the feature branch into `dev` and push to
-  `origin/dev`. Never push to `main`.
-- Never commit directly to `dev` or `main`.
+- When a task is complete, push the branch to `origin` and open a PR into
+  `main`. Devin reviews and merges. Never push to `main` directly.
+- Never commit directly to `main`.
+- Green CI is the gate. `.github/workflows/ci.yml` runs lint, the Vitest suite,
+  and a production build (which is `tsc && vite build`, so it type-checks too)
+  on every push and every PR into `main`.
+
+### There is no `dev` branch
+
+Retired September 2026. The old `feat/* -> dev -> PR -> main` flow broke
+silently: merging the `dev -> main` PR left the merge commit on `main` with
+nothing carrying it back, so `dev` drifted 22 commits behind `main` while still
+looking like a valid base. Every one of those 22 was a `Merge pull request from
+dev` bubble — the trees were identical, so no work was ever lost, but the base
+was a lie and would eventually have produced a real conflict.
+
+CI now does the job `dev` was supposed to do, and does it on every push.
+
+Older docs and commit messages still say things were "merged to `dev`". Those
+are historical statements about what happened, not instructions.
 
 ---
 

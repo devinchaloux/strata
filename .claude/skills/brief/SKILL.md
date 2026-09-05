@@ -71,9 +71,11 @@ Do not read any additional files, write any files, run any commands, or begin an
 Once Devin confirms scope, immediately run:
 
 ```bash
-git checkout dev && git pull origin dev && git checkout -b feat/<short-description>
+git checkout main && git pull origin main && git checkout -b feat/<short-description>
 ```
 
 **Do this before touching any files.** No exceptions. Branch naming: `feat/<short-description>` (e.g. `feat/color-picker`, `feat/label-fix`).
 
-This step exists because a session committed directly to `dev` on 2026-06-30 — the brief confirmed scope but the branch was never cut. The branch cut is the first action of every work session, not an afterthought.
+This step exists because a session committed directly to the shared branch on 2026-06-30 — the brief confirmed scope but the branch was never cut. The branch cut is the first action of every work session, not an afterthought.
+
+Branches are cut from `main`. There is no `dev` branch — it was retired in September 2026; see the Git section of `CLAUDE.md` for why.
