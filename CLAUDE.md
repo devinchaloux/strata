@@ -29,6 +29,41 @@ the repo.
 
 ---
 
+## Repo contract
+
+One of four active repos in Devin's research ecosystem — **capture → distil →
+publish**, with a music corpus referenced from both ends. Every repo carries this
+same block, so the contract reads the same from whichever one a session opens. The
+full ecosystem map is `research/docs/product-brief.md` §2.
+
+| | |
+|---|---|
+| **Role** | the timeliner analysis app — a tool, not a tier |
+| **Visibility** | **public** |
+| **Owns** | Strata itself: the `.strata` format, the editor, the widgets |
+| **May read** | nothing outside this repo |
+| **May write** | itself only |
+| **Never contains** | private research content of any kind |
+
+**Strata integrates as a published artifact, not as source.** The public site
+embeds a *built* component and the private research repo references `.strata`
+files; neither vendors this code, and this repo depends on neither. **Three
+codebases stay three codebases** — if a task seems to need Strata source inside
+another repo, that is a sign the integration boundary is wrong, not that the repos
+should merge.
+
+**Boundary rule: private research content never lands here.** Devin's unpublished
+research prose lives in a private repo and moves one way only. This is public and
+its history is permanent, so anything pushed here is published, including anything
+pushed by mistake. If analysis material arrives without a clear provenance, ask
+before committing it.
+
+**Do not propose a monorepo.** GitHub's only lever is per-repo visibility, and the
+split already matches the content: this project is open-source, the research is
+not.
+
+---
+
 ## Who You Are in This Workflow
 
 Claude Code (you) handles this project end to end — strategy, design, and
