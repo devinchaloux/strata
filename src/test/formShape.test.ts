@@ -5,7 +5,7 @@ import {
   buildShapePath,
   capFromBoundaryType,
   lineStyleDash,
-  elisionInnerLine,
+  ELISION_EXTEND,
   layoutLayerLabels,
   edgeAwareJustification,
   layerBodyHeight,
@@ -297,17 +297,43 @@ describe('edgeAwareJustification', () => {
   })
 })
 
-describe('elisionInnerLine', () => {
-  it('returns a faint inner line only for elision caps', () => {
-    expect(elisionInnerLine('rounded', 'start', 100)).toBeNull()
-    expect(elisionInnerLine('elision', 'start', 100)).not.toBeNull()
+describe('elision cap — displaced outward past the boundary', () => {
+  it('pushes the end tail PAST the span edge, not inset within it', () => {
+    const plain = buildShapePath({ width: 100, startCap: 'rounded', endCap: 'rounded', inset: 1.5 })
+    const elided = buildShapePath({ width: 100, startCap: 'rounded', endCap: 'elision', inset: 1.5 })
+    // rounded ends at width - inset = 98.5; elision ends ELISION_EXTEND beyond it.
+    expect(plain).toContain('98.5')
+    expect(elided).toContain(`${100 - 1.5 + ELISION_EXTEND}`)
   })
 
-  it('places the start line near the left and the end line near the right', () => {
-    const start = elisionInnerLine('elision', 'start', 100, 28, 0)!
-    const end = elisionInnerLine('elision', 'end', 100, 28, 0)!
-    expect(start).toContain('M 3 28')
-    expect(end).toContain('M 97 28')
+  it('pushes the start tail leftward, into the previous span', () => {
+    const elided = buildShapePath({ width: 100, startCap: 'elision', endCap: 'rounded', inset: 1.5 })
+    expect(elided).toContain(`M ${1.5 - ELISION_EXTEND} `)
+  })
+
+  it('draws the same rounded corner as a rounded cap — only the x differs', () => {
+    const rounded = buildShapePath({ width: 100, startCap: 'rounded', endCap: 'rounded' })
+    const elided = buildShapePath({ width: 100, startCap: 'rounded', endCap: 'elision' })
+    // Same command sequence (M/L/A/…), so the shape vocabulary is unchanged.
+    expect(elided.replace(/[\d.-]+/g, '#')).toBe(rounded.replace(/[\d.-]+/g, '#'))
+  })
+
+  it('is per-boundary — an unelided cap on the same span is untouched', () => {
+    const elided = buildShapePath({ width: 100, startCap: 'rounded', endCap: 'elision', inset: 1.5 })
+    expect(elided).toContain('M 1.5 ')
+  })
+
+  it('clamps the extension to half the span width, so a narrow span cannot overshoot', () => {
+    // width 10 → half is 5, below the fixed 8px signal.
+    const narrow = buildShapePath({ width: 10, startCap: 'rounded', endCap: 'elision', inset: 1.5 })
+    expect(narrow).toContain(`${10 - 1.5 + 5}`)
+    expect(narrow).not.toContain(`${10 - 1.5 + ELISION_EXTEND}`)
+  })
+
+  it('leaves the extension at full strength once the span is wide enough', () => {
+    // width 16 → half is 8, exactly the fixed signal; anything wider stays at 8.
+    const wide = buildShapePath({ width: 40, startCap: 'rounded', endCap: 'elision', inset: 1.5 })
+    expect(wide).toContain(`${40 - 1.5 + ELISION_EXTEND}`)
   })
 })
 

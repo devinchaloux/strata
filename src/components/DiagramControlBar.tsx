@@ -22,6 +22,7 @@
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
+import { SHAPE_HEIGHT } from '@/lib/formShape' // TEMPORARY — ShapeLab only
 
 function BarButton({
   label,
@@ -51,6 +52,72 @@ function BarButton({
         </kbd>
       )}
     </button>
+  )
+}
+
+/**
+ * TEMPORARY — the shape lab. Two live sliders for the bracket corner curve and
+ * the elision reach, so the values get chosen against real spans at real zoom
+ * rather than from a mockup. Nothing here touches the document: it is UI state,
+ * so it never dirties the file or lands in an undo step.
+ *
+ * Delete this component, `uiStore.shapeLab`, and the `cornerRadius` /
+ * `elisionExtend` overrides in `buildShapePath` once the values are picked and
+ * hard-coded back into formShape.ts.
+ */
+function ShapeLab() {
+  const shapeLab = useUIStore((s) => s.shapeLab)
+  const setShapeLab = useUIStore((s) => s.setShapeLab)
+
+  return (
+    <div className="ml-auto flex items-center gap-3 pr-1 text-[10px] text-muted-foreground">
+      <label className="flex items-center gap-1.5" title="Corner curve on rounded and elision caps">
+        <span className="uppercase tracking-wide">Corner</span>
+        {/* Ceiling is SHAPE_HEIGHT: buildShapePath clamps r to the body height,
+            so anything above 28 is inert. At the top of the range the corner is a
+            quarter-circle sweeping the full height — worth seeing, even though
+            the Adjoin Rework retired domes, since the flat top survives it. */}
+        <input
+          type="range"
+          min={0}
+          max={SHAPE_HEIGHT}
+          step={0.5}
+          value={shapeLab.cornerRadius}
+          onChange={(e) => setShapeLab({ cornerRadius: Number(e.target.value) })}
+          className="h-1 w-24 cursor-pointer"
+        />
+        <span className="w-6 tabular-nums">{shapeLab.cornerRadius}</span>
+      </label>
+      <label
+        className="flex items-center gap-1.5"
+        title="A corner may consume at most this share of a span's width, so narrow spans keep a flat top. At 0.5 the two corners meet and the flat top disappears."
+      >
+        <span className="uppercase tracking-wide">Narrow</span>
+        <input
+          type="range"
+          min={0.1}
+          max={0.5}
+          step={0.05}
+          value={shapeLab.cornerRatio}
+          onChange={(e) => setShapeLab({ cornerRatio: Number(e.target.value) })}
+          className="h-1 w-24 cursor-pointer"
+        />
+        <span className="w-6 tabular-nums">{shapeLab.cornerRatio}</span>
+      </label>
+      <label className="flex items-center gap-1.5" title="How far an elision cap reaches past the boundary">
+        <span className="uppercase tracking-wide">Elision</span>
+        <input
+          type="range"
+          min={0}
+          max={20}
+          step={0.5}
+          value={shapeLab.elisionExtend}
+          onChange={(e) => setShapeLab({ elisionExtend: Number(e.target.value) })}
+          className="h-1 w-24 cursor-pointer"
+        />
+        <span className="w-6 tabular-nums">{shapeLab.elisionExtend}</span>
+      </label>
+    </div>
   )
 }
 
@@ -105,6 +172,7 @@ export function DiagramControlBar() {
         disabled={!eligibility.ok}
         onClick={() => performMerge()}
       />
+      <ShapeLab />
     </div>
   )
 }

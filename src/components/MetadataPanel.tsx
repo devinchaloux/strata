@@ -144,8 +144,11 @@ const CONFIDENCE_OPTS: { value: ConfidenceLevel; label: string }[] = [
   { value: 'speculative', label: 'Spec.' },
 ]
 
+// "Clean" rather than "Definite": it is the word analysts reach for when asking
+// whether a boundary cuts or melds, and it stops the option list reading as a
+// second Confidence control. The stored value is unchanged.
 const BOUNDARY_OPTS: { value: BoundaryType; label: string }[] = [
-  { value: 'definite', label: 'Definite' },
+  { value: 'definite', label: 'Clean' },
   { value: 'gradual', label: 'Gradual' },
   { value: 'elided', label: 'Elided' },
 ]
@@ -163,10 +166,10 @@ const LINESTYLE_OPTS: { value: LineStyle; label: string }[] = [
   { value: 'dashed', label: 'Dashed' },
 ]
 
-/** Start/end cap + stroke — the visual (bracket-only) fields, factored out so
- *  they can render either inline (bracket layers) or under a "more fields"
- *  expander (bar layers) without duplicating the JSX. */
-function ShapeFields({
+/** The per-side cap overrides. The boundary control above already picks a cap,
+ *  so these exist only for the case where the analyst wants to diverge from it —
+ *  arguing "gradual, but drawn square". Hence the disclosure in ShapeFields. */
+function CapFields({
   span,
   update,
 }: {
@@ -207,6 +210,24 @@ function ShapeFields({
           </Field>
         </div>
       </div>
+    </>
+  )
+}
+
+/** Caps plus stroke. The caps stay in the open (Devin's call, 2026-07-25 — the
+ *  disclosure that briefly hid them was wrong): picking a boundary type updates
+ *  these dropdowns in place, so the relationship between the analytical claim and
+ *  the drawing is visible rather than buried. */
+function ShapeFields({
+  span,
+  update,
+}: {
+  span: Span
+  update: (patch: Partial<Omit<Span, 'id'>>) => void
+}) {
+  return (
+    <>
+      <CapFields span={span} update={update} />
 
       <Field label="Stroke">
         <Segmented
@@ -394,15 +415,23 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           />
         </Field>
 
-        {/* Boundaries — analytical data (transition character), not a visual
-            choice, so these stay visible regardless of layer shape. */}
+        {/* Boundaries — the analytical claim, and the primary shape control.
+            Choosing one clears any cap override on that side so the drawing
+            follows the claim; the analyst can still diverge under "Override the
+            drawing" below. This inverts the older UI, which surfaced the two
+            per-side cap dropdowns first and left the claim looking duplicative. */}
         <div className="flex gap-2">
           <div className="flex-1">
             <Field label="Start boundary">
               <select
                 className={inputClass}
                 value={span.startBoundaryType ?? 'definite'}
-                onChange={(e) => update({ startBoundaryType: e.target.value as BoundaryType })}
+                onChange={(e) =>
+                  update({
+                    startBoundaryType: e.target.value as BoundaryType,
+                    startCap: undefined,
+                  })
+                }
               >
                 {BOUNDARY_OPTS.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -417,7 +446,12 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
               <select
                 className={inputClass}
                 value={span.endBoundaryType ?? 'definite'}
-                onChange={(e) => update({ endBoundaryType: e.target.value as BoundaryType })}
+                onChange={(e) =>
+                  update({
+                    endBoundaryType: e.target.value as BoundaryType,
+                    endCap: undefined,
+                  })
+                }
               >
                 {BOUNDARY_OPTS.map((o) => (
                   <option key={o.value} value={o.value}>

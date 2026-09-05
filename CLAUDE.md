@@ -76,46 +76,16 @@ surface it and ask before continuing.
 
 ## Project Structure
 
-```
-strata/
-├── CLAUDE.md
-├── .gitignore
-├── README.md
-├── .claude/
-│   └── skills/
-│       └── brief/
-│           └── SKILL.md    ← /brief — session start workflow
-├── docs/
-│   ├── vision.md           ← full project vision (distilled from ideation)
-│   └── decisions.md        ← architectural decisions log, living document
-├── schema/
-│   ├── strata.schema.json  ← formal JSON schema spec — most important file
-│   └── example.strata      ← hand-authored realistic example file
-└── widgets/
-    └── form-diagram.md     ← widget contract spec for the form diagram widget
-```
-
 `_private/` exists locally but is gitignored — never commit anything from it.
 
 ---
 
 ## Current Phase
 
-**Pre-build: design sessions and schema work.**
-
-Design decisions, schema, and widget contract specs are being finalized before
-application code is written. See `_private/build-plan.md` for the full phase
-breakdown and what gates each phase.
-
-The immediate goals (Phase 0) are:
-1. Formal TypeScript types and JSON schema (`schema/strata.schema.json`)
-2. Widget contract specification (`widgets/_contract.md`)
-3. Form diagram editor UX spec
-4. Merge UX spec
-5. Player chrome spec
-
-Once Phase 0 is complete, Phase 1 scaffolds the Vite + React + TypeScript
-application.
+`_private/build-plan.md` has the phase breakdown and what gates each phase;
+`_private/handoff.md` has where the last session left off. Read both at brief
+time rather than trusting a summary here — a phase written into this file goes
+stale the moment the phase advances.
 
 ---
 

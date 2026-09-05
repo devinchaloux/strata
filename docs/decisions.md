@@ -2404,3 +2404,115 @@ both handlers need to agree, or the child must stop the click too.
 **Fix:** A boxed cadence caption sat flush against the widget card's bottom
 border and read as clipped. The band had a top gap but no bottom gap;
 `BAND_BOTTOM_GAP` now gives it 5px of clearance.
+
+---
+
+## Elision Rendering & Boundary-First Shape Control (2026-07-25)
+
+*Session 2026-07-25. Closes the standing "elision drawing needs work" instruction
+(open-questions.md → "Faster bracket-shape assignment") and backlog #13. A
+research pass on how elision is conventionally drawn preceded any code, per
+Devin's standing instruction. Outputs: `src/lib/formShape.ts`,
+`src/components/FormLayers.tsx`, `src/components/MetadataPanel.tsx`,
+`src/test/formShape.test.ts`.*
+
+---
+
+**Decision:** An `elision` cap draws the *same* rounded corner as every other
+cap, displaced **outward past the boundary** by `ELISION_EXTEND` (8px), so the
+bracket physically overlaps its neighbour. This reverses the "lighter inner
+overlap line" treatment from the Adjoin Rework.
+**Rationale:** Devin's reference (BriFormer) does not introduce a new shape at an
+elided boundary. It moves where the existing shape is drawn: *"there's a
+difference in where the boundary is drawn. This is all from the same timepoint."*
+The faint inner line read as decoration on an ordinary boundary rather than as an
+overlap. Same shape vocabulary, displaced position, is both the smaller change
+and the one that reads correctly.
+
+---
+
+**Decision:** The elision is **drawn, never stored**. The boundary remains a
+single exact timepoint; `startTime`/`endTime` are untouched, and no span
+overlaps another in the data.
+**Rationale:** Devin's framing: the analyst still decides where the boundary is —
+the question elision answers is whether it is a clean cut or whether the sections
+meld. Elision is a claim *about* a boundary, not a duration. An earlier proposal
+to give the overlap real duration (`spanA.endTime > spanB.startTime`) was
+rejected on this basis. It would also have reopened the Phase 0.4 boundary-drag
+hard-stop for no analytical gain. Exactly parallel to `ISLAND_INSET`: the render
+decouples from pixel-exactness while the data stays exact.
+
+---
+
+**Decision:** Elision is **per-boundary, not reciprocal**. One span's elided cap
+extends regardless of what its neighbour claims.
+**Rationale:** Supersedes `_private/visual-design-spec.md` §4.2, which specified
+"overlapping bracket drawn between reciprocal `elided` neighbors." Devin's own
+analyses set elision on some layers and not others at the same timepoint, and
+that difference down the stack is the point — a reciprocal gate would erase it.
+It also matches the authoring model he described: one toggle on one side, nothing
+else to change.
+
+---
+
+**Decision:** The extension is clamped to half the span's own width
+(`ELISION_EXTEND_MAX_RATIO`), so it is a fixed 8px signal on any span wider than
+~16px and scales down below that.
+**Rationale:** Unclamped, a narrow span flings its tail clean past its neighbour
+and lands somewhere meaningless (on the Alive fixture an 8.4px span reached 7px
+beyond the neighbour's start). The extension is a signal, not a measurement, so a
+fixed value is right in the normal case; the clamp only guards the degenerate one.
+
+---
+
+**Decision:** `startBoundaryType`/`endBoundaryType` become the **primary shape
+control**. Choosing one clears any cap override on that side, so the drawing
+follows the analytical claim. The per-side cap dropdowns move under an "Override
+the drawing" disclosure.
+**Rationale:** Realizes Devin's 2026-07-03 direction (backlog #13) to invert what
+is surfaced first. The duplication he flagged — *"the start/end boundary toggles
+and the start/end cap toggles are duplicative… I don't know what the purpose was
+there?"* — was a residue, not a design: `boundaryType` drove rendering in Phase
+0.4, the Adjoin Rework added caps *beside* it rather than replacing it, and the
+panel then surfaced both as peers. The fields stay decoupled underneath, per the
+Adjoin Rework, so "gradual but drawn square" remains expressible. Before this
+change, setting a boundary type on a span with an explicit cap was a silent no-op.
+
+---
+
+**Reversed same session:** the "Override the drawing" disclosure is **out**; the
+cap dropdowns stay in the open, above Stroke. Devin on seeing it: *"I really want
+the options for the start/end cap to be what's surfaced."* The boundary→cap
+driving is kept, which turns out to be the better arrangement anyway — picking a
+boundary type visibly updates the cap dropdown, so the relationship between the
+analytical claim and the drawing is legible instead of buried. Only the hiding
+was wrong.
+
+**Also noted:** the #13 note was misread. It reads "the drill-down (individual
+Start/End boundary **+** Start/End cap dropdowns) is the primary UI" — Devin
+counted *both* sets as the drill-down, and the thing he wanted surfaced first was
+a **whole-bracket shape gallery** (rounded-both, angled pair, open-ended, applied
+in one click). Promoting boundary type was not what he asked for. The gallery
+remains unbuilt and is now its own backlog item.
+
+---
+
+**Decision:** `definite` is labelled **"Clean"** in the UI. The stored value is
+unchanged.
+**Rationale:** It is the word analysts reach for when asking whether a boundary
+cuts or melds, and it stops the option list reading as a second Confidence
+control. Follows the `harmonicContext` → "In key" precedent: the label serves the
+analyst, the field name serves the schema, and the divergence is logged.
+
+---
+
+**Open — does `gradual` earn its keep?** Devin questioned whether the three-value
+boundary vocabulary is analytically useful at all. Assessment: `elided` clearly
+earns it (named concept with a literature, distinct visual consequence,
+genuinely corpus-queryable). `definite` carries no information — it is the
+documented default, the absence of a claim. `gradual` is the uncertain one: in
+EDM a gradual transition usually *is* a span (a labelled Buildup), so marking the
+boundary gradual can say the same thing twice. It earns its keep only where there
+is no separate transitional section. Resolve empirically by annotating real
+tracks, not by argument. Dropping it later is a one-line change to
+`BOUNDARY_OPTS`.
