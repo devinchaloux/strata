@@ -133,6 +133,11 @@ export const FONT_SIZES: Record<FontScale, { label: number; annotation: number }
   lg: { label: 13, annotation: 11 },
 }
 
+/** A layer's text sizes; absent or unrecognised fontScale reads as md. */
+export function layerFonts(layer: Layer): { label: number; annotation: number } {
+  return FONT_SIZES[layer.fontScale ?? 'md'] ?? FONT_SIZES.md
+}
+
 // ---------------------------------------------------------------------------
 // Shape style resolution (visual style ← analyst choice, with data fallback)
 // ---------------------------------------------------------------------------

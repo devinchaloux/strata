@@ -395,6 +395,11 @@
           "enum": ["bracket", "bar"],
           "description": "Visual style for this layer's spans. Absent/'bracket' = today's rendering (analytical bracket/arc shapes). 'bar' draws thin flat rects instead — intended for key-area layers (Span.keyArea captions), but the field is generic, not key-area-specific. A layer setting, buried in layer settings, not surfaced in the main add-layer flow. Purely visual; the same Span data model and interactions (spacebar, drag, merge) apply either way."
         },
+        "fontScale": {
+          "type": "string",
+          "enum": ["sm", "md", "lg"],
+          "description": "Text size for this layer's labels and annotations: sm (label 9.5px / annotation 8.5px), md (11 / 9), lg (13 / 11). Absent = md. Uniform within a layer; no per-span font size. Purely visual."
+        },
         "data": {
           "description": "Widget-specific data payload. Shape is determined by the type field.",
           "type": "object"

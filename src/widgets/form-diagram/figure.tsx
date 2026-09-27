@@ -23,14 +23,13 @@ import {
   textX,
   ANCHOR,
   TEXT_PAD,
-  FONT_SIZES,
+  layerFonts,
   LABEL_RISE,
   STROKE_WIDTH,
   ISLAND_INSET,
   shapeTopY,
   stackHeight,
   layerBodyHeight,
-  type FontScale,
   type Justification,
   type ResolvedLabel,
 } from '@/lib/formShape'
@@ -64,7 +63,6 @@ function SpanFigure({
   span,
   layer,
   pps,
-  fontScale,
   labelLayout,
   theme,
   Decoration,
@@ -72,7 +70,6 @@ function SpanFigure({
   span: Span
   layer: Layer
   pps: number
-  fontScale: FontScale
   /** Resolved above-label from the layer's neighbour-aware layout pass. */
   labelLayout?: ResolvedLabel
   theme: FigureTheme
@@ -93,7 +90,7 @@ function SpanFigure({
   const endCap: CapStyle = span.endCap ?? capFromBoundaryType(span.endBoundaryType)
   const fill = span.fillColor ?? layer.fillColorDefault
   const stroke = span.strokeColor ?? layer.strokeColorDefault
-  const fonts = FONT_SIZES[fontScale]
+  const fonts = layerFonts(layer)
 
   const labelPosition = layer.rendering?.labelPosition ?? 'above'
   const labelJust = (layer.rendering?.labelJustification ?? 'center') as Justification
@@ -202,7 +199,6 @@ function SpanFigure({
 function layerLabelLayout(layer: Layer, pps: number, totalWidth: number) {
   if ((layer.rendering?.labelPosition ?? 'above') === 'inside') return null
   const isBar = layer.spanShape === 'bar'
-  const fontScale: FontScale = 'md' // layer fontScale is pending in the schema
   return layoutLayerLabels(
     (layer.data as FormDiagramData).spans.map((s) => ({
       id: s.id,
@@ -211,7 +207,7 @@ function layerLabelLayout(layer: Layer, pps: number, totalWidth: number) {
       label: (isBar ? s.keyArea || s.label : s.label) ?? '',
       shortLabel: isBar ? null : s.shortLabel,
     })),
-    FONT_SIZES[fontScale].label,
+    layerFonts(layer).label,
     totalWidth,
     (layer.rendering?.labelJustification ?? 'center') as Justification,
   )
@@ -248,7 +244,6 @@ export const LayerFigure = memo(function LayerFigure({
           span={span}
           layer={layer}
           pps={pps}
-          fontScale="md"
           labelLayout={labels?.get(span.id)}
           theme={theme}
           Decoration={Decoration}

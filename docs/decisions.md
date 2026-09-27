@@ -2861,3 +2861,17 @@ player comes close to. Stacking the player on top guarantees the rule for
 menus and popovers without having to steer each one; placing dialogs clear of
 it keeps them readable. Placement lives in `lib/playerClearance.ts`; the shared
 dialog components apply it, so a new dialog complies without extra wiring.
+
+---
+
+## Layer Text Size (2026-09-27)
+
+**Decision:** The layer-level `fontScale` (`sm` / `md` / `lg`, decided in the
+visual design pass; see "Font-size API" above) is now in the schema, the types
+and the renderer, with a Text size S / M / L control in layer settings. Absent
+means `md`, so existing files draw exactly as before; an unrecognised value
+also reads as `md`.
+**Rationale:** The renderer already carried the three sizes but hard-coded
+`md`. Export makes text size matter: a figure scaled down for a page or a slide
+needs larger labels, and a dense phrase layer may want smaller ones. No format
+version bump: a new optional field is additive under the versioning policy.

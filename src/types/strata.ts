@@ -296,6 +296,12 @@ export interface LayerBase {
    * implication; the same Span/spacebar/drag/merge interactions apply either way.
    */
   spanShape?: 'bracket' | 'bar'
+  /**
+   * Text size for this layer's labels and annotations: sm (9.5 / 8.5 px),
+   * md (11 / 9, the default when absent) or lg (13 / 11). Uniform within a
+   * layer; there is no per-span font size.
+   */
+  fontScale?: 'sm' | 'md' | 'lg'
 }
 
 export type FormDiagramLayer = LayerBase & { type: 'form-diagram'; data: FormDiagramData }

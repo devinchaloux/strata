@@ -72,6 +72,7 @@ describe('documents the app writes', () => {
       absent: true,
     })
     store().updateMeta({ homeKey: { tonic: 'B♭', mode: 'major' } })
+    store().updateLayer(layer.id, { fontScale: 'lg' })
 
     expectValid(doc())
   })
