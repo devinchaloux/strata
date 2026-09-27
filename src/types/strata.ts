@@ -134,7 +134,7 @@ export interface Span {
                                   // label doesn't fit; never itself truncated. No algorithmic
                                   // abbreviation is attempted — if neither fits, nothing renders
                                   // (a small marker indicates a hidden label; see FormLayers).
-  slug?: string | null           // Auto-generated from label; null until label is set
+  slug?: string | null           // From the label; unique per document, frozen once saved (lib/slug.ts)
   startTime: number              // Recording time, seconds (float)
   endTime: number                // Must exceed startTime
   type?: string | null           // Vocabulary term ID; corpus-queryable
@@ -143,12 +143,12 @@ export interface Span {
   annotation?: string | null     // Diagram-visible analytical text (on span body)
   notes?: string | null          // Tooltip-only; not rendered on diagram
   lyrics?: string | null         // Lyric text; corpus-queryable
-  keyArea?: string | null        // Free text, conventionally a Roman numeral relative to
-                                  // StrataDocument.homeKey (e.g. "vi", "V/V"). Corpus-queryable.
+  keyArea?: string | null        // A Roman numeral relative to StrataDocument.homeKey
+                                  // (e.g. "vi", "V/V"); accidentals stored as ♭/♯. Corpus-queryable.
                                   // Renders as a caption spanning the span (see Layer.spanShape).
   confidence?: ConfidenceLevel   // Queryable data; omit for "definite". Does NOT affect rendering.
-  startBoundaryType?: BoundaryType | null // Queryable data; does NOT affect rendering
-  endBoundaryType?: BoundaryType | null   // Queryable data; does NOT affect rendering
+  startBoundaryType?: BoundaryType | null // Queryable data. Choosing one in the UI resets that
+  endBoundaryType?: BoundaryType | null   // side's cap to match; the drawing reads the cap.
   parentId?: string | null       // UUID of parent span; hierarchical ref without enforcement
   mergedFrom?: string[] | null   // Always >= 2 UUIDs when present
   // Visual style — the analyst's drawing choice (decoupled from the data above).
@@ -174,12 +174,11 @@ export interface PointMarker {
   type?: string | null         // Vocabulary term ID; corpus-queryable
   notes?: string | null
   flagged?: boolean            // "Come back to this." Omit for false (default)
-  absent?: boolean             // "Expected event explicitly absent." No v1 UI. Omit for false.
+  absent?: boolean             // "Expected event explicitly absent." Caption renders struck through. Omit for false.
   confidence?: ConfidenceLevel // Omit for "definite" (default)
-  harmonicContext?: string | null // Free text, conventionally a Roman numeral relative to
-                                   // StrataDocument.homeKey (e.g. "V" for a half cadence in the
-                                   // dominant). Rendered as its own text near the marker — never
-                                   // force-concatenated with `type`.
+  harmonicContext?: string | null // A Roman numeral relative to StrataDocument.homeKey (e.g. "V"
+                                   // for a half cadence in the dominant). UI label "In key".
+                                   // Captioned as `V:PAC` with the type, or alone without one.
   /**
    * Soft UI preset — picks which fields the Inspector panel leads with. Never
    * restricts what data a marker can carry; every field remains reachable via

@@ -1,4 +1,5 @@
 import type { StrataDocument } from '@/types/strata'
+import { readDocument, DocumentError, type LoadResult } from '@/lib/documentLoad'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -21,31 +22,23 @@ export function supportsFileSystemAccess(): boolean {
 // ---------------------------------------------------------------------------
 
 /**
- * Parses a raw string as a StrataDocument.
- * Throws a descriptive Error on any failure — callers should surface this to the user.
+ * Parses and reads a .strata file's text. Throws a DocumentError (with a
+ * message written for the analyst) when the file can't be opened; returns any
+ * non-blocking notices alongside the document. See lib/documentLoad.ts.
  */
-export function parseStrataFile(raw: string): StrataDocument {
+export function readStrataFile(raw: string): LoadResult {
   let parsed: unknown
   try {
     parsed = JSON.parse(raw)
   } catch {
-    throw new Error('File is not valid JSON.')
+    throw new DocumentError('This file is not valid JSON, so it is not a readable Strata analysis.')
   }
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    throw new Error('File is not a valid .strata document.')
-  }
-  const doc = parsed as Record<string, unknown>
-  if (
-    typeof doc.strataVersion !== 'string' ||
-    typeof doc.fileFormatVersion !== 'number' ||
-    typeof doc.title !== 'string' ||
-    !Array.isArray(doc.layers)
-  ) {
-    throw new Error(
-      'File is missing required fields (strataVersion, fileFormatVersion, title, layers).'
-    )
-  }
-  return parsed as StrataDocument
+  return readDocument(parsed)
+}
+
+/** readStrataFile without the notices — for callers that only need the document. */
+export function parseStrataFile(raw: string): StrataDocument {
+  return readStrataFile(raw).doc
 }
 
 // ---------------------------------------------------------------------------
@@ -69,10 +62,7 @@ function suggestedFilename(doc: StrataDocument): string {
  * Chrome/Edge: uses showOpenFilePicker and returns a live file handle for in-place save.
  * Safari/Firefox: falls back to a hidden <input type="file">; handle is null.
  */
-export async function openFile(): Promise<{
-  doc: StrataDocument
-  handle: FileSystemFileHandle | null
-}> {
+export async function openFile(): Promise<LoadResult & { handle: FileSystemFileHandle | null }> {
   if (supportsFileSystemAccess()) {
     const [handle] = await window.showOpenFilePicker!({
       types: STRATA_FILE_TYPES,
@@ -80,7 +70,7 @@ export async function openFile(): Promise<{
     })
     const file = await handle.getFile()
     const raw = await file.text()
-    return { doc: parseStrataFile(raw), handle }
+    return { ...readStrataFile(raw), handle }
   }
 
   return new Promise((resolve, reject) => {
@@ -94,7 +84,7 @@ export async function openFile(): Promise<{
         return
       }
       try {
-        resolve({ doc: parseStrataFile(await file.text()), handle: null })
+        resolve({ ...readStrataFile(await file.text()), handle: null })
       } catch (err) {
         reject(err)
       }

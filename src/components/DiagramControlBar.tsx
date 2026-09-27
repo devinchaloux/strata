@@ -22,7 +22,7 @@
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
-import { SHAPE_HEIGHT } from '@/lib/formShape' // TEMPORARY — ShapeLab only
+import { SHAPE_HEIGHT } from '@/lib/formShape' // ShapeLab only
 
 function BarButton({
   label,
@@ -56,14 +56,18 @@ function BarButton({
 }
 
 /**
- * TEMPORARY — the shape lab. Two live sliders for the bracket corner curve and
- * the elision reach, so the values get chosen against real spans at real zoom
- * rather than from a mockup. Nothing here touches the document: it is UI state,
- * so it never dirties the file or lands in an undo step.
+ * DEV-ONLY — the shape lab. Live sliders for the bracket corner curve, the
+ * narrow-span clamp and the elision reach, so the values get chosen against
+ * real spans at real zoom rather than from a mockup. Nothing here touches the
+ * document: it is UI state, so it never dirties the file or lands in an undo
+ * step.
  *
- * Delete this component, `uiStore.shapeLab`, and the `cornerRadius` /
- * `elisionExtend` overrides in `buildShapePath` once the values are picked and
- * hard-coded back into formShape.ts.
+ * Rendered only in development builds (`npm run dev`) since 2026-09-27: it had
+ * merged to main as a "temporary" blocker, and the elision value it exists to
+ * settle is on the backlog (#29). Its starting values are the hard-coded
+ * defaults, so a production build draws identically without it. When #29 is
+ * decided, hard-code the value in formShape.ts and delete this component,
+ * `uiStore.shapeLab`, and the overrides in `buildShapePath`.
  */
 function ShapeLab() {
   const shapeLab = useUIStore((s) => s.shapeLab)
@@ -126,7 +130,9 @@ export function DiagramControlBar() {
   const placeBoundary = useDocumentStore((s) => s.placeBoundary)
   const addPointMarker = useDocumentStore((s) => s.addPointMarker)
   const activeLayerId = useUIStore((s) => s.activeLayerId)
-  const currentTime = useUIStore((s) => s.currentTime)
+  // A yes/no subscription, not the time: the bar re-renders when the playhead
+  // leaves zero, not on every playback frame. Clicks read the live time.
+  const playheadMoved = useUIStore((s) => s.currentTime > 0)
   const selectPointMarker = useUIStore((s) => s.selectPointMarker)
   const playbackState = useUIStore((s) => s.playbackState)
   const { eligibility, performMerge } = useMerge()
@@ -134,10 +140,10 @@ export function DiagramControlBar() {
   if (!doc) return null
 
   const isPlaying = playbackState === 'playing'
-  const canPlaceBoundary = activeLayerId !== null && currentTime > 0
+  const canPlaceBoundary = activeLayerId !== null && playheadMoved
   const boundaryTitle = !activeLayerId
     ? 'Pick an active layer to place a boundary in'
-    : currentTime <= 0
+    : !playheadMoved
       ? 'Move the playhead to place a boundary'
       : isPlaying
         ? 'Place a boundary in the active layer at the playhead (Space)'
@@ -153,7 +159,7 @@ export function DiagramControlBar() {
         shortcut={isPlaying ? 'Space' : undefined}
         title={boundaryTitle}
         disabled={!canPlaceBoundary}
-        onClick={() => activeLayerId && placeBoundary(activeLayerId, currentTime)}
+        onClick={() => activeLayerId && placeBoundary(activeLayerId, useUIStore.getState().currentTime)}
       />
       <BarButton
         label="Marker"
@@ -161,7 +167,7 @@ export function DiagramControlBar() {
         title="Place a point marker at the playhead"
         onClick={() => {
           const id = crypto.randomUUID()
-          addPointMarker({ id, timestamp: currentTime })
+          addPointMarker({ id, timestamp: useUIStore.getState().currentTime })
           selectPointMarker(id)
         }}
       />
@@ -172,7 +178,7 @@ export function DiagramControlBar() {
         disabled={!eligibility.ok}
         onClick={() => performMerge()}
       />
-      <ShapeLab />
+      {import.meta.env.DEV && <ShapeLab />}
     </div>
   )
 }

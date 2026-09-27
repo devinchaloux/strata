@@ -527,7 +527,11 @@ export function FormDiagram() {
   }
 
   // Macro-on-top; hidden layers are pulled out of the stack (slot reclaimed).
-  const sorted = [...doc.layers].sort((a, b) => b.displayOrder - a.displayOrder)
+  // Only form-diagram layers draw here. A layer of a type this build doesn't
+  // know is kept in the document untouched (the loader warns about it).
+  const sorted = doc.layers
+    .filter((l) => l.type === 'form-diagram')
+    .sort((a, b) => b.displayOrder - a.displayOrder)
   const visible = sorted.filter((l) => l.visibility)
   const hidden = sorted.filter((l) => !l.visibility)
 
@@ -602,7 +606,6 @@ export function FormDiagram() {
             totalWidth={timeline.totalWidth}
             scrollOffset={timeline.scrollOffset}
             viewportWidth={timeline.viewportWidth}
-            currentTime={timeline.currentTime}
             duration={timeline.duration}
             setScrollOffset={timeline.setScrollOffset}
           />

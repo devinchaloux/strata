@@ -45,6 +45,24 @@ describe('toAccidentals', () => {
     expect(toAccidentals('F♯')).toBe('F♯')
   })
 
+  it('handles flats in figured and applied numerals', () => {
+    expect(toAccidentals('bII6')).toBe('♭II6')
+    expect(toAccidentals('V7/bVI')).toBe('V7/♭VI')
+    expect(toAccidentals('bbVII')).toBe('♭♭VII')
+    expect(toAccidentals('bvii°')).toBe('♭vii°')
+  })
+
+  it('treats lowercase note names as minor keys', () => {
+    expect(toAccidentals('bb')).toBe('b♭')
+    expect(toAccidentals('eb')).toBe('e♭')
+  })
+
+  it('never rewrites a b inside a word', () => {
+    expect(toAccidentals('Subdominant')).toBe('Subdominant')
+    expect(toAccidentals('ambiguous')).toBe('ambiguous')
+    expect(toAccidentals('vi (ambiguous)')).toBe('vi (ambiguous)')
+  })
+
   it('passes through empty input', () => {
     expect(toAccidentals('')).toBe('')
   })

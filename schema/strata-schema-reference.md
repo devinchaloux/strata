@@ -199,7 +199,7 @@ A **span** is a time range that represents a formal section: a verse, a drop, a 
 | `id` | UUID | Yes | Auto-generated unique identifier. **Never changes, never shown to the user.** Used internally for merge tracking, inter-widget links, and the embeddable viewer. |
 | `label` | text or null | No | Free text display name set by the analyst — what they call this section. Optional: null for unlabeled spans (e.g. bar-level hypermeter spans where the `type` field carries all the analytical meaning). Empty string is valid for a newly placed span awaiting a label. Examples: `Drop 1`, `THE DROP`, `Exposition`. |
 | `shortLabel` | text or null | No | Optional analyst-authored abbreviation of `label` — e.g. `Verse 1` → `V1`, `Breakdown` → `Br`. Shown above the shape in place of the full label when the full label doesn't fit at the current zoom; never truncated further itself. There is no algorithmic abbreviation of above-shape labels — if neither `label` nor `shortLabel` fits, nothing renders (a small marker indicates a hidden label is present). |
-| `slug` | text or null | No | Auto-generated from the label — e.g. `Drop 1` becomes `drop-1`. Used as a stable reference key in the embeddable viewer (`focus="drop-1"`) and in future inter-widget links. Null when no label is set. Uniqueness is determined by chronological position (startTime order), not creation order. |
+| `slug` | text or null | No | Generated from the label — e.g. `Drop 1` becomes `drop-1`, `A′` becomes `a-prime`. The reference key the embeddable viewer uses (`focus="drop-1"`) and future inter-widget links will use. **Unique across the document**: a repeat gets a suffix (`verse`, `verse-2`, …) in time order. **Stable once saved**: until the file is saved the slug follows label edits; after that, renaming the span leaves the slug unchanged so links to it keep working, and the analyst can regenerate it on purpose. Null when no label is set. |
 | `startTime` | decimal number | Yes | Start of the span in recording time, seconds. |
 | `endTime` | decimal number | Yes | End of the span in recording time, seconds. Must be greater than `startTime`. |
 | `type` | vocabulary term ID or null | No | The corpus-queryable classification of this section — drawn from the global built-in list or from this document's `vocabulary.spanTypes`. Separate from `label` by design: an analyst can call a section `THE DROP` (label) while typing it as `drop` (type). The `type` field is what makes cross-corpus comparison possible. Null if no type has been assigned. |
@@ -222,7 +222,7 @@ This is one of the most important design decisions in the schema:
 |---|---|---|
 | `id` | Internal, machine-readable identity | The app, internally. Never visible to the analyst. |
 | `label` | Human-readable display name | The analyst sets this. Shown on the diagram. Can be anything. |
-| `slug` | Stable human-readable reference key | The embeddable viewer (`focus="drop-1"`), inter-widget links. Set once from the label. |
+| `slug` | Stable human-readable reference key | The embeddable viewer (`focus="drop-1"`), inter-widget links. Unique per document; frozen once saved. |
 | `type` | Corpus-queryable classification | The database, queries, and comparisons across files. Comes from a controlled vocabulary. |
 
 An analyst can call a section `"THE DROP"` and classify it as type `drop`. Another analyst can call the same formal event `"Main Drop"` and classify it as type `drop`. Because both use the same `type`, a corpus query for `drop` sections finds both — even though the labels differ. **The `type` field is what makes Strata a corpus tool rather than a diagramming tool.**
@@ -294,12 +294,20 @@ Confidence is an analytical claim, not a quality flag. A speculative span is not
 
 ### How elision works
 
-An elision is represented by **two adjacent spans both marking their shared boundary as `elided`**, combined with **overlapping timestamps**:
+*Revised 2026-07-25; the earlier "overlapping timestamps" representation is retired.*
 
-- Span A: `endBoundaryType = "elided"`, `endTime = 97.5`
-- Span B: `startBoundaryType = "elided"`, `startTime = 96.0`
+An elision is a claim **about a boundary**, not a duration. The boundary stays a
+single exact timepoint shared by the two spans, and each span marks its own side:
 
-The overlapping timestamps encode the ambiguity of the shared moment. The renderer recognizes the pattern and draws the elision visual (an overlapping bracket at the boundary). This is not an error — it is the intended representation of a formal elision.
+- Span A: `endBoundaryType = "elided"`, `endTime = 96.0`
+- Span B: `startTime = 96.0` (and `startBoundaryType = "elided"` if the analyst
+  claims the elision from that side too)
+
+The marking is **per boundary, not reciprocal**: one side may be elided while its
+neighbour is not, and a different layer may treat the same moment differently.
+The renderer draws an elided side as a bracket end that reaches a little past the
+boundary, so it visibly overlaps its neighbour. The overlap is drawn, never
+stored — spans in a layer never overlap in the data (see §10).
 
 ### The key distinction
 
@@ -316,7 +324,7 @@ A gradual boundary can be placed with high confidence — the analyst is sure th
 
 These are the theoretical commitments that shaped the schema's structure.
 
-**Overlapping spans are valid.** The schema places no constraint on two spans occupying the same time range in the same layer. Hierarchical enforcement is an opt-in per-layer toggle, not a data model constraint. This reflects the reality of EDM and other repertoires where multiple formal frameworks apply simultaneously.
+**Overlapping frameworks live on separate layers.** Multiple analytical frameworks can apply to the same passage at once, and each gets its own layer, so spans on different layers overlap freely. *Within* one layer, spans never overlap (2026-09-27): a layer is one reading of the timeline, laid end to end, with gaps allowed where the analyst makes no claim. The JSON Schema cannot express this rule; the app enforces it when editing and warns when it opens a file that breaks it.
 
 **The `type` field is the corpus key.** Labels are for humans; types are for queries. A corpus question like "in what percentage of my analyses does the first drop arrive after a build?" requires consistent `type` values across files, not consistent labels.
 

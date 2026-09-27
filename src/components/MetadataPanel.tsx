@@ -16,7 +16,6 @@ import { useUIStore } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
 import { formatTime } from '@/lib/youtube'
 import { parseTimecode } from '@/lib/timecode'
-import { MIN_SPAN_WIDTH } from '@/lib/spanEdit'
 import { capFromBoundaryType } from '@/lib/formShape'
 import { slugify } from '@/lib/slug'
 import { ColorPicker } from '@/components/ui/color-picker'
@@ -263,8 +262,22 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   const updateSpan = useDocumentStore((s) => s.updateSpan)
   const removeSpan = useDocumentStore((s) => s.removeSpan)
   const placeBoundary = useDocumentStore((s) => s.placeBoundary)
+  const setSpanEdgeAction = useDocumentStore((s) => s.setSpanEdge)
+  const setSpanLabels = useDocumentStore((s) => s.setSpanLabels)
+  const regenerateSlug = useDocumentStore((s) => s.regenerateSlug)
+  // A frozen slug that no longer matches its label (the span was renamed after
+  // a save). The suffix match lets "verse-2" still count as matching "Verse".
+  const expectedBase = span.label ? slugify(span.label) : null
+  const slugStale =
+    expectedBase !== null &&
+    span.slug !== null &&
+    span.slug !== undefined &&
+    span.slug !== expectedBase &&
+    !new RegExp(`^${expectedBase}-\\d+$`).test(span.slug)
   const selectSpan = useUIStore((s) => s.selectSpan)
-  const currentTime = useUIStore((s) => s.currentTime)
+  // Subscribes to the yes/no answer, not the time itself, so the panel
+  // re-renders when the playhead crosses into or out of the span, not per frame.
+  const canSplit = useUIStore((s) => s.currentTime > span.startTime && s.currentTime < span.endTime)
   const { neighborId, performMerge } = useMerge()
 
   const prevId = neighborId(span.id, 'prev')
@@ -287,9 +300,8 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
     selectSpan(null)
   }
 
-  const canSplit = currentTime > span.startTime && currentTime < span.endTime
   function handleSplit() {
-    placeBoundary(layer.id, currentTime)
+    placeBoundary(layer.id, useUIStore.getState().currentTime)
   }
 
   function copy(text: string) {
@@ -297,15 +309,15 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   }
 
   const duration = span.endTime - span.startTime
-  const trackDuration = doc?.duration ?? span.endTime
 
-  // Numeric boundary edits — clamped so the span stays valid (≥ MIN_SPAN_WIDTH,
-  // within [0, track duration]). Edits this span's own times only.
+  // Numeric boundary edits. The store clamps them so the layer stays tiled: a
+  // shared boundary moves both spans (as a drag would), and an edge facing a
+  // gap stops at the gap's far side.
   function commitStart(t: number) {
-    update({ startTime: Math.max(0, Math.min(t, span.endTime - MIN_SPAN_WIDTH)) })
+    setSpanEdgeAction(layer.id, span.id, 'start', t)
   }
   function commitEnd(t: number) {
-    update({ endTime: Math.max(span.startTime + MIN_SPAN_WIDTH, Math.min(t, trackDuration)) })
+    setSpanEdgeAction(layer.id, span.id, 'end', t)
   }
 
   return (
@@ -329,11 +341,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             className={inputClass}
             value={span.label ?? ''}
             placeholder="Unlabeled"
-            onChange={(e) => {
-              const v = e.target.value
-              const label = v === '' ? null : v
-              update({ label, slug: label ? slugify(label) : null })
-            }}
+            onChange={(e) => setSpanLabels([span.id], e.target.value === '' ? null : e.target.value)}
           />
         </Field>
 
@@ -361,8 +369,12 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           </Field>
         )}
 
-        {/* Slug (read-only, click to copy) */}
-        <Field label="Slug">
+        {/* Slug (read-only, click to copy). Once saved it no longer follows
+            the label (lib/slug.ts), so a rename offers an explicit regenerate. */}
+        <Field
+          label="Slug"
+          tooltip="The name an embed uses to point at this span. It stays the same after the file is saved, so renaming the span doesn't break links to it."
+        >
           <button
             className={`${inputClass} flex items-center justify-between text-left`}
             title="Click to copy"
@@ -374,6 +386,14 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             </span>
             {span.slug && <span className="text-[10px] text-muted-foreground">copy</span>}
           </button>
+          {slugStale && (
+            <button
+              className="mt-1 text-[10px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+              onClick={() => regenerateSlug(span.id)}
+            >
+              Update slug to match the label
+            </button>
+          )}
         </Field>
 
         {/* Type */}
@@ -633,6 +653,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
 
   // Apply a patch to every selected span (one undo step).
   const setAll = (patch: Partial<Omit<Span, 'id'>>) => updateSpans(ids, patch)
+  const setSpanLabels = useDocumentStore((s) => s.setSpanLabels)
 
   // Resolved common values (or MIXED) per bulk field.
   const label = commonValue(spans, (s) => s.label ?? '')
@@ -681,11 +702,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
             className={inputClass}
             value={label === MIXED ? '' : label}
             placeholder={label === MIXED ? 'Mixed. Type to set all.' : 'Unlabeled'}
-            onChange={(e) => {
-              const v = e.target.value
-              const next = v === '' ? null : v
-              setAll({ label: next, slug: next ? slugify(next) : null })
-            }}
+            onChange={(e) => setSpanLabels(ids, e.target.value === '' ? null : e.target.value)}
           />
         </Field>
 

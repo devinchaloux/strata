@@ -48,11 +48,11 @@ describe('placeBoundaryInSpans', () => {
     expect(result[1]).toMatchObject({ type: 'drop', label: 'Drop', fillColor: '#fff' })
   })
 
-  it('no-ops when the time is on a boundary or outside every span', () => {
+  it('no-ops when the time is exactly on a boundary', () => {
     const spans = [span('a', 0, 40), span('b', 40, 100)]
-    expect(placeBoundaryInSpans(spans, 40, 100, mkId)).toBeNull() // exactly on a boundary
-    expect(placeBoundaryInSpans([span('a', 0, 40)], 80, 100, mkId)).toBeNull() // in a gap
+    expect(placeBoundaryInSpans(spans, 40, 100, mkId)).toBeNull()
   })
+  // Placing a boundary inside a gap fills it (2026-09-27); see tiling.test.ts.
 
   it('no-ops when the cut would be narrower than the minimum width', () => {
     const spans = [span('a', 0, 100)]

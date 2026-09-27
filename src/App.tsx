@@ -24,7 +24,7 @@ import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { cn } from '@/lib/utils'
 import aliveRaw from '../schema/alive.strata?raw'
-import type { StrataDocument } from '@/types/strata'
+import { readStrataFile } from '@/lib/fileIO'
 
 // ---------------------------------------------------------------------------
 // Toolbar button
@@ -220,6 +220,8 @@ export default function App() {
   } = useFileIO()
 
   const loadDocument = useDocumentStore((s) => s.loadDocument)
+  const appMessage = useUIStore((s) => s.appMessage)
+  const dismissAppMessage = useUIStore((s) => s.dismissAppMessage)
   const setActiveLayer = useUIStore((s) => s.setActiveLayer)
   const clearSelection = useUIStore((s) => s.clearSelection)
   const selectedSpanCount = useUIStore((s) => s.selectedSpanIds.length)
@@ -285,7 +287,9 @@ export default function App() {
 
   // Dev affordance — load the bundled "Alive" fixture to exercise the render path.
   const loadDemo = useCallback(() => {
-    const parsed = JSON.parse(aliveRaw) as StrataDocument
+    // Through the same reader as Open, so the demo can never drift from what
+    // a real file is held to.
+    const parsed = readStrataFile(aliveRaw).doc
     loadDocument(parsed)
     useDocumentStore.temporal.getState().clear()
     // Make the macro layer (highest displayOrder) the active layer by default.
@@ -444,7 +448,8 @@ export default function App() {
       {/* Main row — left work area (diagram bottom-anchored on the ruler, then
           transport + video at the very bottom) and the right inspector. */}
       <div className="flex min-h-0 flex-1">
-        <div className="flex min-w-0 flex-1 flex-col">
+        {/* relative: the mini video player anchors to this column's corner */}
+        <div className="relative flex min-w-0 flex-1 flex-col">
           {doc ? (
             <FormDiagram />
           ) : (
@@ -484,6 +489,22 @@ export default function App() {
           onDiscard={dismissRecovery}
         />
       )}
+
+      {/* Messages the analyst must read: a file that couldn't open or save,
+          or one that opened with warnings. */}
+      <AlertDialog open={appMessage !== null} onOpenChange={(o) => !o && dismissAppMessage()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{appMessage?.title}</AlertDialogTitle>
+            {appMessage?.lines.map((line, i) => (
+              <AlertDialogDescription key={i}>{line}</AlertDialogDescription>
+            ))}
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={dismissAppMessage}>OK</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Unsaved-changes guard — confirms before New / Open / Demo discard the
           current document. Crash recovery (above) is a safety net, not a

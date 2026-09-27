@@ -1,3 +1,4 @@
+import { Playhead } from './Playhead'
 import { generateTicks } from '@/lib/timeline'
 import { TimelineScrollbar } from './TimelineScrollbar'
 
@@ -11,7 +12,6 @@ export interface TimelineAxisProps {
   totalWidth: number
   scrollOffset: number
   viewportWidth: number
-  currentTime: number
   duration: number
   setScrollOffset: (offset: number) => void
 }
@@ -29,15 +29,11 @@ export function TimelineAxis({
   totalWidth,
   scrollOffset,
   viewportWidth,
-  currentTime,
   duration,
   setScrollOffset,
 }: TimelineAxisProps) {
   const ticks = generateTicks(duration, pps, scrollOffset, viewportWidth)
 
-  // Cursor pixel position in the visible area (negative = off-screen left)
-  const cursorPx = pps > 0 ? currentTime * pps - scrollOffset : -1
-  const cursorVisible = cursorPx >= 0 && cursorPx <= viewportWidth
 
   // Width of SVG content — at minimum fill the viewport
   const svgWidth = Math.max(totalWidth, viewportWidth)
@@ -115,21 +111,8 @@ export function TimelineAxis({
               )}
             </svg>
 
-            {/* Playback cursor — rendered as a DOM element on top of the SVG */}
-            {cursorVisible && (
-              <div
-                aria-hidden
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: cursorPx,
-                  width: 1,
-                  height: RULER_HEIGHT,
-                  backgroundColor: 'hsl(var(--primary))',
-                  pointerEvents: 'none',
-                }}
-              />
-            )}
+            {/* Playback cursor — its own component, so only it redraws per frame */}
+            <Playhead height={RULER_HEIGHT} />
           </>
         ) : (
           /* No-document placeholder */

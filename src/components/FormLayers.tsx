@@ -12,7 +12,7 @@
  *   Drag boundary handle → move the shared edge between two adjacent spans
  */
 
-import { useRef, useState } from 'react'
+import { memo, useCallback, useRef, useState } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
@@ -49,6 +49,8 @@ import {
   type MarkerPlacement,
 } from '@/lib/markerBand'
 import { snapTime } from '@/lib/timeline'
+import { newGestureKey, withHistoryGroup } from '@/store/history'
+import { Playhead } from './Playhead'
 import type { PointMarker, VocabTerm } from '@/types/strata'
 
 // Stable empty references, so a null document doesn't produce a new array on
@@ -93,10 +95,22 @@ const TEXT_HALO = {
 // Context menu for a single span — used by SpanShape
 // ---------------------------------------------------------------------------
 
+// Radix mounts ContextMenuContent's children only while the menu is open, so
+// the subscriptions below (selection, merge eligibility) cost nothing for the
+// hundreds of closed menus on a diagram. The playback time is read once, when
+// the menu opens, rather than subscribed to per frame.
 function SpanContextMenuContent({ span, layer }: { span: Span; layer: Layer }) {
+  return (
+    <ContextMenuContent>
+      <SpanMenuItems span={span} layer={layer} />
+    </ContextMenuContent>
+  )
+}
+
+function SpanMenuItems({ span, layer }: { span: Span; layer: Layer }) {
   const selectedIds = useUIStore((s) => s.selectedSpanIds)
   const selectSpan = useUIStore((s) => s.selectSpan)
-  const currentTime = useUIStore((s) => s.currentTime)
+  const [currentTime] = useState(() => useUIStore.getState().currentTime)
   const removeSpan = useDocumentStore((s) => s.removeSpan)
   const placeBoundary = useDocumentStore((s) => s.placeBoundary)
   const { eligibility, performMerge, neighborId } = useMerge()
@@ -117,7 +131,7 @@ function SpanContextMenuContent({ span, layer }: { span: Span; layer: Layer }) {
     // Multi-span: show merge (when eligible) + Delete.
     // Merge entry is absent when ineligible (spec §3.3).
     return (
-      <ContextMenuContent>
+      <>
         {eligibility.ok && (
           <>
             <ContextMenuItem onClick={() => performMerge()}>
@@ -132,7 +146,7 @@ function SpanContextMenuContent({ span, layer }: { span: Span; layer: Layer }) {
         >
           Delete
         </ContextMenuItem>
-      </ContextMenuContent>
+      </>
     )
   }
 
@@ -189,8 +203,7 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef 
   // state flips, not on every selection change across the diagram.
   const isSelected = useUIStore((s) => s.selectedSpanIds.includes(span.id))
   const isHovered = useUIStore((s) => s.hoveredSpanId === span.id)
-  const shapeLab = useUIStore((s) => s.shapeLab) // TEMPORARY — see uiStore.shapeLab
-  const selectedSpanIds = useUIStore((s) => s.selectedSpanIds)
+  const shapeLab = useUIStore((s) => s.shapeLab) // dev-only lab; defaults in production
   const selectSpan = useUIStore((s) => s.selectSpan)
   const toggleSpan = useUIStore((s) => s.toggleSpan)
   const setSelection = useUIStore((s) => s.setSelection)
@@ -230,7 +243,7 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef 
   // so the context menu reflects this span. Right-click on an already-selected
   // span (single or multi) leaves the selection intact so multi-merge still works.
   function handleContextMenu() {
-    if (!selectedSpanIds.includes(span.id)) {
+    if (!useUIStore.getState().selectedSpanIds.includes(span.id)) {
       selectSpan(span.id)
     }
   }
@@ -256,8 +269,8 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef 
   const dash = lineStyleDash(span.lineStyle)
 
   // One path per span (fill + stroke), inset so adjacent spans read as islands.
-  // cornerRadius/elisionExtend come from the TEMPORARY shape lab — remove both
-  // arguments when the values are settled (see uiStore.shapeLab).
+  // cornerRadius/elisionExtend/cornerRatio come from the dev-only shape lab,
+  // which holds the hard-coded defaults outside `npm run dev` (uiStore.shapeLab).
   const path = isBar
     ? ''
     : buildShapePath({
@@ -444,7 +457,9 @@ type BoundaryDragStart = (
   rightSpanId: string,
 ) => (e: React.PointerEvent) => void
 
-function FormLayerGroup({
+// Memoized: during playback-follow scrolling or a drag elsewhere, a layer whose
+// own data, zoom and position haven't changed skips its label layout entirely.
+const FormLayerGroup = memo(function FormLayerGroup({
   layer,
   topY,
   pps,
@@ -526,7 +541,7 @@ function FormLayerGroup({
       })}
     </g>
   )
-}
+})
 
 // ---------------------------------------------------------------------------
 // FormLayers
@@ -671,7 +686,6 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   const zoom = useUIStore((s) => s.zoom)
   const scrollOffset = useUIStore((s) => s.scrollOffset)
   const viewportWidth = useUIStore((s) => s.viewportWidth)
-  const currentTime = useUIStore((s) => s.currentTime)
   const clearSelection = useUIStore((s) => s.clearSelection)
   const setSelection = useUIStore((s) => s.setSelection)
   const setAdjacentBoundary = useDocumentStore((s) => s.setAdjacentBoundary)
@@ -700,8 +714,6 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   const bandLayout = layoutMarkerBand(pointMarkers, markerTypes, pps)
   const svgHeight = stackH + bandLayout.height
 
-  const cursorPx = pps > 0 ? currentTime * pps - scrollOffset : -1
-  const cursorVisible = cursorPx >= 0 && cursorPx <= viewportWidth
 
   // Box-drag selection state.
   const [boxDrag, setBoxDrag] = useState<BoxDragState | null>(null)
@@ -727,22 +739,33 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
 
   // Boundary drag: while the pointer moves, push the shared boundary to the
   // store (which clamps it). Captured pps/scrollOffset are stable for the drag.
-  const beginBoundaryDrag: BoundaryDragStart =
+  // Stable across renders (so memoized layer groups aren't invalidated by a new
+  // function each time); reads the live zoom and scroll through a ref.
+  const viewRef = useRef({ pps, clientXToTime })
+  viewRef.current = { pps, clientXToTime }
+  const beginBoundaryDrag: BoundaryDragStart = useCallback(
     (layerId, leftId, rightId) => (e) => {
+      const { pps, clientXToTime } = viewRef.current
       e.preventDefault()
       e.stopPropagation()
       // Zoom-aware floor: a neighbor can't be squeezed below MIN_BOUNDARY_DRAG_PX
       // on screen, so a drag never produces an invisibly-small span.
       const minWidth = pps > 0 ? MIN_BOUNDARY_DRAG_PX / pps : MIN_SPAN_WIDTH
+      // Every move of one drag joins a single undo step.
+      const gesture = newGestureKey('boundary-drag')
       const onMove = (ev: PointerEvent) =>
-        setAdjacentBoundary(layerId, leftId, rightId, clientXToTime(ev.clientX), minWidth)
+        withHistoryGroup(gesture, () =>
+          setAdjacentBoundary(layerId, leftId, rightId, clientXToTime(ev.clientX), minWidth),
+        )
       const onUp = () => {
         window.removeEventListener('pointermove', onMove)
         window.removeEventListener('pointerup', onUp)
       }
       window.addEventListener('pointermove', onMove)
       window.addEventListener('pointerup', onUp)
-    }
+    },
+    [setAdjacentBoundary],
+  )
 
   // Box-drag: start on pointerdown on empty canvas space (spans and boundary
   // handles stop propagation so this only fires on truly empty areas).
@@ -839,6 +862,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
       const startClientX = e.clientX
       let dragged = false
       const candidates = markerSnapCandidates(marker.id)
+      const gesture = newGestureKey('marker-drag') // one drag = one undo step
 
       const onMove = (ev: PointerEvent) => {
         if (!dragged && Math.abs(ev.clientX - startClientX) > MARKER_DRAG_THRESHOLD_PX) {
@@ -846,7 +870,9 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
         }
         if (!dragged) return
         const t = clampToTrack(clientXToTime(ev.clientX))
-        updatePointMarker(marker.id, { timestamp: snapTime(t, candidates, pps) })
+        withHistoryGroup(gesture, () =>
+          updatePointMarker(marker.id, { timestamp: snapTime(t, candidates, pps) }),
+        )
       }
       const onUp = () => {
         window.removeEventListener('pointermove', onMove)
@@ -956,21 +982,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
       </svg>
 
       {/* Playback cursor — mirrors the ruler cursor so the two read as one line */}
-      {cursorVisible && (
-        <div
-          aria-hidden
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: cursorPx,
-            width: 1,
-            height: svgHeight,
-            backgroundColor: 'hsl(var(--primary))',
-            opacity: 0.5,
-            pointerEvents: 'none',
-          }}
-        />
-      )}
+      <Playhead height={svgHeight} opacity={0.5} />
     </div>
   )
 }
