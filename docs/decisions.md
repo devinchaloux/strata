@@ -2824,3 +2824,17 @@ covered without anyone remembering to wire it. Popovers and menus aren't
 modal and don't count. Whether YouTube's rules allow covering the player at all
 while a dialog is open is still an open question; this change only makes the
 existing behaviour consistent.
+
+---
+
+## Help and Beta Notice (2026-09-27)
+
+**Decision:** A "How Strata works" dialog holds a six-step guide and every
+keyboard shortcut. It opens from a ? button in the toolbar, a "How it works"
+link on the start screen, and the ? key. A small Beta badge sits beside the
+name, and the dialog says to save often and links to GitHub issues.
+**Rationale:** The editor's core gestures (Space to mark while listening, M for
+markers, right-click to split) were discoverable only by reading the docs. One
+dialog, reachable before any file is open, is the least a first-time beta user
+needs. The shortcut list is written out by hand, so a change to a shortcut must
+update `components/HelpDialog.tsx` too.

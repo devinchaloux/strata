@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useStore } from 'zustand'
-import { Undo2, Redo2, Settings } from 'lucide-react'
+import { Undo2, Redo2, Settings, CircleHelp } from 'lucide-react'
 import { useFileIO } from '@/hooks/useFileIO'
 import { useMerge } from '@/hooks/useMerge'
 import { PlayerDock } from '@/components/PlayerDock'
@@ -10,6 +10,7 @@ import { MergeConflictDialog } from '@/components/MergeConflictDialog'
 import { DocumentSettingsDialog } from '@/components/DocumentSettingsDialog'
 import { LinkSourceDialog } from '@/components/LinkSourceDialog'
 import { ExportDialog } from '@/components/ExportDialog'
+import { HelpDialog } from '@/components/HelpDialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -111,10 +112,12 @@ function EmptyState({
   onNew,
   onOpen,
   onDemo,
+  onHelp,
 }: {
   onNew: () => void
   onOpen: () => void
   onDemo: () => void
+  onHelp: () => void
 }) {
   return (
     <main className="flex flex-1 items-center justify-center px-6">
@@ -154,6 +157,13 @@ function EmptyState({
             focus-visible:outline-none focus-visible:underline"
         >
           Or explore the demo analysis
+        </button>
+        <button
+          onClick={onHelp}
+          className="mt-1.5 rounded text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline
+            focus-visible:outline-none focus-visible:underline"
+        >
+          How it works
         </button>
       </div>
     </main>
@@ -239,6 +249,8 @@ export default function App() {
   // "New analysis" framing for the settings dialog — set when the dialog was
   // opened by the New action, cleared when opened as plain settings.
   const [settingsIsNew, setSettingsIsNew] = useState(false)
+
+  const [helpOpen, setHelpOpen] = useState(false)
 
   // Unsaved-changes guard: New / Open / Demo all discard the current document.
   // When dirty, the action is held here and only run if the analyst confirms.
@@ -341,6 +353,19 @@ export default function App() {
         }
       }
 
+      // ? — the help dialog, from anywhere but a text field.
+      if (e.key === '?') {
+        const el = e.target as HTMLElement | null
+        const tag = el?.tagName
+        const inField =
+          tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable
+        if (!inField) {
+          e.preventDefault()
+          setHelpOpen(true)
+          return
+        }
+      }
+
       const mod = e.metaKey || e.ctrlKey
       if (!mod) return
 
@@ -394,6 +419,12 @@ export default function App() {
         <span className="mr-1 flex items-center gap-1.5 select-none">
           <StrataMark />
           <span className="text-sm font-semibold tracking-tight text-foreground">Strata</span>
+          <span
+            className="rounded border border-border px-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+            title="Strata is in beta. Save often, and keep a copy of files that matter."
+          >
+            Beta
+          </span>
         </span>
 
         <div className="mx-1.5 h-4 w-px bg-border" />
@@ -443,6 +474,9 @@ export default function App() {
         >
           <Settings size={14} />
         </IconToolbarButton>
+        <IconToolbarButton onClick={() => setHelpOpen(true)} title="How Strata works (?)">
+          <CircleHelp size={14} />
+        </IconToolbarButton>
 
         {isDirty && (
           <span
@@ -467,7 +501,7 @@ export default function App() {
           {doc ? (
             <FormDiagram />
           ) : (
-            <EmptyState onNew={guardedNew} onOpen={guardedOpen} onDemo={guardedDemo} />
+            <EmptyState onNew={guardedNew} onOpen={guardedOpen} onDemo={guardedDemo} onHelp={() => setHelpOpen(true)} />
           )}
           {/* Transport bar + collapsible video panel — bottom of the left column */}
           <PlayerDock />
@@ -497,6 +531,7 @@ export default function App() {
 
       {/* Export — the form diagram as an SVG or PNG figure */}
       <ExportDialog />
+      <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} />
 
       {/* Crash recovery modal */}
       {pendingRecovery && (
