@@ -50,7 +50,7 @@ import { LayerSettingsPopover } from './LayerSettingsPopover'
 import { AddLayerPopover } from './AddLayerPopover'
 import { DiagramControlBar } from './DiagramControlBar'
 import { CommentaryPanel } from '@/widgets/written-analysis/CommentaryPanel'
-import { formSpans } from '@/lib/layers'
+import { formSpans, analysisLayers } from '@/lib/layers'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -524,7 +524,9 @@ export function FormDiagram() {
     .filter((l) => l.type === 'form-diagram')
     .sort((a, b) => b.displayOrder - a.displayOrder)
   const visible = sorted.filter((l) => l.visibility)
-  const hidden = sorted.filter((l) => !l.visibility)
+  // Hidden commentary gets a chip too, so it comes back the same way a hidden
+  // layer does (its Hide button is on the commentary itself).
+  const hidden = [...sorted.filter((l) => !l.visibility), ...analysisLayers(doc).filter((l) => !l.visibility)]
 
   // The widget card must also make room for the marker band that FormLayers
   // draws below the stack, or the band is clipped by the card.
@@ -545,7 +547,7 @@ export function FormDiagram() {
       {/* The open area above the widget card (flex-1, so it shrinks as a tall
           layer stack claims the room). The written-analysis widget reads here;
           with no commentary yet it shows a one-line hint instead. */}
-      <div className="flex flex-1 min-h-0 items-center justify-center overflow-y-auto">
+      <div className="relative flex flex-1 min-h-0 items-center justify-center overflow-y-auto">
         {/* The written-analysis widget reads here: the commentary for what's
             playing (see widgets/written-analysis/CommentaryPanel). */}
         <CommentaryPanel />

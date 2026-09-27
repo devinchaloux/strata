@@ -38,6 +38,9 @@ lookup, re-anchoring, the text format, HTML export) and `CommentaryPanel.tsx`
   time-range block, and its time range.
 - The panel re-renders only when the set of active blocks changes, never per
   frame.
+- **Hide commentary** (top right of the panel) sets the commentary layer's
+  visibility off; it then appears in the diagram's "Hidden:" chips, which
+  bring it back, as for a hidden form layer. Exports are unaffected.
 
 ## 3. Text format
 
@@ -74,5 +77,3 @@ section is preceded by an `<a id="slug">` anchor (renderers derive heading ids
 differently), and links point at it.
 
 ## 6. Not yet built
-
-- Showing written-analysis layers in the layer panel.

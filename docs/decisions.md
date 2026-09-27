@@ -3048,3 +3048,15 @@ span is deleted, can be edited or cleared in place from the reading panel.
 way to make one was to delete a span, and then it couldn't be edited or
 removed. Selecting spans is how analysts already say "this stretch", so it
 defines the range without a new tool.
+
+---
+
+## Hiding Commentary (2026-09-27)
+
+**Decision:** The reading panel has a "Hide commentary" button that turns the
+commentary layer's visibility off; hidden, it appears in the diagram's
+"Hidden:" chips, which bring it back. The commentary exports are unaffected.
+**Rationale:** A row in the layer panel was the first idea, but the panel's
+rows are the diagram's rows: a commentary row would cost a full row of height
+for something that draws nothing on the timeline. The chips already are how a
+hidden layer comes back, so the way back is the familiar one.

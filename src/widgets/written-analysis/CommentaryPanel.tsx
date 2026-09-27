@@ -14,7 +14,8 @@ import { useState } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import type { AnalysisBlock, StrataDocument } from '@/types/strata'
-import { formSpans } from '@/lib/layers'
+import { formSpans, analysisLayers } from '@/lib/layers'
+import { EyeOff } from 'lucide-react'
 import { anchorRange, blockForSpan, blockForRange, blocksAt, parseCommentary, spanBySlug, markerBySlug, allBlocks } from './commentary'
 
 const mmss = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`
@@ -140,6 +141,7 @@ function nextStep(doc: StrataDocument): string {
 
 export function CommentaryPanel() {
   const doc = useDocumentStore((s) => s.document)
+  const updateLayer = useDocumentStore((s) => s.updateLayer)
   // A string key of the active block ids: equal strings mean no re-render.
   const activeKey = useUIStore((s) =>
     doc
@@ -155,17 +157,40 @@ export function CommentaryPanel() {
   // analysis instead: link a source, mark boundaries, then describe a span.
   if (!hasAny) return <Hint>{nextStep(doc)}</Hint>
 
+  // Hidden commentary shows nothing here; the diagram's "Hidden:" chips bring
+  // it back, as for a hidden layer.
+  const shown = analysisLayers(doc).filter((l) => l.visibility)
+  if (!shown.length) return null
+  const hide = (
+    <button
+      className="absolute right-3 top-2 flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+      onClick={() => shown.forEach((l) => updateLayer(l.id, { visibility: false }))}
+      title="Hide the commentary; show it again from the diagram's Hidden list"
+    >
+      <EyeOff size={12} aria-hidden /> Hide commentary
+    </button>
+  )
+
   const ids = activeKey ? activeKey.split(',') : []
   const blocks = allBlocks(doc)
+    .filter(({ layer, block }) => layer.visibility && ids.includes(block.id))
     .map(({ block }) => block)
-    .filter((b) => ids.includes(b.id))
 
-  if (!blocks.length) return <Hint>No commentary for this passage.</Hint>
+  if (!blocks.length)
+    return (
+      <>
+        {hide}
+        <Hint>No commentary for this passage.</Hint>
+      </>
+    )
   return (
-    <div className="flex w-full max-w-[42rem] flex-col gap-5 self-start px-4 py-4" aria-live="polite">
-      {blocks.map((b) => (
-        <Block key={b.id} doc={doc} block={b} />
-      ))}
-    </div>
+    <>
+      {hide}
+      <div className="flex w-full max-w-[42rem] flex-col gap-5 self-start px-4 py-4" aria-live="polite">
+        {blocks.map((b) => (
+          <Block key={b.id} doc={doc} block={b} />
+        ))}
+      </div>
+    </>
   )
 }
