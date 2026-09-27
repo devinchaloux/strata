@@ -231,7 +231,7 @@ function SortableLayerHeaderRow({
             <button
               className="min-w-0 flex-1 truncate text-left text-[11px]"
               style={{ color: 'var(--ink-primary)', fontWeight: active ? 500 : 400 }}
-              title={`${layer.label} — click to make active, double-click to rename`}
+              title={`${layer.label}. Click to make active; double-click to rename.`}
               onClick={() => setActiveLayer(layer.id)}
               onDoubleClick={startRename}
             >
@@ -396,7 +396,7 @@ function ZoomControls({
       </ZoomButton>
       <button
         onClick={resetTo100}
-        aria-label="Current zoom level — click to reset to 100%"
+        aria-label="Zoom level. Click to reset to 100%."
         title="Reset to 100% (standard scale)"
         className="rounded px-1 hover:bg-accent"
         style={{

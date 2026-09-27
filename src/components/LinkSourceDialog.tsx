@@ -190,7 +190,7 @@ export function SourceLinkForm({
               <>
                 <Check size={11} className="text-primary" aria-hidden />
                 <span className="text-muted-foreground">
-                  Video detected — ID <code>{parsedId}</code>
+                  Video found: <code>{parsedId}</code>
                   {parsedId === currentVideoId && ' (currently linked)'}
                 </span>
               </>
@@ -199,7 +199,7 @@ export function SourceLinkForm({
               <>
                 <CircleAlert size={11} className="text-destructive" aria-hidden />
                 <span className="text-muted-foreground">
-                  Not a recognized YouTube URL or video ID
+                  Not a YouTube link or video ID.
                 </span>
               </>
             )}
@@ -224,8 +224,8 @@ export function SourceLinkForm({
             </span>
           </div>
           <p className="mt-1.5 text-[10px] text-muted-foreground">
-            The file stays on your computer — the analysis stores only its name, so
-            you'll be asked to locate it again next session.
+            The file stays on your computer. The analysis keeps only its name, so
+            you'll be asked to find it again next time.
           </p>
         </div>
       )}

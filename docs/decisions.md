@@ -2890,3 +2890,17 @@ labels need `⇒` ("pres. ⇒ ant."), and prose fields can't transliterate, sinc
 `b` is a letter there. The set is BriFormer's palette, which Devin asked for. A
 toggle per field, rather than a global toolbar, keeps the Inspector quiet until
 it's wanted.
+
+---
+
+## UI Copy Pass, Batch 3 (2026-09-27)
+
+**Decision:** Document Settings and the smaller surfaces (layer settings, link
+source, the layer header, zoom and locate-file controls) follow the six copy
+rules. Helpers that explained the schema ("player_time = recording_time +
+offset", "Point markers are document-level…") are gone or became tooltips;
+dash-spliced strings are sentences; the home key's two fields sit under one
+"Home key" heading as Tonic and Mode; "Source sync offset" is "Sync offset".
+**Rationale:** Finishes backlog #23 under the rules in "UI Copy Pass & Point
+Marker Vocabulary". Placeholders keep the "e.g." prefix used in batches 1–2 so
+examples read the same everywhere (rule 5).

@@ -403,7 +403,7 @@ export function PlayerDock() {
         {doc && isLocal && !audioFile && (
           <button
             onClick={handleLocate}
-            title={`This analysis references "${source?.filename}" — pick the file to enable playback`}
+            title={`Find ${source?.filename} on this computer to play it.`}
             className="ml-auto max-w-[16rem] shrink-0 truncate rounded-md border border-border px-3 py-1 text-xs font-medium text-foreground
               transition-colors hover:bg-accent
               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card"

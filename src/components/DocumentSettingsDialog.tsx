@@ -112,7 +112,7 @@ function ModePicker({
           value={value ?? ''}
           onChange={(e) => onChange(e.target.value || null)}
         >
-          <option value="">— none —</option>
+          <option value="">None</option>
           {allModes.map((m) => (
             <option key={m.id} value={m.id}>
               {m.label}
@@ -225,8 +225,8 @@ export function DocumentSettingsDialog({
           <DialogTitle>{isNew ? 'New analysis' : 'Document settings'}</DialogTitle>
           <DialogDescription>
             {isNew
-              ? 'Name the track and link the video or audio it plays against. Everything here can be changed later in document settings.'
-              : 'Track metadata that applies to the whole analysis, not any single layer.'}
+              ? 'Name the track and link its video or audio. You can change any of this later.'
+              : 'About the track and this analysis.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -239,7 +239,7 @@ export function DocumentSettingsDialog({
             />
           </Field>
 
-          <Field label="Artist" helper="Comma-separated for multiple artists">
+          <Field label="Artist" helper="Separate several artists with commas.">
             <input
               className={inputClass}
               value={artistText}
@@ -267,18 +267,16 @@ export function DocumentSettingsDialog({
             </Field>
           )}
 
-          <Field
-            label="Source"
-            helper="Span timestamps store recording time — swapping the source never touches analysis data"
-          >
+          <Field label="Source" tooltip="Changing the source never changes the analysis.">
             <div className="rounded border border-border p-2">
               <SourceLinkForm />
             </div>
           </Field>
 
-          <Field label="Work" helper={'E.g. "Op. 13" — enables cross-file corpus comparison'}>
+          <Field label="Work" tooltip="Analyses that name the same work can be compared across files.">
             <input
               className={inputClass}
+              placeholder="e.g. Op. 13"
               value={doc.work ?? ''}
               onChange={(e) => updateMeta({ work: e.target.value || null })}
             />
@@ -317,8 +315,9 @@ export function DocumentSettingsDialog({
             </Field>
           </div>
 
+          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-foreground">Home key</p>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Home key — tonic">
+            <Field label="Tonic">
               <input
                 className={inputClass}
                 placeholder="e.g. A, F♯, B♭"
@@ -326,7 +325,7 @@ export function DocumentSettingsDialog({
                 onChange={(e) => commitHomeKey({ tonic: toAccidentals(e.target.value) })}
               />
             </Field>
-            <Field label="Home key — mode">
+            <Field label="Mode">
               <ModePicker
                 value={doc.homeKey?.mode ?? null}
                 customModes={doc.vocabulary.modes}
@@ -335,10 +334,7 @@ export function DocumentSettingsDialog({
             </Field>
           </div>
 
-          <Field
-            label="Cadence marker captions"
-            helper="Point markers are document-level, not per-layer, so this is a single switch for the whole file"
-          >
+          <Field label="Cadence marker captions">
             <label className="flex cursor-pointer items-center justify-between rounded border border-border px-2 py-1.5">
               <span className="text-xs text-foreground">Show on diagram</span>
               <Switch
@@ -375,8 +371,8 @@ export function DocumentSettingsDialog({
           </div>
 
           <Field
-            label="Source sync offset (seconds)"
-            helper="player_time = recording_time + offset — correct this if the source video doesn't start at the recording's true start"
+            label="Sync offset (seconds)"
+            tooltip="How far into the video the recording starts. Set it when the video opens with something before the music."
           >
             <input
               className={inputClass}

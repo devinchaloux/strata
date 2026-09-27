@@ -85,7 +85,7 @@ export function LayerSettingsPopover({
                 updateLayer(layer.id, { description: e.target.value || null })
               }
               rows={2}
-              placeholder="Optional — the layer's analytical framework or purpose"
+              placeholder="The framework or purpose of this layer"
               className={cn(fieldClass, 'resize-none')}
               style={fieldStyle}
             />
@@ -158,8 +158,7 @@ export function LayerSettingsPopover({
                 Key-area layer (thin bars)
               </span>
               <span className="text-[10px]" style={{ color: 'var(--ink-faint)' }}>
-                Draws thin flat bars instead of brackets — for a layer of key-area
-                captions rather than formal sections
+                Thin bars instead of brackets, for key areas rather than sections.
               </span>
             </span>
             <Switch
