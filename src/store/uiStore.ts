@@ -112,6 +112,9 @@ export interface UIState {
   // that used to go only to the developer console.
   appMessage: AppMessage | null
 
+  // The export dialog (SVG / PNG of the form diagram).
+  exportOpen: boolean
+
   // Actions — playback
   setCurrentTime: (time: number) => void
   setDuration: (duration: number) => void
@@ -153,6 +156,7 @@ export interface UIState {
   setRecoveryModalOpen: (open: boolean) => void
   showAppMessage: (title: string, lines: string[]) => void
   dismissAppMessage: () => void
+  setExportOpen: (open: boolean) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -190,6 +194,7 @@ const useUIStore = create<UIState>()((set) => ({
   unsavedGuardOpen: false,
   recoveryModalOpen: false,
   appMessage: null,
+  exportOpen: false,
 
   setCurrentTime: (time) => set({ currentTime: time }),
   setDuration: (duration) => set({ duration }),
@@ -239,6 +244,7 @@ const useUIStore = create<UIState>()((set) => ({
   setRecoveryModalOpen: (open) => set({ recoveryModalOpen: open }),
   showAppMessage: (title, lines) => set({ appMessage: { title, lines } }),
   dismissAppMessage: () => set({ appMessage: null }),
+  setExportOpen: (open) => set({ exportOpen: open }),
 }))
 
 export { useUIStore }

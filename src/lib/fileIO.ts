@@ -54,7 +54,7 @@ function serialize(doc: StrataDocument): string {
 }
 
 function suggestedFilename(doc: StrataDocument): string {
-  return `${doc.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.strata`
+  return `${fileBaseName(doc)}.strata`
 }
 
 // ---------------------------------------------------------------------------
@@ -123,13 +123,23 @@ export async function writeToHandle(
  * and the primary path when no file handle exists yet).
  */
 export function downloadFile(doc: StrataDocument): void {
-  const blob = new Blob([serialize(doc)], { type: 'application/json' })
+  downloadBlob(new Blob([serialize(doc)], { type: 'application/json' }), suggestedFilename(doc))
+}
+
+/** Hand the browser a file to save (the download fallback for every export). */
+export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = suggestedFilename(doc)
+  a.download = filename
   a.click()
-  URL.revokeObjectURL(url)
+  // Revoked on the next tick: some browsers start the download asynchronously.
+  setTimeout(() => URL.revokeObjectURL(url), 0)
+}
+
+/** A filesystem-safe base name from the document title. */
+export function fileBaseName(doc: StrataDocument): string {
+  return doc.title.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'strata'
 }
 
 /**

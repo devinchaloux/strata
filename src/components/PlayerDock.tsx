@@ -147,6 +147,7 @@ export function PlayerDock() {
     unsavedGuardOpen,
     recoveryModalOpen,
     appMessage,
+    exportOpen,
   } = useUIStore()
 
   // A linked YouTube iframe renders in its own GPU compositing layer that
@@ -157,7 +158,7 @@ export function PlayerDock() {
   // same cross-context quirk) whenever a modal that can be open at the same
   // time is up.
   const anyModalOpen =
-    linkSourceOpen || documentSettingsOpen || unsavedGuardOpen || recoveryModalOpen || appMessage !== null
+    linkSourceOpen || documentSettingsOpen || unsavedGuardOpen || recoveryModalOpen || appMessage !== null || exportOpen
 
   const source = doc?.source ?? null
   const sourceOffset = source?.sourceOffset ?? 0

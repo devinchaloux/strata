@@ -2751,3 +2751,21 @@ from what the analyst sees. Export also needs literal colours, because a
 standalone SVG has no app stylesheet to resolve `var(--canvas)` against. One
 behaviour change: text above a bracket is no longer part of its click target;
 the bracket body is.
+
+---
+
+## Export (2026-09-27)
+
+**Decision:** The form diagram exports as SVG (and PNG at 2× for slides) from the
+toolbar's Export dialog. The range defaults to the selected spans when there are
+any, otherwise the whole track, and can be set to custom times. Hidden layers are
+left out. The figure is the same pure component the editor draws, rendered with
+literal print colours, clipped to exactly the chosen range, with an optional
+m:ss time axis and optional marker band. The preview in the dialog is the
+exported SVG itself.
+**Rationale:** Realises the export decisions from the vision (time range with
+span-as-shortcut; visibility as the layer control). Rendering the editor's own
+figure means an exported diagram can't drift from what the analyst sees. PDF is
+deferred: pdf-lib can't draw SVG, so PDF needs either a rasteriser (losing vector
+quality) or an SVG-to-PDF library, which is a dependency decision; SVG already
+drops into every paper workflow and PNG covers slides.

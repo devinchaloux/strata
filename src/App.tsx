@@ -9,6 +9,7 @@ import { Inspector } from '@/components/Inspector'
 import { MergeConflictDialog } from '@/components/MergeConflictDialog'
 import { DocumentSettingsDialog } from '@/components/DocumentSettingsDialog'
 import { LinkSourceDialog } from '@/components/LinkSourceDialog'
+import { ExportDialog } from '@/components/ExportDialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -222,6 +223,7 @@ export default function App() {
   const loadDocument = useDocumentStore((s) => s.loadDocument)
   const appMessage = useUIStore((s) => s.appMessage)
   const dismissAppMessage = useUIStore((s) => s.dismissAppMessage)
+  const setExportOpen = useUIStore((s) => s.setExportOpen)
   const setActiveLayer = useUIStore((s) => s.setActiveLayer)
   const clearSelection = useUIStore((s) => s.clearSelection)
   const selectedSpanCount = useUIStore((s) => s.selectedSpanIds.length)
@@ -424,6 +426,9 @@ export default function App() {
         <ToolbarButton onClick={saveFileAs} disabled={!doc}>
           Save As
         </ToolbarButton>
+        <ToolbarButton onClick={() => setExportOpen(true)} disabled={!doc} title="Save the form diagram as an SVG or PNG figure">
+          Export
+        </ToolbarButton>
 
         <div className="mx-1.5 h-4 w-px bg-border" />
 
@@ -503,6 +508,9 @@ export default function App() {
 
       {/* Link source — set/swap/unlink the playback source (transport + settings open it) */}
       <LinkSourceDialog />
+
+      {/* Export — the form diagram as an SVG or PNG figure */}
+      <ExportDialog />
 
       {/* Crash recovery modal */}
       {pendingRecovery && (
