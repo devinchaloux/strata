@@ -2838,3 +2838,26 @@ markers, right-click to split) were discoverable only by reading the docs. One
 dialog, reachable before any file is open, is the least a first-time beta user
 needs. The shortcut list is written out by hand, so a change to a shortcut must
 update `components/HelpDialog.tsx` too.
+
+---
+
+## Dialogs Stay Clear of the Player (2026-09-27)
+
+**Decision (reverses the 2026-07-03 video panel modal curtain and "Video
+Curtain Covers Every Dialog"):** nothing is ever drawn in front of the YouTube player. The
+opaque curtain is removed. While a dialog is open, its dimming has a hole where
+the player is, and the dialog sits centred in the largest free area around the
+player (above a docked player, below the mini one), scrolling if it's taller
+than that area. The player stacks above every menu, popover and dialog
+(`z-[60]`), and stays clickable while a dialog is open.
+**Rationale:** YouTube's Required Minimum Functionality (checked 2026-09-27;
+page last updated 2026-09-14): "You must not display overlays, frames, or other
+visual elements in front of any part of a YouTube embedded player, including
+player controls. Similarly, you must not use overlays, frames or other visual
+elements to obscure any part of an embedded player." The curtain was exactly
+that, and a dialog's dimming is too. The Developer Policies also forbid playing
+from a player "that is not displayed in the page", which a covered, playing
+player comes close to. Stacking the player on top guarantees the rule for
+menus and popovers without having to steer each one; placing dialogs clear of
+it keeps them readable. Placement lives in `lib/playerClearance.ts`; the shared
+dialog components apply it, so a new dialog complies without extra wiring.

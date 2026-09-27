@@ -100,11 +100,6 @@ export interface UIState {
   // Document settings dialog (also hosts the new-analysis setup modal).
   documentSettingsOpen: boolean
 
-  // How many modal dialogs are open. Every DialogContent / AlertDialogContent
-  // counts itself while mounted, so PlayerDock can cover the video for any
-  // dialog, including ones added later (see PlayerDock's videoPanel curtain).
-  openModals: number
-
   // A message for the analyst that must be read and dismissed: a file that
   // couldn't open or save, or one that opened with warnings. Replaces errors
   // that used to go only to the developer console.
@@ -155,8 +150,6 @@ export interface UIState {
 
   // Actions — document settings dialog
   setDocumentSettingsOpen: (open: boolean) => void
-  modalOpened: () => void
-  modalClosed: () => void
   showAppMessage: (title: string, lines: string[]) => void
   dismissAppMessage: () => void
   setExportOpen: (open: boolean) => void
@@ -195,7 +188,6 @@ const useUIStore = create<UIState>()((set) => ({
   mergeDialog: null,
   linkSourceOpen: false,
   documentSettingsOpen: false,
-  openModals: 0,
   appMessage: null,
   exportOpen: false,
   seekRequest: null,
@@ -244,8 +236,6 @@ const useUIStore = create<UIState>()((set) => ({
 
   setLinkSourceOpen: (open) => set({ linkSourceOpen: open }),
   setDocumentSettingsOpen: (open) => set({ documentSettingsOpen: open }),
-  modalOpened: () => set((s) => ({ openModals: s.openModals + 1 })),
-  modalClosed: () => set((s) => ({ openModals: Math.max(0, s.openModals - 1) })),
   showAppMessage: (title, lines) => set({ appMessage: { title, lines } }),
   dismissAppMessage: () => set({ appMessage: null }),
   setExportOpen: (open) => set({ exportOpen: open }),

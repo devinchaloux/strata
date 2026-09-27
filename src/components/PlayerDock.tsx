@@ -6,6 +6,7 @@ import { useYouTubePlayer } from '@/hooks/useYouTubePlayer'
 import { useAudioPlayer } from '@/hooks/useAudioPlayer'
 import { extractVideoId, formatTime, isInputFocused } from '@/lib/youtube'
 import { pickAudioFile } from '@/lib/fileIO'
+import { setPlayerElement } from '@/lib/playerClearance'
 import { SeekBar } from './SeekBar'
 import type { PlaybackRate } from '@/store/uiStore'
 
@@ -143,15 +144,6 @@ export function PlayerDock() {
     setAudioFile,
     setLinkSourceOpen,
   } = useUIStore()
-
-  // A linked YouTube iframe renders in its own GPU compositing layer that
-  // ignores a Dialog overlay's dimming — it visibly punches through instead
-  // of sitting behind the modal like the rest of the app. Since the iframe
-  // can't be unmounted without killing the YT.Player, cover it with an opaque
-  // curtain (in the same local stacking context, so it isn't subject to the
-  // same cross-context quirk) whenever any modal is up. Every dialog counts
-  // itself (components/ui/CountsAsModal), so a new one needs no wiring here.
-  const anyModalOpen = useUIStore((s) => s.openModals > 0)
 
   const source = doc?.source ?? null
   const sourceOffset = source?.sourceOffset ?? 0
@@ -451,25 +443,24 @@ export function PlayerDock() {
           kills the YT.Player). Docked, it sits in the column's flow; as a mini
           player it floats in the left column's top-right corner, over the empty
           canvas above the bottom-anchored diagram. Either way it stays at least
-          VIDEO_MIN × VIDEO_MIN. position is always set, which also hosts the
-          modal-open curtain below. */}
+          VIDEO_MIN × VIDEO_MIN. Nothing may cover it (YouTube's rules): z-[60]
+          sits above every menu, popover and dialog (z-50), it registers itself
+          so dialogs and their dimming keep clear (lib/playerClearance), and
+          pointer-events stays on so it works while a dialog is open. */}
       {videoId && (
         <div
           className={
             videoMini
-              ? 'absolute right-3 top-3 z-20 overflow-hidden rounded-md border border-border shadow-lg'
-              : 'relative overflow-hidden border-t border-border'
+              ? 'absolute right-3 top-3 z-[60] overflow-hidden rounded-md border border-border shadow-lg'
+              : 'relative z-[60] overflow-hidden border-t border-border'
           }
-          style={videoMini ? { width: VIDEO_MINI_WIDTH, height: VIDEO_MIN } : { height: VIDEO_MIN }}
+          style={{
+            ...(videoMini ? { width: VIDEO_MINI_WIDTH, height: VIDEO_MIN } : { height: VIDEO_MIN }),
+            pointerEvents: 'auto',
+          }}
+          ref={setPlayerElement}
         >
           <div ref={containerRef} className="h-full w-full" />
-
-          {/* Curtain — see the anyModalOpen comment above. Opaque, blocks
-              interaction, sits in this div's own stacking context so it isn't
-              affected by the same iframe-compositing quirk it's working around. */}
-          {anyModalOpen && (
-            <div className="absolute inset-0 bg-card" aria-hidden />
-          )}
         </div>
       )}
     </>
