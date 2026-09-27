@@ -21,6 +21,10 @@ lookup, re-anchoring, the text format, HTML export) and `CommentaryPanel.tsx`
 - The first commentary in a file creates a layer labelled "Commentary". The
   analyst never adds it by hand.
 - Clearing the box removes the block.
+- Select several spans and the Inspector offers **Commentary, m:ss–m:ss**:
+  prose about the whole stretch they cover, stored as a time-range block.
+- A time-range block (including one left by a deleted span) has an **Edit**
+  button in the reading panel, since no single span's Inspector owns it.
 
 ## 2. Reading
 
@@ -28,7 +32,8 @@ lookup, re-anchoring, the text format, HTML export) and `CommentaryPanel.tsx`
 - During playback it shows every block whose anchor contains the playhead,
   earliest-starting first.
 - While paused with exactly one span selected, that span's commentary shows
-  instead, if it has any.
+  instead, if it has any; with several selected, the commentary on the
+  stretch they cover.
 - Each block is headed by its span's label (or type), or "Passage" for a
   time-range block, and its time range.
 - The panel re-renders only when the set of active blocks changes, never per
@@ -70,5 +75,4 @@ differently), and links point at it.
 
 ## 6. Not yet built
 
-- Creating a time-range block from the UI.
 - Showing written-analysis layers in the layer panel.

@@ -5,7 +5,12 @@ import type { FormDiagramData } from '@/types/strata'
 import { placeBoundaryInSpans, setSpanEdge, findOverlaps, MIN_SPAN_WIDTH } from '@/lib/spanEdit'
 import { groupingHandleSet, breakHistoryGroup } from '@/store/history'
 import { slugify, uniqueSlug, slugsInUse, allSpans, resolveSlugCollisions } from '@/lib/slug'
-import { setSpanCommentary as withSpanCommentary, reanchorOrphans } from '@/widgets/written-analysis/commentary'
+import {
+  setSpanCommentary as withSpanCommentary,
+  setRangeCommentary as withRangeCommentary,
+  setBlockText as withBlockText,
+  reanchorOrphans,
+} from '@/widgets/written-analysis/commentary'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -78,6 +83,10 @@ interface DocumentState {
   // Written analysis: set or clear (empty text) a span's commentary. The first
   // commentary creates the document's written-analysis layer.
   setSpanCommentary: (spanId: string, text: string) => void
+  // Commentary on a stretch of time rather than one span (empty text clears).
+  setRangeCommentary: (start: number, end: number, text: string) => void
+  // Edit (or, with empty text, remove) one commentary block by id.
+  setCommentaryText: (blockId: string, text: string) => void
   removeSpan: (layerId: string, spanId: string) => void
   mergeSpans: (layerId: string, spanIds: string[], result: Span) => void
   // Spacebar / Split: place a boundary at `time`, splitting the containing span
@@ -410,6 +419,20 @@ const useDocumentStore = create<DocumentState>()(
         const doc = get().document
         if (!doc) return
         const next = withSpanCommentary(doc, spanId, text, () => crypto.randomUUID())
+        if (next !== doc) set({ document: { ...next, updatedAt: now() } })
+      },
+
+      setRangeCommentary: (start, end, text) => {
+        const doc = get().document
+        if (!doc || !(end > start)) return
+        const next = withRangeCommentary(doc, start, end, text, () => crypto.randomUUID())
+        if (next !== doc) set({ document: { ...next, updatedAt: now() } })
+      },
+
+      setCommentaryText: (blockId, text) => {
+        const doc = get().document
+        if (!doc) return
+        const next = withBlockText(doc, blockId, text)
         if (next !== doc) set({ document: { ...next, updatedAt: now() } })
       },
 

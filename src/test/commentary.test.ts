@@ -13,6 +13,7 @@ import {
   commentaryToHtml,
   commentaryToMarkdown,
   markerBySlug,
+  blockForRange,
 } from '@/widgets/written-analysis/commentary'
 import { makeDoc, makeLayer, makeSpan } from './fixtures'
 
@@ -107,6 +108,30 @@ describe('commentary text', () => {
     expect(md).toContain('<a id="drop"></a>\n\n## Drop (0:30–1:00)\n\nA **big** drop.')
     expect(md).toContain('Echoes [drop](#drop) and nowhere.')
     expect(md.indexOf('## Drop')).toBeLessThan(md.indexOf('## Outro'))
+  })
+})
+
+describe('commentary on a stretch of time', () => {
+  it('sets, edits and clears a range block, surfacing it while that stretch plays', () => {
+    store().setRangeCommentary(10, 60, 'Across the intro and drop.')
+    expect(blockForRange(doc(), 10, 60)?.text).toBe('Across the intro and drop.')
+    expect(blocksAt(doc(), 40).map((b) => b.text)).toContain('Across the intro and drop.')
+    store().setRangeCommentary(10, 60, 'Revised.')
+    expect(analysisLayers(doc())[0].data.blocks).toHaveLength(1)
+    store().setRangeCommentary(10, 60, '')
+    expect(blockForRange(doc(), 10, 60)).toBeUndefined()
+  })
+
+  it('edits any block by id, and never creates one', () => {
+    store().setSpanCommentary('b', 'Keep me')
+    store().removeSpan('L', 'b') // now a range block over 30–60
+    const block = analysisLayers(doc())[0].data.blocks[0]
+    store().setCommentaryText(block.id, 'Edited orphan')
+    expect(blockForRange(doc(), 30, 60)?.text).toBe('Edited orphan')
+    store().setCommentaryText('no-such-block', 'x')
+    expect(analysisLayers(doc())[0].data.blocks).toHaveLength(1)
+    store().setCommentaryText(block.id, '')
+    expect(analysisLayers(doc())[0].data.blocks).toHaveLength(0)
   })
 })
 

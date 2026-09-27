@@ -14,9 +14,9 @@ import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
-import { formatTime } from '@/lib/youtube'
+import { formatTime, formatClock } from '@/lib/youtube'
 import { TimeInput } from './TimeInput'
-import { blockForSpan } from '@/widgets/written-analysis/commentary'
+import { blockForSpan, blockForRange } from '@/widgets/written-analysis/commentary'
 import { capFromBoundaryType } from '@/lib/formShape'
 import { slugify } from '@/lib/slug'
 import { ColorPicker } from '@/components/ui/color-picker'
@@ -713,6 +713,13 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
 
   const mergeReason = eligibility.ok ? '' : eligibility.reason
 
+  // Commentary on the whole stretch the selection covers (a time-range block),
+  // as opposed to the per-span commentary each span has on its own.
+  const setRangeCommentary = useDocumentStore((s) => s.setRangeCommentary)
+  const rangeStart = Math.min(...spans.map((s) => s.startTime))
+  const rangeEnd = Math.max(...spans.map((s) => s.endTime))
+  const rangeText = doc ? (blockForRange(doc, rangeStart, rangeEnd)?.text ?? '') : ''
+
   return (
     <div className="flex flex-col">
       <div className="px-3 py-3">
@@ -728,6 +735,20 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
         {!eligibility.ok && (
           <p className="-mt-3 mb-4 text-[10px] text-muted-foreground">{mergeReason}</p>
         )}
+
+        <Field
+          label={`Commentary, ${formatClock(rangeStart)}–${formatClock(rangeEnd)}`}
+          tooltip="About the whole stretch these spans cover. Shows above the diagram while it plays."
+          symbols
+        >
+          <textarea
+            className={`${inputClass} resize-y`}
+            rows={3}
+            value={rangeText}
+            placeholder="Write about this stretch."
+            onChange={(e) => setRangeCommentary(rangeStart, rangeEnd, e.target.value)}
+          />
+        </Field>
 
         <div className="mb-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           Apply to all selected

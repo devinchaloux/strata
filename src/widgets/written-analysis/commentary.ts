@@ -52,52 +52,94 @@ export function blocksAt(doc: StrataDocument, time: number): AnalysisBlock[] {
     .map(({ block }) => block)
 }
 
+/** The document with a written-analysis layer, adding one ("Commentary") if it has none. */
+function withAnalysisLayer(doc: StrataDocument, mkId: () => string): StrataDocument {
+  if (analysisLayers(doc).length) return doc
+  const commentary: WrittenAnalysisLayer = {
+    id: mkId(),
+    type: 'written-analysis',
+    label: 'Commentary',
+    visibility: true,
+    locked: false,
+    // Required by the layer envelope; a text layer doesn't draw with them.
+    fillColorDefault: '#ffffff',
+    strokeColorDefault: '#475569',
+    // After every existing layer; text layers aren't part of the diagram's stack.
+    displayOrder: Math.max(-1, ...doc.layers.map((l) => l.displayOrder)) + 1,
+    data: { blocks: [] },
+  }
+  return { ...doc, layers: [...doc.layers, commentary] }
+}
+
 /**
- * Set (or clear, with empty text) the commentary on a span. Creates the
- * document's written-analysis layer on first use, so the analyst never has to
- * add one by hand.
+ * Set (or clear, with empty text) the one block matching `find`, creating it
+ * with `anchor` if there is none. Creates the document's written-analysis
+ * layer on first use, so the analyst never has to add one by hand.
  */
+function setBlock(
+  doc: StrataDocument,
+  find: (b: AnalysisBlock) => boolean,
+  anchor: BlockAnchor,
+  text: string,
+  mkId: () => string,
+): StrataDocument {
+  const existing = allBlocks(doc).find(({ block }) => find(block))
+  if (!existing && !text.trim()) return doc
+  const withLayer = existing ? doc : withAnalysisLayer(doc, mkId)
+  const target = existing?.layer ?? analysisLayers(withLayer)[0]
+  const blocks = existing
+    ? text.trim()
+      ? target.data.blocks.map((b) => (b === existing.block ? { ...b, text } : b))
+      : target.data.blocks.filter((b) => b !== existing.block)
+    : [...target.data.blocks, { id: mkId(), anchor, text }]
+  return {
+    ...withLayer,
+    layers: withLayer.layers.map((l) => (l.id === target.id ? { ...target, data: { blocks } } : l)),
+  }
+}
+
+/** Set (or clear, with empty text) the commentary on a span. */
 export function setSpanCommentary(
   doc: StrataDocument,
   spanId: string,
   text: string,
   mkId: () => string,
 ): StrataDocument {
-  const existing = blockForSpan(doc, spanId)
-  let layers = doc.layers
-  if (!analysisLayers(doc).length) {
-    if (!text.trim()) return doc
-    const commentary: WrittenAnalysisLayer = {
-      id: mkId(),
-      type: 'written-analysis',
-      label: 'Commentary',
-      visibility: true,
-      locked: false,
-      // Required by the layer envelope; a text layer doesn't draw with them.
-      fillColorDefault: '#ffffff',
-      strokeColorDefault: '#475569',
-      // After every existing layer; text layers aren't part of the diagram's stack.
-      displayOrder: Math.max(-1, ...doc.layers.map((l) => l.displayOrder)) + 1,
-      data: { blocks: [] },
-    }
-    layers = [...layers, commentary]
-  }
-  const target = existing
-    ? analysisLayers({ ...doc, layers }).find((l) => l.data.blocks.includes(existing))!
-    : analysisLayers({ ...doc, layers })[0]
+  return setBlock(doc, (b) => 'spanId' in b.anchor && b.anchor.spanId === spanId, { spanId }, text, mkId)
+}
 
-  const blocks = existing
-    ? text.trim()
-      ? target.data.blocks.map((b) => (b === existing ? { ...b, text } : b))
-      : target.data.blocks.filter((b) => b !== existing)
-    : text.trim()
-      ? [...target.data.blocks, { id: mkId(), anchor: { spanId }, text }]
-      : target.data.blocks
+const sameTime = (a: number, b: number) => Math.abs(a - b) < 1e-6
 
-  return {
-    ...doc,
-    layers: layers.map((l) => (l.id === target.id ? { ...target, data: { blocks } } : l)),
-  }
+/** The commentary anchored to exactly this stretch of time, if any. */
+export function blockForRange(doc: StrataDocument, start: number, end: number): AnalysisBlock | undefined {
+  return allBlocks(doc).find(
+    ({ block: b }) => 'start' in b.anchor && sameTime(b.anchor.start, start) && sameTime(b.anchor.end, end),
+  )?.block
+}
+
+/** Set (or clear, with empty text) the commentary on a stretch of time. */
+export function setRangeCommentary(
+  doc: StrataDocument,
+  start: number,
+  end: number,
+  text: string,
+  mkId: () => string,
+): StrataDocument {
+  return setBlock(
+    doc,
+    (b) => 'start' in b.anchor && sameTime(b.anchor.start, start) && sameTime(b.anchor.end, end),
+    { start, end },
+    text,
+    mkId,
+  )
+}
+
+/** Replace (or remove, with empty text) one block's text, whatever it's anchored to. */
+export function setBlockText(doc: StrataDocument, blockId: string, text: string): StrataDocument {
+  if (!allBlocks(doc).some(({ block }) => block.id === blockId)) return doc
+  // The block exists, so setBlock only edits or removes; the anchor and id
+  // arguments are never used.
+  return setBlock(doc, (b) => b.id === blockId, { start: 0, end: 0 }, text, () => blockId)
 }
 
 /**

@@ -10,11 +10,12 @@
  * string key), not to the time itself: it re-renders when the playhead crosses
  * into a different passage, not every frame.
  */
+import { useState } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import type { AnalysisBlock, StrataDocument } from '@/types/strata'
 import { formSpans } from '@/lib/layers'
-import { anchorRange, blockForSpan, blocksAt, parseCommentary, spanBySlug, markerBySlug, allBlocks } from './commentary'
+import { anchorRange, blockForSpan, blockForRange, blocksAt, parseCommentary, spanBySlug, markerBySlug, allBlocks } from './commentary'
 
 const mmss = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`
 
@@ -23,10 +24,22 @@ function activeBlocks(doc: StrataDocument, time: number, selected: string[], pla
     const own = blockForSpan(doc, selected[0])
     if (own) return [own]
   }
+  // Paused on a multi-selection: the commentary on the stretch it covers.
+  if (!playing && selected.length > 1) {
+    const spans = doc.layers.flatMap(formSpans).filter((s) => selected.includes(s.id))
+    const stretch = spans.length
+      ? blockForRange(doc, Math.min(...spans.map((s) => s.startTime)), Math.max(...spans.map((s) => s.endTime)))
+      : undefined
+    if (stretch) return [stretch]
+  }
   return blocksAt(doc, time)
 }
 
 function Block({ doc, block }: { doc: StrataDocument; block: AnalysisBlock }) {
+  // Commentary on a stretch of time has no span whose Inspector could edit
+  // it (and a deleted span's commentary lands here), so it edits in place.
+  const [editing, setEditing] = useState(false)
+  const setCommentaryText = useDocumentStore((s) => s.setCommentaryText)
   const selectSpan = useUIStore((s) => s.selectSpan)
   const selectPointMarker = useUIStore((s) => s.selectPointMarker)
   const requestSeek = useUIStore((s) => s.requestSeek)
@@ -60,8 +73,26 @@ function Block({ doc, block }: { doc: StrataDocument; block: AnalysisBlock }) {
             {mmss(range[0])}–{mmss(range[1])}
           </span>
         )}
+        {!span && (
+          <button
+            className="ml-auto text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            onClick={() => setEditing((v) => !v)}
+          >
+            {editing ? 'Done' : 'Edit'}
+          </button>
+        )}
       </header>
-      {parseCommentary(block.text).map((para, i) => (
+      {editing && (
+        <textarea
+          autoFocus
+          className="w-full resize-y rounded border border-border bg-card px-2 py-1 text-[13px] leading-relaxed text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          rows={5}
+          value={block.text}
+          aria-label="Commentary on this passage"
+          onChange={(e) => setCommentaryText(block.id, e.target.value)}
+        />
+      )}
+      {!editing && parseCommentary(block.text).map((para, i) => (
         <p key={i} className="max-w-[65ch] text-[13.5px] leading-relaxed text-foreground">
           {para.map((piece, j) =>
             piece.kind === 'bold' ? (

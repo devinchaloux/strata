@@ -3034,3 +3034,17 @@ section of its own.
 "the medial caesura at [[mc]]". One namespace keeps a link unambiguous with a
 single syntax, and freezing on save keeps links working when a marker is
 relabelled, as for spans. A new optional field, so no format version bump.
+
+---
+
+## Commentary on a Stretch of Time (2026-09-27)
+
+**Decision:** With several spans selected, the Inspector shows a
+"Commentary, m:ss–m:ss" box for the whole stretch they cover (earliest start to
+latest end), stored as a time-range block; paused on that selection, the
+reading panel shows it. Time-range blocks, including those left behind when a
+span is deleted, can be edited or cleared in place from the reading panel.
+**Rationale:** The format allowed range anchors from the start, but the only
+way to make one was to delete a span, and then it couldn't be edited or
+removed. Selecting spans is how analysts already say "this stretch", so it
+defines the range without a new tool.
