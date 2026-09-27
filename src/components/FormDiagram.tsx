@@ -572,6 +572,7 @@ export function FormDiagram() {
           paints above the absolutely-positioned FormLayers SVG so all four edges
           are visible — an inset outline would be covered by the SVG on bottom/right. */}
       <div
+        data-keeps-selection
         className="relative shrink-0 overflow-hidden rounded-md bg-[var(--canvas)]"
         style={{ marginBottom: 4 }}
       >

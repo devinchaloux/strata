@@ -691,7 +691,6 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   // Marker band state. Selected via the whole document object rather than
   // `?? []` selectors, which would return a fresh array on every render.
   const doc = useDocumentStore((s) => s.document)
-  const addPointMarker = useDocumentStore((s) => s.addPointMarker)
   const updatePointMarker = useDocumentStore((s) => s.updatePointMarker)
   const selectedMarkerId = useUIStore((s) => s.selectedPointMarkerId)
   const selectPointMarker = useUIStore((s) => s.selectPointMarker)
@@ -825,10 +824,13 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   }
 
   // --- Marker band gestures -------------------------------------------------
-  // Mirrors the ruler lane's old model: click empty band to place (snapping),
-  // click a marker to select, drag one to reposition. A pointerdown that
-  // landed on a marker suppresses the band's place-on-click, since
-  // stopPropagation on pointerdown does not stop the click that follows.
+  // Click a marker to select it, drag one to reposition. A click on empty band
+  // clears the selection like empty canvas does — it no longer places a marker
+  // (Devin, 2026-09-27: a stray click wrote data). Markers are placed with M or
+  // the control bar's Marker button, at the playhead, so the analyst can keep
+  // listening; they drag it afterwards if it needs to move. A pointerdown that
+  // landed on a marker suppresses the band's click, since stopPropagation on
+  // pointerdown does not stop the click that follows.
   const pointerDownOnMarkerRef = useRef(false)
 
   function markerSnapCandidates(excludeId?: string): number[] {
@@ -843,12 +845,9 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   }
 
   function handleBandClick(e: React.MouseEvent) {
-    e.stopPropagation() // the container's click clears the span selection
-    if (pointerDownOnMarkerRef.current || pps <= 0) return
-    const time = clampToTrack(clientXToTime(e.clientX))
-    const id = crypto.randomUUID()
-    addPointMarker({ id, timestamp: snapTime(time, markerSnapCandidates(), pps) })
-    selectPointMarker(id)
+    e.stopPropagation()
+    if (pointerDownOnMarkerRef.current) return // the marker's own pointerup selected it
+    clearSelection()
   }
 
   function beginMarkerDrag(marker: PointMarker) {
@@ -942,7 +941,6 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
               width={svgWidth}
               height={bandLayout.height}
               fill="transparent"
-              style={{ cursor: 'crosshair' }}
               onPointerDown={() => {
                 pointerDownOnMarkerRef.current = false
               }}

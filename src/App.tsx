@@ -313,6 +313,29 @@ export default function App() {
   const guardedOpen = guardDiscard('Opening a different file', () => void openFile())
   const guardedDemo = guardDiscard('Loading the demo analysis', loadDemo)
 
+  // Clicking away deselects. A pointerdown outside the diagram and the
+  // Inspector (both marked data-keeps-selection) clears the selection — but
+  // not one on a control (using the transport while a span is selected isn't
+  // "clicking away") or inside a dialog, popover or menu, which Radix renders
+  // outside both. Clicking the Inspector must never deselect, or the selected
+  // span couldn't be edited.
+  useEffect(() => {
+    function onPointerDown(e: PointerEvent) {
+      const el = e.target as Element | null
+      if (!el?.closest) return
+      if (
+        el.closest(
+          '[data-keeps-selection], button, input, select, textarea, a, [role="dialog"], [role="alertdialog"], [role="menu"], [data-radix-popper-content-wrapper]',
+        )
+      ) {
+        return
+      }
+      clearSelection()
+    }
+    window.addEventListener('pointerdown', onPointerDown)
+    return () => window.removeEventListener('pointerdown', onPointerDown)
+  }, [clearSelection])
+
   // Keyboard shortcuts
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {

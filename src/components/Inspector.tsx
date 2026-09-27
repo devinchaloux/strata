@@ -55,6 +55,7 @@ export function Inspector({ collapsed, onToggle }: { collapsed: boolean; onToggl
 
   return (
     <aside
+      data-keeps-selection
       className="flex shrink-0 flex-col border-l bg-card"
       style={{ width: PANEL_WIDTH, borderColor: 'var(--hairline)' }}
     >

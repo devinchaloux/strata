@@ -2714,3 +2714,19 @@ progress is a legitimate file.
 (`strataVersion`, read from `package.json`) instead of a hard-coded `0.1.0`.
 **Rationale:** When a problem turns up in a file later, the version that wrote
 it is the first thing to know.
+
+---
+
+**Decision (reverses the 2026-07-24 click-to-place rule):** clicking the marker
+band no longer places a point marker; it clears the selection, like empty canvas.
+Markers are placed at the playhead with `M` or the control bar's Marker button,
+and dragged afterwards if they need to move. Separately, a pointerdown outside
+the diagram and the Inspector clears the selection, unless it lands on a control
+or inside a dialog, popover or menu.
+**Rationale:** Devin: click-to-create "was just creating too much trouble" — a
+stray click wrote data. Placing with `M` lets the analyst keep listening and
+mark by ear, which is the workflow the tool is built around; dragging covers
+correction. Clicking away never cleared a selection before, because the only
+handler was on the diagram's own container. The Inspector is excluded, or a
+selected span couldn't be edited, and controls are excluded so using the
+transport doesn't drop the selection.
