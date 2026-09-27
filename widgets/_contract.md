@@ -3,7 +3,7 @@
 
 This document is the formal specification for the Strata widget contract — the interface every widget type must implement to participate in the editor, the embeddable viewer, and the export system.
 
-The TypeScript interfaces defined here are the source of truth until Phase 1.2, when they are ported to `src/types/widget.ts`. When the contract changes, both files update together. Data model changes that affect the file format also increment `fileFormatVersion` in `strata.types.ts`.
+The TypeScript interfaces defined here are the source of truth until Phase 1.2, when they are ported to `src/types/widget.ts`. When the contract changes, both files update together. Data model changes to the file format follow the versioning policy in `src/lib/migrations.ts`.
 
 ---
 
@@ -80,7 +80,7 @@ Widgets do not write to the pool directly. Each widget definition exposes a pure
 
 ## 2. TypeScript Interface Specification
 
-These interfaces are defined here as the source of truth and will be ported to `src/types/widget.ts` in Phase 1.2. They reference types from `strata.types.ts` — `Layer`, `LayerData`, `LayerType`, `SharedTimePoint`, `StrataDocument`.
+These interfaces are defined here as the source of truth and will be ported to `src/types/widget.ts` in Phase 1.2. They reference types from `src/types/strata.ts` — `Layer`, `LayerData`, `LayerType`, `SharedTimePoint`, `StrataDocument`.
 
 Each subsection below begins with a plain-English description before the code. Non-technical readers can read the descriptions and skip the code blocks; the description and the code cover the same ground.
 
@@ -428,8 +428,8 @@ The graceful fallback for unknown types is a forward-compatibility guarantee: a 
 
 For each new widget type, in order:
 
-- [ ] Define the `TData` interface and add it to the `LayerData` union in `strata.types.ts`
-- [ ] Add the type identifier to the `LayerType` union in `strata.types.ts`
+- [ ] Define the `TData` interface and add it to the `LayerData` union in `src/types/strata.ts`
+- [ ] Add the type identifier to the `LayerType` union in `src/types/strata.ts`
 - [ ] Implement `RenderComponent` — no mutation callbacks, no external side effects
 - [ ] Implement `EditComponent` — extends render; wires all interactions to `onDataChange`
 - [ ] Implement `TimelinePresenceComponent` or set to `null`
@@ -438,7 +438,7 @@ For each new widget type, in order:
 - [ ] Implement `WidgetExporter` with all supported formats
 - [ ] Register the `WidgetDefinition` in the widget registry
 - [ ] Add `widgets/<type>.md` with widget-specific documentation
-- [ ] Increment `fileFormatVersion` in `strata.types.ts` if the file format changed
+- [ ] Follow the versioning policy in `src/lib/migrations.ts` (a new optional layer type needs no version bump)
 
 ---
 

@@ -48,8 +48,7 @@
     "artist": {
       "type": "array",
       "items": { "type": "string" },
-      "minItems": 1,
-      "description": "Performer or artist name(s). Array to support multiple artists cleanly — e.g. ['The Chainsmokers', 'Halsey']. Single-artist tracks use a one-element array."
+      "description": "Performer or artist name(s). Array to support multiple artists cleanly — e.g. ['The Chainsmokers', 'Halsey']. Single-artist tracks use a one-element array. May be empty while an analysis is in progress: the field is always present, the names are not required."
     },
     "context": {
       "type": ["string", "null"],

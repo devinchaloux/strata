@@ -20,9 +20,10 @@
 import type { StrataDocument, Layer, Span, FormDiagramData } from '@/types/strata'
 import { findOverlaps } from '@/lib/spanEdit'
 import { formatTime } from '@/lib/youtube'
+import { FILE_FORMAT_VERSION, migrate } from '@/lib/migrations'
 
 /** The newest file format this build understands. */
-export const SUPPORTED_FILE_FORMAT_VERSION = 1
+export const SUPPORTED_FILE_FORMAT_VERSION = FILE_FORMAT_VERSION
 
 /** A file that cannot be opened. The message is written for the analyst. */
 export class DocumentError extends Error {}
@@ -38,20 +39,22 @@ const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 const str = (v: unknown, fallback: string) => (typeof v === 'string' ? v : fallback)
 
-export function readDocument(input: unknown): LoadResult {
+export function readDocument(raw: unknown): LoadResult {
   // ── 1. Identify ──
-  if (!isObj(input)) throw new DocumentError('This file is not a Strata analysis.')
+  if (!isObj(raw)) throw new DocumentError('This file is not a Strata analysis.')
   if (
-    typeof input.strataVersion !== 'string' ||
-    typeof input.fileFormatVersion !== 'number' ||
-    typeof input.title !== 'string' ||
-    !Array.isArray(input.layers)
+    typeof raw.strataVersion !== 'string' ||
+    typeof raw.fileFormatVersion !== 'number' ||
+    typeof raw.title !== 'string' ||
+    !Array.isArray(raw.layers)
   ) {
     throw new DocumentError(
       'This file is missing required fields (strataVersion, fileFormatVersion, title, layers), so it is probably not a Strata analysis.',
     )
   }
 
+  // Older formats are upgraded step by step before anything else reads them.
+  const input = migrate(raw) as Obj & { fileFormatVersion: number; title: string; layers: unknown[] }
   const notices: string[] = []
   if (input.fileFormatVersion > SUPPORTED_FILE_FORMAT_VERSION) {
     notices.push(

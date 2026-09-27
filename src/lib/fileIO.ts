@@ -1,5 +1,7 @@
 import type { StrataDocument } from '@/types/strata'
 import { readDocument, DocumentError, type LoadResult } from '@/lib/documentLoad'
+import { FILE_FORMAT_VERSION } from '@/lib/migrations'
+import { version as APP_VERSION } from '../../package.json'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -45,8 +47,10 @@ export function parseStrataFile(raw: string): StrataDocument {
 // Serialization
 // ---------------------------------------------------------------------------
 
+// Every save records which build of Strata wrote the file, so a problem found
+// in a file later can be traced to the version that produced it.
 function serialize(doc: StrataDocument): string {
-  return JSON.stringify(doc, null, 2)
+  return JSON.stringify({ ...doc, strataVersion: APP_VERSION }, null, 2)
 }
 
 function suggestedFilename(doc: StrataDocument): string {
@@ -176,8 +180,8 @@ export function pickAudioFile(): Promise<File | null> {
 export function createEmptyDocument(): StrataDocument {
   const iso = new Date().toISOString()
   return {
-    strataVersion: '0.1.0',
-    fileFormatVersion: 1,
+    strataVersion: APP_VERSION,
+    fileFormatVersion: FILE_FORMAT_VERSION,
     createdAt: iso,
     updatedAt: iso,
     title: 'Untitled Analysis',

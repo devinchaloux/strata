@@ -2,7 +2,7 @@
 
 > This document explains what's inside a `.strata` file and what each field means.
 > It is written for analysts and collaborators, not for programmers.
-> The technical specification lives in `strata.schema.json` and `strata.types.ts`.
+> The technical specification lives in `strata.schema.json`, mirrored by the TypeScript types in `src/types/strata.ts`.
 
 ---
 
@@ -53,7 +53,7 @@ These fields appear at the root of every `.strata` file.
 | Field | Type | Required | What it means |
 |---|---|---|---|
 | `title` | text | Yes | Display title of the track or recording. |
-| `artist` | list of text | Yes | Performer or artist name(s). A list so that multi-artist tracks are stored cleanly — e.g. `["The Chainsmokers", "Halsey"]`. Single-artist tracks use a one-item list: `["Avicii"]`. |
+| `artist` | list of text | Yes | Performer or artist name(s). A list so that multi-artist tracks are stored cleanly — e.g. `["The Chainsmokers", "Halsey"]`. Single-artist tracks use a one-item list: `["Avicii"]`. The list may be empty while an analysis is in progress. |
 | `context` | one of two values or null | No | `recording` (studio recording) or `performance` (live performance of a composed work). Optional — null if unspecified. Controls which additional fields appear in the UI: a `performance` context surfaces `composer` and `work`; a `recording` surfaces `derivativeOf` when relevant. Setting `context` before cross-corpus comparison ensures filters work correctly. |
 | `duration` | decimal number | Yes | Track duration in seconds. Stored explicitly so span timestamps can be validated against the total length. |
 | `composer` | text or null | No | Composer of the work. Only relevant when `context = performance`. Hidden in the UI for other contexts. |
@@ -344,4 +344,4 @@ These are the theoretical commitments that shaped the schema's structure.
 ---
 
 *Schema version 1 — June 2026*
-*Technical spec: `strata.schema.json` · TypeScript types: `strata.types.ts` · Example: `example.strata`*
+*Technical spec: `strata.schema.json` · TypeScript types: `src/types/strata.ts` · Example: `example.strata`*

@@ -2,8 +2,10 @@
  * TypeScript types for the Strata .strata file format.
  *
  * These are the living schema specification for the entire application.
- * Source of truth: schema/strata.schema.json and schema/strata.types.ts.
- * When either changes, update both and increment fileFormatVersion.
+ * They mirror schema/strata.schema.json, which is the published contract; a test
+ * (src/test/schemaConformance.test.ts) checks what the app writes against it.
+ * A format change updates both, plus schema/strata-schema-reference.md. Whether
+ * it also bumps the file format version: see src/lib/migrations.ts.
  */
 
 // ---------------------------------------------------------------------------
@@ -286,7 +288,7 @@ export interface StrataDocument {
   updatedAt: string // ISO 8601; updated on every save
 
   title: string
-  artist: string[]                         // Array; single-artist: ["Avicii"]
+  artist: string[]                         // Array; single-artist: ["Avicii"]; may be empty while in progress
   context?: AnalysisContext | null
   duration: number                         // Track duration, seconds (float)
 

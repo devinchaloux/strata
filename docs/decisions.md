@@ -2670,3 +2670,47 @@ carries no analytical claim. It is per boundary rather than per span because one
 span can elide at both ends and sit above one neighbour but below the other; since
 the constraints only ever join neighbours, any combination can be drawn
 (`spanDrawOrder`).
+
+---
+
+## File Format Integrity, Round 2 (2026-09-27)
+
+**Decision:** File format versioning policy. Adding an optional field does not
+change `fileFormatVersion`; older files lack it and the loader supplies the
+default. A change that alters what existing data means, or that older files
+can't be read under without transformation, bumps the version and adds one step
+to `MIGRATIONS` in `src/lib/migrations.ts`. Documents are upgraded on load, one
+step at a time. A file from a newer version opens with a warning and is never
+downgraded.
+**Rationale:** About six optional fields had been added under version 1 without
+a rule, and a file written before `vocabulary.modes` existed crashed the app.
+Bumping the version for every optional field would make every older file need a
+migration for nothing; never bumping it would leave no way to change meaning
+safely. Before beta testers start saving files, the rule has to exist.
+
+---
+
+**Decision:** `schema/strata.schema.json` is the published contract, and
+`src/types/strata.ts` mirrors it. A test (`src/test/schemaConformance.test.ts`)
+validates the bundled fixtures, a new document, and documents produced by real
+edits (split, label, elision, numeric edge edit, markers, merge) against the
+schema. The duplicate `schema/strata.types.ts` is removed.
+**Rationale:** The format existed in four hand-maintained copies that had
+drifted (the duplicate types file lacked `shortLabel`; nothing imported it).
+Testing what the app *writes*, not only the fixtures, is what matters: the first
+run of the test found that every new analysis was saved schema-invalid.
+
+---
+
+**Decision:** `artist` may be an empty list. The field stays required; the names
+don't.
+**Rationale:** New documents start with no artist, so every analysis saved
+before the artist was entered failed the schema (`minItems: 1`). An analysis in
+progress is a legitimate file.
+
+---
+
+**Decision:** Saved files record the app version that wrote them
+(`strataVersion`, read from `package.json`) instead of a hard-coded `0.1.0`.
+**Rationale:** When a problem turns up in a file later, the version that wrote
+it is the first thing to know.
