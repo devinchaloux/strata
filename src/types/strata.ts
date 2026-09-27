@@ -175,6 +175,12 @@ export interface PointMarker {
   id: string
   timestamp: number            // Recording time, seconds (float)
   label?: string | null
+  /**
+   * Reference name for commentary links ([[slug]]), derived from the label. One
+   * namespace with span slugs, so a name is unique across the document; frozen
+   * once saved, like a span's (lib/slug.ts).
+   */
+  slug?: string | null
   type?: string | null         // Vocabulary term ID; corpus-queryable
   notes?: string | null
   flagged?: boolean            // "Come back to this." Omit for false (default)

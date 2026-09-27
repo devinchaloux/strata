@@ -3018,3 +3018,19 @@ scrolled into view. The logic is in `lib/spanNav.ts`.
 **Rationale:** Selecting and describing spans needed a mouse. Arrow keys
 follow the diagram's own geometry (time runs left to right, the layer stack
 top to bottom), and Enter reaches the field an analyst edits most.
+
+---
+
+## Commentary Links to Point Markers (2026-09-27)
+
+**Decision:** Point markers get an optional `slug`, generated from the label
+and frozen once saved, in one namespace with span slugs; `[[slug]]` in
+commentary links to either. Following a marker link selects the marker and
+plays from its moment. A marker's slug shows, ready to copy, in its Inspector
+panel. Opening a file fills in missing marker slugs after span slugs. In the
+HTML and Markdown exports a marker link is plain text, since a marker has no
+section of its own.
+**Rationale:** The vision's classical case is prose that refers to events:
+"the medial caesura at [[mc]]". One namespace keeps a link unambiguous with a
+single syntax, and freezing on save keeps links working when a marker is
+relabelled, as for spans. A new optional field, so no format version bump.

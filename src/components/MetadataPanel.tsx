@@ -437,7 +437,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             the label (lib/slug.ts), so a rename offers an explicit regenerate. */}
         <Field
           label="Slug"
-          tooltip="The name an embed uses to point at this span. It stays the same after the file is saved, so renaming the span doesn't break links to it."
+          tooltip="The name commentary links ([[its-slug]]) and embeds use for this span. It stays the same after the file is saved, so renaming the span doesn't break links to it."
         >
           <button
             className={`${inputClass} flex items-center justify-between text-left`}
@@ -542,7 +542,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         <Field
           label="Commentary"
           symbols
-          tooltip="Shows above the diagram while this span plays. Link to another span with [[its-slug]]; **bold** and *italic* work."
+          tooltip="Shows above the diagram while this span plays. Link to a span or point marker with [[its-slug]]; **bold** and *italic* work."
         >
           <textarea
             className={`${inputClass} resize-y`}

@@ -162,9 +162,19 @@ function patchSpans(doc: StrataDocument, ids: Set<string>, fn: (s: Span) => Span
   }
 }
 
-/** Span ids that currently carry a slug — the set that becomes frozen on save. */
+/** Span and marker ids that currently carry a slug — the set that becomes frozen on save. */
 function slugBearingIds(doc: StrataDocument | null): Set<string> {
-  return new Set(doc ? allSpans(doc).filter((s) => s.slug).map((s) => s.id) : [])
+  return new Set(doc ? [...allSpans(doc), ...doc.pointMarkers].filter((s) => s.slug).map((s) => s.id) : [])
+}
+
+/**
+ * A marker's slug after a label write: follows the label unless frozen (saved
+ * and so maybe linked to), unique across spans and markers.
+ */
+function markerSlug(doc: StrataDocument, marker: PointMarker, frozen: Set<string>): string | null | undefined {
+  if (frozen.has(marker.id) && marker.slug) return marker.slug
+  const base = marker.label ? slugify(marker.label) : null
+  return base ? uniqueSlug(base, slugsInUse(doc, new Set([marker.id]))) : null
 }
 
 // ---------------------------------------------------------------------------
@@ -474,6 +484,7 @@ const useDocumentStore = create<DocumentState>()(
       addPointMarker: (marker) => {
         const doc = get().document
         if (!doc) return
+        if (marker.label && marker.slug === undefined) marker = { ...marker, slug: markerSlug(doc, marker, new Set()) }
         set({
           document: {
             ...doc,
@@ -492,7 +503,12 @@ const useDocumentStore = create<DocumentState>()(
           document: {
             ...doc,
             pointMarkers: doc.pointMarkers
-              .map((m) => (m.id === id ? { ...m, ...patch } : m))
+              .map((m) => {
+                if (m.id !== id) return m
+                const next = { ...m, ...patch }
+                // A label change carries a slug change, as for spans.
+                return 'label' in patch ? { ...next, slug: markerSlug(doc, next, get().frozenSlugIds) } : next
+              })
               .sort((a, b) => a.timestamp - b.timestamp),
             updatedAt: now(),
           },

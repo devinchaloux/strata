@@ -41,12 +41,13 @@ lookup, re-anchoring, the text format, HTML export) and `CommentaryPanel.tsx`
 | a blank line | a new paragraph |
 | `**words**` | bold |
 | `*words*` | italic |
-| `[[slug]]` | a link to the span with that slug, showing the slug |
+| `[[slug]]` | a link to the span or point marker with that slug, showing the slug |
 | `[[slug\|shown text]]` | the same link, showing the text |
 
 Anything else is literal. A link to a slug that doesn't exist reads as plain
 text (with a tooltip saying so). Clicking a link selects the span and seeks the
-player to its start.
+player to its start, or selects the point marker and seeks to its moment. A
+marker's slug is shown, ready to copy, in its Inspector panel.
 
 ## 4. What edits do to commentary
 
@@ -69,6 +70,5 @@ differently), and links point at it.
 
 ## 6. Not yet built
 
-- Links to point markers.
 - Creating a time-range block from the UI.
 - Showing written-analysis layers in the layer panel.

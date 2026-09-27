@@ -97,7 +97,7 @@ describe('JSON roundtrip', () => {
       },
     ]
     doc.pointMarkers = [
-      { id: 'pm-1', timestamp: 16.0, label: 'Midpoint', flagged: true },
+      { id: 'pm-1', timestamp: 16.0, label: 'Midpoint', slug: 'midpoint', flagged: true },
     ]
     const parsed = parseStrataFile(JSON.stringify(doc, null, 2))
     expect(formSpans(parsed.layers[0])[0].label).toBe('Intro')

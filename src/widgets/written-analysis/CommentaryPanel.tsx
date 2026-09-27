@@ -14,7 +14,7 @@ import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import type { AnalysisBlock, StrataDocument } from '@/types/strata'
 import { formSpans } from '@/lib/layers'
-import { anchorRange, blockForSpan, blocksAt, parseCommentary, spanBySlug, allBlocks } from './commentary'
+import { anchorRange, blockForSpan, blocksAt, parseCommentary, spanBySlug, markerBySlug, allBlocks } from './commentary'
 
 const mmss = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`
 
@@ -28,17 +28,27 @@ function activeBlocks(doc: StrataDocument, time: number, selected: string[], pla
 
 function Block({ doc, block }: { doc: StrataDocument; block: AnalysisBlock }) {
   const selectSpan = useUIStore((s) => s.selectSpan)
+  const selectPointMarker = useUIStore((s) => s.selectPointMarker)
   const requestSeek = useUIStore((s) => s.requestSeek)
   const anchor = block.anchor
   const span = 'spanId' in anchor ? doc.layers.flatMap(formSpans).find((s) => s.id === anchor.spanId) : undefined
   const range = anchorRange(doc, block.anchor)
   const heading = span ? span.label || span.type || 'Untitled span' : 'Passage'
 
+  // A link goes to a span (selected, played from its start) or a point marker
+  // (selected, played from its moment).
   function follow(slug: string) {
-    const target = spanBySlug(doc, slug)
-    if (!target) return
-    selectSpan(target.id)
-    requestSeek(target.startTime)
+    const span = spanBySlug(doc, slug)
+    if (span) {
+      selectSpan(span.id)
+      requestSeek(span.startTime)
+      return
+    }
+    const marker = markerBySlug(doc, slug)
+    if (marker) {
+      selectPointMarker(marker.id)
+      requestSeek(marker.timestamp)
+    }
   }
 
   return (
@@ -59,7 +69,7 @@ function Block({ doc, block }: { doc: StrataDocument; block: AnalysisBlock }) {
             ) : piece.kind === 'italic' ? (
               <em key={j}>{piece.value}</em>
             ) : piece.kind === 'link' ? (
-              spanBySlug(doc, piece.slug) ? (
+              spanBySlug(doc, piece.slug) || markerBySlug(doc, piece.slug) ? (
                 <button
                   key={j}
                   className="text-primary underline decoration-dotted underline-offset-2 hover:decoration-solid"
@@ -70,7 +80,7 @@ function Block({ doc, block }: { doc: StrataDocument; block: AnalysisBlock }) {
                 </button>
               ) : (
                 // A link to a slug that doesn't exist (renamed, or a typo) reads as plain text.
-                <span key={j} title={`No span has the slug "${piece.slug}"`}>
+                <span key={j} title={`Nothing has the slug "${piece.slug}"`}>
                   {piece.value}
                 </span>
               )

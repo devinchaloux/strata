@@ -12,6 +12,7 @@
 import type {
   AnalysisBlock,
   BlockAnchor,
+  PointMarker,
   Span,
   StrataDocument,
   WrittenAnalysisLayer,
@@ -178,6 +179,11 @@ export function parseCommentary(text: string): Inline[][] {
 /** The span a [[slug]] link names, if it exists. */
 export function spanBySlug(doc: StrataDocument, slug: string): Span | undefined {
   return allSpans(doc).find((s) => s.slug === slug)
+}
+
+/** The point marker a [[slug]] link names, if it exists (spans and markers share slugs). */
+export function markerBySlug(doc: StrataDocument, slug: string): PointMarker | undefined {
+  return doc.pointMarkers.find((m) => m.slug === slug)
 }
 
 // ── HTML export ─────────────────────────────────────────────────────────────

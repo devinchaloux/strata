@@ -113,10 +113,16 @@ export function readDocument(raw: unknown): LoadResult {
  */
 function fillMissingSlugs(doc: StrataDocument): StrataDocument {
   const spans = doc.layers.flatMap((l) => (l.type === 'form-diagram' ? l.data.spans : []))
-  if (!spans.some((s) => s.label && !s.slug)) return doc
-  const taken = new Set(spans.map((s) => s.slug).filter((x): x is string => !!x))
+  const markers = doc.pointMarkers
+  if (![...spans, ...markers].some((s) => s.label && !s.slug)) return doc
+  const taken = new Set([...spans, ...markers].map((s) => s.slug).filter((x): x is string => !!x))
   const assigned = new Map<string, string>()
-  for (const s of [...spans].sort((a, b) => a.startTime - b.startTime)) {
+  // Spans first, then markers, each in time order: one namespace for both.
+  const ordered = [
+    ...[...spans].sort((a, b) => a.startTime - b.startTime),
+    ...[...markers].sort((a, b) => a.timestamp - b.timestamp),
+  ]
+  for (const s of ordered) {
     if (s.slug || !s.label) continue
     const base = slugify(s.label)
     if (!base) continue
@@ -131,6 +137,7 @@ function fillMissingSlugs(doc: StrataDocument): StrataDocument {
         ? { ...l, data: { ...l.data, spans: l.data.spans.map((s) => (assigned.has(s.id) ? { ...s, slug: assigned.get(s.id)! } : s)) } }
         : l,
     ),
+    pointMarkers: markers.map((m) => (assigned.has(m.id) ? { ...m, slug: assigned.get(m.id)! } : m)),
   }
 }
 

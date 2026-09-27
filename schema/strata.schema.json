@@ -610,6 +610,11 @@
         "label": {
           "type": ["string", "null"]
         },
+        "slug": {
+          "type": ["string", "null"],
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "description": "Reference name for commentary links ([[slug]]), derived from the label. Shares one namespace with Span.slug, so it is unique across the document. Frozen once saved: relabelling the marker keeps it. Null when the marker has no label."
+        },
         "type": {
           "type": ["string", "null"],
           "description": "Controlled vocabulary term ID. Corpus-queryable."

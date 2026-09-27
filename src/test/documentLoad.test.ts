@@ -103,4 +103,12 @@ describe('readDocument — slugs', () => {
     const spans = formSpans(readDocument(input).doc.layers[0])
     expect(spans.map((s) => s.slug)).toEqual(['verse', 'hook', 'verse-2', undefined])
   })
+
+  it('fills marker slugs after span slugs, in the same namespace', () => {
+    const input = makeDoc([makeLayer('L', [makeSpan('a', 0, 10, { label: 'MC' })])])
+    input.pointMarkers = [{ id: 'm', timestamp: 5, label: 'MC' }]
+    const out = readDocument(input).doc
+    expect(formSpans(out.layers[0])[0].slug).toBe('mc')
+    expect(out.pointMarkers[0].slug).toBe('mc-2')
+  })
 })

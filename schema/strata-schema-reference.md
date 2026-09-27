@@ -206,7 +206,7 @@ allowed.
 |---|---|---|---|
 | `id` | UUID | Yes | Auto-generated unique identifier. |
 | `anchor` | object | Yes | What the block is about: `{ "spanId": "<uuid>" }` for a span (in any form-diagram layer), or `{ "start": <seconds>, "end": <seconds> }` for a stretch of time. |
-| `text` | text | Yes | The commentary. Blank lines separate paragraphs; `**bold**` and `*italic*` are emphasis; `[[slug]]` (or `[[slug\|shown text]]`) links to the span with that slug. Everything else is literal text. |
+| `text` | text | Yes | The commentary. Blank lines separate paragraphs; `**bold**` and `*italic*` are emphasis; `[[slug]]` (or `[[slug\|shown text]]`) links to the span or point marker with that slug. Everything else is literal text. |
 
 > **Why anchors can be times:** commentary is never deleted by an edit
 > elsewhere. When a span with commentary is merged, the commentary moves to the
@@ -280,6 +280,7 @@ A **point marker** is a single timestamp in the recording — a moment rather th
 | `id` | UUID | Yes | Auto-generated unique identifier. Never shown to the user. |
 | `timestamp` | decimal number | Yes | Position in recording time, seconds. |
 | `label` | text or null | No | Free text display name. Shown on the timeline and in the metadata panel. |
+| `slug` | text or null | No | Reference name for commentary links (`[[mc]]`), generated from the label. Spans and point markers share one namespace, so a slug names one thing in the document. Stable once saved, like a span's slug. Null when there is no label. |
 | `type` | vocabulary term ID or null | No | Corpus-queryable classification. Drawn from global built-in point marker types or this document's `vocabulary.pointMarkerTypes`. For theoretically precise events, this is the key field — not the label. Examples: `medial-caesura`, `EEC`, `energy-peak`. Null for untyped observations. |
 | `notes` | text or null | No | Longer freetext observation. Appropriate for analytical prose about a specific event. |
 | `flagged` | true/false | No | `true` = "come back to this." A simple bookmark for moments the analyst wants to revisit. Separate from `confidence` — flagged means *I want to return here*, not *I am uncertain about this*. Omit for false (default). |
