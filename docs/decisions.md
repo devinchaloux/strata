@@ -2730,3 +2730,24 @@ correction. Clicking away never cleared a selection before, because the only
 handler was on the diagram's own container. The Inspector is excluded, or a
 selected span couldn't be edited, and controls are excluded so using the
 transport doesn't drop the selection.
+
+---
+
+## Render / Edit Split (2026-09-27)
+
+**Decision:** The form diagram's drawing is a pure component,
+`src/widgets/form-diagram/figure.tsx`: given layers, markers, a scale and a
+colour theme, it returns SVG, reading no store and handling no events. The editor
+(`components/FormLayers.tsx`) draws that figure and lays an invisible interaction
+layer over it — click targets, boundary handles, marker drag targets, menus. The
+one editor-only visual that belongs inside a span (the selection and hover
+highlight) is passed in as a `SpanDecoration` component. Colours come from a
+`FigureTheme`: CSS variables in the app, literal colours for export
+(`widgets/form-diagram/theme.ts`).
+**Rationale:** This is the widget contract's render/edit boundary, which until
+now existed only in `widgets/_contract.md`. The same drawing now serves the
+editor, SVG/PDF export and a future embed, so an exported figure can never drift
+from what the analyst sees. Export also needs literal colours, because a
+standalone SVG has no app stylesheet to resolve `var(--canvas)` against. One
+behaviour change: text above a bracket is no longer part of its click target;
+the bracket body is.
