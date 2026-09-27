@@ -155,6 +155,8 @@ export interface Span {
   startCap?: CapStyle            // Default 'rounded' (falls back from startBoundaryType for old files)
   endCap?: CapStyle              // Default 'rounded' (falls back from endBoundaryType for old files)
   lineStyle?: LineStyle          // Default 'solid'
+  endOnTop?: boolean             // Where an elision makes this bracket overlap the next one:
+                                  // true = this span draws on top. Omit for false (next on top).
 }
 
 // ---------------------------------------------------------------------------

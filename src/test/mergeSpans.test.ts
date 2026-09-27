@@ -221,3 +221,16 @@ describe('finalizeMerge', () => {
     expect(final.parentId).toBeNull()
   })
 })
+
+describe('merge keeps the drawing order of the outer end', () => {
+  it('takes endOnTop from the last span', () => {
+    const { draft } = resolveMerge(
+      [
+        { id: 'a', startTime: 0, endTime: 10 },
+        { id: 'b', startTime: 10, endTime: 20, endOnTop: true },
+      ],
+      () => 'm',
+    )
+    expect(draft.endOnTop).toBe(true)
+  })
+})

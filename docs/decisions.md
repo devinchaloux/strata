@@ -2645,3 +2645,28 @@ any `TEMPORARY` marker in `src/`.
 nothing checked. The elision reach it exists to settle is still open (backlog), so
 the lab stays available under `npm run dev`; its starting values are the hard-coded
 defaults, so production draws identically without it.
+
+---
+
+**Decision:** Elision reach is 8px, confirmed by Devin in the shape lab
+(2026-09-27). The lab is removed, and `buildShapePath` no longer takes
+overrides for corner radius, elision reach or the narrow-span ratio.
+**Rationale:** The lab existed only to settle these values against real spans;
+corner (20) and ratio (0.3) were settled on 2026-07-25, and elision was the last.
+
+---
+
+**Decision:** Where an elision makes two brackets overlap, the analyst chooses
+which one is drawn on top. `Span.endOnTop` (optional boolean) records it for the
+boundary a span owns (its end): true means this span draws over the next one.
+Absent means the next span is on top, which is how every existing file already
+draws. The control appears in the metadata panel only at a boundary that
+actually overlaps, labelled "On top at start / end"; the start control writes to
+the previous span. A split resets the new inner cut (no elision cap, default
+order); a merge keeps the last span's setting.
+**Rationale:** Devin asked for it on seeing 8px elisions. It is a drawing choice
+like the caps, so it is stored with the span and exported with the figure, and it
+carries no analytical claim. It is per boundary rather than per span because one
+span can elide at both ends and sit above one neighbour but below the other; since
+the constraints only ever join neighbours, any combination can be drawn
+(`spanDrawOrder`).

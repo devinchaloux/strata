@@ -24,8 +24,8 @@ export const MIN_BOUNDARY_DRAG_PX = 8
  * Phase 0.4 §8). Returns the new spans array, or null if nothing should happen.
  *
  * - Inside a span: split it into [start, time] and [time, end]. The new cut is
- *   a 'definite' boundary on both inner faces; the outer faces keep the
- *   original boundary character. Both halves inherit the original's attributes
+ *   a 'definite' boundary on both inner faces (no elision cap, default drawing
+ *   order); the outer faces keep the original boundary character. Both halves inherit the original's attributes
  *   (type, label, colors, line style, confidence).
  * - Inside a gap: fill the gap with two bare spans, [gapStart, time] and
  *   [time, gapEnd]. An empty layer is simply one gap covering the whole track,
@@ -50,12 +50,22 @@ export function placeBoundaryInSpans(
     return null
   }
 
-  const left: Span = { ...orig, endTime: time, endBoundaryType: 'definite' }
+  // The new inner cut is a clean boundary on both faces, so anything that
+  // belonged to the original's OUTER ends stays on the outer ends: an elision
+  // cap and the end drawing order would otherwise be copied onto the new cut.
+  const left: Span = {
+    ...orig,
+    endTime: time,
+    endBoundaryType: 'definite',
+    endCap: orig.endCap === 'elision' ? undefined : orig.endCap,
+    endOnTop: undefined,
+  }
   const right: Span = {
     ...orig,
     id: mkId(),
     startTime: time,
     startBoundaryType: 'definite',
+    startCap: orig.startCap === 'elision' ? undefined : orig.startCap,
   }
   return [...spans.slice(0, i), left, right, ...spans.slice(i + 1)]
 }

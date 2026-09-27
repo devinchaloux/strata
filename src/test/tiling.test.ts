@@ -100,3 +100,12 @@ describe('store tiling guard', () => {
     expect(spans()[0].label).toBe('Intro')
   })
 })
+
+describe('split and the outer-face drawing settings', () => {
+  it("keeps an elision cap and the end drawing order on the original's outer ends", () => {
+    const orig = span('a', 0, 100, { startCap: 'elision', endCap: 'elision', endOnTop: true })
+    const [left, right] = placeBoundaryInSpans([orig], 50, 100, mkId)!
+    expect(left).toMatchObject({ startCap: 'elision', endCap: undefined, endOnTop: undefined })
+    expect(right).toMatchObject({ startCap: undefined, endCap: 'elision', endOnTop: true })
+  })
+})

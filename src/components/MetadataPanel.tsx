@@ -217,16 +217,72 @@ function CapFields({
  *  disclosure that briefly hid them was wrong): picking a boundary type updates
  *  these dropdowns in place, so the relationship between the analytical claim and
  *  the drawing is visible rather than buried. */
+/**
+ * Which bracket sits on top where an elision makes two brackets overlap. Shown
+ * only at a boundary that actually overlaps (an elision cap on either side of a
+ * shared edge). The setting lives on the earlier span (`endOnTop`), so this
+ * span's start writes to its previous neighbour.
+ */
+function OverlapFields({ layer, span }: { layer: Layer; span: Span }) {
+  const updateSpan = useDocumentStore((s) => s.updateSpan)
+  const spans = (layer.data as FormDiagramData).spans
+  const prev = spans.find((s) => s.endTime === span.startTime && s.id !== span.id)
+  const next = spans.find((s) => s.startTime === span.endTime && s.id !== span.id)
+  const capAt = (s: Span, side: 'start' | 'end') =>
+    side === 'start'
+      ? (s.startCap ?? capFromBoundaryType(s.startBoundaryType))
+      : (s.endCap ?? capFromBoundaryType(s.endBoundaryType))
+  const startOverlaps = prev && (capAt(span, 'start') === 'elision' || capAt(prev, 'end') === 'elision')
+  const endOverlaps = next && (capAt(span, 'end') === 'elision' || capAt(next, 'start') === 'elision')
+  if (!startOverlaps && !endOverlaps) return null
+
+  return (
+    <div className="flex gap-2">
+      <div className="flex-1">
+        {startOverlaps && prev && (
+          <Field label="On top at start">
+            <Segmented
+              options={[
+                { value: 'this', label: 'This' },
+                { value: 'other', label: 'Previous' },
+              ]}
+              value={prev.endOnTop ? 'other' : 'this'}
+              onChange={(v) => updateSpan(layer.id, prev.id, { endOnTop: v === 'other' || undefined })}
+            />
+          </Field>
+        )}
+      </div>
+      <div className="flex-1">
+        {endOverlaps && next && (
+          <Field label="On top at end">
+            <Segmented
+              options={[
+                { value: 'this', label: 'This' },
+                { value: 'other', label: 'Next' },
+              ]}
+              value={span.endOnTop ? 'this' : 'other'}
+              onChange={(v) => updateSpan(layer.id, span.id, { endOnTop: v === 'this' || undefined })}
+            />
+          </Field>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function ShapeFields({
+  layer,
   span,
   update,
 }: {
+  layer: Layer
   span: Span
   update: (patch: Partial<Omit<Span, 'id'>>) => void
 }) {
   return (
     <>
       <CapFields span={span} update={update} />
+      <OverlapFields layer={layer} span={span} />
 
       <Field label="Stroke">
         <Segmented
@@ -498,12 +554,12 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             </button>
             {shapeFieldsExpanded && (
               <div className="mt-2">
-                <ShapeFields span={span} update={update} />
+                <ShapeFields layer={layer} span={span} update={update} />
               </div>
             )}
           </div>
         ) : (
-          <ShapeFields span={span} update={update} />
+          <ShapeFields layer={layer} span={span} update={update} />
         )}
 
         {/* Notes */}

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   estimateTextWidth,
+  spanDrawOrder,
   truncateToWidth,
   buildShapePath,
   capFromBoundaryType,
@@ -376,5 +377,27 @@ describe('layer stacking with variable (bracket vs. bar) heights', () => {
 
   it('layerIndexAtY returns 0 for an empty layer list', () => {
     expect(layerIndexAtY([], 500)).toBe(0)
+  })
+})
+
+describe('spanDrawOrder', () => {
+  const s = (id: string, start: number, end: number, endOnTop?: boolean) => ({ id, startTime: start, endTime: end, endOnTop })
+  const ids = (xs: { id: string }[]) => xs.map((x) => x.id)
+
+  it('draws in time order by default, so the later span is on top', () => {
+    expect(ids(spanDrawOrder([s('a', 0, 1), s('b', 1, 2), s('c', 2, 3)]))).toEqual(['a', 'b', 'c'])
+  })
+
+  it('draws a span after its neighbour when it claims the top at its end', () => {
+    expect(ids(spanDrawOrder([s('a', 0, 1, true), s('b', 1, 2), s('c', 2, 3)]))).toEqual(['b', 'a', 'c'])
+  })
+
+  it('satisfies a chain of flips', () => {
+    // a over b, b over c
+    expect(ids(spanDrawOrder([s('a', 0, 1, true), s('b', 1, 2, true), s('c', 2, 3)]))).toEqual(['c', 'b', 'a'])
+  })
+
+  it('ignores the flag across a gap, where nothing overlaps', () => {
+    expect(ids(spanDrawOrder([s('a', 0, 1, true), s('b', 2, 3)]))).toEqual(['a', 'b'])
   })
 })

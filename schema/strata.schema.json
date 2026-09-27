@@ -525,6 +525,10 @@
           "type": "string",
           "enum": ["solid", "dashed"],
           "description": "Visual stroke style of the whole bracket — the analyst's choice, decoupled from confidence. Whole-shape uniform; solid and dashed are never mixed at a shared edge. Absent = 'solid'."
+        },
+        "endOnTop": {
+          "type": "boolean",
+          "description": "Drawing order at this span's end boundary, where an elision makes its bracket overlap the next span's: true = this span draws on top. Absent or false = the next span draws on top. Visual only; carries no analytical claim."
         }
       }
     },

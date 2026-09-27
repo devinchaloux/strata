@@ -35,6 +35,7 @@ import {
   shapeTopY,
   layerBodyHeight,
   layerIndexAtY,
+  spanDrawOrder,
   type FontScale,
   type Justification,
   type ResolvedLabel,
@@ -203,7 +204,6 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef 
   // state flips, not on every selection change across the diagram.
   const isSelected = useUIStore((s) => s.selectedSpanIds.includes(span.id))
   const isHovered = useUIStore((s) => s.hoveredSpanId === span.id)
-  const shapeLab = useUIStore((s) => s.shapeLab) // dev-only lab; defaults in production
   const selectSpan = useUIStore((s) => s.selectSpan)
   const toggleSpan = useUIStore((s) => s.toggleSpan)
   const setSelection = useUIStore((s) => s.setSelection)
@@ -269,8 +269,6 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef 
   const dash = lineStyleDash(span.lineStyle)
 
   // One path per span (fill + stroke), inset so adjacent spans read as islands.
-  // cornerRadius/elisionExtend/cornerRatio come from the dev-only shape lab,
-  // which holds the hard-coded defaults outside `npm run dev` (uiStore.shapeLab).
   const path = isBar
     ? ''
     : buildShapePath({
@@ -278,9 +276,6 @@ function SpanShape({ span, layer, pps, fontScale, labelLayout, dragCommittedRef 
         startCap,
         endCap,
         inset: ISLAND_INSET,
-        cornerRadius: shapeLab.cornerRadius,
-        elisionExtend: shapeLab.elisionExtend,
-        cornerRatio: shapeLab.cornerRatio,
       })
   const fonts = FONT_SIZES[fontScale]
 
@@ -505,7 +500,9 @@ const FormLayerGroup = memo(function FormLayerGroup({
 
   return (
     <g transform={`translate(0, ${topY})`}>
-      {spans.map((span) => (
+      {/* Drawn in overlap order, not time order, so an elided bracket can sit
+          on top of its neighbour when the analyst asks for it (endOnTop). */}
+      {spanDrawOrder(spans).map((span) => (
         <SpanShape
           key={span.id}
           span={span}

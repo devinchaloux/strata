@@ -20,7 +20,7 @@
  *   startBoundaryType      first span's (earliest startTime)
  *   endBoundaryType        last span's (latest endTime)
  *   startCap / lineStyle   first span's (outer face / whole-shape style)
- *   endCap                 last span's (outer face)
+ *   endCap, endOnTop       last span's (outer face)
  *   startTime / endTime    min / max across the selection
  *   slug                   regenerated from the resolved label
  *   mergedFrom             all source ids in startTime order
@@ -235,6 +235,8 @@ export function resolveMerge(spans: Span[], mkId: () => string): MergeResolution
     parentId,
     startCap: first.startCap,
     endCap: last.endCap,
+    // The merged span's end is the last source's end, drawing order included.
+    endOnTop: last.endOnTop,
     lineStyle: first.lineStyle,
     mergedFrom: sorted.map((s) => s.id),
   }

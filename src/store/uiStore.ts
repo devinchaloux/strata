@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { CORNER_RADIUS, ELISION_EXTEND, CORNER_MAX_RATIO } from '@/lib/formShape'
 import type { YTPlayerState } from '@/lib/youtube'
 import type { Span } from '@/types/strata'
 import type { MergeConflict } from '@/lib/mergeSpans'
@@ -66,11 +65,6 @@ export interface UIState {
   scrollOffset: number
   viewportWidth: number
 
-  // DEV-ONLY shape lab (see DiagramControlBar's ShapeLab). Live bracket-geometry
-  // knobs; starts at the hard-coded defaults, and production builds never change
-  // them. Deliberately in the UI store: it must never touch the document, dirty
-  // the file, or land in an undo step.
-  shapeLab: { cornerRadius: number; elisionExtend: number; cornerRatio: number }
 
   // Selection — multi-select set is the source of truth. Single-select call
   // sites read selectedSpanIds[0]. selectionAnchorId is the pivot for shift-range.
@@ -130,10 +124,6 @@ export interface UIState {
   setZoom: (zoom: number) => void
   setScrollOffset: (offset: number) => void
   setViewportWidth: (width: number) => void
-  /** Dev-only shape lab — see `shapeLab` above. */
-  setShapeLab: (
-    patch: Partial<{ cornerRadius: number; elisionExtend: number; cornerRatio: number }>,
-  ) => void
 
   // Actions — selection
   selectSpan: (id: string | null) => void       // single select (replace); null clears
@@ -181,11 +171,6 @@ const useUIStore = create<UIState>()((set) => ({
   scrollOffset: 0,
   viewportWidth: 0,
 
-  shapeLab: {
-    cornerRadius: CORNER_RADIUS,
-    elisionExtend: ELISION_EXTEND,
-    cornerRatio: CORNER_MAX_RATIO,
-  },
 
   selectedSpanIds: [],
   selectionAnchorId: null,
@@ -217,7 +202,6 @@ const useUIStore = create<UIState>()((set) => ({
   setScrollOffset: (offset) => set({ scrollOffset: offset }),
   setViewportWidth: (width) => set({ viewportWidth: width }),
 
-  setShapeLab: (patch) => set((s) => ({ shapeLab: { ...s.shapeLab, ...patch } })),
 
   selectSpan: (id) =>
     set({ selectedSpanIds: id ? [id] : [], selectionAnchorId: id, selectedPointMarkerId: null }),

@@ -36,7 +36,7 @@
  * colored fill reads as a solid block. One path, two idioms, no special-casing.
  */
 
-import type { BoundaryType, CapStyle, LineStyle, Layer } from '@/types/strata'
+import type { BoundaryType, CapStyle, LineStyle, Layer, Span } from '@/types/strata'
 
 // ---------------------------------------------------------------------------
 // Metrics (starting values; tweakable once seen on real data)
@@ -171,15 +171,6 @@ export interface ShapePathOptions {
   endCap: CapStyle
   /** Inset per side (px) — the island gap. Default 0 (tests / measuring). */
   inset?: number
-  /** Corner curve for rounded/elision caps. Defaults to CORNER_RADIUS.
-   *  Overridable so the shape lab can vary it live (see uiStore.shapeLab). */
-  cornerRadius?: number
-  /** How far an elision cap pushes past the boundary. Defaults to ELISION_EXTEND. */
-  elisionExtend?: number
-  /** Max fraction of the span's width one corner may consume. Defaults to
-   *  CORNER_MAX_RATIO. Raising it toward 0.5 makes the two corners meet and the
-   *  flat top disappear (a dome). Overridable for the shape lab. */
-  cornerRatio?: number
 }
 
 /**
@@ -193,15 +184,12 @@ export function buildShapePath({
   startCap,
   endCap,
   inset = 0,
-  cornerRadius = CORNER_RADIUS,
-  elisionExtend = ELISION_EXTEND,
-  cornerRatio = CORNER_MAX_RATIO,
 }: ShapePathOptions): string {
   const H = height
   // An elision cap pushes outward past the boundary instead of insetting inward,
   // so the bracket overlaps its neighbour. Everything downstream is unchanged —
   // the cap draws its ordinary shape, just at a displaced x.
-  const ext = Math.min(elisionExtend, width * ELISION_EXTEND_MAX_RATIO)
+  const ext = Math.min(ELISION_EXTEND, width * ELISION_EXTEND_MAX_RATIO)
   const L = inset - (startCap === 'elision' ? ext : 0)
   const R = width - inset + (endCap === 'elision' ? ext : 0)
   if (R <= L) return ''
@@ -210,7 +198,7 @@ export function buildShapePath({
   // Cap the corner radius at ~30% of the width so a real flat top always remains:
   // a full cornerRadius on a narrow (portrait) span would consume the whole top
   // and read as a dome/bubble, which is exactly what we retired.
-  const r = Math.min(cornerRadius, span * cornerRatio, H)
+  const r = Math.min(CORNER_RADIUS, span * CORNER_MAX_RATIO, H)
   const aInset = Math.min(ANGLE_INSET, span / 2)
 
   const parts: string[] = []
@@ -535,4 +523,36 @@ export function luminance(hex: string): number {
  */
 export function textOnFill(fill: string, ink: string): string {
   return luminance(fill) > 0.6 ? ink : '#ffffff'
+}
+
+// ---------------------------------------------------------------------------
+// Drawing order within a layer
+// ---------------------------------------------------------------------------
+
+/**
+ * The order to draw a layer's spans in, so that where an elision makes two
+ * brackets overlap, the right one ends up on top. Later-drawn = on top.
+ *
+ * By default a later span draws over an earlier one. `span.endOnTop` flips
+ * that for the boundary it owns (its end, shared with the next span). Because
+ * the constraints only ever link neighbours, the layer splits into runs joined
+ * by flipped boundaries; drawing each run back to front satisfies every flip
+ * without disturbing any default. Spans separated by a gap never overlap, so
+ * only touching neighbours constrain each other.
+ *
+ * `spans` must be sorted by startTime (the store keeps them that way).
+ */
+export function spanDrawOrder<T extends Pick<Span, 'startTime' | 'endTime' | 'endOnTop'>>(spans: T[]): T[] {
+  const out: T[] = []
+  let run: T[] = []
+  spans.forEach((s, i) => {
+    run.push(s)
+    const next = spans[i + 1]
+    const flipped = next !== undefined && s.endOnTop === true && s.endTime === next.startTime
+    if (!flipped) {
+      out.push(...run.reverse())
+      run = []
+    }
+  })
+  return out
 }
