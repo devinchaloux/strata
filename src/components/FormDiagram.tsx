@@ -50,6 +50,7 @@ import { LayerSettingsPopover } from './LayerSettingsPopover'
 import { AddLayerPopover } from './AddLayerPopover'
 import { DiagramControlBar } from './DiagramControlBar'
 import { CommentaryPanel } from '@/widgets/written-analysis/CommentaryPanel'
+import { formSpans } from '@/lib/layers'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,7 +65,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { STACK_TOP_PAD, stackHeight, layerPitch } from '@/lib/formShape'
 import { markerBandHeight } from '@/lib/markerBand'
-import type { Layer, FormDiagramData } from '@/types/strata'
+import type { Layer } from '@/types/strata'
 
 const HEADER_WIDTH_EXPANDED = 140
 const HEADER_WIDTH_RAIL = 34
@@ -254,9 +255,7 @@ function LayerHeaders({ layers, collapsed }: { layers: Layer[]; collapsed: boole
   // confirming removes the layer, which would unmount a dialog nested in that row
   // mid-close (Radix throws). One hoisted dialog, keyed by the pending layer.
   const [pendingDelete, setPendingDelete] = useState<Layer | null>(null)
-  const pendingSpanCount = pendingDelete
-    ? (pendingDelete.data as FormDiagramData).spans.length
-    : 0
+  const pendingSpanCount = pendingDelete ? formSpans(pendingDelete).length : 0
   function confirmDelete() {
     if (pendingDelete) removeLayer(pendingDelete.id)
     setPendingDelete(null)

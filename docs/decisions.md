@@ -2808,3 +2808,19 @@ slugs are never changed, so nothing an embed or a link already uses moves.
 Not yet built: links to point markers (markers have no slug), a Markdown export,
 and free time-range commentary created from the UI (the format already allows
 it).
+
+---
+
+## Video Curtain Covers Every Dialog (2026-09-27)
+
+**Decision:** Every modal dialog counts itself while open (a small
+`CountsAsModal` inside the shared `DialogContent` and `AlertDialogContent`), and
+the video curtain shows whenever the count is above zero. This replaces a
+hand-kept list of open-dialog flags in `PlayerDock`.
+**Rationale:** The list had fallen behind: the merge-conflict dialog and the
+delete-layer confirm weren't on it, so a linked video showed through their
+dimming. Counting in the shared components means a dialog added later is
+covered without anyone remembering to wire it. Popovers and menus aren't
+modal and don't count. Whether YouTube's rules allow covering the player at all
+while a dialog is open is still an open question; this change only makes the
+existing behaviour consistent.

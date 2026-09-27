@@ -233,8 +233,7 @@ export default function App() {
 
   // Inspector collapse is pure view-state; local to the shell.
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false)
-  // Lives in uiStore (not local state) so PlayerDock can see it too — see the
-  // videoPanel curtain comment in PlayerDock for why.
+  // Held in uiStore rather than local state; App is its only user today.
   const settingsOpen = useUIStore((s) => s.documentSettingsOpen)
   const setSettingsOpen = useUIStore((s) => s.setDocumentSettingsOpen)
   // "New analysis" framing for the settings dialog — set when the dialog was
@@ -247,19 +246,6 @@ export default function App() {
     label: string
     run: () => void
   } | null>(null)
-  // Mirrored into uiStore so PlayerDock's video-panel curtain covers this
-  // dialog too (same iframe-compositing quirk as the other modals).
-  const setUnsavedGuardOpen = useUIStore((s) => s.setUnsavedGuardOpen)
-  useEffect(() => {
-    setUnsavedGuardOpen(pendingDiscard !== null)
-  }, [pendingDiscard, setUnsavedGuardOpen])
-
-  // Same mirroring for the crash-recovery modal — it can appear over a
-  // linked video (dirty session + reload) just as easily as the other three.
-  const setRecoveryModalOpen = useUIStore((s) => s.setRecoveryModalOpen)
-  useEffect(() => {
-    setRecoveryModalOpen(pendingRecovery !== null)
-  }, [pendingRecovery, setRecoveryModalOpen])
 
   // Auto-expand the Inspector whenever a selection is made, so clicking a span
   // always surfaces its details — matches the editor's pre-existing behavior.

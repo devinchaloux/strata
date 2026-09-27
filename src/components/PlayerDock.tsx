@@ -142,12 +142,6 @@ export function PlayerDock() {
     audioFile,
     setAudioFile,
     setLinkSourceOpen,
-    linkSourceOpen,
-    documentSettingsOpen,
-    unsavedGuardOpen,
-    recoveryModalOpen,
-    appMessage,
-    exportOpen,
   } = useUIStore()
 
   // A linked YouTube iframe renders in its own GPU compositing layer that
@@ -155,10 +149,9 @@ export function PlayerDock() {
   // of sitting behind the modal like the rest of the app. Since the iframe
   // can't be unmounted without killing the YT.Player, cover it with an opaque
   // curtain (in the same local stacking context, so it isn't subject to the
-  // same cross-context quirk) whenever a modal that can be open at the same
-  // time is up.
-  const anyModalOpen =
-    linkSourceOpen || documentSettingsOpen || unsavedGuardOpen || recoveryModalOpen || appMessage !== null || exportOpen
+  // same cross-context quirk) whenever any modal is up. Every dialog counts
+  // itself (components/ui/CountsAsModal), so a new one needs no wiring here.
+  const anyModalOpen = useUIStore((s) => s.openModals > 0)
 
   const source = doc?.source ?? null
   const sourceOffset = source?.sourceOffset ?? 0
