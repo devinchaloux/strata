@@ -2805,9 +2805,9 @@ still surfaces at the right moment and can be re-attached by hand.
 generated (including the bundled demo) have labels but no slugs. Existing
 slugs are never changed, so nothing an embed or a link already uses moves.
 
-Not yet built: links to point markers (markers have no slug), a Markdown export,
-and free time-range commentary created from the UI (the format already allows
-it).
+Not yet built: links to point markers (markers have no slug) and free
+time-range commentary created from the UI (the format already allows it). The
+Markdown export followed the same day; see widgets/written-analysis.md §5.
 
 ---
 

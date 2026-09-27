@@ -63,9 +63,12 @@ player to its start.
 one page, in time order, each section headed by its span and times. `[[slug]]`
 links become in-page links when the target span has commentary of its own.
 
+"Markdown" exports the same document as Markdown for technical users: each span
+section is preceded by an `<a id="slug">` anchor (renderers derive heading ids
+differently), and links point at it.
+
 ## 6. Not yet built
 
 - Links to point markers.
-- Markdown export.
 - Creating a time-range block from the UI.
 - Showing written-analysis layers in the layer panel.

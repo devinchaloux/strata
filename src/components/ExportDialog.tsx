@@ -17,7 +17,7 @@ import { downloadBlob, fileBaseName } from '@/lib/fileIO'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { TimeInput } from './TimeInput'
-import { allBlocks, commentaryToHtml } from '@/widgets/written-analysis/commentary'
+import { allBlocks, commentaryToHtml, commentaryToMarkdown } from '@/widgets/written-analysis/commentary'
 import type { StrataDocument } from '@/types/strata'
 
 type RangeMode = 'all' | 'selection' | 'custom'
@@ -200,6 +200,18 @@ export function ExportDialog() {
                 onClick={() => downloadBlob(new Blob([commentaryToHtml(doc)], { type: 'text/html' }), `${base}-commentary.html`)}
               >
                 <Download size={13} aria-hidden /> Commentary (HTML)
+              </Button>
+            )}
+            {hasCommentary && (
+              <Button
+                variant="ghost"
+                size="sm"
+                title="All commentary as Markdown, in time order"
+                onClick={() =>
+                  downloadBlob(new Blob([commentaryToMarkdown(doc)], { type: 'text/markdown' }), `${base}-commentary.md`)
+                }
+              >
+                <Download size={13} aria-hidden /> Markdown
               </Button>
             )}
             <Button variant="outline" size="sm" disabled={!svg || noLayers} onClick={savePng}>

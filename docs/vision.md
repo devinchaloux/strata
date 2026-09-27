@@ -468,7 +468,7 @@ A DAW-style view showing which instruments, voices, or elements are present at a
 
 ### 6.4 v2/v3+: Timestamped Written Analysis
 
-> **Status (2026-09-27):** a first version shipped in v1: commentary anchored to spans or time ranges, surfacing during playback, with `[[slug]]` links to spans and HTML export. Links to point markers, a Markdown export, and clicking a span to open its commentary are not built yet. See `widgets/written-analysis.md`.
+> **Status (2026-09-27):** a first version shipped in v1: commentary anchored to spans or time ranges, surfacing during playback, with `[[slug]]` links to spans and HTML export. Links to point markers and clicking a span to open its commentary are not built yet. See `widgets/written-analysis.md`.
 
 Text blocks anchored to specific spans or timestamps. When the playback cursor enters a span, the relevant text block surfaces. Clicking a section in the form diagram opens a deeper written commentary. This is the "flowering" feature — the point where Strata becomes not just a diagram tool but an interactive analytical document.
 

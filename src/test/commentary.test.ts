@@ -11,6 +11,7 @@ import {
   blocksAt,
   parseCommentary,
   commentaryToHtml,
+  commentaryToMarkdown,
 } from '@/widgets/written-analysis/commentary'
 import { makeDoc, makeLayer, makeSpan } from './fixtures'
 
@@ -96,6 +97,15 @@ describe('commentary text', () => {
     expect(html).toContain('<section id="drop">')
     expect(html).toContain('<a href="#drop">drop</a>')
     expect(html).toContain('Loud &lt;and&gt; proud.')
+  })
+
+  it('exports to Markdown with anchors, links and emphasis', () => {
+    store().setSpanCommentary('c', 'Echoes [[drop]] and [[nowhere]].')
+    store().setSpanCommentary('b', 'A **big** drop.')
+    const md = commentaryToMarkdown(doc())
+    expect(md).toContain('<a id="drop"></a>\n\n## Drop (0:30–1:00)\n\nA **big** drop.')
+    expect(md).toContain('Echoes [drop](#drop) and nowhere.')
+    expect(md.indexOf('## Drop')).toBeLessThan(md.indexOf('## Outro'))
   })
 })
 

@@ -185,6 +185,24 @@ export function spanBySlug(doc: StrataDocument, slug: string): Span | undefined 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!)
 const mmss = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`
 
+/** Every block in time order, with its span (if any), heading and range. */
+function sections(doc: StrataDocument) {
+  const spans = new Map(allSpans(doc).map((s) => [s.id, s]))
+  return allBlocks(doc)
+    .map(({ block }) => {
+      const span = 'spanId' in block.anchor ? spans.get(block.anchor.spanId) : undefined
+      const range = anchorRange(doc, block.anchor) ?? [0, 0]
+      const heading = span ? span.label || span.type || 'Untitled span' : 'Passage'
+      return { block, span, range, heading }
+    })
+    .sort((a, b) => a.range[0] - b.range[0])
+}
+
+/** Slugs of spans that have a section of their own, so links can point at it. */
+function linkTargets(entries: ReturnType<typeof sections>): Set<string> {
+  return new Set(entries.flatMap(({ span }) => (span?.slug ? [span.slug] : [])))
+}
+
 /**
  * The whole commentary as one readable HTML page, in time order, each section
  * headed by what it's about and when. [[slug]] links become in-page links to
@@ -192,20 +210,11 @@ const mmss = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).
  * widget (docs/decisions.md): it opens anywhere, no markdown reader needed.
  */
 export function commentaryToHtml(doc: StrataDocument): string {
-  const spans = new Map(allSpans(doc).map((s) => [s.id, s]))
-  const entries = allBlocks(doc)
-    .map(({ block }) => ({ block, range: anchorRange(doc, block.anchor) ?? [0, 0] }))
-    .sort((a, b) => a.range[0] - b.range[0])
-  const sectionIdForSlug = new Map<string, string>()
-  for (const { block } of entries) {
-    const span = 'spanId' in block.anchor ? spans.get(block.anchor.spanId) : undefined
-    if (span?.slug) sectionIdForSlug.set(span.slug, span.slug)
-  }
+  const entries = sections(doc)
+  const targets = linkTargets(entries)
 
   const body = entries
-    .map(({ block, range }) => {
-      const span = 'spanId' in block.anchor ? spans.get(block.anchor.spanId) : undefined
-      const heading = span ? span.label || span.type || 'Untitled span' : 'Passage'
+    .map(({ block, span, range, heading }) => {
       const id = span?.slug ? ` id="${esc(span.slug)}"` : ''
       const paras = parseCommentary(block.text)
         .map(
@@ -216,8 +225,7 @@ export function commentaryToHtml(doc: StrataDocument): string {
                 if (piece.kind === 'bold') return `<strong>${esc(piece.value)}</strong>`
                 if (piece.kind === 'italic') return `<em>${esc(piece.value)}</em>`
                 if (piece.kind === 'link') {
-                  const target = sectionIdForSlug.get(piece.slug)
-                  return target ? `<a href="#${esc(target)}">${esc(piece.value)}</a>` : esc(piece.value)
+                  return targets.has(piece.slug) ? `<a href="#${esc(piece.slug)}">${esc(piece.value)}</a>` : esc(piece.value)
                 }
                 return esc(piece.value)
               })
@@ -252,4 +260,46 @@ ${body}
 </body>
 </html>
 `
+}
+
+// ── Markdown export ─────────────────────────────────────────────────────────
+
+/**
+ * The same document as Markdown, the secondary export for technical users
+ * (docs/decisions.md). Each span section carries an `<a id>` anchor, since
+ * Markdown renderers derive heading ids differently; [[slug]] links point at
+ * it. The commentary's own **bold** and *italic* are already Markdown.
+ */
+export function commentaryToMarkdown(doc: StrataDocument): string {
+  const entries = sections(doc)
+  const targets = linkTargets(entries)
+  const out: string[] = [`# ${doc.title}`]
+  const meta = [doc.artist.join(', '), doc.analysisAuthor ? `analysis by ${doc.analysisAuthor}` : '']
+    .filter(Boolean)
+    .join(' · ')
+  if (meta) out.push('', meta)
+  for (const { block, span, range, heading } of entries) {
+    out.push('')
+    if (span?.slug) out.push(`<a id="${span.slug}"></a>`, '')
+    out.push(`## ${heading} (${mmss(range[0])}–${mmss(range[1])})`)
+    for (const para of parseCommentary(block.text)) {
+      out.push(
+        '',
+        para
+          .map((piece) =>
+            piece.kind === 'bold'
+              ? `**${piece.value}**`
+              : piece.kind === 'italic'
+                ? `*${piece.value}*`
+                : piece.kind === 'link'
+                  ? targets.has(piece.slug)
+                    ? `[${piece.value}](#${piece.slug})`
+                    : piece.value
+                  : piece.value,
+          )
+          .join(''),
+      )
+    }
+  }
+  return out.join('\n') + '\n'
 }
