@@ -3002,3 +3002,19 @@ one menu component per span.
 boundary drags already held 60 fps and still do; loading the file paints in
 about 0.4 s; saving serialises in about 2 ms. The production build is faster
 than these dev numbers.
+
+---
+
+## Keyboard Navigation of Spans (2026-09-27)
+
+**Decision:** With focus outside text fields, menus and dialogs, ← and → select
+the previous and next span in the layer; ↑ and ↓ select the span in the layer
+above or below that covers this one's middle (the nearest one if it falls in a
+gap), skipping hidden and empty layers; Shift+← and Shift+→ extend the
+selection within the layer from its anchor; Enter moves focus to the selected
+span's Label field with its text selected. With nothing selected, an arrow
+selects the first span of the active layer. A span navigated to off-screen is
+scrolled into view. The logic is in `lib/spanNav.ts`.
+**Rationale:** Selecting and describing spans needed a mouse. Arrow keys
+follow the diagram's own geometry (time runs left to right, the layer stack
+top to bottom), and Enter reaches the field an analyst edits most.

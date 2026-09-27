@@ -27,6 +27,9 @@ import { useUIStore } from '@/store/uiStore'
 import { cn } from '@/lib/utils'
 import aliveRaw from '../schema/alive.strata?raw'
 import { readStrataFile } from '@/lib/fileIO'
+import { spanNeighbour, firstSpan, spanRange } from '@/lib/spanNav'
+import { formSpans } from '@/lib/layers'
+import { computePps, totalContentWidth, clampScrollOffset } from '@/lib/timeline'
 
 // ---------------------------------------------------------------------------
 // Toolbar button
@@ -221,6 +224,86 @@ function RecoveryModal({
 // App
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Keyboard navigation between spans (lib/spanNav): arrows move the selection,
+// Shift+←/→ extends it, Enter goes to the selected span's Label field.
+// ---------------------------------------------------------------------------
+
+/** Handles the key if it's a span-navigation key in the right context; returns whether it did. */
+function navigateSpans(e: KeyboardEvent): boolean {
+  const el = e.target as HTMLElement | null
+  const tag = el?.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable) return false
+  // Menus and dialogs use the arrows themselves.
+  if (el?.closest('[role="menu"], [role="dialog"], [role="alertdialog"], [role="listbox"]')) return false
+  if (e.metaKey || e.ctrlKey || e.altKey) return false
+  const doc = useDocumentStore.getState().document
+  if (!doc) return false
+  const ui = useUIStore.getState()
+  const selected = ui.selectedSpanIds
+
+  if (e.key === 'Enter') {
+    if (selected.length !== 1) return false
+    const label = document.querySelector<HTMLInputElement>('[data-inspector-label]')
+    if (!label) return false
+    e.preventDefault()
+    label.focus()
+    label.select()
+    return true
+  }
+
+  const dir = ({ ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' } as const)[
+    e.key as 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown'
+  ]
+  if (!dir) return false
+  e.preventDefault()
+
+  if (selected.length === 0) {
+    const first = firstSpan(doc, ui.activeLayerId)
+    if (first) selectAndReveal(first)
+    return true
+  }
+  // Moving from the end of the selection that last moved (the anchor's
+  // opposite end), so Shift+→ keeps growing to the right.
+  const from = navFocus && selected.includes(navFocus) ? navFocus : selected[selected.length - 1]
+  const to = spanNeighbour(doc, from, dir)
+  if (!to) return true
+  if (e.shiftKey && (dir === 'left' || dir === 'right') && ui.selectionAnchorId) {
+    const range = spanRange(doc, ui.selectionAnchorId, to)
+    if (range) {
+      ui.setSelection(range, ui.selectionAnchorId)
+      navFocus = to
+      reveal(to)
+      return true
+    }
+  }
+  selectAndReveal(to)
+  return true
+}
+
+/** The span keyboard navigation last moved to, so extending continues from it. */
+let navFocus: string | null = null
+
+function selectAndReveal(id: string) {
+  useUIStore.getState().selectSpan(id)
+  navFocus = id
+  reveal(id)
+}
+
+/** Scrolls the timeline so the span is on screen, when zoomed in. */
+function reveal(id: string) {
+  const doc = useDocumentStore.getState().document
+  const span = doc?.layers.flatMap(formSpans).find((s) => s.id === id)
+  const ui = useUIStore.getState()
+  if (!doc || !span || ui.viewportWidth <= 0) return
+  const pps = computePps(ui.zoom)
+  const left = span.startTime * pps - ui.scrollOffset
+  const right = span.endTime * pps - ui.scrollOffset
+  if (left >= 0 && right <= ui.viewportWidth) return
+  const total = totalContentWidth(doc.duration, ui.zoom)
+  ui.setScrollOffset(clampScrollOffset(span.startTime * pps - ui.viewportWidth * 0.2, total, ui.viewportWidth))
+}
+
 export default function App() {
   const {
     doc,
@@ -379,6 +462,8 @@ export default function App() {
           return
         }
       }
+
+      if (navigateSpans(e)) return
 
       const mod = e.metaKey || e.ctrlKey
       if (!mod) return

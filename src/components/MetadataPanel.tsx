@@ -401,6 +401,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         {/* Label */}
         <Field label="Label" symbols>
           <input
+            data-inspector-label
             className={inputClass}
             value={span.label ?? ''}
             placeholder="Unlabeled"
