@@ -3060,3 +3060,23 @@ commentary layer's visibility off; hidden, it appears in the diagram's
 rows are the diagram's rows: a commentary row would cost a full row of height
 for something that draws nothing on the timeline. The chips already are how a
 hidden layer comes back, so the way back is the familiar one.
+
+---
+
+## Safari and Firefox Read-Through (2026-09-27)
+
+**Decision:** Wheel deltas are converted to pixels (`lib/timeline.ts`,
+`wheelPixels`) before panning or zooming the timeline, and a `.strata`
+download is typed `application/octet-stream`.
+**Rationale:** A read-through for cross-browser differences (no Safari or
+Firefox was available to run). Firefox can report a mouse wheel's movement in
+lines rather than pixels, so a notch panned the timeline about 3 px. Some
+browsers append an extension matching a download's type, which could turn
+`analysis.strata` into `analysis.strata.json`; a generic type leaves the name
+alone. The rest checked out: file open and save fall back to a file input and
+a download where the File System Access API is missing; the exported SVG
+carries explicit width and height (Firefox draws a size-less SVG image at
+zero for PNG export); no API newer than Safari 15.4 or Firefox 95 is used; the
+dialog-dimming hole uses unprefixed `clip-path: polygon(evenodd, …)`, which
+both support. Still to test by hand in both: playback, the video below the
+fold, drag, and PNG export.

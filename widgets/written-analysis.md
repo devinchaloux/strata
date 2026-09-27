@@ -75,5 +75,3 @@ links become in-page links when the target span has commentary of its own.
 "Markdown" exports the same document as Markdown for technical users: each span
 section is preceded by an `<a id="slug">` anchor (renderers derive heading ids
 differently), and links point at it.
-
-## 6. Not yet built

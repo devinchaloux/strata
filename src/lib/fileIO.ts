@@ -123,7 +123,8 @@ export async function writeToHandle(
  * and the primary path when no file handle exists yet).
  */
 export function downloadFile(doc: StrataDocument): void {
-  downloadBlob(new Blob([serialize(doc)], { type: 'application/json' }), suggestedFilename(doc))
+  // A generic type, so no browser "helpfully" appends .json to the .strata name.
+  downloadBlob(new Blob([serialize(doc)], { type: 'application/octet-stream' }), suggestedFilename(doc))
 }
 
 /** Hand the browser a file to save (the download fallback for every export). */

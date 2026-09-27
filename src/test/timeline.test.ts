@@ -3,6 +3,7 @@ import {
   BASE_PPS,
   ABS_MIN_ZOOM,
   ABS_MAX_ZOOM,
+  wheelPixels,
   MIN_THUMB_PX,
   computePps,
   totalContentWidth,
@@ -169,5 +170,13 @@ describe('snapTime', () => {
 
   it('returns time unchanged when pps is not positive', () => {
     expect(snapTime(10.5, [10.4], 0)).toBe(10.5)
+  })
+})
+
+describe('wheelPixels', () => {
+  it('passes pixels through and converts lines and pages', () => {
+    expect(wheelPixels({ deltaX: 0, deltaY: 40, deltaMode: 0 }, 800)).toEqual({ dx: 0, dy: 40 })
+    expect(wheelPixels({ deltaX: 0, deltaY: 3, deltaMode: 1 }, 800)).toEqual({ dx: 0, dy: 48 })
+    expect(wheelPixels({ deltaX: 1, deltaY: 0, deltaMode: 2 }, 800)).toEqual({ dx: 800, dy: 0 })
   })
 })
