@@ -56,15 +56,14 @@ git fetch origin && git status && git log origin/main..HEAD --oneline && echo "-
 - `git log origin/main..HEAD --oneline` — commits on the current branch not yet in main; **if this is empty**, the recent log below explains why (already merged, or fresh branch)
 - `git log --oneline -5` — last 5 commits on the current branch for context; always visible so an empty ahead-of-main result is immediately interpretable
 
-**Reconcile the handoff against git — git is the source of truth.** The handoff is
-written *before* Devin commits, so its "uncommitted work / proposed commit" section
-describes a state that is about to change. By the next session, that work has
-usually been committed and merged by Devin (he creates a PR, merges it, and closes
-it immediately). Do not treat the handoff's git claims as current: compare them to
-actual `git log` / `git status`, and if the handoff says work is uncommitted but
-git shows it landed, that is the expected, healthy case — report the delta plainly
-and move on. Only flag a genuine problem (lost work, unexpected dirty tree,
-surprising branch). Report anything unexpected.
+**Reconcile the handoff against git — git is the source of truth.** Sessions push
+their work to a session branch; Devin opens the PR and merges it, usually soon
+after. So by the next session, a branch the handoff calls "pushed, awaiting PR" has
+usually merged into `main`. Compare the handoff's git claims to actual `git log` /
+`git status`: work that landed since is the expected, healthy case — report the
+delta plainly and move on. Only flag a genuine problem (lost work, unexpected dirty
+tree, surprising branch, a session branch that never merged). Report anything
+unexpected.
 
 The same applies to the notes. If an unmerged `research` branch holds a newer
 handoff than `main`, a notes PR from the last session is still open. Say so in

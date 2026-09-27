@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "publish-check": "node scripts/publish-check.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
