@@ -2986,3 +2986,19 @@ lines.
 **Decision:** The play bar's clock reads m:ss; editable times keep
 milliseconds. Hint text uses the muted ink (#64748b), which meets 4.5:1 on
 white; the faint ink (2.6:1) had been used for sentences.
+
+---
+
+## Large-Analysis Performance (2026-09-27)
+
+**Decision:** Two changes from a stress test of a 900-span, six-layer analysis
+with 80 markers and commentary: (1) a span write returns every layer it didn't
+change as the same object, so memoized layers skip re-rendering; (2) each layer
+has one right-click menu, told which span was clicked when it opens, instead of
+one menu component per span.
+**Rationale:** Measured in the dev build, typing in a span's label took about
+250 ms a keystroke, because every edit rebuilt all six layers and re-rendered
+~900 menu components; after the fixes it takes about 22 ms. Playback and
+boundary drags already held 60 fps and still do; loading the file paints in
+about 0.4 s; saving serialises in about 2 ms. The production build is faster
+than these dev numbers.

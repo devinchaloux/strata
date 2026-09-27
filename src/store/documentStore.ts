@@ -145,9 +145,10 @@ function mapFormDiagramSpans(layer: Layer, fn: (spans: Span[]) => Span[]): Layer
   if (layer.type !== 'form-diagram') return layer
   const data = layer.data as FormDiagramData
   const next = fn(data.spans)
-  if (next !== data.spans && findOverlaps(next).length > findOverlaps(data.spans).length) {
-    return layer
-  }
+  // Untouched layers keep their identity, so memoized layers don't re-render:
+  // on a large analysis a one-span edit used to redraw every layer.
+  if (next === data.spans) return layer
+  if (findOverlaps(next).length > findOverlaps(data.spans).length) return layer
   return { ...layer, data: { ...data, spans: next } }
 }
 

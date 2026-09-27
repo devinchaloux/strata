@@ -52,9 +52,9 @@ const SELECT_GREY = '#64748b'
 // Context menu for a single span — used by SpanShape
 // ---------------------------------------------------------------------------
 
-// Radix mounts ContextMenuContent's children only while the menu is open, so
-// the subscriptions below (selection, merge eligibility) cost nothing for the
-// hundreds of closed menus on a diagram. The playback time is read once, when
+// One menu per layer (see LayerInteraction); Radix mounts ContextMenuContent's
+// children only while it's open, so the subscriptions below (selection, merge
+// eligibility) cost nothing while it's closed. The playback time is read once, when
 // the menu opens, rather than subscribed to per frame.
 function SpanContextMenuContent({ span, layer }: { span: Span; layer: Layer }) {
   return (
@@ -229,12 +229,6 @@ function SpanHitTarget({
     }
   }
 
-  // Right-click on an unselected span selects it, so the menu reflects it;
-  // on a selected span it keeps the selection, so multi-merge still works.
-  function handleContextMenu() {
-    if (!useUIStore.getState().selectedSpanIds.includes(span.id)) selectSpan(span.id)
-  }
-
   const x = span.startTime * pps
   const width = (span.endTime - span.startTime) * pps
   if (width <= 0) return null
@@ -242,25 +236,20 @@ function SpanHitTarget({
   const titleText = [displayLabel, span.type].filter(Boolean).join(' · ')
 
   return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>
-        <rect
-          x={x}
-          y={0}
-          width={width}
-          height={layerBodyHeight(layer)}
-          fill="transparent"
-          style={{ cursor: 'pointer' }}
-          onMouseEnter={() => hoverSpan(span.id)}
-          onMouseLeave={() => hoverSpan(null)}
-          onClick={handleClick}
-          onContextMenu={handleContextMenu}
-        >
-          {titleText && <title>{titleText}</title>}
-        </rect>
-      </ContextMenuTrigger>
-      <SpanContextMenuContent span={span} layer={layer} />
-    </ContextMenu>
+    <rect
+      data-span-id={span.id}
+      x={x}
+      y={0}
+      width={width}
+      height={layerBodyHeight(layer)}
+      fill="transparent"
+      style={{ cursor: 'pointer' }}
+      onMouseEnter={() => hoverSpan(span.id)}
+      onMouseLeave={() => hoverSpan(null)}
+      onClick={handleClick}
+    >
+      {titleText && <title>{titleText}</title>}
+    </rect>
   )
 }
 
@@ -282,14 +271,35 @@ const LayerInteraction = memo(function LayerInteraction({
   onBoundaryDragStart: BoundaryDragStart
   dragCommittedRef: React.RefObject<boolean>
 }) {
+  // One right-click menu for the whole layer, told which span was clicked when
+  // it opens. A menu per span meant hundreds of menu components re-rendering on
+  // every edit of a large analysis.
+  const [menuSpanId, setMenuSpanId] = useState<string | null>(null)
   if (!layer.visibility) return null
   const spans = (layer.data as FormDiagramData).spans
   const bodyHeight = layerBodyHeight(layer)
+  const menuSpan = menuSpanId ? spans.find((s) => s.id === menuSpanId) : undefined
+
+  // Right-click on an unselected span selects it, so the menu reflects it; on a
+  // selected span it keeps the selection, so multi-merge still works.
+  function handleContextMenu(e: React.MouseEvent) {
+    const id = (e.target as Element).closest('[data-span-id]')?.getAttribute('data-span-id') ?? null
+    setMenuSpanId(id)
+    if (id && !useUIStore.getState().selectedSpanIds.includes(id)) useUIStore.getState().selectSpan(id)
+  }
+
   return (
     <g transform={`translate(0, ${topY})`}>
-      {spans.map((span) => (
-        <SpanHitTarget key={span.id} span={span} layer={layer} pps={pps} dragCommittedRef={dragCommittedRef} />
-      ))}
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <g onContextMenu={handleContextMenu}>
+            {spans.map((span) => (
+              <SpanHitTarget key={span.id} span={span} layer={layer} pps={pps} dragCommittedRef={dragCommittedRef} />
+            ))}
+          </g>
+        </ContextMenuTrigger>
+        {menuSpan && <SpanContextMenuContent span={menuSpan} layer={layer} />}
+      </ContextMenu>
       {!layer.locked &&
         spans.map((span, i) => {
           const next = spans[i + 1]
