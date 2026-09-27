@@ -35,13 +35,15 @@ the repo.
 |---|---|
 | **Visibility** | **public** — anything pushed here is published, permanently |
 | **Owns** | Strata itself: the `.strata` format, the editor, the widgets |
-| **May read** | nothing outside this repo |
-| **May write** | itself only |
+| **May read** | `research/strata/` — its own private working notes, and nothing else in `research` |
+| **May write** | itself, and `research/strata/` for those notes |
 | **Never contains** | anything that is not part of this project |
 
 **Strata integrates as a published artifact, not as source.** Other projects embed
 a *built* component, or read `.strata` files it produces. Nothing vendors this
-code, and this repo depends on nothing outside itself. If a task seems to need
+code, and this repo depends on nothing outside itself — the private notes are
+for sessions, not for the code, and nothing in the build, tests or CI reads
+them. If a task seems to need
 Strata source inside another codebase, the integration boundary is wrong — that is
 a reason to fix the boundary, not to merge the repos.
 
@@ -82,8 +84,9 @@ confirmation before any work begins.
 
 ### What `/brief` does
 
-1. Reads `_private/handoff.md`, `_private/build-plan.md`, `docs/decisions.md`,
-   `docs/vision.md`, and any other files in `_private/`
+1. Reads `handoff.md` and `build-plan.md` from the private notes (see
+   "Private Notes" below), `docs/decisions.md`, `docs/vision.md`, and any other
+   notes files
 2. Checks `git status` and `git branch`
 3. Outputs a structured brief: current phase, last session summary, open
    blockers, proposed scope, git state
@@ -98,21 +101,53 @@ git pull origin main
 git checkout -b feat/<branch-name>
 ```
 
+**Cloud session:** the session is handed a `claude/<slug>` branch. Work on it as
+given; don't re-cut or rename it. This matches `research`.
+
 If the handoff is missing, contradicts itself, or the git state is unexpected,
 surface it and ask before continuing.
 
 ---
 
-## Project Structure
+## Private Notes
 
-`_private/` exists locally but is gitignored — never commit anything from it.
+This repo is public, so the handoff, build plan, UX specs, backlog and open
+questions live in the **private `research` repo, under `strata/`**. Until
+2026-09-27 they were in a gitignored `_private/` folder here. It had no backup
+and no history, and worktree sessions couldn't see it, so the notes moved.
+**Older docs that say `_private/<file>` mean `research/strata/<file>`.** The
+filenames didn't change, and those references are historical, like "merged to
+`dev`".
+
+**Finding the notes.** `research` is checked out as a sibling of this repo. A
+worktree isn't at the repo root, so resolve the root first:
+
+```bash
+STRATA_ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+NOTES="$STRATA_ROOT/../research/strata"
+```
+
+That works from a local checkout, a worktree or a cloud session. **If `research`
+isn't checked out beside this repo, stop and say so.** Don't work without the
+brief.
+
+**Writing the notes.** `research`'s own rules govern it: commit freely on that
+repo's session branch, push, and never commit to its `main`. Devin merges the
+notes PR alongside this repo's PR. Until it merges, `research`'s `main` still
+has the previous handoff. Rule 1 below (never commit without being asked) is
+this repo's rule and doesn't carry over to `research`. `research`'s freedom to
+commit doesn't carry over here either.
+
+**Read `strata/` and nothing else in `research`.** Being checked out beside
+Sylloge doesn't make its schema, vault or capture layer Strata's business, and
+nothing from there ever lands in this public repo.
 
 ---
 
 ## Current Phase
 
-`_private/build-plan.md` has the phase breakdown and what gates each phase;
-`_private/handoff.md` has where the last session left off. Read both at brief
+`build-plan.md` in the private notes has the phase breakdown and what gates each
+phase; `handoff.md` has where the last session left off. Read both at brief
 time rather than trusting a summary here — a phase written into this file goes
 stale the moment the phase advances.
 
@@ -133,8 +168,8 @@ stale the moment the phase advances.
    irreversible. When in doubt, ask. The cost of asking is low.
 
 4. **Separate private from committed.** Anything operational, sensitive, or not
-   part of the permanent project record goes in `_private/`. If uncertain,
-   default to `_private/`.
+   part of the permanent project record goes in the private notes
+   (`research/strata/`). If uncertain, default to the private notes.
 
 ---
 
@@ -195,8 +230,8 @@ Propose commit messages as a code block so Devin can copy them directly.
 ## Documentation — What You Update vs. What You Don't
 
 **Update freely:**
-- `_private/handoff.md` — at session end, always. Write what happened, what's
-  left, what the next session needs to know.
+- `handoff.md` in the private notes — at session end, always. Write what
+  happened, what's left, what the next session needs to know.
 - `docs/decisions.md` — propagate every decision made during the session.
 - Any `schema/` or `widgets/` file that was the target of the session.
 - `docs/vision.md` — update when design decisions require it. Propose the
@@ -228,11 +263,13 @@ make a call and keep moving.
 Before telling Devin a session is done:
 
 1. ✅ Target files updated and in good shape
-2. ✅ `_private/handoff.md` updated — next session has everything it needs
+2. ✅ `handoff.md` in the private notes updated, committed and pushed on
+   `research`'s session branch — next session has everything it needs
 3. ✅ Any new decisions propagated to `docs/decisions.md`
-4. ✅ Summary written: what changed, why, what's open
+4. ✅ Summary written: what changed, why, what's open — including that a
+   `research` notes PR is waiting, if there is one
 5. ✅ Commit message proposed (if Devin wants to commit)
-6. ✅ Nothing committed or pushed without explicit instruction
+6. ✅ Nothing committed or pushed **in this repo** without explicit instruction
 
 ---
 
