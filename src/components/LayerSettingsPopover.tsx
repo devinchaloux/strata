@@ -157,7 +157,7 @@ export function LayerSettingsPopover({
               <span className="text-[12px]" style={{ color: 'var(--ink-primary)' }}>
                 Key-area layer (thin bars)
               </span>
-              <span className="text-[10px]" style={{ color: 'var(--ink-faint)' }}>
+              <span className="text-[10px]" style={{ color: 'var(--ink-muted)' }}>
                 Thin bars instead of brackets, for key areas rather than sections.
               </span>
             </span>

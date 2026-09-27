@@ -2926,3 +2926,63 @@ the video gives up its screen space instead of competing with the diagram, and
 it can be bigger at no cost: 480×270 is YouTube's recommended minimum for 16:9.
 Pausing on dialogs, or turning them into pages, was considered and rejected:
 the rule against covering applies whether the video plays or not.
+
+---
+
+## UI Review Fixes and Tighter Chrome (2026-09-27)
+
+*From a UI/UX review of the beta build. Devin approved the list; each entry
+below is one change and its reason.*
+
+**Decision:** A new analysis starts with one empty form layer, "Form", and
+whenever the document has form layers but none is active, the top one becomes
+active (after New, Open, Demo, or deleting the active layer).
+**Rationale:** Space places boundaries in the active layer. A new analysis had
+no layers, and an opened file had none active, so the first Space did nothing
+and the only clue was a tooltip on a greyed-out button.
+
+**Decision:** Until a document has commentary, the open area above the diagram
+names the next step: link a source, then press Space at each boundary, then
+click a span to describe it.
+**Rationale:** It used to say "Select a span and write in its Commentary box"
+even when there were no spans.
+
+**Decision:** New analysis asks for Title, Artist and Source, with the other
+fields behind "More details" and a Start button (Done in Document settings).
+Inside these dialogs, a recognised YouTube link links as soon as it's pasted,
+and a chosen audio file as soon as it's chosen; the standalone Link source
+dialog keeps its explicit button.
+**Rationale:** Fifteen fields up front, and no button to finish. A pasted link
+was lost if the dialog closed before "Link video" was clicked, even though it
+said "Video found".
+
+**Decision (reverses the Phase 0.5 persistent merge button):** Boundary and
+Marker move into the widget's top bar beside Add layer, and the strip along the
+bottom of the diagram is removed. Merge keeps Ctrl+J, the right-click menu and
+the Inspector's "Merge N spans" button.
+**Rationale:** The diagram carried four bars of chrome around its brackets,
+and merge had four routes. The Inspector's button appears exactly when merging
+is possible, which is the "state at a glance" the persistent button was for.
+
+**Decision:** The zoom control reads "− 34% +" followed by a Fit / 100% pair
+with the current one marked; the percentage is no longer a button.
+**Rationale:** "34% + │ 100%" showed two percentages, the second one a button
+labelled with the state a click would switch to.
+
+**Decision:** The layer name column is 176px (was 140), wide enough for a
+name like "Large-scale form".
+
+**Decision:** The Inspector starts collapsed and opens on the first selection.
+**Rationale:** Empty, it took 288px from the diagram.
+
+**Decision:** A span's ends are one grid, rows Start and End, columns Boundary
+and Cap; choosing a boundary still resets that end's cap. "Renders inside the
+shape", "Not shown on the diagram" and "Corpus-queryable" are tooltips or
+gone; "— none —" and "— mixed —" read None and Mixed. A greyed-out "Split at
+playhead" says to move the playhead into the span first.
+**Rationale:** Copy rules 1, 4 and 6; the four end dropdowns took four label
+lines.
+
+**Decision:** The play bar's clock reads m:ss; editable times keep
+milliseconds. Hint text uses the muted ink (#64748b), which meets 4.5:1 on
+white; the faint ink (2.6:1) had been used for sentences.

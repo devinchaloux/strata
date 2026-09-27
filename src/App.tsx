@@ -247,7 +247,7 @@ export default function App() {
   const selectedCount = selectedSpanCount + (selectedMarkerId ? 1 : 0)
 
   // Inspector collapse is pure view-state; local to the shell.
-  const [inspectorCollapsed, setInspectorCollapsed] = useState(false)
+  const [inspectorCollapsed, setInspectorCollapsed] = useState(true)
   // Held in uiStore rather than local state; App is its only user today.
   const settingsOpen = useUIStore((s) => s.documentSettingsOpen)
   const setSettingsOpen = useUIStore((s) => s.setDocumentSettingsOpen)
@@ -297,10 +297,19 @@ export default function App() {
     const parsed = readStrataFile(aliveRaw).doc
     loadDocument(parsed)
     useDocumentStore.temporal.getState().clear()
-    // Make the macro layer (highest displayOrder) the active layer by default.
-    const top = [...parsed.layers].sort((a, b) => b.displayOrder - a.displayOrder)[0]
+  }, [loadDocument])
+
+  // Space places boundaries in the active layer, so there must always be one
+  // when the document has a form layer: after New, Open, Demo, or deleting the
+  // active layer, the top form layer takes over.
+  const layers = useDocumentStore((s) => s.document?.layers)
+  const activeLayerId = useUIStore((s) => s.activeLayerId)
+  useEffect(() => {
+    const forms = (layers ?? []).filter((l) => l.type === 'form-diagram')
+    if (forms.some((l) => l.id === activeLayerId)) return
+    const top = [...forms].sort((a, b) => b.displayOrder - a.displayOrder)[0]
     setActiveLayer(top?.id ?? null)
-  }, [loadDocument, setActiveLayer])
+  }, [layers, activeLayerId, setActiveLayer])
 
   // Unsaved-changes guard: New / Open / Demo all discard whatever is currently
   // loaded. When the document is dirty, hold the action and confirm first —

@@ -84,6 +84,19 @@ function Block({ doc, block }: { doc: StrataDocument; block: AnalysisBlock }) {
   )
 }
 
+function Hint({ children }: { children: React.ReactNode }) {
+  return <p className="max-w-md select-none text-center text-xs leading-relaxed text-muted-foreground">{children}</p>
+}
+
+/** What a new analysis needs next, in the order the work goes. */
+function nextStep(doc: StrataDocument): string {
+  const linked = !!doc.source.url || (doc.source.type === 'local' && !!doc.source.filename)
+  if (!linked) return 'Link a video or audio file to start: use Link video or audio in the play bar.'
+  if (!doc.layers.some((l) => formSpans(l).length > 0))
+    return 'Play, and press Space at each boundary you hear. M places a point marker.'
+  return 'Click a span to describe it. What you write in its Commentary box shows here while that passage plays.'
+}
+
 export function CommentaryPanel() {
   const doc = useDocumentStore((s) => s.document)
   // A string key of the active block ids: equal strings mean no re-render.
@@ -97,26 +110,16 @@ export function CommentaryPanel() {
   if (!doc) return null
   const hasAny = allBlocks(doc).length > 0
 
-  if (!hasAny) {
-    return (
-      <p className="select-none text-center text-xs" style={{ color: 'var(--ink-faint)' }}>
-        Select a span and write in its Commentary box. It appears here while that passage plays.
-      </p>
-    )
-  }
+  // Until there's commentary, this space coaches the next step of a first
+  // analysis instead: link a source, mark boundaries, then describe a span.
+  if (!hasAny) return <Hint>{nextStep(doc)}</Hint>
 
   const ids = activeKey ? activeKey.split(',') : []
   const blocks = allBlocks(doc)
     .map(({ block }) => block)
     .filter((b) => ids.includes(b.id))
 
-  if (!blocks.length) {
-    return (
-      <p className="select-none text-center text-xs" style={{ color: 'var(--ink-faint)' }}>
-        No commentary for this passage.
-      </p>
-    )
-  }
+  if (!blocks.length) return <Hint>No commentary for this passage.</Hint>
   return (
     <div className="flex w-full max-w-[42rem] flex-col gap-5 self-start px-4 py-4" aria-live="polite">
       {blocks.map((b) => (

@@ -114,7 +114,9 @@ describe('createEmptyDocument', () => {
   it('produces a structurally valid document', () => {
     const doc = createEmptyDocument()
     expect(doc.title).toBe('Untitled Analysis')
-    expect(doc.layers).toEqual([])
+    // One empty form layer, so Space has somewhere to place the first boundary.
+    expect(doc.layers).toHaveLength(1)
+    expect(doc.layers[0]).toMatchObject({ type: 'form-diagram', label: 'Form', data: { spans: [] } })
     expect(doc.fileFormatVersion).toBe(1)
     expect(doc.strataVersion).toBe('0.1.0')
   })

@@ -200,7 +200,21 @@ export function createEmptyDocument(): StrataDocument {
     source: { type: 'youtube', url: '', sourceOffset: 0 },
     vocabulary: { spanTypes: [], pointMarkerTypes: [], modes: [] },
     sharedTimePoints: [],
-    layers: [],
+    // One layer to start in, so Space marks a boundary straight away; a new
+    // analysis with no layers had nowhere for the first boundary to go.
+    layers: [
+      {
+        id: crypto.randomUUID(),
+        type: 'form-diagram',
+        label: 'Form',
+        visibility: true,
+        locked: false,
+        fillColorDefault: '#ffffff',
+        strokeColorDefault: '#475569',
+        displayOrder: 0,
+        data: { hierarchicalEnforcement: false, spans: [] },
+      },
+    ],
     pointMarkers: [],
   }
 }

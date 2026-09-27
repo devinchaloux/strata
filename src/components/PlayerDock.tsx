@@ -4,7 +4,7 @@ import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { useYouTubePlayer } from '@/hooks/useYouTubePlayer'
 import { useAudioPlayer } from '@/hooks/useAudioPlayer'
-import { extractVideoId, formatTime, isInputFocused } from '@/lib/youtube'
+import { extractVideoId, formatClock, isInputFocused } from '@/lib/youtube'
 import { pickAudioFile } from '@/lib/fileIO'
 import { setPlayerElement } from '@/lib/playerClearance'
 import { SeekBar } from './SeekBar'
@@ -378,7 +378,7 @@ export function PlayerDock() {
 
         {/* Time display — tabular figures keep digit columns stable without mono */}
         <span className="shrink-0 text-xs tabular-nums text-foreground">
-          {formatTime(currentTime)} / {formatTime(duration)}
+          {formatClock(currentTime)} / {formatClock(duration)}
         </span>
 
         {/* Playback rate selector */}

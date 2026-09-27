@@ -114,7 +114,11 @@ function SpanMenuItems({ span, layer }: { span: Span; layer: Layer }) {
         disabled={!canSplit}
         onClick={canSplit ? () => placeBoundary(layer.id, currentTime) : undefined}
       >
-        Split at playhead
+        <span className="flex flex-col">
+          Split at playhead
+          {/* A greyed-out item should say why. */}
+          {!canSplit && <span className="text-[10px]">Move the playhead into this span first.</span>}
+        </span>
       </ContextMenuItem>
       <ContextMenuSeparator />
       <ContextMenuItem

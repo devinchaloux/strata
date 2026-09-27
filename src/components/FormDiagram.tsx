@@ -67,7 +67,8 @@ import { STACK_TOP_PAD, stackHeight, layerPitch } from '@/lib/formShape'
 import { markerBandHeight } from '@/lib/markerBand'
 import type { Layer } from '@/types/strata'
 
-const HEADER_WIDTH_EXPANDED = 140
+// Wide enough for a name like "Large-scale form" without truncating.
+const HEADER_WIDTH_EXPANDED = 176
 const HEADER_WIDTH_RAIL = 34
 const TOP_BAR_HEIGHT = 24
 
@@ -394,25 +395,12 @@ function ZoomControls({
       <ZoomButton onClick={zoomOut} disabled={zoom <= minZoomValue + 1e-6} label="Zoom out">
         −
       </ZoomButton>
-      <button
-        onClick={resetTo100}
-        aria-label="Zoom level. Click to reset to 100%."
-        title="Reset to 100% (standard scale)"
-        className="rounded px-1 hover:bg-accent"
-        style={{
-          minWidth: 32,
-          height: 16,
-          fontSize: 10,
-          fontVariantNumeric: 'tabular-nums',
-          color: 'var(--ink-secondary)',
-          cursor: 'pointer',
-          background: 'none',
-          border: 'none',
-          textAlign: 'center',
-        }}
+      <span
+        aria-label="Zoom level"
+        style={{ minWidth: 32, fontSize: 10, fontVariantNumeric: 'tabular-nums', textAlign: 'center' }}
       >
         {Math.round(zoom * 100)}%
-      </button>
+      </span>
       <ZoomButton onClick={zoomIn} disabled={zoom >= maxZoomValue - 1e-6} label="Zoom in">
         +
       </ZoomButton>
@@ -420,25 +408,25 @@ function ZoomControls({
         aria-hidden
         style={{ width: 1, height: 12, background: 'var(--hairline)', margin: '0 2px' }}
       />
-      {/* Labeled with the state a click would switch TO, not the current
-          state — already at fit, so this offers "100%" instead of a
-          redundant "Fit". */}
-      <button
-        onClick={isFit ? resetTo100 : fitToWindow}
-        aria-label={isFit ? 'Reset to 100%' : 'Fit to window'}
-        title={isFit ? 'Reset to 100% (standard scale)' : 'Fit the whole track to the window'}
-        className="rounded px-1 hover:bg-accent"
-        style={{
-          height: 16,
-          fontSize: 10,
-          color: 'var(--ink-secondary)',
-          cursor: 'pointer',
-          background: 'none',
-          border: 'none',
-        }}
-      >
-        {isFit ? '100%' : 'Fit'}
-      </button>
+      {/* Fit and 100% as a pair, the current one marked, so the control
+          shows where you are rather than a second, puzzling percentage. */}
+      <div className="flex overflow-hidden rounded border" style={{ borderColor: 'var(--hairline)' }}>
+        {([
+          ['Fit', isFit, fitToWindow, 'Fit the whole track to the window'],
+          ['100%', !isFit && Math.abs(zoom - 1) < 1e-6, resetTo100, 'Standard scale'],
+        ] as const).map(([label, on, act, title]) => (
+          <button
+            key={label}
+            onClick={act}
+            title={title}
+            aria-pressed={on}
+            className={on ? 'bg-accent px-1.5 font-medium' : 'px-1.5 hover:bg-accent/60'}
+            style={{ height: 16, fontSize: 10, color: on ? 'var(--ink-primary)' : 'var(--ink-secondary)' }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -474,9 +462,12 @@ function WidgetTopBar({
 
       <AddLayerPopover />
 
+      <span aria-hidden style={{ width: 1, height: 12, background: 'var(--hairline)', margin: '0 4px' }} />
+      <DiagramControlBar />
+
       {hidden.length > 0 && (
         <div className="flex items-center gap-1 overflow-hidden">
-          <span className="text-[10px]" style={{ color: 'var(--ink-faint)' }}>
+          <span className="text-[10px]" style={{ color: 'var(--ink-muted)' }}>
             Hidden:
           </span>
           {hidden.map((l) => (
@@ -580,7 +571,6 @@ export function FormDiagram() {
           <LayerHeaders layers={visible} collapsed={collapsed} />
           <FormLayers layers={visible} />
         </div>
-        <DiagramControlBar />
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 rounded-md"

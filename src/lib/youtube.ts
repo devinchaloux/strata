@@ -101,6 +101,19 @@ export function formatTime(seconds: number): string {
   return `${min}:${secStr}.${msStr}`
 }
 
+/**
+ * A clock for reading, not editing: m:ss (h:mm:ss past an hour), whole seconds
+ * rounded down. The play bar uses it; editable times keep formatTime's
+ * milliseconds.
+ */
+export function formatClock(seconds: number): string {
+  const total = isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0
+  const sec = String(total % 60).padStart(2, '0')
+  const min = Math.floor(total / 60) % 60
+  const hours = Math.floor(total / 3600)
+  return hours > 0 ? `${hours}:${String(min).padStart(2, '0')}:${sec}` : `${min}:${sec}`
+}
+
 /** Map YT API numeric state code to our string enum. */
 export function mapYTState(code: number): YTPlayerState {
   switch (code) {

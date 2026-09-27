@@ -17,9 +17,10 @@
 
 import { useEffect, useState } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
-import { formatTime } from '@/lib/youtube'
+import { formatClock } from '@/lib/youtube'
 import { BUILT_IN_MODES } from '@/lib/modes'
 import { SourceLinkForm } from '@/components/LinkSourceDialog'
+import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Field, inputClass } from '@/components/Field'
 import { toAccidentals } from '@/lib/musicSymbols'
@@ -165,6 +166,12 @@ export function DocumentSettingsDialog({
   const [tsNumText, setTsNumText] = useState('')
   const [tsDenText, setTsDenText] = useState('')
   const [offsetText, setOffsetText] = useState('')
+  // A new analysis asks only for what starting needs (title, artist, source);
+  // everything else waits behind "More details". Settings show it all.
+  const [showMore, setShowMore] = useState(!isNew)
+  useEffect(() => {
+    if (open) setShowMore(!isNew)
+  }, [open, isNew])
 
   useEffect(() => {
     if (!open || !doc) return
@@ -249,6 +256,8 @@ export function DocumentSettingsDialog({
             />
           </Field>
 
+          {showMore && (
+          <>
           <Field label="Context">
             <Segmented
               options={CONTEXT_OPTIONS}
@@ -267,11 +276,27 @@ export function DocumentSettingsDialog({
             </Field>
           )}
 
+          </>
+          )}
+
           <Field label="Source" tooltip="Changing the source never changes the analysis.">
             <div className="rounded border border-border p-2">
               <SourceLinkForm />
             </div>
           </Field>
+
+          {!showMore && (
+            <button
+              type="button"
+              onClick={() => setShowMore(true)}
+              className="mb-3 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            >
+              More details (work, key, tempo, notes…)
+            </button>
+          )}
+
+          {showMore && (
+          <>
 
           <Field label="Work" tooltip="Analyses that name the same work can be compared across files.">
             <input
@@ -383,9 +408,25 @@ export function DocumentSettingsDialog({
             />
           </Field>
 
+          </>
+          )}
+
+          <div className="mt-2 flex justify-end">
+            <Button
+              size="sm"
+              onClick={() => {
+                commitArtist()
+                onOpenChange(false)
+              }}
+            >
+              {isNew ? 'Start' : 'Done'}
+            </Button>
+          </div>
+
           {/* Read-only identity footer */}
+          {showMore && (
           <div className="mt-4 border-t border-border pt-3 text-[10px] leading-relaxed text-muted-foreground">
-            <p>Duration: {formatTime(doc.duration)}</p>
+            <p>Duration: {formatClock(doc.duration)}</p>
             <p>
               Created {new Date(doc.createdAt).toLocaleString()} · Updated{' '}
               {new Date(doc.updatedAt).toLocaleString()}
@@ -394,6 +435,7 @@ export function DocumentSettingsDialog({
               Strata {doc.strataVersion} · File format v{doc.fileFormatVersion}
             </p>
           </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
