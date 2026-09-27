@@ -353,7 +353,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         </div>
 
         {/* Label */}
-        <Field label="Label">
+        <Field label="Label" symbols>
           <input
             className={inputClass}
             value={span.label ?? ''}
@@ -364,7 +364,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
 
         {/* Short label — shown in place of the full label when the diagram is
             too zoomed out to fit it; never abbreviated further by the app. */}
-        <Field label="Short label" tooltip="Shown when the full label doesn't fit.">
+        <Field label="Short label" tooltip="Shown when the full label doesn't fit." symbols>
           <input
             className={inputClass}
             value={span.shortLabel ?? ''}
@@ -434,7 +434,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         </Field>
 
         {/* Annotation */}
-        <Field label="Annotation" helper="Renders inside the shape.">
+        <Field label="Annotation" helper="Renders inside the shape." symbols>
           <textarea
             className={`${inputClass} resize-y`}
             rows={2}
@@ -524,7 +524,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         )}
 
         {/* Notes */}
-        <Field label="Notes" helper="Not shown on the diagram.">
+        <Field label="Notes" helper="Not shown on the diagram." symbols>
           <textarea
             className={`${inputClass} resize-y`}
             rows={2}
@@ -538,6 +538,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             the span, so it can outlive the span (see widgets/written-analysis). */}
         <Field
           label="Commentary"
+          symbols
           tooltip="Shows above the diagram while this span plays. Link to another span with [[its-slug]]; **bold** and *italic* work."
         >
           <textarea

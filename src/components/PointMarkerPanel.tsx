@@ -298,7 +298,7 @@ export function PointMarkerPanel() {
         </div>
 
         {/* Label */}
-        <Field label="Label">
+        <Field label="Label" symbols>
           <input
             ref={labelRef}
             className={inputClass}
@@ -342,7 +342,7 @@ export function PointMarkerPanel() {
         )}
 
         {/* Notes — always shown regardless of kind */}
-        <Field label="Notes">
+        <Field label="Notes" symbols>
           <textarea
             className={`${inputClass} resize-y`}
             rows={2}

@@ -2875,3 +2875,18 @@ also reads as `md`.
 `md`. Export makes text size matter: a figure scaled down for a page or a slide
 needs larger labels, and a dense phrase layer may want smaller ones. No format
 version bump: a new optional field is additive under the versioning policy.
+
+---
+
+## Symbol Palette for Free-Text Fields (2026-09-27)
+
+**Decision:** Span Label, Short label, Annotation, Notes and Commentary, and a
+point marker's Label and Notes, have a ⇒ toggle beside the field name. It opens
+a row of symbols (⇒ → ↑ ↓ ↗ ↘ ♭ ♯ ♮ ≈ ′) that insert at the cursor, or over the
+selection. The buttons never take focus, so typing carries on and the edit
+stays one undo step.
+**Rationale:** Completes the second half of "Accidental Transliteration":
+labels need `⇒` ("pres. ⇒ ant."), and prose fields can't transliterate, since
+`b` is a letter there. The set is BriFormer's palette, which Devin asked for. A
+toggle per field, rather than a global toolbar, keeps the Inspector quiet until
+it's wanted.

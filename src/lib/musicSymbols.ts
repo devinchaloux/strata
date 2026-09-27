@@ -45,3 +45,19 @@ export function toAccidentals(input: string): string {
   if (!input) return input
   return input.replace(/#/g, '♯').replace(/[A-Za-z]+/g, convertToken)
 }
+
+// ── Symbol palette ──────────────────────────────────────────────────────────
+
+/**
+ * Symbols offered by the free-text fields' palette: BriFormer's set, which
+ * Devin wanted (2026-07-24). Inserted only when clicked, never by
+ * transliteration: in prose, `b` is a letter and "breakdown" is not a flat.
+ */
+export const PALETTE_SYMBOLS = ['⇒', '→', '↑', '↓', '↗', '↘', '♭', '♯', '♮', '≈', '′'] as const
+
+/** `value` with `text` replacing the selection [start, end), and the caret after it. */
+export function insertAt(value: string, start: number, end: number, text: string): { value: string; caret: number } {
+  const a = Math.max(0, Math.min(start, value.length))
+  const b = Math.max(a, Math.min(end, value.length))
+  return { value: value.slice(0, a) + text + value.slice(b), caret: a + text.length }
+}
