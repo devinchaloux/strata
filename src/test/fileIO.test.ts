@@ -42,7 +42,7 @@ describe('parseStrataFile', () => {
   })
 
   it('throws on a JSON array', () => {
-    expect(() => parseStrataFile('[]')).toThrow('not a valid .strata document')
+    expect(() => parseStrataFile('[]')).toThrow('not a Strata analysis')
   })
 
   it('throws when required fields are missing', () => {

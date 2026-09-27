@@ -199,18 +199,21 @@ A **span** is a time range that represents a formal section: a verse, a drop, a 
 | `id` | UUID | Yes | Auto-generated unique identifier. **Never changes, never shown to the user.** Used internally for merge tracking, inter-widget links, and the embeddable viewer. |
 | `label` | text or null | No | Free text display name set by the analyst — what they call this section. Optional: null for unlabeled spans (e.g. bar-level hypermeter spans where the `type` field carries all the analytical meaning). Empty string is valid for a newly placed span awaiting a label. Examples: `Drop 1`, `THE DROP`, `Exposition`. |
 | `shortLabel` | text or null | No | Optional analyst-authored abbreviation of `label` — e.g. `Verse 1` → `V1`, `Breakdown` → `Br`. Shown above the shape in place of the full label when the full label doesn't fit at the current zoom; never truncated further itself. There is no algorithmic abbreviation of above-shape labels — if neither `label` nor `shortLabel` fits, nothing renders (a small marker indicates a hidden label is present). |
-| `slug` | text or null | No | Auto-generated from the label — e.g. `Drop 1` becomes `drop-1`. Used as a stable reference key in the embeddable viewer (`focus="drop-1"`) and in future inter-widget links. Null when no label is set. Uniqueness is determined by chronological position (startTime order), not creation order. |
+| `slug` | text or null | No | Generated from the label — e.g. `Drop 1` becomes `drop-1`, `A′` becomes `a-prime`. The reference key the embeddable viewer uses (`focus="drop-1"`) and future inter-widget links will use. **Unique across the document**: a repeat gets a suffix (`verse`, `verse-2`, …) in time order. **Stable once saved**: until the file is saved the slug follows label edits; after that, renaming the span leaves the slug unchanged so links to it keep working, and the analyst can regenerate it on purpose. Null when no label is set. |
 | `startTime` | decimal number | Yes | Start of the span in recording time, seconds. |
 | `endTime` | decimal number | Yes | End of the span in recording time, seconds. Must be greater than `startTime`. |
 | `type` | vocabulary term ID or null | No | The corpus-queryable classification of this section — drawn from the global built-in list or from this document's `vocabulary.spanTypes`. Separate from `label` by design: an analyst can call a section `THE DROP` (label) while typing it as `drop` (type). The `type` field is what makes cross-corpus comparison possible. Null if no type has been assigned. |
-| `color` | hex color or null | No | Per-span color override. Null means use the layer's `colorDefault`. |
+| `fillColor` / `strokeColor` | hex color, `"none"`, or null | No | Per-span overrides of the bracket's fill and outline. Null means use the layer's `fillColorDefault` / `strokeColorDefault`; `"none"` means explicitly no color. |
 | `annotation` | text or null | No | **Diagram-visible** text displayed on the span body alongside the label. For analytical observations the analyst wants to appear on the diagram itself — e.g. `filter sweep → snare roll`, `+Kick`, `Anthem gradually emerges`. Distinct from `notes` (tooltip only) and from `label` (the section name). Feeds into the Written Analysis widget when built. |
 | `notes` | text or null | No | Short freetext observation about this span. **Tooltip-level only** — not rendered on the diagram. A few words to a sentence. |
 | `lyrics` | text or null | No | Lyric text occurring during this span. Not displayed on the form diagram by default. Corpus-queryable. Feeds into the Written Analysis widget. |
-| `keyArea` | text or null | No | Free text, conventionally a Roman numeral relative to the document's `homeKey` (e.g. `vi`, `V/V`). Corpus-queryable independently of `label`/`type`. Renders as a caption spanning the span — most naturally on a layer with `spanShape = "bar"`, but the field applies to any span. |
+| `keyArea` | text or null | No | A Roman numeral relative to the document's `homeKey` (e.g. `vi`, `V/V`, `♭VI`); accidentals are stored as `♭`/`♯`. Corpus-queryable independently of `label`/`type`. Renders as a caption spanning the span — most naturally on a layer with `spanShape = "bar"`, but the field applies to any span. |
 | `confidence` | one of three values | No | The analyst's confidence in the placement of this span's **boundaries**. Optional — omit to mean `definite`. Only set explicitly when marking a span as `approximate` or `speculative`. See [Confidence Levels](#8-confidence-levels) below. |
 | `startBoundaryType` | one of three values or null | No | The **character** of the formal transition at the start of this span. `definite` = hard, precise cut; `gradual` = the transition is inherently processual (a buildup that gradually becomes the section); `elided` = this span's start is formally simultaneous with the end of the preceding span. Null or omit to mean `definite`. See [Boundary Types](#9-boundary-types) below. |
-| `endBoundaryType` | one of three values or null | No | The **character** of the formal transition at the end of this span. `elided` pairs with `startBoundaryType = elided` on the following span to mark a reciprocal elision. Null or omit to mean `definite`. |
+| `endBoundaryType` | one of three values or null | No | The **character** of the formal transition at the end of this span. Null or omit to mean `definite`. Elision is marked per side: this span can claim it whether or not the following span does (see [How elision works](#how-elision-works)). |
+| `startCap` / `endCap` | `rounded`, `square`, `angled`, `open` or `elision` | No | How each end of the bracket is **drawn** — the analyst's visual choice, separate from the analytical boundary type. Choosing a boundary type in the app sets the matching cap, which can then be changed. Absent means the cap follows the boundary type (`elided` → `elision`, otherwise `rounded`). An `elision` cap reaches 8px past the boundary so the bracket overlaps its neighbour. |
+| `lineStyle` | `solid` or `dashed` | No | The bracket's stroke. Absent means `solid`. |
+| `endOnTop` | true / false | No | Where this span's bracket overlaps the next one (an elision), whether this span is **drawn on top**. Absent or false means the next span is drawn on top. A drawing choice only; it records nothing about the music. |
 | `parentId` | UUID or null | No | Optional reference to another span's ID. Expresses a hierarchical relationship — e.g. this span is a sub-section of another — without enforcing one in the data. Null if this span has no parent. |
 | `mergedFrom` | list of UUIDs or null | No | When this span was created by merging two or more existing spans, this field records the IDs of the source spans. Allows future reference-resolution systems to trace a merged span back to its predecessors. Null for spans not produced by a merge. Always contains at least two IDs when present. |
 
@@ -222,7 +225,7 @@ This is one of the most important design decisions in the schema:
 |---|---|---|
 | `id` | Internal, machine-readable identity | The app, internally. Never visible to the analyst. |
 | `label` | Human-readable display name | The analyst sets this. Shown on the diagram. Can be anything. |
-| `slug` | Stable human-readable reference key | The embeddable viewer (`focus="drop-1"`), inter-widget links. Set once from the label. |
+| `slug` | Stable human-readable reference key | The embeddable viewer (`focus="drop-1"`), inter-widget links. Unique per document; frozen once saved. |
 | `type` | Corpus-queryable classification | The database, queries, and comparisons across files. Comes from a controlled vocabulary. |
 
 An analyst can call a section `"THE DROP"` and classify it as type `drop`. Another analyst can call the same formal event `"Main Drop"` and classify it as type `drop`. Because both use the same `type`, a corpus query for `drop` sections finds both — even though the labels differ. **The `type` field is what makes Strata a corpus tool rather than a diagramming tool.**
@@ -294,12 +297,20 @@ Confidence is an analytical claim, not a quality flag. A speculative span is not
 
 ### How elision works
 
-An elision is represented by **two adjacent spans both marking their shared boundary as `elided`**, combined with **overlapping timestamps**:
+*Revised 2026-07-25; the earlier "overlapping timestamps" representation is retired.*
 
-- Span A: `endBoundaryType = "elided"`, `endTime = 97.5`
-- Span B: `startBoundaryType = "elided"`, `startTime = 96.0`
+An elision is a claim **about a boundary**, not a duration. The boundary stays a
+single exact timepoint shared by the two spans, and each span marks its own side:
 
-The overlapping timestamps encode the ambiguity of the shared moment. The renderer recognizes the pattern and draws the elision visual (an overlapping bracket at the boundary). This is not an error — it is the intended representation of a formal elision.
+- Span A: `endBoundaryType = "elided"`, `endTime = 96.0`
+- Span B: `startTime = 96.0` (and `startBoundaryType = "elided"` if the analyst
+  claims the elision from that side too)
+
+The marking is **per boundary, not reciprocal**: one side may be elided while its
+neighbour is not, and a different layer may treat the same moment differently.
+The renderer draws an elided side as a bracket end that reaches a little past the
+boundary, so it visibly overlaps its neighbour. The overlap is drawn, never
+stored — spans in a layer never overlap in the data (see §10).
 
 ### The key distinction
 
@@ -316,7 +327,7 @@ A gradual boundary can be placed with high confidence — the analyst is sure th
 
 These are the theoretical commitments that shaped the schema's structure.
 
-**Overlapping spans are valid.** The schema places no constraint on two spans occupying the same time range in the same layer. Hierarchical enforcement is an opt-in per-layer toggle, not a data model constraint. This reflects the reality of EDM and other repertoires where multiple formal frameworks apply simultaneously.
+**Overlapping frameworks live on separate layers.** Multiple analytical frameworks can apply to the same passage at once, and each gets its own layer, so spans on different layers overlap freely. *Within* one layer, spans never overlap (2026-09-27): a layer is one reading of the timeline, laid end to end, with gaps allowed where the analyst makes no claim. The JSON Schema cannot express this rule; the app enforces it when editing and warns when it opens a file that breaks it.
 
 **The `type` field is the corpus key.** Labels are for humans; types are for queries. A corpus question like "in what percentage of my analyses does the first drop arrive after a build?" requires consistent `type` values across files, not consistent labels.
 

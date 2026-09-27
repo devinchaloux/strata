@@ -35,6 +35,16 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # A comment marked TEMPORARY is a merge blocker by this repo's convention.
+      # The shape lab once reached main that way, because nothing checked; now
+      # a leftover TEMPORARY fails the build instead of relying on memory.
+      - name: No TEMPORARY markers
+        run: |
+          if grep -rn "TEMPORARY" src; then
+            echo "::error::Resolve the TEMPORARY markers above before merging."
+            exit 1
+          fi
+
       - name: Tests
         run: npm run test:run
 

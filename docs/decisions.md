@@ -2516,3 +2516,157 @@ boundary gradual can say the same thing twice. It earns its keep only where ther
 is no separate transitional section. Resolve empirically by annotating real
 tracks, not by argument. Dropping it later is a one-line change to
 `BOUNDARY_OPTS`.
+
+---
+
+## Trust and Format Integrity, Round 1 (2026-09-27)
+
+*A whole-codebase evaluation found that the pure logic was sound and tested, but
+that the interaction layer and the file-loading path, which the tests never
+reached, carried bugs an analyst would hit in normal use. Each fix below was
+reproduced in a browser first and verified there after.*
+
+---
+
+**Decision:** Spans within one layer never overlap. A layer is one reading of the
+timeline, laid end to end; overlapping frameworks go on separate layers. This
+retires the sub-row design in `widgets/form-diagram.md` §4.2, which was never built.
+**Rationale:** Devin's call. Every gesture (spacebar, boundary drag, merge's
+"consecutive" rule) already assumed a tiled layer, and the multi-layer model
+already carries the "overlapping frameworks are valid" claim. The renderer drew a
+within-layer overlap as two brackets on top of each other. The store now refuses
+any write that would create one. The JSON Schema can't express the rule, so a file
+that breaks it still opens, with a warning naming the layer, rather than being
+refused or silently repaired.
+
+---
+
+**Decision:** Gaps within a layer are allowed, as the analyst's interpretive
+choice. Placing a boundary inside a gap fills it with two spans, split at the
+playhead.
+**Rationale:** Devin: whether to leave gaps is the analyst's decision. Before this,
+deleting a span left a hole that nothing could refill (spacebar in a gap did
+nothing, and no gesture created a span from scratch). An empty layer is one gap
+covering the whole track, so this is the rule the first spacebar press always
+followed, generalized.
+
+---
+
+**Decision:** Numeric start/end entry keeps a layer tiled. If a neighbour touches
+the edited edge, the shared boundary moves with it (as a drag would); if a gap
+lies beyond it, the edge stops at the gap's far side.
+**Rationale:** The old clamp only kept the span itself valid, so typing an earlier
+start time could push a span over its neighbour — the one way the editor could
+create a within-layer overlap.
+
+---
+
+**Decision:** A slug is unique across the document and stable once saved. Until
+the document is saved, it follows its label. After a save it no longer changes on
+rename, and the metadata panel offers an explicit "update slug to match the
+label". Repeats get `-2`, `-3` in time order. Primes are spelled out (`A′` →
+`a-prime`, `A″` → `a-double-prime`), matching the vocabulary's own ids.
+**Rationale:** An embed names a span by slug, so the slug must not change under a
+reference and must not be ambiguous. Before this it was regenerated on every label
+keystroke (renaming "Drop" to "Drop 1" broke `focus="drop"`), two "Verse" spans
+shared `verse`, a split copied its slug into the new half, and `A` and `A′` both
+became `a`. A saved file is the only thing an embed can point at, which makes
+"saved" the natural freezing point. A merge whose label came from one source keeps
+that source's slug.
+
+---
+
+**Decision:** Undo groups continuous gestures. One boundary or marker drag is one
+undo step; one text field's edits within a focus session are one step. Writes that
+don't change the document (a save) are no step at all. Mechanism:
+`src/store/history.ts`.
+**Rationale:** zundo recorded every store write, so a 30px drag was 30 steps and
+Ctrl+Z walked a boundary back a pixel at a time. Text fields are grouped by
+observing the browser's `input` events rather than by each component opting in,
+so every panel's fields behave the same without per-field wiring.
+
+---
+
+**Decision:** Every document enters the app through one reader
+(`src/lib/documentLoad.ts`), whether from Open, the demo, or crash recovery. It
+refuses what can't be interpreted, with a message naming the exact place (`"Sections",
+span 1 ends at or before it starts`), and fills in anything the app assumes but an
+older file may lack. Non-blocking problems come back as warnings shown on open.
+A layer of a widget type this build can't draw is kept verbatim and saved back
+unchanged. A render crash is caught by an error boundary that writes the document to
+crash recovery first.
+**Rationale:** The loader used to check four fields and cast the rest. A file
+written before `vocabulary.modes` existed opened, then crashed the app to a blank
+page when Document Settings opened; a malformed file blanked the page on open; and
+open/save errors went only to the developer console. Refusing to drop unknown
+layers matters for the widget roadmap: a file with an energy-contour layer must
+survive a round trip through a build that can't draw one.
+
+---
+
+**Decision:** `Span.keyArea` and `PointMarker.harmonicContext` hold Roman numerals
+relative to the home key; they are not free prose. Accidental conversion recognises
+whole tokens only: flats before a numeral (`bVI` → `♭VI`, `bbVII` → `♭♭VII`) and a
+note letter followed by flats (`Bb` → `B♭`, `eb` → `e♭`).
+**Rationale:** Devin: these fields are Roman numerals because they are relative.
+The old converter worked character by character, so a word typed into the field
+was corrupted (`Subdominant` → `Su♭dominant`). Conversion still runs as the analyst
+types, so a word that *begins* like a flat (`ab…`) is converted at its second
+letter; accepted, because prose doesn't belong in these fields.
+
+---
+
+**Decision:** The YouTube player is never hidden or collapsed. "Hide video" is
+replaced by a mini player: the same player, moved by CSS to the work area's
+top-right corner at 356×200 (16:9 at the minimum height), over the empty canvas
+above the bottom-anchored diagram. It may scroll out of view; it may never be
+smaller than 200×200 or removed.
+**Rationale:** YouTube's embed rules require the player to stay present at a
+viewport of at least 200×200 (Devin, 2026-09-27); the old toggle collapsed it to
+0px. Switching placement only changes CSS because moving an iframe in the DOM
+reloads it and destroys the player.
+
+---
+
+**Decision:** The playback cursor is its own component (`Playhead`), and it is the
+only thing that re-renders on every playback frame. Cursor-follow scrolling runs as
+a store subscription; layer groups are memoized.
+**Rationale:** The diagram, every span's context menu, the ruler and the Inspector
+all subscribed to the playback time, so the whole diagram redrew about 60 times a
+second during playback: ~9 fps on a 4×-throttled CPU with the three-layer demo, a
+full 60 fps after. The core workflow is tapping boundaries while listening, where
+stutter reads as imprecision.
+
+---
+
+**Decision:** The shape lab renders only in development builds, and CI fails on
+any `TEMPORARY` marker in `src/`.
+**Rationale:** The lab was marked as a merge blocker and merged anyway, because
+nothing checked. The elision reach it exists to settle is still open (backlog), so
+the lab stays available under `npm run dev`; its starting values are the hard-coded
+defaults, so production draws identically without it.
+
+---
+
+**Decision:** Elision reach is 8px, confirmed by Devin in the shape lab
+(2026-09-27). The lab is removed, and `buildShapePath` no longer takes
+overrides for corner radius, elision reach or the narrow-span ratio.
+**Rationale:** The lab existed only to settle these values against real spans;
+corner (20) and ratio (0.3) were settled on 2026-07-25, and elision was the last.
+
+---
+
+**Decision:** Where an elision makes two brackets overlap, the analyst chooses
+which one is drawn on top. `Span.endOnTop` (optional boolean) records it for the
+boundary a span owns (its end): true means this span draws over the next one.
+Absent means the next span is on top, which is how every existing file already
+draws. The control appears in the metadata panel only at a boundary that
+actually overlaps, labelled "On top at start / end"; the start control writes to
+the previous span. A split resets the new inner cut (no elision cap, default
+order); a merge keeps the last span's setting.
+**Rationale:** Devin asked for it on seeing 8px elisions. It is a drawing choice
+like the caps, so it is stored with the span and exported with the figure, and it
+carries no analytical claim. It is per boundary rather than per span because one
+span can elide at both ends and sit above one neighbour but below the other; since
+the constraints only ever join neighbours, any combination can be drawn
+(`spanDrawOrder`).

@@ -135,16 +135,19 @@ where `pps = BASE_PPS * viewState.zoom`.
 - **Annotation:** `span.annotation` inside the shape body; tooltip on hover for long text.
 - **Notes:** `span.notes` is tooltip-only; never rendered on the diagram.
 
-### 4.2 Overlapping Spans
+### 4.2 Spans Never Overlap Within a Layer
 
-Spans within a layer that overlap in time occupy sub-rows within the layer's vertical space. Assignment uses a greedy interval sweep:
+*Revised 2026-09-27 (Devin). This section used to specify sub-rows for spans that
+overlap inside one layer; that design is retired and was never built.*
 
-1. Sort spans by `startTime` (ascending)
-2. For each span, assign it to the first sub-row whose last-assigned span ends at or before `span.startTime`
-3. If no sub-row is available, open a new sub-row
-4. Each sub-row renders at a fixed height; the layer panel expands vertically to accommodate all sub-rows
-
-All sub-rows share the same horizontal coordinate system. Overlapping spans are never merged visually.
+A layer's spans lie end to end, with gaps allowed. Overlap between analytical
+frameworks is expressed by putting them on separate layers, which is what the
+multi-layer model is for. Every editing gesture keeps a layer tiled — spacebar
+splits a span or fills a gap, a boundary drag moves a shared edge with a
+hard-stop, numeric time entry moves a shared edge or stops at a gap — and the
+document store refuses any write that would create an overlap. A file that
+already contains one still opens, with a warning naming the layer, and the two
+spans draw on top of each other until the analyst resolves them.
 
 ### 4.3 Shape Vocabulary (visual style — the analyst's choice)
 

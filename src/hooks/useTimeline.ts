@@ -18,8 +18,6 @@ export function useTimeline() {
   const zoom = useUIStore((s) => s.zoom)
   const scrollOffset = useUIStore((s) => s.scrollOffset)
   const viewportWidth = useUIStore((s) => s.viewportWidth)
-  const currentTime = useUIStore((s) => s.currentTime)
-  const playbackState = useUIStore((s) => s.playbackState)
   const setZoom = useUIStore((s) => s.setZoom)
   const setScrollOffset = useUIStore((s) => s.setScrollOffset)
   const setViewportWidth = useUIStore((s) => s.setViewportWidth)
@@ -99,24 +97,26 @@ export function useTimeline() {
   // No auto-scroll when paused — prevents YouTube hover-preview time updates
   // from snapping the ruler.
   // ---------------------------------------------------------------------------
-  useEffect(() => {
-    const { pps, viewportWidth, totalWidth, scrollOffset } = snap.current
-    if (playbackState !== 'playing' || pps <= 0 || viewportWidth <= 0) return
-
-    const cursorPx = currentTime * pps - scrollOffset
-
-    if (cursorPx < 0) {
-      // Off-screen left — reveal at 20%
-      setScrollOffset(
-        clampScrollOffset(currentTime * pps - viewportWidth * 0.2, totalWidth, viewportWidth),
-      )
-    } else if (cursorPx > viewportWidth * 0.8) {
-      // Approaching or past right edge — follow at 80%
-      setScrollOffset(
-        clampScrollOffset(currentTime * pps - viewportWidth * 0.8, totalWidth, viewportWidth),
-      )
-    }
-  }, [currentTime, playbackState, setScrollOffset])
+  // Subscribed outside React rendering: the check runs every frame, but the
+  // diagram only re-renders when it actually scrolls.
+  useEffect(
+    () =>
+      useUIStore.subscribe((state, prev) => {
+        if (state.currentTime === prev.currentTime || state.playbackState !== 'playing') return
+        const { pps, viewportWidth, totalWidth, scrollOffset } = snap.current
+        if (pps <= 0 || viewportWidth <= 0) return
+        const t = state.currentTime
+        const cursorPx = t * pps - scrollOffset
+        if (cursorPx < 0) {
+          // Off-screen left — reveal at 20%
+          setScrollOffset(clampScrollOffset(t * pps - viewportWidth * 0.2, totalWidth, viewportWidth))
+        } else if (cursorPx > viewportWidth * 0.8) {
+          // Approaching or past right edge — follow at 80%
+          setScrollOffset(clampScrollOffset(t * pps - viewportWidth * 0.8, totalWidth, viewportWidth))
+        }
+      }),
+    [setScrollOffset],
+  )
 
   // ---------------------------------------------------------------------------
   // Wheel handler — non-passive so we can call preventDefault().
@@ -207,7 +207,6 @@ export function useTimeline() {
     zoom,
     scrollOffset,
     viewportWidth,
-    currentTime,
     duration,
   }
 }

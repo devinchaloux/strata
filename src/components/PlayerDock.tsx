@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react'
-import { Link2, CircleAlert } from 'lucide-react'
+import { Link2, CircleAlert, PictureInPicture2, PanelBottom } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { useYouTubePlayer } from '@/hooks/useYouTubePlayer'
@@ -60,43 +60,6 @@ function SpinnerIcon() {
   )
 }
 
-function VideoOnIcon() {
-  return (
-    <svg
-      className="w-4 h-4"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="1" y="4" width="9" height="8" rx="1" />
-      <path d="M10 6.5L15 4v8l-5-2.5V6.5z" />
-    </svg>
-  )
-}
-
-function VideoOffIcon() {
-  return (
-    <svg
-      className="w-4 h-4"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="1" y="4" width="9" height="8" rx="1" />
-      <path d="M10 6.5L15 4v8l-5-2.5V6.5z" />
-      <line x1="2" y1="2" x2="14" y2="14" />
-    </svg>
-  )
-}
-
 // ---------------------------------------------------------------------------
 // Transport button
 // ---------------------------------------------------------------------------
@@ -136,6 +99,16 @@ function TransportButton({
 const RATES: PlaybackRate[] = [0.5, 0.75, 1, 1.25]
 
 /**
+ * YouTube's embed rules require the player's viewport to be at least 200×200
+ * and the player to stay present, so the video can move but never collapse or
+ * hide. It may scroll out of view (as an embed in a blog post does); it may not
+ * be shrunk below this or removed.
+ */
+const VIDEO_MIN = 200
+/** Mini player width: 16:9 at the minimum height. */
+const VIDEO_MINI_WIDTH = Math.round((VIDEO_MIN * 16) / 9)
+
+/**
  * The bottom dock: transport bar plus the collapsible video panel. Source-
  * agnostic — it reads doc.source, activates the matching playback engine
  * (YouTube IFrame or HTML5 audio), and exposes one command surface to the
@@ -164,8 +137,8 @@ export function PlayerDock() {
     playbackRate,
     playerStatus,
     playerError,
-    videoPanelVisible,
-    toggleVideoPanel,
+    videoMini,
+    toggleVideoMini,
     audioFile,
     setAudioFile,
     setLinkSourceOpen,
@@ -173,6 +146,7 @@ export function PlayerDock() {
     documentSettingsOpen,
     unsavedGuardOpen,
     recoveryModalOpen,
+    appMessage,
   } = useUIStore()
 
   // A linked YouTube iframe renders in its own GPU compositing layer that
@@ -183,7 +157,7 @@ export function PlayerDock() {
   // same cross-context quirk) whenever a modal that can be open at the same
   // time is up.
   const anyModalOpen =
-    linkSourceOpen || documentSettingsOpen || unsavedGuardOpen || recoveryModalOpen
+    linkSourceOpen || documentSettingsOpen || unsavedGuardOpen || recoveryModalOpen || appMessage !== null
 
   const source = doc?.source ?? null
   const sourceOffset = source?.sourceOffset ?? 0
@@ -455,28 +429,40 @@ export function PlayerDock() {
           </TransportButton>
         )}
 
-        {/* Video panel toggle — only shown when a video is loaded */}
+        {/* Video placement — docked below, or a mini player in the corner.
+            There is deliberately no "hide": see VIDEO_MIN below. */}
         {videoId && (
           <TransportButton
-            onClick={toggleVideoPanel}
-            title={videoPanelVisible ? 'Hide video' : 'Show video'}
+            onClick={toggleVideoMini}
+            title={videoMini ? 'Dock the video below the transport' : 'Shrink the video to a corner'}
           >
-            {videoPanelVisible ? <VideoOffIcon /> : <VideoOnIcon />}
+            {videoMini ? (
+              <PanelBottom size={15} strokeWidth={1.75} />
+            ) : (
+              <PictureInPicture2 size={15} strokeWidth={1.75} />
+            )}
           </TransportButton>
         )}
       </div>
 
       {/* ── Video panel ── */}
-      {/* Only rendered when a YouTube URL is set. Height transitions 200↔0;
-          the iframe stays in the DOM (CSS clip) so the IFrame API stays alive.
-          position: relative hosts the modal-open curtain below. */}
+      {/* One element in both placements: switching only changes its CSS, so
+          the iframe is never moved in the DOM (moving an iframe reloads it and
+          kills the YT.Player). Docked, it sits in the column's flow; as a mini
+          player it floats in the left column's top-right corner, over the empty
+          canvas above the bottom-anchored diagram. Either way it stays at least
+          VIDEO_MIN × VIDEO_MIN. position is always set, which also hosts the
+          modal-open curtain below. */}
       {videoId && (
         <div
-          className="relative overflow-hidden border-t border-border transition-[height] duration-200 ease-in-out"
-          style={{ height: videoPanelVisible ? 200 : 0 }}
+          className={
+            videoMini
+              ? 'absolute right-3 top-3 z-20 overflow-hidden rounded-md border border-border shadow-lg'
+              : 'relative overflow-hidden border-t border-border'
+          }
+          style={videoMini ? { width: VIDEO_MINI_WIDTH, height: VIDEO_MIN } : { height: VIDEO_MIN }}
         >
-          {/* Inner target for YT.Player — always 200px so the player has dimensions */}
-          <div ref={containerRef} className="w-full" style={{ height: 200 }} />
+          <div ref={containerRef} className="h-full w-full" />
 
           {/* Curtain — see the anyModalOpen comment above. Opaque, blocks
               interaction, sits in this div's own stacking context so it isn't

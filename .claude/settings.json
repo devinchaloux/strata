@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"$CLAUDE_PROJECT_DIR/scripts/publish-check.mjs\"; [ -f \"$f\" ] || f=\"$CLAUDE_PROJECT_DIR/strata/scripts/publish-check.mjs\"; [ -f \"$f\" ] || exit 0; node \"$f\" --hook"
+          }
+        ]
+      }
+    ]
+  }
+}

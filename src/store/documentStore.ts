@@ -2,7 +2,9 @@ import { create } from 'zustand'
 import { temporal } from 'zundo'
 import type { StrataDocument, Layer, Span, PointMarker, SharedTimePoint } from '@/types/strata'
 import type { FormDiagramData } from '@/types/strata'
-import { placeBoundaryInSpans, MIN_SPAN_WIDTH } from '@/lib/spanEdit'
+import { placeBoundaryInSpans, setSpanEdge, findOverlaps, MIN_SPAN_WIDTH } from '@/lib/spanEdit'
+import { groupingHandleSet, breakHistoryGroup } from '@/store/history'
+import { slugify, uniqueSlug, slugsInUse, allSpans, resolveSlugCollisions } from '@/lib/slug'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,6 +41,10 @@ interface DocumentState {
   // rather than keying on a value like duration that can collide. Excluded from
   // undo history (partialize) and from dirty/save comparisons (document-only).
   loadId: number
+  // Ids of spans whose slug has been saved to a file, and so may be referenced
+  // by an embed: their slug no longer follows label edits (see lib/slug.ts).
+  // Set on load and on save; not document data, not in undo history.
+  frozenSlugIds: Set<string>
 
   // Document lifecycle
   loadDocument: (doc: StrataDocument) => void
@@ -61,11 +67,20 @@ interface DocumentState {
   // Bulk edit: apply one patch to many spans (the set may span multiple layers).
   // A single store write = one undo step. Used by the multi-select metadata panel.
   updateSpans: (spanIds: string[], patch: Partial<Omit<Span, 'id'>>) => void
+  // Label edits go through these, not updateSpan, because a label change may
+  // carry a slug change: an unfrozen slug follows the label, kept unique.
+  setSpanLabels: (spanIds: string[], label: string | null) => void
+  // Explicitly re-derive a span's slug from its current label, frozen or not.
+  regenerateSlug: (spanId: string) => void
   removeSpan: (layerId: string, spanId: string) => void
   mergeSpans: (layerId: string, spanIds: string[], result: Span) => void
   // Spacebar / Split: place a boundary at `time`, splitting the containing span
-  // (or seeding two spans on an empty layer). No-op if the cut isn't valid.
+  // (or filling the gap it falls in — an empty layer is one gap). No-op if the
+  // cut isn't valid.
   placeBoundary: (layerId: string, time: number) => void
+  // Numeric time entry: move one edge of a span. A touching neighbour's edge
+  // moves with it; otherwise the edge stops at the gap's far side.
+  setSpanEdge: (layerId: string, spanId: string, edge: 'start' | 'end', time: number) => void
   // Boundary drag: move the shared boundary between two adjacent spans to `time`,
   // clamped so neither span shrinks below `minWidth` seconds (hard-stop). The
   // caller passes a zoom-aware minWidth; the store still floors it at the data
@@ -116,10 +131,33 @@ function mapLayer(layers: Layer[], id: string, fn: (layer: Layer) => Layer): Lay
   return layers.map((l) => (l.id === id ? fn(l) : l))
 }
 
+// Every span write funnels through here, which is where the tiling invariant
+// is enforced: a write that would make two spans in one layer overlap is
+// dropped and the layer is returned unchanged (docs/decisions.md, 2026-09-27).
+// Gestures already respect the invariant; this catches any caller that doesn't.
 function mapFormDiagramSpans(layer: Layer, fn: (spans: Span[]) => Span[]): Layer {
   if (layer.type !== 'form-diagram') return layer
   const data = layer.data as FormDiagramData
-  return { ...layer, data: { ...data, spans: fn(data.spans) } }
+  const next = fn(data.spans)
+  if (next !== data.spans && findOverlaps(next).length > findOverlaps(data.spans).length) {
+    return layer
+  }
+  return { ...layer, data: { ...data, spans: next } }
+}
+
+/** Apply a per-span patch function to every span whose id is in `ids`. */
+function patchSpans(doc: StrataDocument, ids: Set<string>, fn: (s: Span) => Span): StrataDocument {
+  return {
+    ...doc,
+    layers: doc.layers.map((l) =>
+      mapFormDiagramSpans(l, (spans) => (spans.some((s) => ids.has(s.id)) ? spans.map((s) => (ids.has(s.id) ? fn(s) : s)) : spans)),
+    ),
+  }
+}
+
+/** Span ids that currently carry a slug — the set that becomes frozen on save. */
+function slugBearingIds(doc: StrataDocument | null): Set<string> {
+  return new Set(doc ? allSpans(doc).filter((s) => s.slug).map((s) => s.id) : [])
 }
 
 // ---------------------------------------------------------------------------
@@ -132,19 +170,21 @@ const useDocumentStore = create<DocumentState>()(
       document: null,
       savedSnapshot: null,
       loadId: 0,
+      frozenSlugIds: new Set<string>(),
 
       loadDocument: (doc) => {
         set((s) => ({
           document: doc,
           savedSnapshot: JSON.stringify(doc),
           loadId: s.loadId + 1,
+          frozenSlugIds: slugBearingIds(doc),
         }))
         // Clear undo history so the loaded state is the base, not an undo target.
         // Caller invokes useDocumentStore.temporal.getState().clear() after this returns.
       },
 
       clearDocument: () => {
-        set({ document: null, savedSnapshot: null })
+        set({ document: null, savedSnapshot: null, frozenSlugIds: new Set() })
       },
 
       updateMeta: (patch) => {
@@ -155,7 +195,7 @@ const useDocumentStore = create<DocumentState>()(
 
       markSaved: () => {
         const doc = get().document
-        set({ savedSnapshot: doc ? JSON.stringify(doc) : null })
+        set({ savedSnapshot: doc ? JSON.stringify(doc) : null, frozenSlugIds: slugBearingIds(doc) })
       },
 
       // --- Layers ---
@@ -271,6 +311,40 @@ const useDocumentStore = create<DocumentState>()(
         })
       },
 
+      setSpanLabels: (spanIds, label) => {
+        const doc = get().document
+        if (!doc || spanIds.length === 0) return
+        const ids = new Set(spanIds)
+        const frozen = get().frozenSlugIds
+        // Slugs being replaced don't count as taken; assign in time order so a
+        // bulk "Verse" labelling reads verse, verse-2, verse-3 left to right.
+        const taken = slugsInUse(doc, new Set(spanIds.filter((id) => !frozen.has(id))))
+        const base = label ? slugify(label) : null
+        const order = allSpans(doc)
+          .filter((s) => ids.has(s.id))
+          .sort((a, b) => a.startTime - b.startTime)
+        const slugFor = new Map<string, string | null>()
+        for (const s of order) {
+          if (frozen.has(s.id)) continue
+          const slug = base ? uniqueSlug(base, taken) : null
+          if (slug) taken.add(slug)
+          slugFor.set(s.id, slug)
+        }
+        const next = patchSpans(doc, ids, (s) =>
+          slugFor.has(s.id) ? { ...s, label, slug: slugFor.get(s.id)! } : { ...s, label },
+        )
+        set({ document: { ...next, updatedAt: now() } })
+      },
+
+      regenerateSlug: (spanId) => {
+        const doc = get().document
+        const span = doc && allSpans(doc).find((s) => s.id === spanId)
+        if (!doc || !span) return
+        const base = span.label ? slugify(span.label) : null
+        const slug = base ? uniqueSlug(base, slugsInUse(doc, new Set([spanId]))) : null
+        set({ document: { ...patchSpans(doc, new Set([spanId]), (s) => ({ ...s, slug })), updatedAt: now() } })
+      },
+
       removeSpan: (layerId, spanId) => {
         const doc = get().document
         if (!doc) return
@@ -288,6 +362,17 @@ const useDocumentStore = create<DocumentState>()(
       mergeSpans: (layerId, spanIds, result) => {
         const doc = get().document
         if (!doc) return
+        // The merged span is new, but if its label came from one of the
+        // sources, so does that source's slug — an embed pointing at it keeps
+        // working. Otherwise the merge draft's derived slug stands.
+        const heir = allSpans(doc).find((s) => spanIds.includes(s.id) && s.slug && s.label === result.label)
+        if (heir) result = { ...result, slug: heir.slug }
+        const withoutSources = new Set(spanIds)
+        if (result.slug) result = { ...result, slug: uniqueSlug(result.slug, slugsInUse(doc, withoutSources)) }
+        // An inherited frozen slug stays frozen on its new span.
+        if (heir && get().frozenSlugIds.has(heir.id) && result.slug === heir.slug) {
+          set({ frozenSlugIds: new Set([...get().frozenSlugIds, result.id]) })
+        }
         set({
           document: {
             ...doc,
@@ -321,7 +406,23 @@ const useDocumentStore = create<DocumentState>()(
           return { ...l, data: { ...data, spans: next } }
         })
         if (!changed) return
-        set({ document: { ...doc, layers, updatedAt: now() } })
+        // A split copies the label (and so the slug) into the new right half;
+        // the original span keeps its slug and the new half gets the next free one.
+        set({ document: resolveSlugCollisions(doc, { ...doc, layers, updatedAt: now() }) })
+      },
+
+      setSpanEdge: (layerId, spanId, edge, time) => {
+        const doc = get().document
+        if (!doc) return
+        set({
+          document: {
+            ...doc,
+            layers: mapLayer(doc.layers, layerId, (l) =>
+              mapFormDiagramSpans(l, (spans) => setSpanEdge(spans, spanId, edge, time, doc.duration) ?? spans),
+            ),
+            updatedAt: now(),
+          },
+        })
       },
 
       setAdjacentBoundary: (layerId, leftSpanId, rightSpanId, time, minWidth) => {
@@ -416,9 +517,37 @@ const useDocumentStore = create<DocumentState>()(
       // Only document changes go into the undo/redo history.
       // savedSnapshot is excluded — it tracks save state, not edit history.
       partialize: (state) => ({ document: state.document }),
+      // Writes that don't change the document (markSaved, loadId bumps) are
+      // not undo steps. Every action builds a new document object, so identity
+      // is an exact test.
+      equality: (past, current) => past.document === current.document,
+      // Continuous gestures (drags, typing) collapse into one step each — see
+      // store/history.ts. The cast bridges zundo's loosely-typed option.
+      handleSet: groupingHandleSet as never,
     }
   )
 )
+
+// Undo, redo and clear end whatever group was open, so the next edit after an
+// undo is its own step rather than silently joining the one before it.
+{
+  const temporal = useDocumentStore.temporal
+  const { undo, redo, clear } = temporal.getState()
+  temporal.setState({
+    undo: (steps?: number) => {
+      breakHistoryGroup()
+      undo(steps)
+    },
+    redo: (steps?: number) => {
+      breakHistoryGroup()
+      redo(steps)
+    },
+    clear: () => {
+      breakHistoryGroup()
+      clear()
+    },
+  })
+}
 
 export { useDocumentStore }
 export type { DocumentState }

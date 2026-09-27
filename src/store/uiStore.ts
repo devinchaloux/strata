@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { CORNER_RADIUS, ELISION_EXTEND, CORNER_MAX_RATIO } from '@/lib/formShape'
 import type { YTPlayerState } from '@/lib/youtube'
 import type { Span } from '@/types/strata'
 import type { MergeConflict } from '@/lib/mergeSpans'
@@ -47,6 +46,11 @@ export interface ViewState {
   viewportWidth: number // pixel width of the timeline viewport
 }
 
+export interface AppMessage {
+  title: string
+  lines: string[]
+}
+
 export interface UIState {
   // Playback
   currentTime: number
@@ -61,12 +65,6 @@ export interface UIState {
   scrollOffset: number
   viewportWidth: number
 
-  // TEMPORARY — the shape lab. Live bracket-geometry knobs so Devin can dial the
-  // corner curve and elision reach on real data instead of judging from mockups.
-  // Deliberately in the UI store: it must never touch the document, dirty the
-  // file, or land in an undo step. Delete this (and DiagramShapeLab) once the
-  // values are chosen and hard-coded back into formShape.ts.
-  shapeLab: { cornerRadius: number; elisionExtend: number; cornerRatio: number }
 
   // Selection — multi-select set is the source of truth. Single-select call
   // sites read selectedSpanIds[0]. selectionAnchorId is the pivot for shift-range.
@@ -86,7 +84,11 @@ export interface UIState {
   audioFile: File | null
 
   // Panels
-  videoPanelVisible: boolean
+  // Where the YouTube player sits: docked under the transport bar, or as a
+  // mini player in the work area's top-right corner. Never hidden and never
+  // smaller than 200×200 — YouTube's embed rules require the player to stay
+  // present at that minimum size (Devin, 2026-09-27).
+  videoMini: boolean
   headersCollapsed: boolean // layer-header column collapsed to the icon rail
 
   // Merge conflict dialog (null = closed)
@@ -105,6 +107,11 @@ export interface UIState {
   unsavedGuardOpen: boolean
   recoveryModalOpen: boolean
 
+  // A message for the analyst that must be read and dismissed: a file that
+  // couldn't open or save, or one that opened with warnings. Replaces errors
+  // that used to go only to the developer console.
+  appMessage: AppMessage | null
+
   // Actions — playback
   setCurrentTime: (time: number) => void
   setDuration: (duration: number) => void
@@ -117,10 +124,6 @@ export interface UIState {
   setZoom: (zoom: number) => void
   setScrollOffset: (offset: number) => void
   setViewportWidth: (width: number) => void
-  /** TEMPORARY — see `shapeLab` above. */
-  setShapeLab: (
-    patch: Partial<{ cornerRadius: number; elisionExtend: number; cornerRatio: number }>,
-  ) => void
 
   // Actions — selection
   selectSpan: (id: string | null) => void       // single select (replace); null clears
@@ -134,8 +137,7 @@ export interface UIState {
   selectPointMarker: (id: string | null) => void
 
   // Actions — panels
-  toggleVideoPanel: () => void
-  setVideoPanelVisible: (visible: boolean) => void
+  toggleVideoMini: () => void
   toggleHeadersCollapsed: () => void
 
   // Actions — merge dialog
@@ -149,6 +151,8 @@ export interface UIState {
   setDocumentSettingsOpen: (open: boolean) => void
   setUnsavedGuardOpen: (open: boolean) => void
   setRecoveryModalOpen: (open: boolean) => void
+  showAppMessage: (title: string, lines: string[]) => void
+  dismissAppMessage: () => void
 }
 
 // ---------------------------------------------------------------------------
@@ -167,11 +171,6 @@ const useUIStore = create<UIState>()((set) => ({
   scrollOffset: 0,
   viewportWidth: 0,
 
-  shapeLab: {
-    cornerRadius: CORNER_RADIUS,
-    elisionExtend: ELISION_EXTEND,
-    cornerRatio: CORNER_MAX_RATIO,
-  },
 
   selectedSpanIds: [],
   selectionAnchorId: null,
@@ -182,7 +181,7 @@ const useUIStore = create<UIState>()((set) => ({
   audioFile: null,
 
   // Default true — the panel is expanded when a video first loads
-  videoPanelVisible: true,
+  videoMini: false,
   headersCollapsed: false,
 
   mergeDialog: null,
@@ -190,6 +189,7 @@ const useUIStore = create<UIState>()((set) => ({
   documentSettingsOpen: false,
   unsavedGuardOpen: false,
   recoveryModalOpen: false,
+  appMessage: null,
 
   setCurrentTime: (time) => set({ currentTime: time }),
   setDuration: (duration) => set({ duration }),
@@ -202,7 +202,6 @@ const useUIStore = create<UIState>()((set) => ({
   setScrollOffset: (offset) => set({ scrollOffset: offset }),
   setViewportWidth: (width) => set({ viewportWidth: width }),
 
-  setShapeLab: (patch) => set((s) => ({ shapeLab: { ...s.shapeLab, ...patch } })),
 
   selectSpan: (id) =>
     set({ selectedSpanIds: id ? [id] : [], selectionAnchorId: id, selectedPointMarkerId: null }),
@@ -228,8 +227,7 @@ const useUIStore = create<UIState>()((set) => ({
   selectPointMarker: (id) =>
     set({ selectedPointMarkerId: id, selectedSpanIds: [], selectionAnchorId: null }),
 
-  toggleVideoPanel: () => set((s) => ({ videoPanelVisible: !s.videoPanelVisible })),
-  setVideoPanelVisible: (visible) => set({ videoPanelVisible: visible }),
+  toggleVideoMini: () => set((s) => ({ videoMini: !s.videoMini })),
   toggleHeadersCollapsed: () => set((s) => ({ headersCollapsed: !s.headersCollapsed })),
 
   openMergeDialog: (state) => set({ mergeDialog: state }),
@@ -239,6 +237,8 @@ const useUIStore = create<UIState>()((set) => ({
   setDocumentSettingsOpen: (open) => set({ documentSettingsOpen: open }),
   setUnsavedGuardOpen: (open) => set({ unsavedGuardOpen: open }),
   setRecoveryModalOpen: (open) => set({ recoveryModalOpen: open }),
+  showAppMessage: (title, lines) => set({ appMessage: { title, lines } }),
+  dismissAppMessage: () => set({ appMessage: null }),
 }))
 
 export { useUIStore }
