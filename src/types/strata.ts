@@ -239,16 +239,39 @@ export interface FormDiagramData {
 // Layer (Typed Envelope Pattern)
 // ---------------------------------------------------------------------------
 
-/** v1 widget type. Extend this union when adding new widget types. */
-export type LayerType = 'form-diagram'
+// ---------------------------------------------------------------------------
+// Written Analysis Data (Widget Payload)
+// ---------------------------------------------------------------------------
+
+/**
+ * What a piece of commentary is about: a span, by its id (which never changes,
+ * unlike its slug), or a time range in recording seconds. Deleting a span turns
+ * its commentary's anchor into the span's former time range, so no text is lost.
+ */
+export type BlockAnchor = { spanId: string } | { start: number; end: number }
+
+/** One piece of commentary; it surfaces while its anchor plays. */
+export interface AnalysisBlock {
+  id: string
+  anchor: BlockAnchor
+  /** Paragraphs separated by a blank line; **bold**, *italic*, and [[slug]] span links. */
+  text: string
+}
+
+export interface WrittenAnalysisData {
+  blocks: AnalysisBlock[]
+}
+
+/** Widget types. Extend this union when adding a widget. */
+export type LayerType = 'form-diagram' | 'written-analysis'
 
 /** Union of all widget data payload types. */
-export type LayerData = FormDiagramData
-// Future: | EnergyContourData | InstrumentationData | WrittenAnalysisData
+export type LayerData = FormDiagramData | WrittenAnalysisData
+// Future: | EnergyContourData | InstrumentationData
 
-export interface Layer {
+/** Fields every layer carries, whatever its widget type (the typed envelope). */
+export interface LayerBase {
   id: string
-  type: LayerType
   label: string
   description?: string | null
   visibility: boolean
@@ -273,8 +296,16 @@ export interface Layer {
    * implication; the same Span/spacebar/drag/merge interactions apply either way.
    */
   spanShape?: 'bracket' | 'bar'
-  data: LayerData
 }
+
+export type FormDiagramLayer = LayerBase & { type: 'form-diagram'; data: FormDiagramData }
+export type WrittenAnalysisLayer = LayerBase & { type: 'written-analysis'; data: WrittenAnalysisData }
+
+/**
+ * A layer is tagged by its widget type, so checking `layer.type` tells
+ * TypeScript which `data` shape it holds.
+ */
+export type Layer = FormDiagramLayer | WrittenAnalysisLayer
 
 // ---------------------------------------------------------------------------
 // Top-Level Document

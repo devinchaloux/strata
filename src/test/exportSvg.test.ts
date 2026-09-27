@@ -1,3 +1,4 @@
+import { formSpans } from '@/lib/layers'
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -25,7 +26,7 @@ describe('exportFormDiagramSvg', () => {
     const hidden = doc.layers.find((l) => l.label === 'Phrases')!
     hidden.visibility = false
     const svg = await exportFormDiagramSvg(doc, whole(doc.duration))
-    const firstPhrase = hidden.data.spans.find((s) => s.label)?.label
+    const firstPhrase = formSpans(hidden).find((s) => s.label)?.label
     if (firstPhrase) expect(svg).not.toContain(`>${firstPhrase}<`)
   })
 

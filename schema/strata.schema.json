@@ -346,8 +346,8 @@
         },
         "type": {
           "type": "string",
-          "enum": ["form-diagram"],
-          "description": "Widget type. v1: 'form-diagram' only. Future types: 'energy-contour', 'instrumentation', 'written-analysis'."
+          "enum": ["form-diagram", "written-analysis"],
+          "description": "Widget type: 'form-diagram' (spans on a timeline) or 'written-analysis' (commentary anchored to spans or times). Future types: 'energy-contour', 'instrumentation'. A reader that meets a type it doesn't know should keep the layer unchanged."
         },
         "label": {
           "type": "string",
@@ -397,9 +397,64 @@
         },
         "data": {
           "description": "Widget-specific data payload. Shape is determined by the type field.",
+          "type": "object"
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "form-diagram" } } },
+          "then": { "properties": { "data": { "$ref": "#/$defs/FormDiagramData" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "written-analysis" } } },
+          "then": { "properties": { "data": { "$ref": "#/$defs/WrittenAnalysisData" } } }
+        }
+      ]
+    },
+
+    "WrittenAnalysisData": {
+      "type": "object",
+      "required": ["blocks"],
+      "additionalProperties": false,
+      "description": "Data payload for a written-analysis layer: prose anchored to the timeline. Hierarchy lives in the writing and its links, not in nested data.",
+      "properties": {
+        "blocks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/AnalysisBlock" }
+        }
+      }
+    },
+
+    "AnalysisBlock": {
+      "type": "object",
+      "required": ["id", "anchor", "text"],
+      "additionalProperties": false,
+      "description": "One piece of commentary. It surfaces while its anchor plays.",
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "anchor": {
+          "description": "What the commentary is about: a span (by its id, which never changes) or a time range in recording seconds. Deleting a span converts its commentary to a time range, so the text is never lost.",
           "oneOf": [
-            { "$ref": "#/$defs/FormDiagramData" }
+            {
+              "type": "object",
+              "required": ["spanId"],
+              "additionalProperties": false,
+              "properties": { "spanId": { "type": "string", "format": "uuid" } }
+            },
+            {
+              "type": "object",
+              "required": ["start", "end"],
+              "additionalProperties": false,
+              "properties": {
+                "start": { "type": "number", "minimum": 0 },
+                "end": { "type": "number", "minimum": 0 }
+              }
+            }
           ]
+        },
+        "text": {
+          "type": "string",
+          "description": "The commentary. Paragraphs are separated by a blank line; **bold** and *italic* are allowed; [[slug]] links to the span with that slug."
         }
       }
     },

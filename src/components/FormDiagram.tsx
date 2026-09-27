@@ -49,6 +49,7 @@ import { FormLayers } from './FormLayers'
 import { LayerSettingsPopover } from './LayerSettingsPopover'
 import { AddLayerPopover } from './AddLayerPopover'
 import { DiagramControlBar } from './DiagramControlBar'
+import { CommentaryPanel } from '@/widgets/written-analysis/CommentaryPanel'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -551,19 +552,13 @@ export function FormDiagram() {
     // transport, and the extra vertical room accumulates ABOVE — that blank space
     // is where additional widgets will stack as they're added.
     <div className="flex min-h-0 flex-1 flex-col justify-end px-2 pb-1">
-      {/* Empty-canvas affordance: a quiet hint filling exactly the leftover
-          space above the widget card (flex-1, so it vanishes once a tall
-          layer stack claims that room). Explains the blank space is
-          intentional — reserved for future widgets — rather than reading as
-          unfinished. overflow-hidden so it clips cleanly instead of forcing
-          height when the stack leaves almost no room. */}
-      <div className="flex flex-1 min-h-0 items-center justify-center overflow-hidden">
-        <p
-          className="select-none text-xs"
-          style={{ color: 'var(--ink-faint)', opacity: 0.6 }}
-        >
-          More analytical layers will stack here as they're added
-        </p>
+      {/* The open area above the widget card (flex-1, so it shrinks as a tall
+          layer stack claims the room). The written-analysis widget reads here;
+          with no commentary yet it shows a one-line hint instead. */}
+      <div className="flex flex-1 min-h-0 items-center justify-center overflow-y-auto">
+        {/* The written-analysis widget reads here: the commentary for what's
+            playing (see widgets/written-analysis/CommentaryPanel). */}
+        <CommentaryPanel />
       </div>
 
       {/* The widget is a framed card: the top bar (collapse / add / hidden

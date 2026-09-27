@@ -1,3 +1,4 @@
+import { formSpans } from '@/lib/layers'
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -42,7 +43,7 @@ describe('readDocument — older and hand-written files', () => {
     expect(doc.sharedTimePoints).toEqual([])
     expect(doc.artist).toEqual([])
     expect(doc.source.sourceOffset).toBe(0)
-    expect(doc.layers[0].data.spans).toEqual([])
+    expect(formSpans(doc.layers[0])).toEqual([])
     expect(doc.layers[0].visibility).toBe(true)
   })
 
@@ -53,7 +54,7 @@ describe('readDocument — older and hand-written files', () => {
 
   it('sorts spans by start time', () => {
     const input = makeDoc([makeLayer('L', [makeSpan('b', 50, 100), makeSpan('a', 0, 50)])])
-    expect(readDocument(input).doc.layers[0].data.spans.map((s) => s.id)).toEqual(['a', 'b'])
+    expect(formSpans(readDocument(input).doc.layers[0]).map((s) => s.id)).toEqual(['a', 'b'])
   })
 })
 
@@ -71,7 +72,7 @@ describe('readDocument — problems', () => {
   it('opens a layer with overlapping spans, with a notice', () => {
     const input = makeDoc([makeLayer('Phrases', [makeSpan('a', 0, 60), makeSpan('b', 50, 100)])])
     const { doc, notices } = readDocument(input)
-    expect(doc.layers[0].data.spans).toHaveLength(2)
+    expect(formSpans(doc.layers[0])).toHaveLength(2)
     expect(notices[0]).toContain('"Phrases" has two spans that overlap')
   })
 
@@ -86,5 +87,20 @@ describe('readDocument — problems', () => {
   it('warns about a file from a newer format version', () => {
     const input = makeDoc([], { fileFormatVersion: SUPPORTED_FILE_FORMAT_VERSION + 1 })
     expect(readDocument(input).notices[0]).toContain('newer version of Strata')
+  })
+})
+
+describe('readDocument — slugs', () => {
+  it('fills missing slugs for labelled spans, unique in time order, keeping existing ones', () => {
+    const input = makeDoc([
+      makeLayer('L', [
+        makeSpan('a', 0, 10, { label: 'Verse' }),
+        makeSpan('b', 10, 20, { label: 'Chorus', slug: 'hook' }),
+        makeSpan('c', 20, 30, { label: 'Verse' }),
+        makeSpan('d', 30, 40),
+      ]),
+    ])
+    const spans = formSpans(readDocument(input).doc.layers[0])
+    expect(spans.map((s) => s.slug)).toEqual(['verse', 'hook', 'verse-2', undefined])
   })
 })

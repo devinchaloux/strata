@@ -1,3 +1,4 @@
+import { formSpans } from '@/lib/layers'
 import { describe, it, expect } from 'vitest'
 import { parseStrataFile, createEmptyDocument } from '@/lib/fileIO'
 import type { StrataDocument } from '@/types/strata'
@@ -99,7 +100,7 @@ describe('JSON roundtrip', () => {
       { id: 'pm-1', timestamp: 16.0, label: 'Midpoint', flagged: true },
     ]
     const parsed = parseStrataFile(JSON.stringify(doc, null, 2))
-    expect(parsed.layers[0].data.spans[0].label).toBe('Intro')
+    expect(formSpans(parsed.layers[0])[0].label).toBe('Intro')
     expect(parsed.pointMarkers[0].flagged).toBe(true)
     expect(parsed).toEqual(doc)
   })

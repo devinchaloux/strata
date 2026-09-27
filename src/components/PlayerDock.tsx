@@ -209,6 +209,12 @@ export function PlayerDock() {
     selectPointMarker(id)
   }
 
+  // Seek requests from outside the transport (commentary links).
+  const seekRequest = useUIStore((s) => s.seekRequest)
+  useEffect(() => {
+    if (seekRequest && useUIStore.getState().playerStatus === 'ready') engineRef.current.seek(seekRequest.time)
+  }, [seekRequest])
+
   // ── Duration adoption ──────────────────────────────────────────────────────
   // Runs outside undo history (temporal pause): adopting the media's duration
   // is a system act on a fresh document, not an analyst edit to walk back.

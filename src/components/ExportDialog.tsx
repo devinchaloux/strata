@@ -17,6 +17,7 @@ import { downloadBlob, fileBaseName } from '@/lib/fileIO'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { TimeInput } from './TimeInput'
+import { allBlocks, commentaryToHtml } from '@/widgets/written-analysis/commentary'
 import type { StrataDocument } from '@/types/strata'
 
 type RangeMode = 'all' | 'selection' | 'custom'
@@ -107,6 +108,7 @@ export function ExportDialog() {
 
   if (!doc) return null
   const noLayers = exportLayers(doc).length === 0
+  const hasCommentary = allBlocks(doc).length > 0
   const base = fileBaseName(doc)
 
   async function savePng() {
@@ -188,7 +190,18 @@ export function ExportDialog() {
             )}
           </div>
 
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {hasCommentary && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mr-auto"
+                title="All commentary as one web page, in time order"
+                onClick={() => downloadBlob(new Blob([commentaryToHtml(doc)], { type: 'text/html' }), `${base}-commentary.html`)}
+              >
+                <Download size={13} aria-hidden /> Commentary (HTML)
+              </Button>
+            )}
             <Button variant="outline" size="sm" disabled={!svg || noLayers} onClick={savePng}>
               <Download size={13} aria-hidden /> PNG
             </Button>

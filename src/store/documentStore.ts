@@ -1,10 +1,11 @@
 import { create } from 'zustand'
 import { temporal } from 'zundo'
-import type { StrataDocument, Layer, Span, PointMarker, SharedTimePoint } from '@/types/strata'
+import type { StrataDocument, Layer, LayerBase, Span, PointMarker, SharedTimePoint } from '@/types/strata'
 import type { FormDiagramData } from '@/types/strata'
 import { placeBoundaryInSpans, setSpanEdge, findOverlaps, MIN_SPAN_WIDTH } from '@/lib/spanEdit'
 import { groupingHandleSet, breakHistoryGroup } from '@/store/history'
 import { slugify, uniqueSlug, slugsInUse, allSpans, resolveSlugCollisions } from '@/lib/slug'
+import { setSpanCommentary as withSpanCommentary, reanchorOrphans } from '@/widgets/written-analysis/commentary'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,7 +55,9 @@ interface DocumentState {
 
   // Layer actions
   addLayer: (layer: Layer) => void
-  updateLayer: (id: string, patch: Partial<Omit<Layer, 'id' | 'type'>>) => void
+  // Envelope fields only (label, visibility, colours…); a layer's data changes
+  // through the span and commentary actions, which enforce its invariants.
+  updateLayer: (id: string, patch: Partial<Omit<LayerBase, 'id'>>) => void
   removeLayer: (id: string) => void
   // Reorder: given the layer ids in their new top-to-bottom display order,
   // reassign the displayOrder values those layers already hold (top gets the
@@ -72,6 +75,9 @@ interface DocumentState {
   setSpanLabels: (spanIds: string[], label: string | null) => void
   // Explicitly re-derive a span's slug from its current label, frozen or not.
   regenerateSlug: (spanId: string) => void
+  // Written analysis: set or clear (empty text) a span's commentary. The first
+  // commentary creates the document's written-analysis layer.
+  setSpanCommentary: (spanId: string, text: string) => void
   removeSpan: (layerId: string, spanId: string) => void
   mergeSpans: (layerId: string, spanIds: string[], result: Span) => void
   // Spacebar / Split: place a boundary at `time`, splitting the containing span
@@ -221,14 +227,15 @@ const useDocumentStore = create<DocumentState>()(
       removeLayer: (id) => {
         const doc = get().document
         if (!doc) return
-        set({
-          document: {
-            ...doc,
-            layers: doc.layers.filter((l) => l.id !== id),
-            sharedTimePoints: doc.sharedTimePoints.filter((p) => p.sourceLayerId !== id),
-            updatedAt: now(),
-          },
-        })
+        // A deleted form layer takes its spans with it; their commentary stays,
+        // re-anchored to the times those spans covered.
+        const next = {
+          ...doc,
+          layers: doc.layers.filter((l) => l.id !== id),
+          sharedTimePoints: doc.sharedTimePoints.filter((p) => p.sourceLayerId !== id),
+          updatedAt: now(),
+        }
+        set({ document: reanchorOrphans(doc, next) })
       },
 
       reorderLayers: (idsTopToBottom) => {
@@ -348,15 +355,15 @@ const useDocumentStore = create<DocumentState>()(
       removeSpan: (layerId, spanId) => {
         const doc = get().document
         if (!doc) return
-        set({
-          document: {
-            ...doc,
-            layers: mapLayer(doc.layers, layerId, (l) =>
-              mapFormDiagramSpans(l, (spans) => spans.filter((s) => s.id !== spanId))
-            ),
-            updatedAt: now(),
-          },
-        })
+        const next = {
+          ...doc,
+          layers: mapLayer(doc.layers, layerId, (l) =>
+            mapFormDiagramSpans(l, (spans) => spans.filter((s) => s.id !== spanId))
+          ),
+          updatedAt: now(),
+        }
+        // The span's commentary survives, anchored to the span's old times.
+        set({ document: reanchorOrphans(doc, next) })
       },
 
       mergeSpans: (layerId, spanIds, result) => {
@@ -373,19 +380,26 @@ const useDocumentStore = create<DocumentState>()(
         if (heir && get().frozenSlugIds.has(heir.id) && result.slug === heir.slug) {
           set({ frozenSlugIds: new Set([...get().frozenSlugIds, result.id]) })
         }
-        set({
-          document: {
-            ...doc,
-            layers: mapLayer(doc.layers, layerId, (l) =>
-              mapFormDiagramSpans(l, (spans) =>
-                [...spans.filter((s) => !spanIds.includes(s.id)), result].sort(
-                  (a, b) => a.startTime - b.startTime
-                )
+        const next = {
+          ...doc,
+          layers: mapLayer(doc.layers, layerId, (l) =>
+            mapFormDiagramSpans(l, (spans) =>
+              [...spans.filter((s) => !spanIds.includes(s.id)), result].sort(
+                (a, b) => a.startTime - b.startTime
               )
-            ),
-            updatedAt: now(),
-          },
-        })
+            )
+          ),
+          updatedAt: now(),
+        }
+        // The sources' commentary moves to the merged span (combined).
+        set({ document: reanchorOrphans(doc, next) })
+      },
+
+      setSpanCommentary: (spanId, text) => {
+        const doc = get().document
+        if (!doc) return
+        const next = withSpanCommentary(doc, spanId, text, () => crypto.randomUUID())
+        if (next !== doc) set({ document: { ...next, updatedAt: now() } })
       },
 
       placeBoundary: (layerId, time) => {

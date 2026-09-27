@@ -5,6 +5,7 @@
  * schema doesn't allow (it uses additionalProperties: false) fails here instead
  * of in someone else's corpus script.
  */
+import { formSpans } from '@/lib/layers'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -50,7 +51,7 @@ describe('documents the app writes', () => {
 
   it('stay valid after the common edits', () => {
     const layer = store().document!.layers[0]
-    const [first, second] = layer.data.spans
+    const [first, second] = formSpans(layer)
 
     store().placeBoundary(layer.id, (first.startTime + first.endTime) / 2) // split
     store().setSpanLabels([first.id], 'Intro′') // label + slug
@@ -77,7 +78,7 @@ describe('documents the app writes', () => {
 
   it('stay valid after a merge', () => {
     const layer = store().document!.layers[0]
-    const sources = layer.data.spans.slice(0, 2)
+    const sources = formSpans(layer).slice(0, 2)
     const { draft } = resolveMerge(sources, () => crypto.randomUUID())
     store().mergeSpans(layer.id, sources.map((s) => s.id), draft)
     expectValid(doc())

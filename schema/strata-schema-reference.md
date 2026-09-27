@@ -169,12 +169,12 @@ Every layer, regardless of type, has these fields:
 | Field | Type | Required | What it means |
 |---|---|---|---|
 | `id` | UUID | Yes | Auto-generated unique identifier. Never changes. |
-| `type` | text | Yes | Widget type. `form-diagram` is the only type in v1. Future types: `energy-contour`, `instrumentation`, `written-analysis`. |
+| `type` | text | Yes | Widget type: `form-diagram` or `written-analysis`. Future types: `energy-contour`, `instrumentation`. |
 | `label` | text | Yes | Short human-readable name set by the analyst. Displayed in the layer panel. |
 | `description` | text or null | No | Optional longer description of this layer's analytical purpose or framework — e.g. `Hepokoski/Darcy exposition analysis` or `Phrase-level hypermeter, 4-bar units`. Distinct from label: the label is the tab name; the description is the analytical context note shown on demand. |
 | `visibility` | true/false | Yes | Whether this layer is shown in the editor and included in exports. |
 | `locked` | true/false | Yes | When true, the layer cannot be edited — only viewed and exported. |
-| `colorDefault` | hex color | Yes | Fallback color for all spans in this layer that have no individual color override. |
+| `fillColorDefault` / `strokeColorDefault` | hex color | Yes | Fallback fill and outline for spans in this layer that have no individual override. Required on every layer; a written-analysis layer carries them but doesn't draw with them. |
 | `displayOrder` | whole number | Yes | Rendering order. Lower numbers render first (at the bottom of the stack). |
 | `spanShape` | `bracket` or `bar` | No | Visual style for this layer's spans. Omit or `bracket` = today's rendering (the analytical bracket/arc shapes). `bar` draws thin flat rects instead — intended for key-area layers (spans carrying a `keyArea` caption), though the field itself is generic. A setting buried in layer settings, not offered when first creating a layer. Purely visual: the same span data model and interactions (placement, drag, merge) work identically either way. |
 | `data` | object | Yes | The layer's actual analytical data. Its structure depends on the `type` field — see below. |
@@ -188,6 +188,35 @@ The `data` field for a form-diagram layer contains:
 | `hierarchicalEnforcement` | true/false | Yes | **Stale — unused by the app, kept for file compatibility.** Hierarchical enforcement was redefined (2026-06-22) as a cross-layer nesting constraint scoped to the form-diagram widget type, so it cannot live on one layer's data; the field will be relocated when that feature is built (see `docs/decisions.md`). Strata's default theoretical position is unchanged: overlapping analytical frameworks are valid, and the schema always allows overlapping spans. |
 | `spans` | list of Span objects | Yes | All formal sections in this layer. See [Spans](#6-spans) below. |
 
+### Written Analysis Layer Data (`type = "written-analysis"`)
+
+Prose commentary tied to the timeline. Each block surfaces in the editor while
+its passage plays. The app creates a written-analysis layer the first time an
+analyst writes commentary on a span; a file needs at most one, but more are
+allowed.
+
+| Field | Type | Required | What it means |
+|---|---|---|---|
+| `blocks` | list of Analysis Blocks | Yes | The commentary, in any order. |
+
+**Analysis Block**
+
+| Field | Type | Required | What it means |
+|---|---|---|---|
+| `id` | UUID | Yes | Auto-generated unique identifier. |
+| `anchor` | object | Yes | What the block is about: `{ "spanId": "<uuid>" }` for a span (in any form-diagram layer), or `{ "start": <seconds>, "end": <seconds> }` for a stretch of time. |
+| `text` | text | Yes | The commentary. Blank lines separate paragraphs; `**bold**` and `*italic*` are emphasis; `[[slug]]` (or `[[slug\|shown text]]`) links to the span with that slug. Everything else is literal text. |
+
+> **Why anchors can be times:** commentary is never deleted by an edit
+> elsewhere. When a span with commentary is merged, the commentary moves to the
+> merged span (two pieces are combined); when it is deleted, the block keeps
+> the time range the span covered. A span carries at most one block.
+
+> **Why links use slugs, not ids:** a slug is readable in the text the analyst
+> writes, and it is frozen once the file is saved, so a link keeps working when
+> the span is relabelled. A link to a slug that no longer exists shows as plain
+> text.
+
 ---
 
 ## 6. Spans
@@ -199,7 +228,7 @@ A **span** is a time range that represents a formal section: a verse, a drop, a 
 | `id` | UUID | Yes | Auto-generated unique identifier. **Never changes, never shown to the user.** Used internally for merge tracking, inter-widget links, and the embeddable viewer. |
 | `label` | text or null | No | Free text display name set by the analyst — what they call this section. Optional: null for unlabeled spans (e.g. bar-level hypermeter spans where the `type` field carries all the analytical meaning). Empty string is valid for a newly placed span awaiting a label. Examples: `Drop 1`, `THE DROP`, `Exposition`. |
 | `shortLabel` | text or null | No | Optional analyst-authored abbreviation of `label` — e.g. `Verse 1` → `V1`, `Breakdown` → `Br`. Shown above the shape in place of the full label when the full label doesn't fit at the current zoom; never truncated further itself. There is no algorithmic abbreviation of above-shape labels — if neither `label` nor `shortLabel` fits, nothing renders (a small marker indicates a hidden label is present). |
-| `slug` | text or null | No | Generated from the label — e.g. `Drop 1` becomes `drop-1`, `A′` becomes `a-prime`. The reference key the embeddable viewer uses (`focus="drop-1"`) and future inter-widget links will use. **Unique across the document**: a repeat gets a suffix (`verse`, `verse-2`, …) in time order. **Stable once saved**: until the file is saved the slug follows label edits; after that, renaming the span leaves the slug unchanged so links to it keep working, and the analyst can regenerate it on purpose. Null when no label is set. |
+| `slug` | text or null | No | Generated from the label — e.g. `Drop 1` becomes `drop-1`, `A′` becomes `a-prime`. The reference key the embeddable viewer uses (`focus="drop-1"`) and commentary links (`[[drop-1]]`) use. **Unique across the document**: a repeat gets a suffix (`verse`, `verse-2`, …) in time order. **Stable once saved**: until the file is saved the slug follows label edits; after that, renaming the span leaves the slug unchanged so links to it keep working, and the analyst can regenerate it on purpose. Null when no label is set. |
 | `startTime` | decimal number | Yes | Start of the span in recording time, seconds. |
 | `endTime` | decimal number | Yes | End of the span in recording time, seconds. Must be greater than `startTime`. |
 | `type` | vocabulary term ID or null | No | The corpus-queryable classification of this section — drawn from the global built-in list or from this document's `vocabulary.spanTypes`. Separate from `label` by design: an analyst can call a section `THE DROP` (label) while typing it as `drop` (type). The `type` field is what makes cross-corpus comparison possible. Null if no type has been assigned. |
@@ -225,7 +254,7 @@ This is one of the most important design decisions in the schema:
 |---|---|---|
 | `id` | Internal, machine-readable identity | The app, internally. Never visible to the analyst. |
 | `label` | Human-readable display name | The analyst sets this. Shown on the diagram. Can be anything. |
-| `slug` | Stable human-readable reference key | The embeddable viewer (`focus="drop-1"`), inter-widget links. Unique per document; frozen once saved. |
+| `slug` | Stable human-readable reference key | The embeddable viewer (`focus="drop-1"`), commentary links (`[[drop-1]]`). Unique per document; frozen once saved. |
 | `type` | Corpus-queryable classification | The database, queries, and comparisons across files. Comes from a controlled vocabulary. |
 
 An analyst can call a section `"THE DROP"` and classify it as type `drop`. Another analyst can call the same formal event `"Main Drop"` and classify it as type `drop`. Because both use the same `type`, a corpus query for `drop` sections finds both — even though the labels differ. **The `type` field is what makes Strata a corpus tool rather than a diagramming tool.**

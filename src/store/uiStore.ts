@@ -115,6 +115,11 @@ export interface UIState {
   // The export dialog (SVG / PNG of the form diagram).
   exportOpen: boolean
 
+  // A request for the player to jump to a time, from outside the transport
+  // (e.g. a commentary link). PlayerDock owns the engine and carries it out;
+  // `n` makes two requests for the same time distinct.
+  seekRequest: { time: number; n: number } | null
+
   // Actions — playback
   setCurrentTime: (time: number) => void
   setDuration: (duration: number) => void
@@ -157,6 +162,7 @@ export interface UIState {
   showAppMessage: (title: string, lines: string[]) => void
   dismissAppMessage: () => void
   setExportOpen: (open: boolean) => void
+  requestSeek: (time: number) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -195,6 +201,7 @@ const useUIStore = create<UIState>()((set) => ({
   recoveryModalOpen: false,
   appMessage: null,
   exportOpen: false,
+  seekRequest: null,
 
   setCurrentTime: (time) => set({ currentTime: time }),
   setDuration: (duration) => set({ duration }),
@@ -245,6 +252,7 @@ const useUIStore = create<UIState>()((set) => ({
   showAppMessage: (title, lines) => set({ appMessage: { title, lines } }),
   dismissAppMessage: () => set({ appMessage: null }),
   setExportOpen: (open) => set({ exportOpen: open }),
+  requestSeek: (time) => set((s) => ({ seekRequest: { time, n: (s.seekRequest?.n ?? 0) + 1 } })),
 }))
 
 export { useUIStore }

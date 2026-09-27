@@ -2769,3 +2769,42 @@ figure means an exported diagram can't drift from what the analyst sees. PDF is
 deferred: pdf-lib can't draw SVG, so PDF needs either a rasteriser (losing vector
 quality) or an SVG-to-PDF library, which is a dependency decision; SVG already
 drops into every paper workflow and PNG covers slides.
+
+---
+
+## Written Analysis Widget (2026-09-27)
+
+**Decision:** The written-analysis widget ships in v1 as commentary on spans.
+Each span has one Commentary box in the Inspector; what's written there is
+stored as a block in a `written-analysis` layer (created automatically on first
+use) anchored to the span's id, and shows in the space above the diagram while
+that span plays, or while it is selected and playback is paused. The text
+format is deliberately tiny: blank lines for paragraphs, `**bold**`, `*italic*`,
+and `[[slug]]` / `[[slug|text]]` links that select the span and move playback to
+it. The whole commentary exports as one HTML page in time order, with the links
+as in-page links.
+**Rationale:** Realises the earlier decisions: hierarchy through prose
+reference, not nested data; HTML as the default export. Anchoring by span id
+means commentary follows a span through boundary drags and relabels; links use
+the slug because it is readable in the prose and frozen once saved. The widget
+has no timeline presence of its own, so the open area above the diagram is its
+home rather than a new zone below the ruler.
+
+**Decision:** Commentary survives edits elsewhere. When spans are merged, their
+commentary moves to the merged span and is combined; when a span is deleted
+(directly, or with its layer), its commentary becomes a block anchored to the
+time range the span covered. Anchors are therefore either `{spanId}` or
+`{start, end}`.
+**Rationale:** An analyst's prose is the most expensive thing in the file to
+recreate; a structural edit must never silently delete it. A time-range block
+still surfaces at the right moment and can be re-attached by hand.
+
+**Decision:** Opening a file fills in slugs for labelled spans that lack one
+(unique, in time order), keeping every existing slug.
+**Rationale:** Links need slugs, and files written before slugs were
+generated (including the bundled demo) have labels but no slugs. Existing
+slugs are never changed, so nothing an embed or a link already uses moves.
+
+Not yet built: links to point markers (markers have no slug), a Markdown export,
+and free time-range commentary created from the UI (the format already allows
+it).

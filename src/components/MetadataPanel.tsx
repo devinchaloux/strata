@@ -16,6 +16,7 @@ import { useUIStore } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
 import { formatTime } from '@/lib/youtube'
 import { TimeInput } from './TimeInput'
+import { blockForSpan } from '@/widgets/written-analysis/commentary'
 import { capFromBoundaryType } from '@/lib/formShape'
 import { slugify } from '@/lib/slug'
 import { ColorPicker } from '@/components/ui/color-picker'
@@ -279,6 +280,8 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   const setSpanEdgeAction = useDocumentStore((s) => s.setSpanEdge)
   const setSpanLabels = useDocumentStore((s) => s.setSpanLabels)
   const regenerateSlug = useDocumentStore((s) => s.regenerateSlug)
+  const setSpanCommentary = useDocumentStore((s) => s.setSpanCommentary)
+  const commentary = useDocumentStore((s) => (s.document ? blockForSpan(s.document, span.id)?.text ?? '' : ''))
   // A frozen slug that no longer matches its label (the span was renamed after
   // a save). The suffix match lets "verse-2" still count as matching "Verse".
   const expectedBase = span.label ? slugify(span.label) : null
@@ -527,6 +530,22 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             rows={2}
             value={span.notes ?? ''}
             onChange={(e) => update({ notes: e.target.value || null })}
+          />
+        </Field>
+
+        {/* Written analysis: prose about this span, shown above the diagram
+            while it plays. Stored in the document's commentary layer, not on
+            the span, so it can outlive the span (see widgets/written-analysis). */}
+        <Field
+          label="Commentary"
+          tooltip="Shows above the diagram while this span plays. Link to another span with [[its-slug]]; **bold** and *italic* work."
+        >
+          <textarea
+            className={`${inputClass} resize-y`}
+            rows={5}
+            value={commentary}
+            placeholder="Write about this passage."
+            onChange={(e) => setSpanCommentary(span.id, e.target.value)}
           />
         </Field>
 

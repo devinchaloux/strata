@@ -1,3 +1,4 @@
+import { formSpans } from '@/lib/layers'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { slugify, uniqueSlug } from '@/lib/slug'
 import { useDocumentStore } from '@/store/documentStore'
@@ -33,7 +34,7 @@ describe('uniqueSlug', () => {
 
 describe('slugs in the store', () => {
   const store = () => useDocumentStore.getState()
-  const spans = () => store().document!.layers.flatMap((l) => l.data.spans)
+  const spans = () => store().document!.layers.flatMap((l) => formSpans(l))
   const slugOf = (id: string) => spans().find((s) => s.id === id)?.slug
 
   beforeEach(() => {

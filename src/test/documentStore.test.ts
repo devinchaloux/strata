@@ -98,7 +98,7 @@ describe('loadId (re-fit-on-load signal)', () => {
 
 describe('updateSpans (bulk edit)', () => {
   function spanLayer(id: string, spans: Span[]): Layer {
-    return { ...layer(id, 0), data: { hierarchicalEnforcement: false, spans } }
+    return { ...layer(id, 0), type: 'form-diagram', data: { hierarchicalEnforcement: false, spans } }
   }
   function spansOf(layerId: string): Span[] {
     const l = useDocumentStore.getState().document!.layers.find((x) => x.id === layerId)!

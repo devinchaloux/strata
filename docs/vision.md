@@ -123,7 +123,7 @@ Each widget type defines a contract:
 - A **timeline presence** — does it draw anything on the shared horizontal axis?
 - An **export definition** — what formats does this widget support, and what function produces each blob?
 
-Built-in widget types for v1: Form Diagram. Additional types (Energy Contour, Instrumentation/Layer Map, Timestamped Written Analysis) are planned but not required for v1. See Section 6 for the full widget roadmap and the analytical rationale for the three-widget stack. Third-party widgets can be implemented by anyone as long as they conform to the widget contract.
+Built-in widget types for v1: Form Diagram and Written Analysis (added 2026-09-27; see 6.4). Additional types (Energy Contour, Instrumentation/Layer Map) are planned but not required for v1. See Section 6 for the full widget roadmap and the analytical rationale for the three-widget stack. Third-party widgets can be implemented by anyone as long as they conform to the widget contract.
 
 ### 2.4 The Shared Timeline Axis
 
@@ -467,6 +467,8 @@ A DAW-style view showing which instruments, voices, or elements are present at a
 > **Relationship to the energy contour:** the instrumentation widget is the natural home for mechanism-level detail. Where the energy contour records that energy increased gradually over sixteen bars, the instrumentation widget can show which elements were added, which automation curves were running, and what production techniques produced that increase. Smith's (2021) continuous process framework — tracking filter sweeps, pitch slides, and snare rolls as formal mechanisms — is most naturally captured at this layer. The two widgets answer different questions and are designed to coexist in the same analysis file.
 
 ### 6.4 v2/v3+: Timestamped Written Analysis
+
+> **Status (2026-09-27):** a first version shipped in v1: commentary anchored to spans or time ranges, surfacing during playback, with `[[slug]]` links to spans and HTML export. Links to point markers, a Markdown export, and clicking a span to open its commentary are not built yet. See `widgets/written-analysis.md`.
 
 Text blocks anchored to specific spans or timestamps. When the playback cursor enters a span, the relevant text block surfaces. Clicking a section in the form diagram opens a deeper written commentary. This is the "flowering" feature — the point where Strata becomes not just a diagram tool but an interactive analytical document.
 

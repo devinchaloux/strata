@@ -21,6 +21,7 @@ import type { StrataDocument, Layer, Span, FormDiagramData } from '@/types/strat
 import { findOverlaps } from '@/lib/spanEdit'
 import { formatTime } from '@/lib/youtube'
 import { FILE_FORMAT_VERSION, migrate } from '@/lib/migrations'
+import { slugify, uniqueSlug } from '@/lib/slug'
 
 /** The newest file format this build understands. */
 export const SUPPORTED_FILE_FORMAT_VERSION = FILE_FORMAT_VERSION
@@ -101,7 +102,36 @@ export function readDocument(raw: unknown): LoadResult {
     layers,
   } as StrataDocument
 
-  return { doc, notices }
+  return { doc: fillMissingSlugs(doc), notices }
+}
+
+/**
+ * A labelled span with no slug can't be linked to from commentary or targeted
+ * by an embed. Older files (and the demo) have none, so they're derived here,
+ * from the label, unique across the document and in time order. Existing slugs
+ * are never changed: something may already point at them.
+ */
+function fillMissingSlugs(doc: StrataDocument): StrataDocument {
+  const spans = doc.layers.flatMap((l) => (l.type === 'form-diagram' ? l.data.spans : []))
+  if (!spans.some((s) => s.label && !s.slug)) return doc
+  const taken = new Set(spans.map((s) => s.slug).filter((x): x is string => !!x))
+  const assigned = new Map<string, string>()
+  for (const s of [...spans].sort((a, b) => a.startTime - b.startTime)) {
+    if (s.slug || !s.label) continue
+    const base = slugify(s.label)
+    if (!base) continue
+    const slug = uniqueSlug(base, taken)
+    taken.add(slug)
+    assigned.set(s.id, slug)
+  }
+  return {
+    ...doc,
+    layers: doc.layers.map((l) =>
+      l.type === 'form-diagram'
+        ? { ...l, data: { ...l.data, spans: l.data.spans.map((s) => (assigned.has(s.id) ? { ...s, slug: assigned.get(s.id)! } : s)) } }
+        : l,
+    ),
+  }
 }
 
 function readLayer(raw: unknown, index: number, spanIds: Set<string>, notices: string[]): Layer {
@@ -119,6 +149,8 @@ function readLayer(raw: unknown, index: number, spanIds: Set<string>, notices: s
     strokeColorDefault: str(raw.strokeColorDefault, '#475569'),
     displayOrder: isNum(raw.displayOrder) ? raw.displayOrder : index,
   }
+
+  if (raw.type === 'written-analysis') return readAnalysisLayer(base, raw, where)
 
   if (raw.type !== 'form-diagram') {
     // Kept verbatim so saving round-trips it; FormDiagram only draws its own type.
@@ -151,6 +183,25 @@ function readLayer(raw: unknown, index: number, spanIds: Set<string>, notices: s
     spans,
   }
   return { ...base, type: 'form-diagram', data: formData } as Layer
+}
+
+/** A written-analysis layer: commentary blocks, each anchored to a span or a time range. */
+function readAnalysisLayer(base: Obj, raw: Obj, where: string): Layer {
+  const data = isObj(raw.data) ? raw.data : {}
+  const blocks = (Array.isArray(data.blocks) ? data.blocks : []).map((b, i) => {
+    const at = `${where}, commentary ${i + 1}`
+    if (!isObj(b) || typeof b.id !== 'string') throw new DocumentError(`${at} has no id.`)
+    const a = isObj(b.anchor) ? b.anchor : null
+    const anchor =
+      a && typeof a.spanId === 'string'
+        ? { spanId: a.spanId }
+        : a && isNum(a.start) && isNum(a.end) && a.end > a.start
+          ? { start: a.start, end: a.end }
+          : null
+    if (!anchor) throw new DocumentError(`${at} isn't attached to a span or a time range.`)
+    return { id: b.id, anchor, text: typeof b.text === 'string' ? b.text : '' }
+  })
+  return { ...base, type: 'written-analysis', data: { blocks } } as Layer
 }
 
 function readSpan(raw: unknown, where: string, spanIds: Set<string>): Span {
