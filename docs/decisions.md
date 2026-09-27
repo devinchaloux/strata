@@ -2904,3 +2904,25 @@ dash-spliced strings are sentences; the home key's two fields sit under one
 **Rationale:** Finishes backlog #23 under the rules in "UI Copy Pass & Point
 Marker Vocabulary". Placeholders keep the "e.g." prefix used in batches 1–2 so
 examples read the same everywhere (rule 5).
+
+---
+
+## Video Below the Fold (2026-09-27)
+
+**Decision:** The page scrolls. The work area (commentary, diagram, then the
+play bar) fills exactly one screen, and a docked video sits just below it at
+480×270, out of view until the analyst scrolls or presses the play bar's
+**Video** button, which scrolls there (and becomes **Back to diagram**). The
+toolbar and Inspector stay pinned. The Video button's tooltip says why the
+player can't be hidden. The corner mini player is unchanged and doesn't scroll.
+With the video out of view, dialogs centre normally; "Dialogs Stay Clear of the
+Player" applies only when some of it is on screen.
+**Rationale:** Devin wanted the player "as unintrusive as possible". YouTube's
+rules forbid covering, hiding or shrinking the player below 200×200, and
+playing from a player not displayed in the page; they don't require it to be
+in view (only autoplay has a visibility rule, and Strata doesn't autoplay). A
+player scrolled past, like an embed in a blog post, is still on the page. So
+the video gives up its screen space instead of competing with the diagram, and
+it can be bigger at no cost: 480×270 is YouTube's recommended minimum for 16:9.
+Pausing on dialogs, or turning them into pages, was considered and rejected:
+the rule against covering applies whether the video plays or not.

@@ -1,5 +1,5 @@
-import { useRef, useEffect } from 'react'
-import { Link2, CircleAlert, PictureInPicture2, PanelBottom } from 'lucide-react'
+import { useRef, useEffect, useState, useCallback } from 'react'
+import { Link2, CircleAlert, PictureInPicture2, PanelBottom, ArrowDown, ArrowUp } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { useYouTubePlayer } from '@/hooks/useYouTubePlayer'
@@ -8,6 +8,7 @@ import { extractVideoId, formatTime, isInputFocused } from '@/lib/youtube'
 import { pickAudioFile } from '@/lib/fileIO'
 import { setPlayerElement } from '@/lib/playerClearance'
 import { SeekBar } from './SeekBar'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import type { PlaybackRate } from '@/store/uiStore'
 
 // ---------------------------------------------------------------------------
@@ -108,6 +109,12 @@ const RATES: PlaybackRate[] = [0.5, 0.75, 1, 1.25]
 const VIDEO_MIN = 200
 /** Mini player width: 16:9 at the minimum height. */
 const VIDEO_MINI_WIDTH = Math.round((VIDEO_MIN * 16) / 9)
+/**
+ * Docked below the fold it costs the work area nothing, so it gets the size
+ * YouTube recommends for a 16:9 player (at least 480×270).
+ */
+const VIDEO_DOCKED_W = 480
+const VIDEO_DOCKED_H = 270
 
 /**
  * The bottom dock: transport bar plus the collapsible video panel. Source-
@@ -165,6 +172,30 @@ export function PlayerDock() {
   // Both engines are always mounted (hooks can't be conditional); exactly one
   // receives a non-null input, the other stays inert.
   const containerRef = useRef<HTMLDivElement>(null)
+
+  // ── Video below the fold ──────────────────────────────────────────────────
+  // Docked, the video sits under the work area, off-screen until scrolled to.
+  // The Video button scrolls there and back; whether it's in view decides
+  // which way it goes.
+  const [videoEl, setVideoEl] = useState<HTMLDivElement | null>(null)
+  const [videoInView, setVideoInView] = useState(false)
+  useEffect(() => {
+    if (!videoEl) return
+    const io = new IntersectionObserver(([e]) => setVideoInView(e.intersectionRatio >= 0.5), {
+      threshold: [0, 0.5, 1],
+    })
+    io.observe(videoEl)
+    return () => io.disconnect()
+  }, [videoEl])
+  // Stable, so React calls it only when the element mounts or unmounts.
+  const registerVideo = useCallback((el: HTMLDivElement | null) => {
+    setPlayerElement(el)
+    setVideoEl(el)
+  }, [])
+  function toggleVideoView() {
+    if (videoInView) window.scrollTo({ top: 0, behavior: 'smooth' })
+    else videoEl?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  }
   const ytEngine = useYouTubePlayer(containerRef, videoId, sourceOffset)
   const audioEngine = useAudioPlayer(isLocal ? audioFile : null, sourceOffset)
   const engine = source?.type === 'local' ? audioEngine : ytEngine
@@ -421,12 +452,34 @@ export function PlayerDock() {
           </TransportButton>
         )}
 
+        {/* Scroll to the docked video and back. It can't be hidden (YouTube's
+            rules), so this is how it gets out of the way. */}
+        {videoId && !videoMini && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={toggleVideoView}
+                className="flex h-7 items-center gap-1.5 rounded-md border border-border px-2 text-xs font-medium text-foreground
+                  hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card"
+              >
+                {videoInView ? <ArrowUp size={13} aria-hidden /> : <ArrowDown size={13} aria-hidden />}
+                {videoInView ? 'Back to diagram' : 'Video'}
+              </button>
+            </TooltipTrigger>
+            {!videoInView && (
+              <TooltipContent className="max-w-60">
+                YouTube requires its player to stay on the page, so it can’t be hidden. Scroll down to watch.
+              </TooltipContent>
+            )}
+          </Tooltip>
+        )}
+
         {/* Video placement — docked below, or a mini player in the corner.
             There is deliberately no "hide": see VIDEO_MIN below. */}
         {videoId && (
           <TransportButton
             onClick={toggleVideoMini}
-            title={videoMini ? 'Dock the video below the transport' : 'Shrink the video to a corner'}
+            title={videoMini ? 'Dock the video below the play bar' : 'Shrink the video to a corner'}
           >
             {videoMini ? (
               <PanelBottom size={15} strokeWidth={1.75} />
@@ -440,10 +493,11 @@ export function PlayerDock() {
       {/* ── Video panel ── */}
       {/* One element in both placements: switching only changes its CSS, so
           the iframe is never moved in the DOM (moving an iframe reloads it and
-          kills the YT.Player). Docked, it sits in the column's flow; as a mini
-          player it floats in the left column's top-right corner, over the empty
-          canvas above the bottom-anchored diagram. Either way it stays at least
-          VIDEO_MIN × VIDEO_MIN. Nothing may cover it (YouTube's rules): z-[60]
+          kills the YT.Player). Docked, it sits in the column's flow below the
+          play bar, which is the bottom of the first screen, so it starts out of
+          view; as a mini player it floats in the left column's top-right
+          corner, over the empty canvas above the bottom-anchored diagram.
+          Either way it stays at least VIDEO_MIN × VIDEO_MIN. Nothing may cover it (YouTube's rules): z-[60]
           sits above every menu, popover and dialog (z-50), it registers itself
           so dialogs and their dimming keep clear (lib/playerClearance), and
           pointer-events stays on so it works while a dialog is open. */}
@@ -452,13 +506,15 @@ export function PlayerDock() {
           className={
             videoMini
               ? 'absolute right-3 top-3 z-[60] overflow-hidden rounded-md border border-border shadow-lg'
-              : 'relative z-[60] overflow-hidden border-t border-border'
+              : 'relative z-[60] m-3 overflow-hidden rounded-md border border-border'
           }
           style={{
-            ...(videoMini ? { width: VIDEO_MINI_WIDTH, height: VIDEO_MIN } : { height: VIDEO_MIN }),
+            ...(videoMini
+              ? { width: VIDEO_MINI_WIDTH, height: VIDEO_MIN }
+              : { width: `min(${VIDEO_DOCKED_W}px, calc(100% - 24px))`, minWidth: VIDEO_MIN, height: VIDEO_DOCKED_H }),
             pointerEvents: 'auto',
           }}
-          ref={setPlayerElement}
+          ref={registerVideo}
         >
           <div ref={containerRef} className="h-full w-full" />
         </div>

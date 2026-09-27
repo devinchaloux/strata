@@ -16,7 +16,7 @@ import {
 const MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘' : 'Ctrl'
 
 const STEPS: [string, string][] = [
-  ['Start', 'New analysis, then link a YouTube video or a local audio file.'],
+  ['Start', 'New analysis, then link a YouTube video or a local audio file. The video sits below the diagram; the Video button scrolls to it.'],
   ['Mark', 'Play, and press Space at each boundary you hear. M places a point marker, such as a cadence.'],
   ['Describe', 'Click a span to label it and fill in its details in the Inspector. Drag a boundary to adjust it.'],
   ['Layer', 'Add a layer (+ in the layer panel) for another level of form, or another framework.'],

@@ -32,6 +32,11 @@ import { readStrataFile } from '@/lib/fileIO'
 // Toolbar button
 // ---------------------------------------------------------------------------
 
+// Heights of the toolbar and the play bar (h-10, h-12): the work area is one
+// screen minus these.
+const HEADER_H = 40
+const TRANSPORT_H = 48
+
 function ToolbarButton({
   onClick,
   disabled,
@@ -410,12 +415,12 @@ export default function App() {
   }, [clearSelection, selectPointMarker, guardedNew, guardedOpen, saveFile, saveFileAs])
 
   return (
-    // Full-height app shell: header on top, then a main row of [left work area |
-    // right inspector], so the inspector is a persistent full-height column that
-    // pushes the diagram + transport + video to its left.
-    <div className="flex h-screen flex-col bg-background text-foreground">
-      {/* Toolbar */}
-      <header className="flex h-10 shrink-0 items-center gap-1 border-b border-border px-3">
+    // App shell: a pinned header, then a main row of [left work area | right
+    // inspector]. The page itself scrolls, only far enough to bring a docked
+    // video into view; the header and inspector stay put.
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
+      {/* Toolbar — pinned while the page scrolls down to the video. */}
+      <header className="sticky top-0 z-40 flex h-10 shrink-0 items-center gap-1 border-b border-border bg-background px-3">
         <span className="mr-1 flex items-center gap-1.5 select-none">
           <StrataMark />
           <span className="text-sm font-semibold tracking-tight text-foreground">Strata</span>
@@ -493,25 +498,32 @@ export default function App() {
         )}
       </header>
 
-      {/* Main row — left work area (diagram bottom-anchored on the ruler, then
-          transport + video at the very bottom) and the right inspector. */}
-      <div className="flex min-h-0 flex-1">
+      {/* Main row. The work area (diagram, then the play bar) fills exactly one
+          screen; a docked video sits below it, off-screen until the page is
+          scrolled. YouTube forbids hiding or covering its player, not scrolling
+          it out of view (docs/decisions.md, "Video Below the Fold"). */}
+      <div className="flex">
         {/* relative: the mini video player anchors to this column's corner */}
         <div className="relative flex min-w-0 flex-1 flex-col">
-          {doc ? (
-            <FormDiagram />
-          ) : (
-            <EmptyState onNew={guardedNew} onOpen={guardedOpen} onDemo={guardedDemo} onHelp={() => setHelpOpen(true)} />
-          )}
-          {/* Transport bar + collapsible video panel — bottom of the left column */}
+          <div className="flex min-h-0 flex-col" style={{ height: `calc(100vh - ${HEADER_H + TRANSPORT_H}px)` }}>
+            {doc ? (
+              <FormDiagram />
+            ) : (
+              <EmptyState onNew={guardedNew} onOpen={guardedOpen} onDemo={guardedDemo} onHelp={() => setHelpOpen(true)} />
+            )}
+          </div>
+          {/* The play bar, then the docked video below the fold */}
           <PlayerDock />
         </div>
 
         {doc && (
-          <Inspector
-            collapsed={inspectorCollapsed}
-            onToggle={() => setInspectorCollapsed((v) => !v)}
-          />
+          // Pinned beside the work area while the page scrolls.
+          <div className="sticky flex self-start" style={{ top: HEADER_H, height: `calc(100vh - ${HEADER_H}px)` }}>
+            <Inspector
+              collapsed={inspectorCollapsed}
+              onToggle={() => setInspectorCollapsed((v) => !v)}
+            />
+          </div>
         )}
       </div>
 
