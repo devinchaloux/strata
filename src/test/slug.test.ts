@@ -1,3 +1,4 @@
+import { formSpans } from '@/lib/layers'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { slugify, uniqueSlug } from '@/lib/slug'
 import { useDocumentStore } from '@/store/documentStore'
@@ -33,7 +34,7 @@ describe('uniqueSlug', () => {
 
 describe('slugs in the store', () => {
   const store = () => useDocumentStore.getState()
-  const spans = () => store().document!.layers.flatMap((l) => l.data.spans)
+  const spans = () => store().document!.layers.flatMap((l) => formSpans(l))
   const slugOf = (id: string) => spans().find((s) => s.id === id)?.slug
 
   beforeEach(() => {
@@ -81,5 +82,36 @@ describe('slugs in the store', () => {
     store().setSpanLabels(['a'], 'Drop')
     store().mergeSpans('L', ['a', 'b'], { id: 'm', startTime: 0, endTime: 60, label: 'Drop', slug: 'drop' })
     expect(slugOf('m')).toBe('drop')
+  })
+})
+
+describe('marker slugs', () => {
+  const store = () => useDocumentStore.getState()
+  const marker = (id: string) => store().document!.pointMarkers.find((m) => m.id === id)
+
+  beforeEach(() => {
+    store().loadDocument(makeDoc([makeLayer('L', [makeSpan('a', 0, 30, { label: 'MC', slug: 'mc' })])]))
+  })
+
+  it('share one namespace with span slugs', () => {
+    store().addPointMarker({ id: 'm1', timestamp: 10, label: 'MC' })
+    expect(marker('m1')?.slug).toBe('mc-2')
+  })
+
+  it('follow the label until saved, then stay', () => {
+    store().addPointMarker({ id: 'm1', timestamp: 10 })
+    store().updatePointMarker('m1', { label: 'PAC' })
+    expect(marker('m1')?.slug).toBe('pac')
+    store().markSaved()
+    store().updatePointMarker('m1', { label: 'Final PAC' })
+    expect(marker('m1')?.slug).toBe('pac')
+  })
+
+  it('keep span labels from taking a marker slug', () => {
+    // A span with no saved slug, so its slug follows the new label.
+    store().loadDocument(makeDoc([makeLayer('L', [makeSpan('a', 0, 30)])]))
+    store().addPointMarker({ id: 'm1', timestamp: 10, label: 'Drop' })
+    store().setSpanLabels(['a'], 'Drop')
+    expect(store().document!.layers.flatMap((l) => formSpans(l))[0].slug).toBe('drop-2')
   })
 })

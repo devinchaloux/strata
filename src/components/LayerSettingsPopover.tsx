@@ -85,7 +85,7 @@ export function LayerSettingsPopover({
                 updateLayer(layer.id, { description: e.target.value || null })
               }
               rows={2}
-              placeholder="Optional — the layer's analytical framework or purpose"
+              placeholder="The framework or purpose of this layer"
               className={cn(fieldClass, 'resize-none')}
               style={fieldStyle}
             />
@@ -122,6 +122,33 @@ export function LayerSettingsPopover({
 
           <div className="h-px" style={{ background: 'var(--hairline)' }} />
 
+          {/* Text size — the layer-level fontScale; uniform within a layer. */}
+          <div className="flex items-center justify-between">
+            <span className="text-[12px]" style={{ color: 'var(--ink-primary)' }}>
+              Text size
+            </span>
+            <div className="flex overflow-hidden rounded border" style={{ borderColor: 'var(--hairline)' }} role="radiogroup" aria-label="Text size">
+              {(['sm', 'md', 'lg'] as const).map((size) => {
+                const on = (layer.fontScale ?? 'md') === size
+                return (
+                  <button
+                    key={size}
+                    role="radio"
+                    aria-checked={on}
+                    aria-label={{ sm: 'Small', md: 'Medium', lg: 'Large' }[size]}
+                    onClick={() => updateLayer(layer.id, { fontScale: size })}
+                    className={cn('px-2 py-0.5 text-[11px]', on ? 'bg-accent font-medium' : 'hover:bg-accent/60')}
+                    style={{ color: on ? 'var(--ink-primary)' : 'var(--ink-muted)' }}
+                  >
+                    {{ sm: 'S', md: 'M', lg: 'L' }[size]}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="h-px" style={{ background: 'var(--hairline)' }} />
+
           {/* Shape — buried here rather than offered when first creating a
               layer (per docs/decisions.md "Key-Area Bar Layers"). Purely
               visual: same Span data model and interactions either way. */}
@@ -130,9 +157,8 @@ export function LayerSettingsPopover({
               <span className="text-[12px]" style={{ color: 'var(--ink-primary)' }}>
                 Key-area layer (thin bars)
               </span>
-              <span className="text-[10px]" style={{ color: 'var(--ink-faint)' }}>
-                Draws thin flat bars instead of brackets — for a layer of key-area
-                captions rather than formal sections
+              <span className="text-[10px]" style={{ color: 'var(--ink-muted)' }}>
+                Thin bars instead of brackets, for key areas rather than sections.
               </span>
             </span>
             <Switch

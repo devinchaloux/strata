@@ -14,8 +14,9 @@ import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
-import { formatTime } from '@/lib/youtube'
-import { parseTimecode } from '@/lib/timecode'
+import { formatTime, formatClock } from '@/lib/youtube'
+import { TimeInput } from './TimeInput'
+import { blockForSpan, blockForRange } from '@/widgets/written-analysis/commentary'
 import { capFromBoundaryType } from '@/lib/formShape'
 import { slugify } from '@/lib/slug'
 import { ColorPicker } from '@/components/ui/color-picker'
@@ -37,48 +38,6 @@ import type {
 const KEY_AREA_TIP = 'Relative to the home key.'
 const KEY_AREA_PLACEHOLDER = 'e.g. vi, III'
 
-/**
- * Editable timecode field. Shows the formatted value; on Enter/blur it parses
- * the text and commits (the parent clamps it). Escape or an unparseable value
- * restores the current value.
- */
-function TimeInput({
-  value,
-  onCommit,
-  title,
-}: {
-  value: number
-  onCommit: (seconds: number) => void
-  title: string
-}) {
-  const [text, setText] = useState(() => formatTime(value))
-  // Re-sync when the underlying value changes (commit result, undo, reselect).
-  useEffect(() => setText(formatTime(value)), [value])
-
-  function commit() {
-    const parsed = parseTimecode(text)
-    if (parsed == null) setText(formatTime(value))
-    else onCommit(parsed)
-  }
-
-  return (
-    <input
-      className="w-[88px] rounded border border-border bg-card px-1.5 py-0.5 text-center text-xs tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-      value={text}
-      title={title}
-      aria-label={title}
-      onChange={(e) => setText(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') e.currentTarget.blur()
-        else if (e.key === 'Escape') {
-          setText(formatTime(value))
-          e.currentTarget.blur()
-        }
-      }}
-    />
-  )
-}
 
 function Segmented<T extends string>({
   options,
@@ -165,58 +124,102 @@ const LINESTYLE_OPTS: { value: LineStyle; label: string }[] = [
   { value: 'dashed', label: 'Dashed' },
 ]
 
-/** The per-side cap overrides. The boundary control above already picks a cap,
- *  so these exist only for the case where the analyst wants to diverge from it —
- *  arguing "gradual, but drawn square". Hence the disclosure in ShapeFields. */
-function CapFields({
-  span,
-  update,
+type EndSelect = {
+  label: string
+  value: string
+  options: { value: string; label: string }[]
+  onChange: (v: string) => void
+  mixed?: boolean
+}
+
+/**
+ * How a span's two ends look: the boundary type (the analytical claim) and the
+ * cap (the drawing), one row per end. Boundary leads because choosing it sets
+ * the cap; the cap column is there to diverge from it.
+ */
+function EndsGrid({
+  start,
+  end,
+  showCaps,
 }: {
-  span: Span
-  update: (patch: Partial<Omit<Span, 'id'>>) => void
+  start: [EndSelect, EndSelect]
+  end: [EndSelect, EndSelect]
+  showCaps: boolean
 }) {
-  return (
+  const head = 'text-[10px] font-medium uppercase tracking-wide text-muted-foreground'
+  const select = (c: EndSelect) => (
+    <select
+      aria-label={c.label}
+      className={inputClass}
+      value={c.mixed ? '' : c.value}
+      onChange={(e) => c.onChange(e.target.value)}
+    >
+      {c.mixed && <option value="">Mixed</option>}
+      {c.options.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </select>
+  )
+  const row = (name: string, [boundary, cap]: [EndSelect, EndSelect]) => (
     <>
-      <div className="flex gap-2">
-        <div className="flex-1">
-          <Field label="Start cap">
-            <select
-              className={inputClass}
-              value={span.startCap ?? capFromBoundaryType(span.startBoundaryType)}
-              onChange={(e) => update({ startCap: e.target.value as CapStyle })}
-            >
-              {CAP_OPTS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-        <div className="flex-1">
-          <Field label="End cap">
-            <select
-              className={inputClass}
-              value={span.endCap ?? capFromBoundaryType(span.endBoundaryType)}
-              onChange={(e) => update({ endCap: e.target.value as CapStyle })}
-            >
-              {CAP_OPTS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-      </div>
+      <span className="text-[11px] text-muted-foreground">{name}</span>
+      {select(boundary)}
+      {showCaps && select(cap)}
     </>
+  )
+  return (
+    <div
+      className="mb-3 grid items-center gap-x-2 gap-y-1.5"
+      style={{ gridTemplateColumns: showCaps ? '2.25rem 1fr 1fr' : '2.25rem 1fr' }}
+    >
+      <span />
+      <span className={head}>Boundary</span>
+      {showCaps && <span className={head}>Cap</span>}
+      {row('Start', start)}
+      {row('End', end)}
+    </div>
   )
 }
 
-/** Caps plus stroke. The caps stay in the open (Devin's call, 2026-07-25 — the
- *  disclosure that briefly hid them was wrong): picking a boundary type updates
- *  these dropdowns in place, so the relationship between the analytical claim and
- *  the drawing is visible rather than buried. */
+/** A single span's ends, in the grid above. A new boundary type clears that
+ *  side's cap override so the drawing follows the claim. */
+function SpanEnds({
+  span,
+  update,
+  showCaps,
+}: {
+  span: Span
+  update: (patch: Partial<Omit<Span, 'id'>>) => void
+  showCaps: boolean
+}) {
+  const side = (which: 'start' | 'end'): [EndSelect, EndSelect] => {
+    const bt = which === 'start' ? span.startBoundaryType : span.endBoundaryType
+    const cap = which === 'start' ? span.startCap : span.endCap
+    return [
+      {
+        label: `${which === 'start' ? 'Start' : 'End'} boundary`,
+        value: bt ?? 'definite',
+        options: BOUNDARY_OPTS,
+        onChange: (v) =>
+          update(
+            which === 'start'
+              ? { startBoundaryType: v as BoundaryType, startCap: undefined }
+              : { endBoundaryType: v as BoundaryType, endCap: undefined },
+          ),
+      },
+      {
+        label: `${which === 'start' ? 'Start' : 'End'} cap`,
+        value: cap ?? capFromBoundaryType(bt),
+        options: CAP_OPTS,
+        onChange: (v) => update(which === 'start' ? { startCap: v as CapStyle } : { endCap: v as CapStyle }),
+      },
+    ]
+  }
+  return <EndsGrid start={side('start')} end={side('end')} showCaps={showCaps} />
+}
+
 /**
  * Which bracket sits on top where an elision makes two brackets overlap. Shown
  * only at a boundary that actually overlaps (an elision cap on either side of a
@@ -270,6 +273,9 @@ function OverlapFields({ layer, span }: { layer: Layer; span: Span }) {
   )
 }
 
+/** Overlap order and stroke. The caps live beside the boundary types in
+ *  EndsGrid, still in the open (Devin's call, 2026-07-25): picking a boundary
+ *  type updates its cap in place, on the same row. */
 function ShapeFields({
   layer,
   span,
@@ -281,7 +287,6 @@ function ShapeFields({
 }) {
   return (
     <>
-      <CapFields span={span} update={update} />
       <OverlapFields layer={layer} span={span} />
 
       <Field label="Stroke">
@@ -321,6 +326,8 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   const setSpanEdgeAction = useDocumentStore((s) => s.setSpanEdge)
   const setSpanLabels = useDocumentStore((s) => s.setSpanLabels)
   const regenerateSlug = useDocumentStore((s) => s.regenerateSlug)
+  const setSpanCommentary = useDocumentStore((s) => s.setSpanCommentary)
+  const commentary = useDocumentStore((s) => (s.document ? blockForSpan(s.document, span.id)?.text ?? '' : ''))
   // A frozen slug that no longer matches its label (the span was renamed after
   // a save). The suffix match lets "verse-2" still count as matching "Verse".
   const expectedBase = span.label ? slugify(span.label) : null
@@ -392,8 +399,9 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         </div>
 
         {/* Label */}
-        <Field label="Label">
+        <Field label="Label" symbols>
           <input
+            data-inspector-label
             className={inputClass}
             value={span.label ?? ''}
             placeholder="Unlabeled"
@@ -403,7 +411,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
 
         {/* Short label — shown in place of the full label when the diagram is
             too zoomed out to fit it; never abbreviated further by the app. */}
-        <Field label="Short label" tooltip="Shown when the full label doesn't fit.">
+        <Field label="Short label" tooltip="Shown when the full label doesn't fit." symbols>
           <input
             className={inputClass}
             value={span.shortLabel ?? ''}
@@ -429,7 +437,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             the label (lib/slug.ts), so a rename offers an explicit regenerate. */}
         <Field
           label="Slug"
-          tooltip="The name an embed uses to point at this span. It stays the same after the file is saved, so renaming the span doesn't break links to it."
+          tooltip="The name commentary links ([[its-slug]]) and embeds use for this span. It stays the same after the file is saved, so renaming the span doesn't break links to it."
         >
           <button
             className={`${inputClass} flex items-center justify-between text-left`}
@@ -459,7 +467,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             value={span.type ?? ''}
             onChange={(e) => update({ type: e.target.value || null })}
           >
-            <option value="">— none —</option>
+            <option value="">None</option>
             {spanTypes.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.label}
@@ -473,7 +481,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         </Field>
 
         {/* Annotation */}
-        <Field label="Annotation" helper="Renders inside the shape.">
+        <Field label="Annotation" tooltip="Shown inside the shape on the diagram." symbols>
           <textarea
             className={`${inputClass} resize-y`}
             rows={2}
@@ -491,53 +499,9 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           />
         </Field>
 
-        {/* Boundaries — the analytical claim, and the primary shape control.
-            Choosing one clears any cap override on that side so the drawing
-            follows the claim; the analyst can still diverge under "Override the
-            drawing" below. This inverts the older UI, which surfaced the two
-            per-side cap dropdowns first and left the claim looking duplicative. */}
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <Field label="Start boundary">
-              <select
-                className={inputClass}
-                value={span.startBoundaryType ?? 'definite'}
-                onChange={(e) =>
-                  update({
-                    startBoundaryType: e.target.value as BoundaryType,
-                    startCap: undefined,
-                  })
-                }
-              >
-                {BOUNDARY_OPTS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
-          <div className="flex-1">
-            <Field label="End boundary">
-              <select
-                className={inputClass}
-                value={span.endBoundaryType ?? 'definite'}
-                onChange={(e) =>
-                  update({
-                    endBoundaryType: e.target.value as BoundaryType,
-                    endCap: undefined,
-                  })
-                }
-              >
-                {BOUNDARY_OPTS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
-        </div>
+        {/* Ends — boundary type and cap per side. On a key-area bar the caps
+            mean nothing, so they join the shape fields behind the disclosure. */}
+        <SpanEnds span={span} update={update} showCaps={!isBar || shapeFieldsExpanded} />
 
         {/* Shape — visual caps + stroke (the analyst's drawing choice, decoupled
             from the boundary-type data above). Meaningless on a flat key-area
@@ -563,7 +527,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         )}
 
         {/* Notes */}
-        <Field label="Notes" helper="Not shown on the diagram.">
+        <Field label="Notes" tooltip="For you; not shown on the diagram." symbols>
           <textarea
             className={`${inputClass} resize-y`}
             rows={2}
@@ -572,8 +536,25 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           />
         </Field>
 
+        {/* Written analysis: prose about this span, shown above the diagram
+            while it plays. Stored in the document's commentary layer, not on
+            the span, so it can outlive the span (see widgets/written-analysis). */}
+        <Field
+          label="Commentary"
+          symbols
+          tooltip="Shows above the diagram while this span plays. Link to a span or point marker with [[its-slug]]; **bold** and *italic* work."
+        >
+          <textarea
+            className={`${inputClass} resize-y`}
+            rows={5}
+            value={commentary}
+            placeholder="Write about this passage."
+            onChange={(e) => setSpanCommentary(span.id, e.target.value)}
+          />
+        </Field>
+
         {/* Lyrics */}
-        <Field label="Lyrics" helper="Corpus-queryable">
+        <Field label="Lyrics">
           <textarea
             className={`${inputClass} resize-y`}
             rows={2}
@@ -732,6 +713,13 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
 
   const mergeReason = eligibility.ok ? '' : eligibility.reason
 
+  // Commentary on the whole stretch the selection covers (a time-range block),
+  // as opposed to the per-span commentary each span has on its own.
+  const setRangeCommentary = useDocumentStore((s) => s.setRangeCommentary)
+  const rangeStart = Math.min(...spans.map((s) => s.startTime))
+  const rangeEnd = Math.max(...spans.map((s) => s.endTime))
+  const rangeText = doc ? (blockForRange(doc, rangeStart, rangeEnd)?.text ?? '') : ''
+
   return (
     <div className="flex flex-col">
       <div className="px-3 py-3">
@@ -747,6 +735,20 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
         {!eligibility.ok && (
           <p className="-mt-3 mb-4 text-[10px] text-muted-foreground">{mergeReason}</p>
         )}
+
+        <Field
+          label={`Commentary, ${formatClock(rangeStart)}–${formatClock(rangeEnd)}`}
+          tooltip="About the whole stretch these spans cover. Shows above the diagram while it plays."
+          symbols
+        >
+          <textarea
+            className={`${inputClass} resize-y`}
+            rows={3}
+            value={rangeText}
+            placeholder="Write about this stretch."
+            onChange={(e) => setRangeCommentary(rangeStart, rangeEnd, e.target.value)}
+          />
+        </Field>
 
         <div className="mb-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           Apply to all selected
@@ -769,7 +771,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
             value={type === MIXED ? '' : type}
             onChange={(e) => setAll({ type: e.target.value || null })}
           >
-            <option value="">{type === MIXED ? '— mixed —' : '— none —'}</option>
+            <option value="">{type === MIXED ? 'Mixed' : 'None'}</option>
             {spanTypes.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.label}
@@ -779,7 +781,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
         </Field>
 
         {/* Annotation */}
-        <Field label="Annotation" helper="Renders inside the shape.">
+        <Field label="Annotation" tooltip="Shown inside the shape on the diagram.">
           <textarea
             className={`${inputClass} resize-y`}
             rows={2}
@@ -798,77 +800,18 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
           />
         </Field>
 
-        {/* Boundaries */}
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <Field label="Start boundary">
-              <select
-                className={inputClass}
-                value={startB === MIXED ? '' : startB}
-                onChange={(e) => setAll({ startBoundaryType: e.target.value as BoundaryType })}
-              >
-                {startB === MIXED && <option value="">— mixed —</option>}
-                {BOUNDARY_OPTS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
-          <div className="flex-1">
-            <Field label="End boundary">
-              <select
-                className={inputClass}
-                value={endB === MIXED ? '' : endB}
-                onChange={(e) => setAll({ endBoundaryType: e.target.value as BoundaryType })}
-              >
-                {endB === MIXED && <option value="">— mixed —</option>}
-                {BOUNDARY_OPTS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
-        </div>
-
-        {/* Shape — visual caps + stroke */}
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <Field label="Start cap" helper={startCap === MIXED ? 'Mixed' : undefined}>
-              <select
-                className={inputClass}
-                value={startCap === MIXED ? '' : startCap}
-                onChange={(e) => setAll({ startCap: e.target.value as CapStyle })}
-              >
-                {startCap === MIXED && <option value="">— mixed —</option>}
-                {CAP_OPTS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
-          <div className="flex-1">
-            <Field label="End cap" helper={endCap === MIXED ? 'Mixed' : undefined}>
-              <select
-                className={inputClass}
-                value={endCap === MIXED ? '' : endCap}
-                onChange={(e) => setAll({ endCap: e.target.value as CapStyle })}
-              >
-                {endCap === MIXED && <option value="">— mixed —</option>}
-                {CAP_OPTS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
-        </div>
+        {/* Ends */}
+        <EndsGrid
+          showCaps
+          start={[
+            { label: 'Start boundary', value: startB === MIXED ? '' : startB, mixed: startB === MIXED, options: BOUNDARY_OPTS, onChange: (v) => setAll({ startBoundaryType: v as BoundaryType }) },
+            { label: 'Start cap', value: startCap === MIXED ? '' : startCap, mixed: startCap === MIXED, options: CAP_OPTS, onChange: (v) => setAll({ startCap: v as CapStyle }) },
+          ]}
+          end={[
+            { label: 'End boundary', value: endB === MIXED ? '' : endB, mixed: endB === MIXED, options: BOUNDARY_OPTS, onChange: (v) => setAll({ endBoundaryType: v as BoundaryType }) },
+            { label: 'End cap', value: endCap === MIXED ? '' : endCap, mixed: endCap === MIXED, options: CAP_OPTS, onChange: (v) => setAll({ endCap: v as CapStyle }) },
+          ]}
+        />
 
         {/* Stroke */}
         <Field label="Stroke" helper={lineStyle === MIXED ? 'Mixed' : undefined}>
@@ -880,7 +823,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
         </Field>
 
         {/* Lyrics — repeating sections (e.g. a chorus) often share lyrics */}
-        <Field label="Lyrics" helper="Corpus-queryable">
+        <Field label="Lyrics">
           <textarea
             className={`${inputClass} resize-y`}
             rows={2}
@@ -894,7 +837,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
         <Field
           label="Key area"
           tooltip={KEY_AREA_TIP}
-          helper={keyArea === MIXED ? 'Mixed' : 'Corpus-queryable'}
+          helper={keyArea === MIXED ? 'Mixed' : undefined}
         >
           <input
             className={inputClass}

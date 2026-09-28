@@ -20,9 +20,11 @@
 import type { StrataDocument, Layer, Span, FormDiagramData } from '@/types/strata'
 import { findOverlaps } from '@/lib/spanEdit'
 import { formatTime } from '@/lib/youtube'
+import { FILE_FORMAT_VERSION, migrate } from '@/lib/migrations'
+import { slugify, uniqueSlug } from '@/lib/slug'
 
 /** The newest file format this build understands. */
-export const SUPPORTED_FILE_FORMAT_VERSION = 1
+export const SUPPORTED_FILE_FORMAT_VERSION = FILE_FORMAT_VERSION
 
 /** A file that cannot be opened. The message is written for the analyst. */
 export class DocumentError extends Error {}
@@ -38,20 +40,22 @@ const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 const str = (v: unknown, fallback: string) => (typeof v === 'string' ? v : fallback)
 
-export function readDocument(input: unknown): LoadResult {
+export function readDocument(raw: unknown): LoadResult {
   // ── 1. Identify ──
-  if (!isObj(input)) throw new DocumentError('This file is not a Strata analysis.')
+  if (!isObj(raw)) throw new DocumentError('This file is not a Strata analysis.')
   if (
-    typeof input.strataVersion !== 'string' ||
-    typeof input.fileFormatVersion !== 'number' ||
-    typeof input.title !== 'string' ||
-    !Array.isArray(input.layers)
+    typeof raw.strataVersion !== 'string' ||
+    typeof raw.fileFormatVersion !== 'number' ||
+    typeof raw.title !== 'string' ||
+    !Array.isArray(raw.layers)
   ) {
     throw new DocumentError(
       'This file is missing required fields (strataVersion, fileFormatVersion, title, layers), so it is probably not a Strata analysis.',
     )
   }
 
+  // Older formats are upgraded step by step before anything else reads them.
+  const input = migrate(raw) as Obj & { fileFormatVersion: number; title: string; layers: unknown[] }
   const notices: string[] = []
   if (input.fileFormatVersion > SUPPORTED_FILE_FORMAT_VERSION) {
     notices.push(
@@ -98,7 +102,43 @@ export function readDocument(input: unknown): LoadResult {
     layers,
   } as StrataDocument
 
-  return { doc, notices }
+  return { doc: fillMissingSlugs(doc), notices }
+}
+
+/**
+ * A labelled span with no slug can't be linked to from commentary or targeted
+ * by an embed. Older files (and the demo) have none, so they're derived here,
+ * from the label, unique across the document and in time order. Existing slugs
+ * are never changed: something may already point at them.
+ */
+function fillMissingSlugs(doc: StrataDocument): StrataDocument {
+  const spans = doc.layers.flatMap((l) => (l.type === 'form-diagram' ? l.data.spans : []))
+  const markers = doc.pointMarkers
+  if (![...spans, ...markers].some((s) => s.label && !s.slug)) return doc
+  const taken = new Set([...spans, ...markers].map((s) => s.slug).filter((x): x is string => !!x))
+  const assigned = new Map<string, string>()
+  // Spans first, then markers, each in time order: one namespace for both.
+  const ordered = [
+    ...[...spans].sort((a, b) => a.startTime - b.startTime),
+    ...[...markers].sort((a, b) => a.timestamp - b.timestamp),
+  ]
+  for (const s of ordered) {
+    if (s.slug || !s.label) continue
+    const base = slugify(s.label)
+    if (!base) continue
+    const slug = uniqueSlug(base, taken)
+    taken.add(slug)
+    assigned.set(s.id, slug)
+  }
+  return {
+    ...doc,
+    layers: doc.layers.map((l) =>
+      l.type === 'form-diagram'
+        ? { ...l, data: { ...l.data, spans: l.data.spans.map((s) => (assigned.has(s.id) ? { ...s, slug: assigned.get(s.id)! } : s)) } }
+        : l,
+    ),
+    pointMarkers: markers.map((m) => (assigned.has(m.id) ? { ...m, slug: assigned.get(m.id)! } : m)),
+  }
 }
 
 function readLayer(raw: unknown, index: number, spanIds: Set<string>, notices: string[]): Layer {
@@ -116,6 +156,8 @@ function readLayer(raw: unknown, index: number, spanIds: Set<string>, notices: s
     strokeColorDefault: str(raw.strokeColorDefault, '#475569'),
     displayOrder: isNum(raw.displayOrder) ? raw.displayOrder : index,
   }
+
+  if (raw.type === 'written-analysis') return readAnalysisLayer(base, raw, where)
 
   if (raw.type !== 'form-diagram') {
     // Kept verbatim so saving round-trips it; FormDiagram only draws its own type.
@@ -148,6 +190,25 @@ function readLayer(raw: unknown, index: number, spanIds: Set<string>, notices: s
     spans,
   }
   return { ...base, type: 'form-diagram', data: formData } as Layer
+}
+
+/** A written-analysis layer: commentary blocks, each anchored to a span or a time range. */
+function readAnalysisLayer(base: Obj, raw: Obj, where: string): Layer {
+  const data = isObj(raw.data) ? raw.data : {}
+  const blocks = (Array.isArray(data.blocks) ? data.blocks : []).map((b, i) => {
+    const at = `${where}, commentary ${i + 1}`
+    if (!isObj(b) || typeof b.id !== 'string') throw new DocumentError(`${at} has no id.`)
+    const a = isObj(b.anchor) ? b.anchor : null
+    const anchor =
+      a && typeof a.spanId === 'string'
+        ? { spanId: a.spanId }
+        : a && isNum(a.start) && isNum(a.end) && a.end > a.start
+          ? { start: a.start, end: a.end }
+          : null
+    if (!anchor) throw new DocumentError(`${at} isn't attached to a span or a time range.`)
+    return { id: b.id, anchor, text: typeof b.text === 'string' ? b.text : '' }
+  })
+  return { ...base, type: 'written-analysis', data: { blocks } } as Layer
 }
 
 function readSpan(raw: unknown, where: string, spanIds: Set<string>): Span {

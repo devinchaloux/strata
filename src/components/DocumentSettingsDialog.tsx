@@ -17,9 +17,10 @@
 
 import { useEffect, useState } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
-import { formatTime } from '@/lib/youtube'
+import { formatClock } from '@/lib/youtube'
 import { BUILT_IN_MODES } from '@/lib/modes'
 import { SourceLinkForm } from '@/components/LinkSourceDialog'
+import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Field, inputClass } from '@/components/Field'
 import { toAccidentals } from '@/lib/musicSymbols'
@@ -112,7 +113,7 @@ function ModePicker({
           value={value ?? ''}
           onChange={(e) => onChange(e.target.value || null)}
         >
-          <option value="">— none —</option>
+          <option value="">None</option>
           {allModes.map((m) => (
             <option key={m.id} value={m.id}>
               {m.label}
@@ -165,6 +166,12 @@ export function DocumentSettingsDialog({
   const [tsNumText, setTsNumText] = useState('')
   const [tsDenText, setTsDenText] = useState('')
   const [offsetText, setOffsetText] = useState('')
+  // A new analysis asks only for what starting needs (title, artist, source);
+  // everything else waits behind "More details". Settings show it all.
+  const [showMore, setShowMore] = useState(!isNew)
+  useEffect(() => {
+    if (open) setShowMore(!isNew)
+  }, [open, isNew])
 
   useEffect(() => {
     if (!open || !doc) return
@@ -220,13 +227,13 @@ export function DocumentSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{isNew ? 'New analysis' : 'Document settings'}</DialogTitle>
           <DialogDescription>
             {isNew
-              ? 'Name the track and link the video or audio it plays against. Everything here can be changed later in document settings.'
-              : 'Track metadata that applies to the whole analysis, not any single layer.'}
+              ? 'Name the track and link its video or audio. You can change any of this later.'
+              : 'About the track and this analysis.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -239,7 +246,7 @@ export function DocumentSettingsDialog({
             />
           </Field>
 
-          <Field label="Artist" helper="Comma-separated for multiple artists">
+          <Field label="Artist" helper="Separate several artists with commas.">
             <input
               className={inputClass}
               value={artistText}
@@ -249,6 +256,8 @@ export function DocumentSettingsDialog({
             />
           </Field>
 
+          {showMore && (
+          <>
           <Field label="Context">
             <Segmented
               options={CONTEXT_OPTIONS}
@@ -267,18 +276,32 @@ export function DocumentSettingsDialog({
             </Field>
           )}
 
-          <Field
-            label="Source"
-            helper="Span timestamps store recording time — swapping the source never touches analysis data"
-          >
+          </>
+          )}
+
+          <Field label="Source" tooltip="Changing the source never changes the analysis.">
             <div className="rounded border border-border p-2">
               <SourceLinkForm />
             </div>
           </Field>
 
-          <Field label="Work" helper={'E.g. "Op. 13" — enables cross-file corpus comparison'}>
+          {!showMore && (
+            <button
+              type="button"
+              onClick={() => setShowMore(true)}
+              className="mb-3 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            >
+              More details (work, key, tempo, notes…)
+            </button>
+          )}
+
+          {showMore && (
+          <>
+
+          <Field label="Work" tooltip="Analyses that name the same work can be compared across files.">
             <input
               className={inputClass}
+              placeholder="e.g. Op. 13"
               value={doc.work ?? ''}
               onChange={(e) => updateMeta({ work: e.target.value || null })}
             />
@@ -317,8 +340,9 @@ export function DocumentSettingsDialog({
             </Field>
           </div>
 
+          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-foreground">Home key</p>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Home key — tonic">
+            <Field label="Tonic">
               <input
                 className={inputClass}
                 placeholder="e.g. A, F♯, B♭"
@@ -326,7 +350,7 @@ export function DocumentSettingsDialog({
                 onChange={(e) => commitHomeKey({ tonic: toAccidentals(e.target.value) })}
               />
             </Field>
-            <Field label="Home key — mode">
+            <Field label="Mode">
               <ModePicker
                 value={doc.homeKey?.mode ?? null}
                 customModes={doc.vocabulary.modes}
@@ -335,10 +359,7 @@ export function DocumentSettingsDialog({
             </Field>
           </div>
 
-          <Field
-            label="Cadence marker captions"
-            helper="Point markers are document-level, not per-layer, so this is a single switch for the whole file"
-          >
+          <Field label="Cadence marker captions">
             <label className="flex cursor-pointer items-center justify-between rounded border border-border px-2 py-1.5">
               <span className="text-xs text-foreground">Show on diagram</span>
               <Switch
@@ -375,8 +396,8 @@ export function DocumentSettingsDialog({
           </div>
 
           <Field
-            label="Source sync offset (seconds)"
-            helper="player_time = recording_time + offset — correct this if the source video doesn't start at the recording's true start"
+            label="Sync offset (seconds)"
+            tooltip="How far into the video the recording starts. Set it when the video opens with something before the music."
           >
             <input
               className={inputClass}
@@ -387,9 +408,25 @@ export function DocumentSettingsDialog({
             />
           </Field>
 
+          </>
+          )}
+
+          <div className="mt-2 flex justify-end">
+            <Button
+              size="sm"
+              onClick={() => {
+                commitArtist()
+                onOpenChange(false)
+              }}
+            >
+              {isNew ? 'Start' : 'Done'}
+            </Button>
+          </div>
+
           {/* Read-only identity footer */}
+          {showMore && (
           <div className="mt-4 border-t border-border pt-3 text-[10px] leading-relaxed text-muted-foreground">
-            <p>Duration: {formatTime(doc.duration)}</p>
+            <p>Duration: {formatClock(doc.duration)}</p>
             <p>
               Created {new Date(doc.createdAt).toLocaleString()} · Updated{' '}
               {new Date(doc.updatedAt).toLocaleString()}
@@ -398,6 +435,7 @@ export function DocumentSettingsDialog({
               Strata {doc.strataVersion} · File format v{doc.fileFormatVersion}
             </p>
           </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

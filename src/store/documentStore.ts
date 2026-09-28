@@ -1,10 +1,16 @@
 import { create } from 'zustand'
 import { temporal } from 'zundo'
-import type { StrataDocument, Layer, Span, PointMarker, SharedTimePoint } from '@/types/strata'
+import type { StrataDocument, Layer, LayerBase, Span, PointMarker, SharedTimePoint } from '@/types/strata'
 import type { FormDiagramData } from '@/types/strata'
 import { placeBoundaryInSpans, setSpanEdge, findOverlaps, MIN_SPAN_WIDTH } from '@/lib/spanEdit'
 import { groupingHandleSet, breakHistoryGroup } from '@/store/history'
 import { slugify, uniqueSlug, slugsInUse, allSpans, resolveSlugCollisions } from '@/lib/slug'
+import {
+  setSpanCommentary as withSpanCommentary,
+  setRangeCommentary as withRangeCommentary,
+  setBlockText as withBlockText,
+  reanchorOrphans,
+} from '@/widgets/written-analysis/commentary'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,7 +60,9 @@ interface DocumentState {
 
   // Layer actions
   addLayer: (layer: Layer) => void
-  updateLayer: (id: string, patch: Partial<Omit<Layer, 'id' | 'type'>>) => void
+  // Envelope fields only (label, visibility, colours…); a layer's data changes
+  // through the span and commentary actions, which enforce its invariants.
+  updateLayer: (id: string, patch: Partial<Omit<LayerBase, 'id'>>) => void
   removeLayer: (id: string) => void
   // Reorder: given the layer ids in their new top-to-bottom display order,
   // reassign the displayOrder values those layers already hold (top gets the
@@ -72,6 +80,13 @@ interface DocumentState {
   setSpanLabels: (spanIds: string[], label: string | null) => void
   // Explicitly re-derive a span's slug from its current label, frozen or not.
   regenerateSlug: (spanId: string) => void
+  // Written analysis: set or clear (empty text) a span's commentary. The first
+  // commentary creates the document's written-analysis layer.
+  setSpanCommentary: (spanId: string, text: string) => void
+  // Commentary on a stretch of time rather than one span (empty text clears).
+  setRangeCommentary: (start: number, end: number, text: string) => void
+  // Edit (or, with empty text, remove) one commentary block by id.
+  setCommentaryText: (blockId: string, text: string) => void
   removeSpan: (layerId: string, spanId: string) => void
   mergeSpans: (layerId: string, spanIds: string[], result: Span) => void
   // Spacebar / Split: place a boundary at `time`, splitting the containing span
@@ -139,9 +154,10 @@ function mapFormDiagramSpans(layer: Layer, fn: (spans: Span[]) => Span[]): Layer
   if (layer.type !== 'form-diagram') return layer
   const data = layer.data as FormDiagramData
   const next = fn(data.spans)
-  if (next !== data.spans && findOverlaps(next).length > findOverlaps(data.spans).length) {
-    return layer
-  }
+  // Untouched layers keep their identity, so memoized layers don't re-render:
+  // on a large analysis a one-span edit used to redraw every layer.
+  if (next === data.spans) return layer
+  if (findOverlaps(next).length > findOverlaps(data.spans).length) return layer
   return { ...layer, data: { ...data, spans: next } }
 }
 
@@ -155,9 +171,19 @@ function patchSpans(doc: StrataDocument, ids: Set<string>, fn: (s: Span) => Span
   }
 }
 
-/** Span ids that currently carry a slug — the set that becomes frozen on save. */
+/** Span and marker ids that currently carry a slug — the set that becomes frozen on save. */
 function slugBearingIds(doc: StrataDocument | null): Set<string> {
-  return new Set(doc ? allSpans(doc).filter((s) => s.slug).map((s) => s.id) : [])
+  return new Set(doc ? [...allSpans(doc), ...doc.pointMarkers].filter((s) => s.slug).map((s) => s.id) : [])
+}
+
+/**
+ * A marker's slug after a label write: follows the label unless frozen (saved
+ * and so maybe linked to), unique across spans and markers.
+ */
+function markerSlug(doc: StrataDocument, marker: PointMarker, frozen: Set<string>): string | null | undefined {
+  if (frozen.has(marker.id) && marker.slug) return marker.slug
+  const base = marker.label ? slugify(marker.label) : null
+  return base ? uniqueSlug(base, slugsInUse(doc, new Set([marker.id]))) : null
 }
 
 // ---------------------------------------------------------------------------
@@ -221,14 +247,15 @@ const useDocumentStore = create<DocumentState>()(
       removeLayer: (id) => {
         const doc = get().document
         if (!doc) return
-        set({
-          document: {
-            ...doc,
-            layers: doc.layers.filter((l) => l.id !== id),
-            sharedTimePoints: doc.sharedTimePoints.filter((p) => p.sourceLayerId !== id),
-            updatedAt: now(),
-          },
-        })
+        // A deleted form layer takes its spans with it; their commentary stays,
+        // re-anchored to the times those spans covered.
+        const next = {
+          ...doc,
+          layers: doc.layers.filter((l) => l.id !== id),
+          sharedTimePoints: doc.sharedTimePoints.filter((p) => p.sourceLayerId !== id),
+          updatedAt: now(),
+        }
+        set({ document: reanchorOrphans(doc, next) })
       },
 
       reorderLayers: (idsTopToBottom) => {
@@ -348,15 +375,15 @@ const useDocumentStore = create<DocumentState>()(
       removeSpan: (layerId, spanId) => {
         const doc = get().document
         if (!doc) return
-        set({
-          document: {
-            ...doc,
-            layers: mapLayer(doc.layers, layerId, (l) =>
-              mapFormDiagramSpans(l, (spans) => spans.filter((s) => s.id !== spanId))
-            ),
-            updatedAt: now(),
-          },
-        })
+        const next = {
+          ...doc,
+          layers: mapLayer(doc.layers, layerId, (l) =>
+            mapFormDiagramSpans(l, (spans) => spans.filter((s) => s.id !== spanId))
+          ),
+          updatedAt: now(),
+        }
+        // The span's commentary survives, anchored to the span's old times.
+        set({ document: reanchorOrphans(doc, next) })
       },
 
       mergeSpans: (layerId, spanIds, result) => {
@@ -373,19 +400,40 @@ const useDocumentStore = create<DocumentState>()(
         if (heir && get().frozenSlugIds.has(heir.id) && result.slug === heir.slug) {
           set({ frozenSlugIds: new Set([...get().frozenSlugIds, result.id]) })
         }
-        set({
-          document: {
-            ...doc,
-            layers: mapLayer(doc.layers, layerId, (l) =>
-              mapFormDiagramSpans(l, (spans) =>
-                [...spans.filter((s) => !spanIds.includes(s.id)), result].sort(
-                  (a, b) => a.startTime - b.startTime
-                )
+        const next = {
+          ...doc,
+          layers: mapLayer(doc.layers, layerId, (l) =>
+            mapFormDiagramSpans(l, (spans) =>
+              [...spans.filter((s) => !spanIds.includes(s.id)), result].sort(
+                (a, b) => a.startTime - b.startTime
               )
-            ),
-            updatedAt: now(),
-          },
-        })
+            )
+          ),
+          updatedAt: now(),
+        }
+        // The sources' commentary moves to the merged span (combined).
+        set({ document: reanchorOrphans(doc, next) })
+      },
+
+      setSpanCommentary: (spanId, text) => {
+        const doc = get().document
+        if (!doc) return
+        const next = withSpanCommentary(doc, spanId, text, () => crypto.randomUUID())
+        if (next !== doc) set({ document: { ...next, updatedAt: now() } })
+      },
+
+      setRangeCommentary: (start, end, text) => {
+        const doc = get().document
+        if (!doc || !(end > start)) return
+        const next = withRangeCommentary(doc, start, end, text, () => crypto.randomUUID())
+        if (next !== doc) set({ document: { ...next, updatedAt: now() } })
+      },
+
+      setCommentaryText: (blockId, text) => {
+        const doc = get().document
+        if (!doc) return
+        const next = withBlockText(doc, blockId, text)
+        if (next !== doc) set({ document: { ...next, updatedAt: now() } })
       },
 
       placeBoundary: (layerId, time) => {
@@ -459,6 +507,7 @@ const useDocumentStore = create<DocumentState>()(
       addPointMarker: (marker) => {
         const doc = get().document
         if (!doc) return
+        if (marker.label && marker.slug === undefined) marker = { ...marker, slug: markerSlug(doc, marker, new Set()) }
         set({
           document: {
             ...doc,
@@ -477,7 +526,12 @@ const useDocumentStore = create<DocumentState>()(
           document: {
             ...doc,
             pointMarkers: doc.pointMarkers
-              .map((m) => (m.id === id ? { ...m, ...patch } : m))
+              .map((m) => {
+                if (m.id !== id) return m
+                const next = { ...m, ...patch }
+                // A label change carries a slug change, as for spans.
+                return 'label' in patch ? { ...next, slug: markerSlug(doc, next, get().frozenSlugIds) } : next
+              })
               .sort((a, b) => a.timestamp - b.timestamp),
             updatedAt: now(),
           },

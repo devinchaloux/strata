@@ -97,20 +97,21 @@ export interface UIState {
   // Link-source dialog — openable from the transport bar and document settings
   linkSourceOpen: boolean
 
-  // Document settings dialog (also hosts the new-analysis setup modal), and
-  // the unsaved-changes discard confirmation. Both live here, not as
-  // App-local state, so PlayerDock can see them too — a linked YouTube
-  // iframe renders in its own compositing layer that ignores a dialog
-  // overlay's dimming, so PlayerDock needs to cover it while any modal sits
-  // on top (see PlayerDock's videoPanel curtain).
+  // Document settings dialog (also hosts the new-analysis setup modal).
   documentSettingsOpen: boolean
-  unsavedGuardOpen: boolean
-  recoveryModalOpen: boolean
 
   // A message for the analyst that must be read and dismissed: a file that
   // couldn't open or save, or one that opened with warnings. Replaces errors
   // that used to go only to the developer console.
   appMessage: AppMessage | null
+
+  // The export dialog (SVG / PNG of the form diagram).
+  exportOpen: boolean
+
+  // A request for the player to jump to a time, from outside the transport
+  // (e.g. a commentary link). PlayerDock owns the engine and carries it out;
+  // `n` makes two requests for the same time distinct.
+  seekRequest: { time: number; n: number } | null
 
   // Actions — playback
   setCurrentTime: (time: number) => void
@@ -149,10 +150,10 @@ export interface UIState {
 
   // Actions — document settings dialog
   setDocumentSettingsOpen: (open: boolean) => void
-  setUnsavedGuardOpen: (open: boolean) => void
-  setRecoveryModalOpen: (open: boolean) => void
   showAppMessage: (title: string, lines: string[]) => void
   dismissAppMessage: () => void
+  setExportOpen: (open: boolean) => void
+  requestSeek: (time: number) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -187,9 +188,9 @@ const useUIStore = create<UIState>()((set) => ({
   mergeDialog: null,
   linkSourceOpen: false,
   documentSettingsOpen: false,
-  unsavedGuardOpen: false,
-  recoveryModalOpen: false,
   appMessage: null,
+  exportOpen: false,
+  seekRequest: null,
 
   setCurrentTime: (time) => set({ currentTime: time }),
   setDuration: (duration) => set({ duration }),
@@ -235,10 +236,10 @@ const useUIStore = create<UIState>()((set) => ({
 
   setLinkSourceOpen: (open) => set({ linkSourceOpen: open }),
   setDocumentSettingsOpen: (open) => set({ documentSettingsOpen: open }),
-  setUnsavedGuardOpen: (open) => set({ unsavedGuardOpen: open }),
-  setRecoveryModalOpen: (open) => set({ recoveryModalOpen: open }),
   showAppMessage: (title, lines) => set({ appMessage: { title, lines } }),
   dismissAppMessage: () => set({ appMessage: null }),
+  setExportOpen: (open) => set({ exportOpen: open }),
+  requestSeek: (time) => set((s) => ({ seekRequest: { time, n: (s.seekRequest?.n ?? 0) + 1 } })),
 }))
 
 export { useUIStore }

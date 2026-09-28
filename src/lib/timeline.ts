@@ -227,3 +227,19 @@ export function generateTicks(
   }
   return ticks
 }
+
+/** Pixels per wheel "line": the usual browser line height. */
+const LINE_PX = 16
+
+/**
+ * A wheel event's deltas in pixels. Browsers may report lines (Firefox with a
+ * mouse wheel, deltaMode 1) or pages (deltaMode 2); treated as pixels, a
+ * Firefox wheel notch panned the timeline about 3 px.
+ */
+export function wheelPixels(
+  e: { deltaX: number; deltaY: number; deltaMode: number },
+  pageWidth: number,
+): { dx: number; dy: number } {
+  const unit = e.deltaMode === 1 ? LINE_PX : e.deltaMode === 2 ? pageWidth : 1
+  return { dx: e.deltaX * unit, dy: e.deltaY * unit }
+}

@@ -53,10 +53,14 @@ export function allSpans(doc: StrataDocument): Span[] {
   return doc.layers.flatMap((l) => (l.type === 'form-diagram' ? (l.data as FormDiagramData).spans : []))
 }
 
-/** Slugs in use, optionally ignoring some spans (the ones being re-slugged). */
+/**
+ * Slugs in use by spans and point markers (one namespace, so a commentary
+ * link is never ambiguous), optionally ignoring some ids (the ones being
+ * re-slugged).
+ */
 export function slugsInUse(doc: StrataDocument, except: Set<string> = new Set()): Set<string> {
   return new Set(
-    allSpans(doc)
+    [...allSpans(doc), ...doc.pointMarkers]
       .filter((s) => !except.has(s.id) && s.slug)
       .map((s) => s.slug as string),
   )
@@ -77,7 +81,8 @@ export function resolveSlugCollisions(prev: StrataDocument | null, next: StrataD
   for (const s of spans) if (s.slug) bySlug.set(s.slug, [...(bySlug.get(s.slug) ?? []), s])
 
   const renamed = new Map<string, string>() // span id → new slug
-  const taken = new Set(bySlug.keys())
+  // Marker slugs are taken too: spans and markers share the namespace.
+  const taken = new Set([...bySlug.keys(), ...next.pointMarkers.flatMap((m) => (m.slug ? [m.slug] : []))])
   for (const [slug, group] of bySlug) {
     if (group.length < 2) continue
     const keeperId = group.some((s) => s.id === holders.get(slug)) ? holders.get(slug) : group[0].id

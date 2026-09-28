@@ -9,6 +9,7 @@ import {
   clampZoom,
   minZoom,
   ABS_MAX_ZOOM,
+  wheelPixels,
 } from '@/lib/timeline'
 
 export function useTimeline() {
@@ -137,7 +138,7 @@ export function useTimeline() {
         const cursorX = e.clientX - rect.left
         const timeUnderCursor = pps > 0 ? (scrollOffset + cursorX) / pps : 0
 
-        const factor = e.deltaY < 0 ? 1.2 : 1 / 1.2
+        const factor = wheelPixels(e, viewportWidth).dy < 0 ? 1.2 : 1 / 1.2
         const newZoom = clampZoom(zoom * factor, duration, viewportWidth)
         const newPps = computePps(newZoom)
         const newTotalWidth = totalContentWidth(duration, newZoom)
@@ -151,7 +152,8 @@ export function useTimeline() {
         setScrollOffset(newOffset)
       } else {
         // Pan: prefer deltaX for trackpad horizontal swipe; fall back to deltaY.
-        const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
+        const { dx, dy } = wheelPixels(e, viewportWidth)
+        const delta = Math.abs(dx) > Math.abs(dy) ? dx : dy
         setScrollOffset(clampScrollOffset(scrollOffset + delta, totalWidth, viewportWidth))
       }
     }

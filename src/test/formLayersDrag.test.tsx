@@ -3,6 +3,7 @@
  * undo step. The store-level history tests prove the grouping mechanism; this
  * proves the component actually uses it — the gap the pure-function tests left.
  */
+import { formSpans } from '@/lib/layers'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render } from '@testing-library/react'
 import { FormLayers } from '@/components/FormLayers'
@@ -33,7 +34,7 @@ describe('FormLayers boundary drag', () => {
     for (let dx = 5; dx <= 50; dx += 5) pointer(window, 'pointermove', startX + dx)
     pointer(window, 'pointerup', startX + 50)
 
-    const spans = useDocumentStore.getState().document!.layers[0].data.spans
+    const spans = formSpans(useDocumentStore.getState().document!.layers[0])
     expect(spans[0].endTime).toBeCloseTo(55)
     expect(useDocumentStore.temporal.getState().pastStates).toHaveLength(1)
   })

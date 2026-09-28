@@ -49,6 +49,8 @@ import { FormLayers } from './FormLayers'
 import { LayerSettingsPopover } from './LayerSettingsPopover'
 import { AddLayerPopover } from './AddLayerPopover'
 import { DiagramControlBar } from './DiagramControlBar'
+import { CommentaryPanel } from '@/widgets/written-analysis/CommentaryPanel'
+import { formSpans, analysisLayers } from '@/lib/layers'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,9 +65,10 @@ import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { STACK_TOP_PAD, stackHeight, layerPitch } from '@/lib/formShape'
 import { markerBandHeight } from '@/lib/markerBand'
-import type { Layer, FormDiagramData } from '@/types/strata'
+import type { Layer } from '@/types/strata'
 
-const HEADER_WIDTH_EXPANDED = 140
+// Wide enough for a name like "Large-scale form" without truncating.
+const HEADER_WIDTH_EXPANDED = 176
 const HEADER_WIDTH_RAIL = 34
 const TOP_BAR_HEIGHT = 24
 
@@ -229,7 +232,7 @@ function SortableLayerHeaderRow({
             <button
               className="min-w-0 flex-1 truncate text-left text-[11px]"
               style={{ color: 'var(--ink-primary)', fontWeight: active ? 500 : 400 }}
-              title={`${layer.label} — click to make active, double-click to rename`}
+              title={`${layer.label}. Click to make active; double-click to rename.`}
               onClick={() => setActiveLayer(layer.id)}
               onDoubleClick={startRename}
             >
@@ -253,9 +256,7 @@ function LayerHeaders({ layers, collapsed }: { layers: Layer[]; collapsed: boole
   // confirming removes the layer, which would unmount a dialog nested in that row
   // mid-close (Radix throws). One hoisted dialog, keyed by the pending layer.
   const [pendingDelete, setPendingDelete] = useState<Layer | null>(null)
-  const pendingSpanCount = pendingDelete
-    ? (pendingDelete.data as FormDiagramData).spans.length
-    : 0
+  const pendingSpanCount = pendingDelete ? formSpans(pendingDelete).length : 0
   function confirmDelete() {
     if (pendingDelete) removeLayer(pendingDelete.id)
     setPendingDelete(null)
@@ -394,25 +395,12 @@ function ZoomControls({
       <ZoomButton onClick={zoomOut} disabled={zoom <= minZoomValue + 1e-6} label="Zoom out">
         −
       </ZoomButton>
-      <button
-        onClick={resetTo100}
-        aria-label="Current zoom level — click to reset to 100%"
-        title="Reset to 100% (standard scale)"
-        className="rounded px-1 hover:bg-accent"
-        style={{
-          minWidth: 32,
-          height: 16,
-          fontSize: 10,
-          fontVariantNumeric: 'tabular-nums',
-          color: 'var(--ink-secondary)',
-          cursor: 'pointer',
-          background: 'none',
-          border: 'none',
-          textAlign: 'center',
-        }}
+      <span
+        aria-label="Zoom level"
+        style={{ minWidth: 32, fontSize: 10, fontVariantNumeric: 'tabular-nums', textAlign: 'center' }}
       >
         {Math.round(zoom * 100)}%
-      </button>
+      </span>
       <ZoomButton onClick={zoomIn} disabled={zoom >= maxZoomValue - 1e-6} label="Zoom in">
         +
       </ZoomButton>
@@ -420,25 +408,25 @@ function ZoomControls({
         aria-hidden
         style={{ width: 1, height: 12, background: 'var(--hairline)', margin: '0 2px' }}
       />
-      {/* Labeled with the state a click would switch TO, not the current
-          state — already at fit, so this offers "100%" instead of a
-          redundant "Fit". */}
-      <button
-        onClick={isFit ? resetTo100 : fitToWindow}
-        aria-label={isFit ? 'Reset to 100%' : 'Fit to window'}
-        title={isFit ? 'Reset to 100% (standard scale)' : 'Fit the whole track to the window'}
-        className="rounded px-1 hover:bg-accent"
-        style={{
-          height: 16,
-          fontSize: 10,
-          color: 'var(--ink-secondary)',
-          cursor: 'pointer',
-          background: 'none',
-          border: 'none',
-        }}
-      >
-        {isFit ? '100%' : 'Fit'}
-      </button>
+      {/* Fit and 100% as a pair, the current one marked, so the control
+          shows where you are rather than a second, puzzling percentage. */}
+      <div className="flex overflow-hidden rounded border" style={{ borderColor: 'var(--hairline)' }}>
+        {([
+          ['Fit', isFit, fitToWindow, 'Fit the whole track to the window'],
+          ['100%', !isFit && Math.abs(zoom - 1) < 1e-6, resetTo100, 'Standard scale'],
+        ] as const).map(([label, on, act, title]) => (
+          <button
+            key={label}
+            onClick={act}
+            title={title}
+            aria-pressed={on}
+            className={on ? 'bg-accent px-1.5 font-medium' : 'px-1.5 hover:bg-accent/60'}
+            style={{ height: 16, fontSize: 10, color: on ? 'var(--ink-primary)' : 'var(--ink-secondary)' }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -474,9 +462,12 @@ function WidgetTopBar({
 
       <AddLayerPopover />
 
+      <span aria-hidden style={{ width: 1, height: 12, background: 'var(--hairline)', margin: '0 4px' }} />
+      <DiagramControlBar />
+
       {hidden.length > 0 && (
         <div className="flex items-center gap-1 overflow-hidden">
-          <span className="text-[10px]" style={{ color: 'var(--ink-faint)' }}>
+          <span className="text-[10px]" style={{ color: 'var(--ink-muted)' }}>
             Hidden:
           </span>
           {hidden.map((l) => (
@@ -533,7 +524,9 @@ export function FormDiagram() {
     .filter((l) => l.type === 'form-diagram')
     .sort((a, b) => b.displayOrder - a.displayOrder)
   const visible = sorted.filter((l) => l.visibility)
-  const hidden = sorted.filter((l) => !l.visibility)
+  // Hidden commentary gets a chip too, so it comes back the same way a hidden
+  // layer does (its Hide button is on the commentary itself).
+  const hidden = [...sorted.filter((l) => !l.visibility), ...analysisLayers(doc).filter((l) => !l.visibility)]
 
   // The widget card must also make room for the marker band that FormLayers
   // draws below the stack, or the band is clipped by the card.
@@ -551,19 +544,13 @@ export function FormDiagram() {
     // transport, and the extra vertical room accumulates ABOVE — that blank space
     // is where additional widgets will stack as they're added.
     <div className="flex min-h-0 flex-1 flex-col justify-end px-2 pb-1">
-      {/* Empty-canvas affordance: a quiet hint filling exactly the leftover
-          space above the widget card (flex-1, so it vanishes once a tall
-          layer stack claims that room). Explains the blank space is
-          intentional — reserved for future widgets — rather than reading as
-          unfinished. overflow-hidden so it clips cleanly instead of forcing
-          height when the stack leaves almost no room. */}
-      <div className="flex flex-1 min-h-0 items-center justify-center overflow-hidden">
-        <p
-          className="select-none text-xs"
-          style={{ color: 'var(--ink-faint)', opacity: 0.6 }}
-        >
-          More analytical layers will stack here as they're added
-        </p>
+      {/* The open area above the widget card (flex-1, so it shrinks as a tall
+          layer stack claims the room). The written-analysis widget reads here;
+          with no commentary yet it shows a one-line hint instead. */}
+      <div className="relative flex flex-1 min-h-0 items-center justify-center overflow-y-auto">
+        {/* The written-analysis widget reads here: the commentary for what's
+            playing (see widgets/written-analysis/CommentaryPanel). */}
+        <CommentaryPanel />
       </div>
 
       {/* The widget is a framed card: the top bar (collapse / add / hidden
@@ -572,6 +559,7 @@ export function FormDiagram() {
           paints above the absolutely-positioned FormLayers SVG so all four edges
           are visible — an inset outline would be covered by the SVG on bottom/right. */}
       <div
+        data-keeps-selection
         className="relative shrink-0 overflow-hidden rounded-md bg-[var(--canvas)]"
         style={{ marginBottom: 4 }}
       >
@@ -585,7 +573,6 @@ export function FormDiagram() {
           <LayerHeaders layers={visible} collapsed={collapsed} />
           <FormLayers layers={visible} />
         </div>
-        <DiagramControlBar />
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 rounded-md"

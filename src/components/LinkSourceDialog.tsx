@@ -123,9 +123,20 @@ export function SourceLinkForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceKey])
 
-  if (!doc) return null
-
   const parsedId = parseYouTubeInput(urlText)
+
+  // Embedded in settings (no onDone) there is no Link button to forget: a
+  // recognised video links as soon as it's pasted. A pasted link used to be
+  // lost when the dialog closed without a click.
+  const embedded = !onDone
+  useEffect(() => {
+    if (!embedded || !doc || !parsedId || parsedId === currentVideoId) return
+    updateMeta({ source: { type: 'youtube', url: canonicalYouTubeUrl(parsedId), sourceOffset: 0 } })
+    setAudioFile(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [embedded, parsedId])
+
+  if (!doc) return null
   const showParseError = urlText.trim() !== '' && !parsedId
 
   function linkYouTube() {
@@ -144,17 +155,17 @@ export function SourceLinkForm({
     onDone?.()
   }
 
-  function linkAudio() {
-    if (!doc || !pickedFile) return
-    const sameFile = doc.source.type === 'local' && doc.source.filename === pickedFile.name
+  function linkAudio(file: File | null = pickedFile) {
+    if (!doc || !file) return
+    const sameFile = doc.source.type === 'local' && doc.source.filename === file.name
     updateMeta({
       source: {
         type: 'local',
-        filename: pickedFile.name,
+        filename: file.name,
         sourceOffset: sameFile ? doc.source.sourceOffset : 0,
       },
     })
-    setAudioFile(pickedFile)
+    setAudioFile(file)
     onDone?.()
   }
 
@@ -190,7 +201,7 @@ export function SourceLinkForm({
               <>
                 <Check size={11} className="text-primary" aria-hidden />
                 <span className="text-muted-foreground">
-                  Video detected — ID <code>{parsedId}</code>
+                  Video found: <code>{parsedId}</code>
                   {parsedId === currentVideoId && ' (currently linked)'}
                 </span>
               </>
@@ -199,7 +210,7 @@ export function SourceLinkForm({
               <>
                 <CircleAlert size={11} className="text-destructive" aria-hidden />
                 <span className="text-muted-foreground">
-                  Not a recognized YouTube URL or video ID
+                  Not a YouTube link or video ID.
                 </span>
               </>
             )}
@@ -212,7 +223,12 @@ export function SourceLinkForm({
               variant="outline"
               size="sm"
               className="h-7 text-xs"
-              onClick={async () => setPickedFile(await pickAudioFile())}
+              onClick={async () => {
+                const file = await pickAudioFile()
+                setPickedFile(file)
+                // Choosing the file is the commit when embedded, as pasting is.
+                if (embedded && file) linkAudio(file)
+              }}
             >
               Choose audio file…
             </Button>
@@ -224,12 +240,13 @@ export function SourceLinkForm({
             </span>
           </div>
           <p className="mt-1.5 text-[10px] text-muted-foreground">
-            The file stays on your computer — the analysis stores only its name, so
-            you'll be asked to locate it again next session.
+            The file stays on your computer. The analysis keeps only its name, so
+            you'll be asked to find it again next time.
           </p>
         </div>
       )}
 
+      {(isLinked || !embedded) && (
       <div className="flex items-center justify-end gap-2">
         {isLinked && (
           <Button
@@ -246,15 +263,18 @@ export function SourceLinkForm({
             Cancel
           </Button>
         )}
-        <Button
-          size="sm"
-          className="h-7 text-xs"
-          disabled={!canLink}
-          onClick={mode === 'youtube' ? linkYouTube : linkAudio}
-        >
-          {mode === 'youtube' ? 'Link video' : 'Link audio'}
-        </Button>
+        {!embedded && (
+          <Button
+            size="sm"
+            className="h-7 text-xs"
+            disabled={!canLink}
+            onClick={mode === 'youtube' ? linkYouTube : () => linkAudio()}
+          >
+            {mode === 'youtube' ? 'Link video' : 'Link audio'}
+          </Button>
+        )}
       </div>
+      )}
     </div>
   )
 }

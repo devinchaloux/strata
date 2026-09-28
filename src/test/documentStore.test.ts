@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useDocumentStore } from '@/store/documentStore'
+import { makeDoc, makeLayer, makeSpan } from './fixtures'
 import type { StrataDocument, Layer, Span, FormDiagramData } from '@/types/strata'
 
 // Minimal layer/doc builders for exercising store actions in isolation.
@@ -98,7 +99,7 @@ describe('loadId (re-fit-on-load signal)', () => {
 
 describe('updateSpans (bulk edit)', () => {
   function spanLayer(id: string, spans: Span[]): Layer {
-    return { ...layer(id, 0), data: { hierarchicalEnforcement: false, spans } }
+    return { ...layer(id, 0), type: 'form-diagram', data: { hierarchicalEnforcement: false, spans } }
   }
   function spansOf(layerId: string): Span[] {
     const l = useDocumentStore.getState().document!.layers.find((x) => x.id === layerId)!
@@ -129,5 +130,16 @@ describe('updateSpans (bulk edit)', () => {
     expect(spansOf('L1').every((s) => s.confidence === 'approximate')).toBe(true)
     useDocumentStore.temporal.getState().undo()
     expect(spansOf('L1').every((s) => s.confidence === undefined)).toBe(true)
+  })
+})
+
+describe('layer identity', () => {
+  it('leaves layers a span edit did not touch as the same objects', () => {
+    useDocumentStore.getState().loadDocument(makeDoc([makeLayer('A', [makeSpan('a1', 0, 10)]), makeLayer('B', [makeSpan('b1', 0, 10)])]))
+    const before = useDocumentStore.getState().document!.layers
+    useDocumentStore.getState().updateSpan('A', 'a1', { notes: 'x' })
+    const after = useDocumentStore.getState().document!.layers
+    expect(after[0]).not.toBe(before[0])
+    expect(after[1]).toBe(before[1])
   })
 })

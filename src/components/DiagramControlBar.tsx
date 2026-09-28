@@ -1,27 +1,21 @@
 /**
- * DiagramControlBar — a thin strip along the bottom of the form diagram widget
- * carrying its structural operations, each labelled with its keyboard shortcut.
+ * DiagramControlBar — the form diagram's placement actions, Boundary and
+ * Marker, each labelled with its keyboard shortcut. They sit in the widget's
+ * top bar, beside Add layer (they used to take a strip of their own along the
+ * bottom).
  *
- * It occupies the space the marker band gives up when a document has no
- * markers. Two jobs: make the shortcuts discoverable without a manual, and give
- * the operations a persistent surface. The Phase 0.5 merge decisions asked for
- * exactly that for merge — "a persistent toolbar button is always visible; its
- * disabled/enabled state communicates merge eligibility at a glance" — which
- * had never been built; Ctrl+J, the context menu, and the metadata panel were
- * the only routes.
+ * Merge is not here: it has Ctrl+J, the right-click menu and the Inspector's
+ * "Merge N spans" button, which appears exactly when a merge is possible
+ * (docs/decisions.md, "Tighter Diagram Chrome").
  *
  * Spacebar's label is live rather than static. Space places a boundary while
  * playing and starts playback while paused (Phase 0.4 §8), so a fixed "Space:
  * boundary" chip would be wrong half the time. The chip appears on Boundary
  * only while playback is running, which is exactly when Space does that job.
- * This replaces the persistent indicator the transport bar used to carry —
- * the shortcut now lives next to the operation it performs rather than in the
- * player chrome.
  */
 
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
-import { useMerge } from '@/hooks/useMerge'
 
 function BarButton({
   label,
@@ -64,7 +58,6 @@ export function DiagramControlBar() {
   const playheadMoved = useUIStore((s) => s.currentTime > 0)
   const selectPointMarker = useUIStore((s) => s.selectPointMarker)
   const playbackState = useUIStore((s) => s.playbackState)
-  const { eligibility, performMerge } = useMerge()
 
   if (!doc) return null
 
@@ -79,10 +72,7 @@ export function DiagramControlBar() {
         : 'Place a boundary in the active layer at the playhead. Space starts playback while paused.'
 
   return (
-    <div
-      className="flex shrink-0 items-center gap-1 border-t px-1.5 py-0.5"
-      style={{ borderColor: 'var(--hairline)' }}
-    >
+    <div className="flex shrink-0 items-center gap-0.5">
       <BarButton
         label="Boundary"
         shortcut={isPlaying ? 'Space' : undefined}
@@ -99,13 +89,6 @@ export function DiagramControlBar() {
           addPointMarker({ id, timestamp: useUIStore.getState().currentTime })
           selectPointMarker(id)
         }}
-      />
-      <BarButton
-        label="Merge"
-        shortcut="Ctrl+J"
-        title={eligibility.ok ? 'Merge the selected spans' : eligibility.reason}
-        disabled={!eligibility.ok}
-        onClick={() => performMerge()}
       />
     </div>
   )

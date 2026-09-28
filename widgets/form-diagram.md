@@ -23,7 +23,7 @@ description: "Layered section-level formal analysis synchronized to the timeline
 
 ### 1.2 Data Type
 
-`FormDiagramData` from `strata.types.ts`:
+`FormDiagramData` from `src/types/strata.ts`:
 
 ```typescript
 interface FormDiagramData {

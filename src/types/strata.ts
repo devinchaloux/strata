@@ -2,8 +2,10 @@
  * TypeScript types for the Strata .strata file format.
  *
  * These are the living schema specification for the entire application.
- * Source of truth: schema/strata.schema.json and schema/strata.types.ts.
- * When either changes, update both and increment fileFormatVersion.
+ * They mirror schema/strata.schema.json, which is the published contract; a test
+ * (src/test/schemaConformance.test.ts) checks what the app writes against it.
+ * A format change updates both, plus schema/strata-schema-reference.md. Whether
+ * it also bumps the file format version: see src/lib/migrations.ts.
  */
 
 // ---------------------------------------------------------------------------
@@ -173,6 +175,12 @@ export interface PointMarker {
   id: string
   timestamp: number            // Recording time, seconds (float)
   label?: string | null
+  /**
+   * Reference name for commentary links ([[slug]]), derived from the label. One
+   * namespace with span slugs, so a name is unique across the document; frozen
+   * once saved, like a span's (lib/slug.ts).
+   */
+  slug?: string | null
   type?: string | null         // Vocabulary term ID; corpus-queryable
   notes?: string | null
   flagged?: boolean            // "Come back to this." Omit for false (default)
@@ -237,16 +245,39 @@ export interface FormDiagramData {
 // Layer (Typed Envelope Pattern)
 // ---------------------------------------------------------------------------
 
-/** v1 widget type. Extend this union when adding new widget types. */
-export type LayerType = 'form-diagram'
+// ---------------------------------------------------------------------------
+// Written Analysis Data (Widget Payload)
+// ---------------------------------------------------------------------------
+
+/**
+ * What a piece of commentary is about: a span, by its id (which never changes,
+ * unlike its slug), or a time range in recording seconds. Deleting a span turns
+ * its commentary's anchor into the span's former time range, so no text is lost.
+ */
+export type BlockAnchor = { spanId: string } | { start: number; end: number }
+
+/** One piece of commentary; it surfaces while its anchor plays. */
+export interface AnalysisBlock {
+  id: string
+  anchor: BlockAnchor
+  /** Paragraphs separated by a blank line; **bold**, *italic*, and [[slug]] span links. */
+  text: string
+}
+
+export interface WrittenAnalysisData {
+  blocks: AnalysisBlock[]
+}
+
+/** Widget types. Extend this union when adding a widget. */
+export type LayerType = 'form-diagram' | 'written-analysis'
 
 /** Union of all widget data payload types. */
-export type LayerData = FormDiagramData
-// Future: | EnergyContourData | InstrumentationData | WrittenAnalysisData
+export type LayerData = FormDiagramData | WrittenAnalysisData
+// Future: | EnergyContourData | InstrumentationData
 
-export interface Layer {
+/** Fields every layer carries, whatever its widget type (the typed envelope). */
+export interface LayerBase {
   id: string
-  type: LayerType
   label: string
   description?: string | null
   visibility: boolean
@@ -271,8 +302,22 @@ export interface Layer {
    * implication; the same Span/spacebar/drag/merge interactions apply either way.
    */
   spanShape?: 'bracket' | 'bar'
-  data: LayerData
+  /**
+   * Text size for this layer's labels and annotations: sm (9.5 / 8.5 px),
+   * md (11 / 9, the default when absent) or lg (13 / 11). Uniform within a
+   * layer; there is no per-span font size.
+   */
+  fontScale?: 'sm' | 'md' | 'lg'
 }
+
+export type FormDiagramLayer = LayerBase & { type: 'form-diagram'; data: FormDiagramData }
+export type WrittenAnalysisLayer = LayerBase & { type: 'written-analysis'; data: WrittenAnalysisData }
+
+/**
+ * A layer is tagged by its widget type, so checking `layer.type` tells
+ * TypeScript which `data` shape it holds.
+ */
+export type Layer = FormDiagramLayer | WrittenAnalysisLayer
 
 // ---------------------------------------------------------------------------
 // Top-Level Document
@@ -286,7 +331,7 @@ export interface StrataDocument {
   updatedAt: string // ISO 8601; updated on every save
 
   title: string
-  artist: string[]                         // Array; single-artist: ["Avicii"]
+  artist: string[]                         // Array; single-artist: ["Avicii"]; may be empty while in progress
   context?: AnalysisContext | null
   duration: number                         // Track duration, seconds (float)
 

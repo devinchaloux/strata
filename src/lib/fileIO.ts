@@ -1,5 +1,7 @@
 import type { StrataDocument } from '@/types/strata'
 import { readDocument, DocumentError, type LoadResult } from '@/lib/documentLoad'
+import { FILE_FORMAT_VERSION } from '@/lib/migrations'
+import { version as APP_VERSION } from '../../package.json'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -45,12 +47,14 @@ export function parseStrataFile(raw: string): StrataDocument {
 // Serialization
 // ---------------------------------------------------------------------------
 
+// Every save records which build of Strata wrote the file, so a problem found
+// in a file later can be traced to the version that produced it.
 function serialize(doc: StrataDocument): string {
-  return JSON.stringify(doc, null, 2)
+  return JSON.stringify({ ...doc, strataVersion: APP_VERSION }, null, 2)
 }
 
 function suggestedFilename(doc: StrataDocument): string {
-  return `${doc.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.strata`
+  return `${fileBaseName(doc)}.strata`
 }
 
 // ---------------------------------------------------------------------------
@@ -119,13 +123,24 @@ export async function writeToHandle(
  * and the primary path when no file handle exists yet).
  */
 export function downloadFile(doc: StrataDocument): void {
-  const blob = new Blob([serialize(doc)], { type: 'application/json' })
+  // A generic type, so no browser "helpfully" appends .json to the .strata name.
+  downloadBlob(new Blob([serialize(doc)], { type: 'application/octet-stream' }), suggestedFilename(doc))
+}
+
+/** Hand the browser a file to save (the download fallback for every export). */
+export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = suggestedFilename(doc)
+  a.download = filename
   a.click()
-  URL.revokeObjectURL(url)
+  // Revoked on the next tick: some browsers start the download asynchronously.
+  setTimeout(() => URL.revokeObjectURL(url), 0)
+}
+
+/** A filesystem-safe base name from the document title. */
+export function fileBaseName(doc: StrataDocument): string {
+  return doc.title.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'strata'
 }
 
 /**
@@ -176,8 +191,8 @@ export function pickAudioFile(): Promise<File | null> {
 export function createEmptyDocument(): StrataDocument {
   const iso = new Date().toISOString()
   return {
-    strataVersion: '0.1.0',
-    fileFormatVersion: 1,
+    strataVersion: APP_VERSION,
+    fileFormatVersion: FILE_FORMAT_VERSION,
     createdAt: iso,
     updatedAt: iso,
     title: 'Untitled Analysis',
@@ -186,7 +201,21 @@ export function createEmptyDocument(): StrataDocument {
     source: { type: 'youtube', url: '', sourceOffset: 0 },
     vocabulary: { spanTypes: [], pointMarkerTypes: [], modes: [] },
     sharedTimePoints: [],
-    layers: [],
+    // One layer to start in, so Space marks a boundary straight away; a new
+    // analysis with no layers had nowhere for the first boundary to go.
+    layers: [
+      {
+        id: crypto.randomUUID(),
+        type: 'form-diagram',
+        label: 'Form',
+        visibility: true,
+        locked: false,
+        fillColorDefault: '#ffffff',
+        strokeColorDefault: '#475569',
+        displayOrder: 0,
+        data: { hierarchicalEnforcement: false, spans: [] },
+      },
+    ],
     pointMarkers: [],
   }
 }

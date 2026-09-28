@@ -298,7 +298,7 @@ export function PointMarkerPanel() {
         </div>
 
         {/* Label */}
-        <Field label="Label">
+        <Field label="Label" symbols>
           <input
             ref={labelRef}
             className={inputClass}
@@ -306,6 +306,22 @@ export function PointMarkerPanel() {
             placeholder="Unlabeled"
             onChange={(e) => update({ label: e.target.value || null })}
           />
+        </Field>
+
+        {/* Slug — read-only, click to copy: what commentary types to link here. */}
+        <Field
+          label="Slug"
+          tooltip="Link to this marker from commentary with [[its-slug]]. It stays the same after the file is saved."
+        >
+          <button
+            className={`${inputClass} flex items-center justify-between text-left`}
+            title="Click to copy"
+            onClick={() => marker.slug && navigator.clipboard?.writeText(marker.slug)}
+            disabled={!marker.slug}
+          >
+            <span className={marker.slug ? 'text-foreground' : 'text-muted-foreground'}>{marker.slug ?? '—'}</span>
+            {marker.slug && <span className="text-[10px] text-muted-foreground">copy</span>}
+          </button>
         </Field>
 
         {/* Kind — soft preset, picks which fields below lead the panel */}
@@ -342,7 +358,7 @@ export function PointMarkerPanel() {
         )}
 
         {/* Notes — always shown regardless of kind */}
-        <Field label="Notes">
+        <Field label="Notes" symbols>
           <textarea
             className={`${inputClass} resize-y`}
             rows={2}

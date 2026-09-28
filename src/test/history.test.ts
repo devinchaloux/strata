@@ -1,3 +1,4 @@
+import { formSpans } from '@/lib/layers'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useDocumentStore } from '@/store/documentStore'
 import { newGestureKey, withHistoryGroup } from '@/store/history'
@@ -5,7 +6,7 @@ import { makeDoc, makeLayer, makeSpan } from './fixtures'
 
 const store = () => useDocumentStore.getState()
 const steps = () => useDocumentStore.temporal.getState().pastStates.length
-const boundary = () => store().document!.layers[0].data.spans[0].endTime
+const boundary = () => formSpans(store().document!.layers[0])[0].endTime
 
 function load() {
   store().loadDocument(
@@ -80,7 +81,7 @@ describe('text field grouping', () => {
     const input = field()
     input.focus()
     type(input, 'Chorus')
-    expect(store().document!.layers[0].data.spans[0].label).toBe('Chorus')
+    expect(formSpans(store().document!.layers[0])[0].label).toBe('Chorus')
     expect(steps()).toBe(1)
   })
 

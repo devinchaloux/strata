@@ -2670,3 +2670,413 @@ carries no analytical claim. It is per boundary rather than per span because one
 span can elide at both ends and sit above one neighbour but below the other; since
 the constraints only ever join neighbours, any combination can be drawn
 (`spanDrawOrder`).
+
+---
+
+## File Format Integrity, Round 2 (2026-09-27)
+
+**Decision:** File format versioning policy. Adding an optional field does not
+change `fileFormatVersion`; older files lack it and the loader supplies the
+default. A change that alters what existing data means, or that older files
+can't be read under without transformation, bumps the version and adds one step
+to `MIGRATIONS` in `src/lib/migrations.ts`. Documents are upgraded on load, one
+step at a time. A file from a newer version opens with a warning and is never
+downgraded.
+**Rationale:** About six optional fields had been added under version 1 without
+a rule, and a file written before `vocabulary.modes` existed crashed the app.
+Bumping the version for every optional field would make every older file need a
+migration for nothing; never bumping it would leave no way to change meaning
+safely. Before beta testers start saving files, the rule has to exist.
+
+---
+
+**Decision:** `schema/strata.schema.json` is the published contract, and
+`src/types/strata.ts` mirrors it. A test (`src/test/schemaConformance.test.ts`)
+validates the bundled fixtures, a new document, and documents produced by real
+edits (split, label, elision, numeric edge edit, markers, merge) against the
+schema. The duplicate `schema/strata.types.ts` is removed.
+**Rationale:** The format existed in four hand-maintained copies that had
+drifted (the duplicate types file lacked `shortLabel`; nothing imported it).
+Testing what the app *writes*, not only the fixtures, is what matters: the first
+run of the test found that every new analysis was saved schema-invalid.
+
+---
+
+**Decision:** `artist` may be an empty list. The field stays required; the names
+don't.
+**Rationale:** New documents start with no artist, so every analysis saved
+before the artist was entered failed the schema (`minItems: 1`). An analysis in
+progress is a legitimate file.
+
+---
+
+**Decision:** Saved files record the app version that wrote them
+(`strataVersion`, read from `package.json`) instead of a hard-coded `0.1.0`.
+**Rationale:** When a problem turns up in a file later, the version that wrote
+it is the first thing to know.
+
+---
+
+**Decision (reverses the 2026-07-24 click-to-place rule):** clicking the marker
+band no longer places a point marker; it clears the selection, like empty canvas.
+Markers are placed at the playhead with `M` or the control bar's Marker button,
+and dragged afterwards if they need to move. Separately, a pointerdown outside
+the diagram and the Inspector clears the selection, unless it lands on a control
+or inside a dialog, popover or menu.
+**Rationale:** Devin: click-to-create "was just creating too much trouble" — a
+stray click wrote data. Placing with `M` lets the analyst keep listening and
+mark by ear, which is the workflow the tool is built around; dragging covers
+correction. Clicking away never cleared a selection before, because the only
+handler was on the diagram's own container. The Inspector is excluded, or a
+selected span couldn't be edited, and controls are excluded so using the
+transport doesn't drop the selection.
+
+---
+
+## Render / Edit Split (2026-09-27)
+
+**Decision:** The form diagram's drawing is a pure component,
+`src/widgets/form-diagram/figure.tsx`: given layers, markers, a scale and a
+colour theme, it returns SVG, reading no store and handling no events. The editor
+(`components/FormLayers.tsx`) draws that figure and lays an invisible interaction
+layer over it — click targets, boundary handles, marker drag targets, menus. The
+one editor-only visual that belongs inside a span (the selection and hover
+highlight) is passed in as a `SpanDecoration` component. Colours come from a
+`FigureTheme`: CSS variables in the app, literal colours for export
+(`widgets/form-diagram/theme.ts`).
+**Rationale:** This is the widget contract's render/edit boundary, which until
+now existed only in `widgets/_contract.md`. The same drawing now serves the
+editor, SVG/PDF export and a future embed, so an exported figure can never drift
+from what the analyst sees. Export also needs literal colours, because a
+standalone SVG has no app stylesheet to resolve `var(--canvas)` against. One
+behaviour change: text above a bracket is no longer part of its click target;
+the bracket body is.
+
+---
+
+## Export (2026-09-27)
+
+**Decision:** The form diagram exports as SVG (and PNG at 2× for slides) from the
+toolbar's Export dialog. The range defaults to the selected spans when there are
+any, otherwise the whole track, and can be set to custom times. Hidden layers are
+left out. The figure is the same pure component the editor draws, rendered with
+literal print colours, clipped to exactly the chosen range, with an optional
+m:ss time axis and optional marker band. The preview in the dialog is the
+exported SVG itself.
+**Rationale:** Realises the export decisions from the vision (time range with
+span-as-shortcut; visibility as the layer control). Rendering the editor's own
+figure means an exported diagram can't drift from what the analyst sees. PDF is
+deferred: pdf-lib can't draw SVG, so PDF needs either a rasteriser (losing vector
+quality) or an SVG-to-PDF library, which is a dependency decision; SVG already
+drops into every paper workflow and PNG covers slides.
+
+---
+
+## Written Analysis Widget (2026-09-27)
+
+**Decision:** The written-analysis widget ships in v1 as commentary on spans.
+Each span has one Commentary box in the Inspector; what's written there is
+stored as a block in a `written-analysis` layer (created automatically on first
+use) anchored to the span's id, and shows in the space above the diagram while
+that span plays, or while it is selected and playback is paused. The text
+format is deliberately tiny: blank lines for paragraphs, `**bold**`, `*italic*`,
+and `[[slug]]` / `[[slug|text]]` links that select the span and move playback to
+it. The whole commentary exports as one HTML page in time order, with the links
+as in-page links.
+**Rationale:** Realises the earlier decisions: hierarchy through prose
+reference, not nested data; HTML as the default export. Anchoring by span id
+means commentary follows a span through boundary drags and relabels; links use
+the slug because it is readable in the prose and frozen once saved. The widget
+has no timeline presence of its own, so the open area above the diagram is its
+home rather than a new zone below the ruler.
+
+**Decision:** Commentary survives edits elsewhere. When spans are merged, their
+commentary moves to the merged span and is combined; when a span is deleted
+(directly, or with its layer), its commentary becomes a block anchored to the
+time range the span covered. Anchors are therefore either `{spanId}` or
+`{start, end}`.
+**Rationale:** An analyst's prose is the most expensive thing in the file to
+recreate; a structural edit must never silently delete it. A time-range block
+still surfaces at the right moment and can be re-attached by hand.
+
+**Decision:** Opening a file fills in slugs for labelled spans that lack one
+(unique, in time order), keeping every existing slug.
+**Rationale:** Links need slugs, and files written before slugs were
+generated (including the bundled demo) have labels but no slugs. Existing
+slugs are never changed, so nothing an embed or a link already uses moves.
+
+Not yet built: links to point markers (markers have no slug) and free
+time-range commentary created from the UI (the format already allows it). The
+Markdown export followed the same day; see widgets/written-analysis.md §5.
+
+---
+
+## Video Curtain Covers Every Dialog (2026-09-27)
+
+**Decision:** Every modal dialog counts itself while open (a small
+`CountsAsModal` inside the shared `DialogContent` and `AlertDialogContent`), and
+the video curtain shows whenever the count is above zero. This replaces a
+hand-kept list of open-dialog flags in `PlayerDock`.
+**Rationale:** The list had fallen behind: the merge-conflict dialog and the
+delete-layer confirm weren't on it, so a linked video showed through their
+dimming. Counting in the shared components means a dialog added later is
+covered without anyone remembering to wire it. Popovers and menus aren't
+modal and don't count. Whether YouTube's rules allow covering the player at all
+while a dialog is open is still an open question; this change only makes the
+existing behaviour consistent.
+
+---
+
+## Help and Beta Notice (2026-09-27)
+
+**Decision:** A "How Strata works" dialog holds a six-step guide and every
+keyboard shortcut. It opens from a ? button in the toolbar, a "How it works"
+link on the start screen, and the ? key. A small Beta badge sits beside the
+name, and the dialog says to save often and links to GitHub issues.
+**Rationale:** The editor's core gestures (Space to mark while listening, M for
+markers, right-click to split) were discoverable only by reading the docs. One
+dialog, reachable before any file is open, is the least a first-time beta user
+needs. The shortcut list is written out by hand, so a change to a shortcut must
+update `components/HelpDialog.tsx` too.
+
+---
+
+## Dialogs Stay Clear of the Player (2026-09-27)
+
+**Decision (reverses the 2026-07-03 video panel modal curtain and "Video
+Curtain Covers Every Dialog"):** nothing is ever drawn in front of the YouTube player. The
+opaque curtain is removed. While a dialog is open, its dimming has a hole where
+the player is, and the dialog sits centred in the largest free area around the
+player (above a docked player, below the mini one), scrolling if it's taller
+than that area. The player stacks above every menu, popover and dialog
+(`z-[60]`), and stays clickable while a dialog is open.
+**Rationale:** YouTube's Required Minimum Functionality (checked 2026-09-27;
+page last updated 2026-09-14): "You must not display overlays, frames, or other
+visual elements in front of any part of a YouTube embedded player, including
+player controls. Similarly, you must not use overlays, frames or other visual
+elements to obscure any part of an embedded player." The curtain was exactly
+that, and a dialog's dimming is too. The Developer Policies also forbid playing
+from a player "that is not displayed in the page", which a covered, playing
+player comes close to. Stacking the player on top guarantees the rule for
+menus and popovers without having to steer each one; placing dialogs clear of
+it keeps them readable. Placement lives in `lib/playerClearance.ts`; the shared
+dialog components apply it, so a new dialog complies without extra wiring.
+
+---
+
+## Layer Text Size (2026-09-27)
+
+**Decision:** The layer-level `fontScale` (`sm` / `md` / `lg`, decided in the
+visual design pass; see "Font-size API" above) is now in the schema, the types
+and the renderer, with a Text size S / M / L control in layer settings. Absent
+means `md`, so existing files draw exactly as before; an unrecognised value
+also reads as `md`.
+**Rationale:** The renderer already carried the three sizes but hard-coded
+`md`. Export makes text size matter: a figure scaled down for a page or a slide
+needs larger labels, and a dense phrase layer may want smaller ones. No format
+version bump: a new optional field is additive under the versioning policy.
+
+---
+
+## Symbol Palette for Free-Text Fields (2026-09-27)
+
+**Decision:** Span Label, Short label, Annotation, Notes and Commentary, and a
+point marker's Label and Notes, have a ⇒ toggle beside the field name. It opens
+a row of symbols (⇒ → ↑ ↓ ↗ ↘ ♭ ♯ ♮ ≈ ′) that insert at the cursor, or over the
+selection. The buttons never take focus, so typing carries on and the edit
+stays one undo step.
+**Rationale:** Completes the second half of "Accidental Transliteration":
+labels need `⇒` ("pres. ⇒ ant."), and prose fields can't transliterate, since
+`b` is a letter there. The set is BriFormer's palette, which Devin asked for. A
+toggle per field, rather than a global toolbar, keeps the Inspector quiet until
+it's wanted.
+
+---
+
+## UI Copy Pass, Batch 3 (2026-09-27)
+
+**Decision:** Document Settings and the smaller surfaces (layer settings, link
+source, the layer header, zoom and locate-file controls) follow the six copy
+rules. Helpers that explained the schema ("player_time = recording_time +
+offset", "Point markers are document-level…") are gone or became tooltips;
+dash-spliced strings are sentences; the home key's two fields sit under one
+"Home key" heading as Tonic and Mode; "Source sync offset" is "Sync offset".
+**Rationale:** Finishes backlog #23 under the rules in "UI Copy Pass & Point
+Marker Vocabulary". Placeholders keep the "e.g." prefix used in batches 1–2 so
+examples read the same everywhere (rule 5).
+
+---
+
+## Video Below the Fold (2026-09-27)
+
+**Decision:** The page scrolls. The work area (commentary, diagram, then the
+play bar) fills exactly one screen, and a docked video sits just below it at
+480×270, out of view until the analyst scrolls or presses the play bar's
+**Video** button, which scrolls there (and becomes **Back to diagram**). The
+toolbar and Inspector stay pinned. The Video button's tooltip says why the
+player can't be hidden. The corner mini player is unchanged and doesn't scroll.
+With the video out of view, dialogs centre normally; "Dialogs Stay Clear of the
+Player" applies only when some of it is on screen.
+**Rationale:** Devin wanted the player "as unintrusive as possible". YouTube's
+rules forbid covering, hiding or shrinking the player below 200×200, and
+playing from a player not displayed in the page; they don't require it to be
+in view (only autoplay has a visibility rule, and Strata doesn't autoplay). A
+player scrolled past, like an embed in a blog post, is still on the page. So
+the video gives up its screen space instead of competing with the diagram, and
+it can be bigger at no cost: 480×270 is YouTube's recommended minimum for 16:9.
+Pausing on dialogs, or turning them into pages, was considered and rejected:
+the rule against covering applies whether the video plays or not.
+
+---
+
+## UI Review Fixes and Tighter Chrome (2026-09-27)
+
+*From a UI/UX review of the beta build. Devin approved the list; each entry
+below is one change and its reason.*
+
+**Decision:** A new analysis starts with one empty form layer, "Form", and
+whenever the document has form layers but none is active, the top one becomes
+active (after New, Open, Demo, or deleting the active layer).
+**Rationale:** Space places boundaries in the active layer. A new analysis had
+no layers, and an opened file had none active, so the first Space did nothing
+and the only clue was a tooltip on a greyed-out button.
+
+**Decision:** Until a document has commentary, the open area above the diagram
+names the next step: link a source, then press Space at each boundary, then
+click a span to describe it.
+**Rationale:** It used to say "Select a span and write in its Commentary box"
+even when there were no spans.
+
+**Decision:** New analysis asks for Title, Artist and Source, with the other
+fields behind "More details" and a Start button (Done in Document settings).
+Inside these dialogs, a recognised YouTube link links as soon as it's pasted,
+and a chosen audio file as soon as it's chosen; the standalone Link source
+dialog keeps its explicit button.
+**Rationale:** Fifteen fields up front, and no button to finish. A pasted link
+was lost if the dialog closed before "Link video" was clicked, even though it
+said "Video found".
+
+**Decision (reverses the Phase 0.5 persistent merge button):** Boundary and
+Marker move into the widget's top bar beside Add layer, and the strip along the
+bottom of the diagram is removed. Merge keeps Ctrl+J, the right-click menu and
+the Inspector's "Merge N spans" button.
+**Rationale:** The diagram carried four bars of chrome around its brackets,
+and merge had four routes. The Inspector's button appears exactly when merging
+is possible, which is the "state at a glance" the persistent button was for.
+
+**Decision:** The zoom control reads "− 34% +" followed by a Fit / 100% pair
+with the current one marked; the percentage is no longer a button.
+**Rationale:** "34% + │ 100%" showed two percentages, the second one a button
+labelled with the state a click would switch to.
+
+**Decision:** The layer name column is 176px (was 140), wide enough for a
+name like "Large-scale form".
+
+**Decision:** The Inspector starts collapsed and opens on the first selection.
+**Rationale:** Empty, it took 288px from the diagram.
+
+**Decision:** A span's ends are one grid, rows Start and End, columns Boundary
+and Cap; choosing a boundary still resets that end's cap. "Renders inside the
+shape", "Not shown on the diagram" and "Corpus-queryable" are tooltips or
+gone; "— none —" and "— mixed —" read None and Mixed. A greyed-out "Split at
+playhead" says to move the playhead into the span first.
+**Rationale:** Copy rules 1, 4 and 6; the four end dropdowns took four label
+lines.
+
+**Decision:** The play bar's clock reads m:ss; editable times keep
+milliseconds. Hint text uses the muted ink (#64748b), which meets 4.5:1 on
+white; the faint ink (2.6:1) had been used for sentences.
+
+---
+
+## Large-Analysis Performance (2026-09-27)
+
+**Decision:** Two changes from a stress test of a 900-span, six-layer analysis
+with 80 markers and commentary: (1) a span write returns every layer it didn't
+change as the same object, so memoized layers skip re-rendering; (2) each layer
+has one right-click menu, told which span was clicked when it opens, instead of
+one menu component per span.
+**Rationale:** Measured in the dev build, typing in a span's label took about
+250 ms a keystroke, because every edit rebuilt all six layers and re-rendered
+~900 menu components; after the fixes it takes about 22 ms. Playback and
+boundary drags already held 60 fps and still do; loading the file paints in
+about 0.4 s; saving serialises in about 2 ms. The production build is faster
+than these dev numbers.
+
+---
+
+## Keyboard Navigation of Spans (2026-09-27)
+
+**Decision:** With focus outside text fields, menus and dialogs, ← and → select
+the previous and next span in the layer; ↑ and ↓ select the span in the layer
+above or below that covers this one's middle (the nearest one if it falls in a
+gap), skipping hidden and empty layers; Shift+← and Shift+→ extend the
+selection within the layer from its anchor; Enter moves focus to the selected
+span's Label field with its text selected. With nothing selected, an arrow
+selects the first span of the active layer. A span navigated to off-screen is
+scrolled into view. The logic is in `lib/spanNav.ts`.
+**Rationale:** Selecting and describing spans needed a mouse. Arrow keys
+follow the diagram's own geometry (time runs left to right, the layer stack
+top to bottom), and Enter reaches the field an analyst edits most.
+
+---
+
+## Commentary Links to Point Markers (2026-09-27)
+
+**Decision:** Point markers get an optional `slug`, generated from the label
+and frozen once saved, in one namespace with span slugs; `[[slug]]` in
+commentary links to either. Following a marker link selects the marker and
+plays from its moment. A marker's slug shows, ready to copy, in its Inspector
+panel. Opening a file fills in missing marker slugs after span slugs. In the
+HTML and Markdown exports a marker link is plain text, since a marker has no
+section of its own.
+**Rationale:** The vision's classical case is prose that refers to events:
+"the medial caesura at [[mc]]". One namespace keeps a link unambiguous with a
+single syntax, and freezing on save keeps links working when a marker is
+relabelled, as for spans. A new optional field, so no format version bump.
+
+---
+
+## Commentary on a Stretch of Time (2026-09-27)
+
+**Decision:** With several spans selected, the Inspector shows a
+"Commentary, m:ss–m:ss" box for the whole stretch they cover (earliest start to
+latest end), stored as a time-range block; paused on that selection, the
+reading panel shows it. Time-range blocks, including those left behind when a
+span is deleted, can be edited or cleared in place from the reading panel.
+**Rationale:** The format allowed range anchors from the start, but the only
+way to make one was to delete a span, and then it couldn't be edited or
+removed. Selecting spans is how analysts already say "this stretch", so it
+defines the range without a new tool.
+
+---
+
+## Hiding Commentary (2026-09-27)
+
+**Decision:** The reading panel has a "Hide commentary" button that turns the
+commentary layer's visibility off; hidden, it appears in the diagram's
+"Hidden:" chips, which bring it back. The commentary exports are unaffected.
+**Rationale:** A row in the layer panel was the first idea, but the panel's
+rows are the diagram's rows: a commentary row would cost a full row of height
+for something that draws nothing on the timeline. The chips already are how a
+hidden layer comes back, so the way back is the familiar one.
+
+---
+
+## Safari and Firefox Read-Through (2026-09-27)
+
+**Decision:** Wheel deltas are converted to pixels (`lib/timeline.ts`,
+`wheelPixels`) before panning or zooming the timeline, and a `.strata`
+download is typed `application/octet-stream`.
+**Rationale:** A read-through for cross-browser differences (no Safari or
+Firefox was available to run). Firefox can report a mouse wheel's movement in
+lines rather than pixels, so a notch panned the timeline about 3 px. Some
+browsers append an extension matching a download's type, which could turn
+`analysis.strata` into `analysis.strata.json`; a generic type leaves the name
+alone. The rest checked out: file open and save fall back to a file input and
+a download where the File System Access API is missing; the exported SVG
+carries explicit width and height (Firefox draws a size-less SVG image at
+zero for PNG export); no API newer than Safari 15.4 or Firefox 95 is used; the
+dialog-dimming hole uses unprefixed `clip-path: polygon(evenodd, …)`, which
+both support. Still to test by hand in both: playback, the video below the
+fold, drag, and PNG export.

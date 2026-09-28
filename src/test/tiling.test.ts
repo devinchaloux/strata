@@ -1,3 +1,4 @@
+import { formSpans } from '@/lib/layers'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { placeBoundaryInSpans, setSpanEdge, findOverlaps, gapAt, MIN_SPAN_WIDTH } from '@/lib/spanEdit'
 import { useDocumentStore } from '@/store/documentStore'
@@ -86,7 +87,7 @@ describe('store tiling guard', () => {
   beforeEach(() => {
     useDocumentStore.getState().loadDocument(makeDoc([makeLayer('L', [span('a', 0, 50), span('b', 50, 100)])]))
   })
-  const spans = () => useDocumentStore.getState().document!.layers[0].data.spans
+  const spans = () => formSpans(useDocumentStore.getState().document!.layers[0])
 
   it('drops a write that would overlap two spans in a layer', () => {
     useDocumentStore.getState().addSpan('L', span('x', 20, 80))

@@ -11,10 +11,16 @@
  *
  * `tooltip` is hover/focus only (Radix does not open tooltips on touch), so it
  * must never be the sole route to something needed to complete a task.
+ *
+ * `symbols` adds the symbol palette (⇒ ♭ ♯ …) to a free-text field: a toggle
+ * in the label row opens a row of buttons that insert at the cursor of the
+ * field's input or textarea. The buttons never take focus, so typing carries
+ * on where it was and the edit stays one undo step.
  */
 
 import * as React from 'react'
 import { Info } from 'lucide-react'
+import { PALETTE_SYMBOLS, insertAt } from '@/lib/musicSymbols'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 
 export const inputClass =
@@ -25,15 +31,19 @@ export function Field({
   label,
   helper,
   tooltip,
+  symbols,
   children,
 }: {
   label: string
   helper?: string
   tooltip?: string
+  symbols?: boolean
   children: React.ReactNode
 }) {
+  const box = React.useRef<HTMLDivElement>(null)
+  const [paletteOpen, setPaletteOpen] = React.useState(false)
   return (
-    <div className="mb-3">
+    <div className="mb-3" ref={box}>
       <div className="mb-1 flex items-center gap-1">
         <label className="block text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           {label}
@@ -52,9 +62,58 @@ export function Field({
             <TooltipContent>{tooltip}</TooltipContent>
           </Tooltip>
         )}
+        {symbols && (
+          <button
+            type="button"
+            aria-label={`Symbols for ${label}`}
+            aria-expanded={paletteOpen}
+            title="Insert a symbol"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => setPaletteOpen((o) => !o)}
+            className={
+              'ml-auto rounded px-1 text-[11px] leading-none hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ' +
+              (paletteOpen ? 'text-foreground' : 'text-muted-foreground/70')
+            }
+          >
+            ⇒
+          </button>
+        )}
       </div>
       {children}
+      {symbols && paletteOpen && (
+        <div className="mt-1 flex flex-wrap gap-0.5" role="toolbar" aria-label="Symbols">
+          {PALETTE_SYMBOLS.map((sym) => (
+            <button
+              key={sym}
+              type="button"
+              title={`Insert ${sym}`}
+              aria-label={`Insert ${sym}`}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => insertSymbol(box.current, sym)}
+              className="h-6 min-w-6 rounded border border-border bg-card px-1 text-xs text-foreground hover:bg-accent"
+            >
+              {sym}
+            </button>
+          ))}
+        </div>
+      )}
       {helper && <p className="mt-0.5 text-[10px] text-muted-foreground">{helper}</p>}
     </div>
   )
+}
+
+/**
+ * Insert `text` into the field's control at its cursor (or over its
+ * selection). The value is set through the native setter and announced with an
+ * input event, which is how React's onChange sees a programmatic edit.
+ */
+function insertSymbol(container: HTMLElement | null, text: string) {
+  const el = container?.querySelector<HTMLInputElement | HTMLTextAreaElement>('input, textarea')
+  if (!el || el.disabled || el.readOnly) return
+  const { value, caret } = insertAt(el.value, el.selectionStart ?? el.value.length, el.selectionEnd ?? el.value.length, text)
+  const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype
+  Object.getOwnPropertyDescriptor(proto, 'value')?.set?.call(el, value)
+  el.dispatchEvent(new Event('input', { bubbles: true }))
+  el.focus()
+  el.setSelectionRange(caret, caret)
 }
