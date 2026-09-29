@@ -60,6 +60,21 @@ export interface DerivativeReference {
 // Time Signature
 // ---------------------------------------------------------------------------
 
+/**
+ * One stretch of the beat grid: starts on a downbeat and keeps one tempo and
+ * meter until `end`, the next segment, or the end of the track. The time
+ * between segments has no grid.
+ */
+export interface GridSegment {
+  id: string
+  start: number              // Recording time of the first downbeat, seconds
+  end?: number | null        // Where the grid stops (a free stretch follows). Absent/null = runs on
+  bpm: number
+  beatsPerBar: number        // Beats in a bar (the time signature's numerator)
+  beatUnit?: number          // Note value of a beat (the denominator); display only. Omit for 4
+  firstBar?: number | null   // Bar number at `start`. Absent/null = continue from the previous segment
+}
+
 export interface TimeSignature {
   numerator: number   // Beats per measure
   denominator: number // Note value per beat as power of 2 (e.g. 4 = quarter note)
@@ -340,8 +355,10 @@ export interface StrataDocument {
   derivativeOf?: DerivativeReference | null
 
   notes?: string | null
-  bpm?: number | null
-  timeSignature?: TimeSignature | null
+  bpm?: number | null                  // Default tempo for a new beat-grid segment
+  timeSignature?: TimeSignature | null // Default meter for a new beat-grid segment
+  /** Bars and beats, laid down by ear in segments; gaps are freeform (lib/beatGrid.ts). */
+  beatGrid?: GridSegment[]
   homeKey?: HomeKey | null
 
   source: SourceReference

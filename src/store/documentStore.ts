@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { temporal } from 'zundo'
-import type { StrataDocument, Layer, LayerBase, Span, PointMarker, SharedTimePoint } from '@/types/strata'
+import type { StrataDocument, Layer, LayerBase, Span, PointMarker, SharedTimePoint, GridSegment } from '@/types/strata'
+import { sortedSegments, segmentAt } from '@/lib/beatGrid'
 import type { FormDiagramData } from '@/types/strata'
 import { placeBoundaryInSpans, setSpanEdge, findOverlaps, MIN_SPAN_WIDTH } from '@/lib/spanEdit'
 import { groupingHandleSet, breakHistoryGroup } from '@/store/history'
@@ -112,6 +113,15 @@ interface DocumentState {
   addPointMarker: (marker: PointMarker) => void
   updatePointMarker: (id: string, patch: Partial<Omit<PointMarker, 'id'>>) => void
   removePointMarker: (id: string) => void
+
+  // Beat grid (lib/beatGrid.ts). startGridAt begins a segment on the downbeat
+  // at `time`; one already running there simply ends at it, so the same action
+  // picks the grid up after a free stretch, changes tempo, or renumbers.
+  startGridAt: (time: number) => void
+  // The segment running at `time` stops there; a free stretch follows.
+  endGridAt: (time: number) => void
+  updateGridSegment: (id: string, patch: Partial<Omit<GridSegment, 'id'>>) => void
+  removeGridSegment: (id: string) => void
 
   // Shared time point pool
   // Replaces all pool entries contributed by layerId with the given points.
@@ -536,6 +546,61 @@ const useDocumentStore = create<DocumentState>()(
             updatedAt: now(),
           },
         })
+      },
+
+      startGridAt: (time) => {
+        const doc = get().document
+        if (!doc) return
+        const segs = sortedSegments(doc.beatGrid)
+        if (segs.some((g) => Math.abs(g.start - time) < 0.05)) return
+        const running = segmentAt(segs, time, doc.duration)?.seg
+        // Carry the tempo and meter on from the segment running here, else the
+        // last one before; the document's tempo and meter are the first default.
+        const before = [...segs].reverse().find((g) => g.start < time)
+        const model = running ?? before
+        const seg: GridSegment = {
+          id: crypto.randomUUID(),
+          start: time,
+          bpm: model?.bpm ?? doc.bpm ?? 120,
+          beatsPerBar: model?.beatsPerBar ?? doc.timeSignature?.numerator ?? 4,
+          ...(model?.beatUnit ?? doc.timeSignature?.denominator ? { beatUnit: model?.beatUnit ?? doc.timeSignature?.denominator } : {}),
+          // A split segment's own stopping point now belongs to the new one.
+          ...(running?.end != null && running.end > time ? { end: running.end } : {}),
+        }
+        set({ document: { ...doc, beatGrid: sortedSegments([...segs, seg]), updatedAt: now() } })
+      },
+
+      endGridAt: (time) => {
+        const doc = get().document
+        if (!doc) return
+        const segs = sortedSegments(doc.beatGrid)
+        const hit = segmentAt(segs, time, doc.duration)
+        if (!hit || time <= hit.seg.start) return
+        set({
+          document: {
+            ...doc,
+            beatGrid: segs.map((g) => (g.id === hit.seg.id ? { ...g, end: time } : g)),
+            updatedAt: now(),
+          },
+        })
+      },
+
+      updateGridSegment: (id, patch) => {
+        const doc = get().document
+        if (!doc?.beatGrid) return
+        set({
+          document: {
+            ...doc,
+            beatGrid: sortedSegments(doc.beatGrid.map((g) => (g.id === id ? { ...g, ...patch } : g))),
+            updatedAt: now(),
+          },
+        })
+      },
+
+      removeGridSegment: (id) => {
+        const doc = get().document
+        if (!doc?.beatGrid) return
+        set({ document: { ...doc, beatGrid: doc.beatGrid.filter((g) => g.id !== id), updatedAt: now() } })
       },
 
       removePointMarker: (id) => {

@@ -49,6 +49,7 @@ import { FormLayers } from './FormLayers'
 import { LayerSettingsPopover } from './LayerSettingsPopover'
 import { AddLayerPopover } from './AddLayerPopover'
 import { DiagramControlBar } from './DiagramControlBar'
+import { GridPopover } from './GridPopover'
 import { CommentaryPanel } from '@/widgets/written-analysis/CommentaryPanel'
 import { formSpans, analysisLayers } from '@/lib/layers'
 import {
@@ -464,6 +465,7 @@ function WidgetTopBar({
 
       <span aria-hidden style={{ width: 1, height: 12, background: 'var(--hairline)', margin: '0 4px' }} />
       <DiagramControlBar />
+      <GridPopover />
 
       {hidden.length > 0 && (
         <div className="flex items-center gap-1 overflow-hidden">
@@ -595,6 +597,7 @@ export function FormDiagram() {
             viewportWidth={timeline.viewportWidth}
             duration={timeline.duration}
             setScrollOffset={timeline.setScrollOffset}
+            grid={doc.beatGrid}
           />
         </div>
       </div>

@@ -16,6 +16,7 @@
 
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
+import { snapToActiveGrid } from '@/store/snap'
 
 function BarButton({
   label,
@@ -78,7 +79,7 @@ export function DiagramControlBar() {
         shortcut={isPlaying ? 'Space' : undefined}
         title={boundaryTitle}
         disabled={!canPlaceBoundary}
-        onClick={() => activeLayerId && placeBoundary(activeLayerId, useUIStore.getState().currentTime)}
+        onClick={() => activeLayerId && placeBoundary(activeLayerId, snapToActiveGrid(useUIStore.getState().currentTime))}
       />
       <BarButton
         label="Marker"
@@ -86,7 +87,7 @@ export function DiagramControlBar() {
         title="Place a point marker at the playhead"
         onClick={() => {
           const id = crypto.randomUUID()
-          addPointMarker({ id, timestamp: useUIStore.getState().currentTime })
+          addPointMarker({ id, timestamp: snapToActiveGrid(useUIStore.getState().currentTime) })
           selectPointMarker(id)
         }}
       />

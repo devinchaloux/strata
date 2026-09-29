@@ -33,6 +33,9 @@ const KEYS: [string, [string, string][]][] = [
       ['J / L', 'Back / forward 10 seconds'],
       ['Home', 'Back to the start'],
       ['M', 'Place a point marker at the playhead'],
+      ['G', 'Start the beat grid on this downbeat'],
+      ['Shift+G', 'Stop the beat grid here'],
+      ['T', 'Tap on each beat to set the tempo'],
     ],
   ],
   [

@@ -21,10 +21,12 @@ import { stackHeight, shapeTopY, layerBodyHeight, layerIndexAtY } from '@/lib/fo
 import { layoutMarkerBand, BAND_TOP_GAP, BAND_ROW_HEIGHT, GLYPH_HALF, type MarkerPlacement } from '@/lib/markerBand'
 import { MIN_SPAN_WIDTH, MIN_BOUNDARY_DRAG_PX } from '@/lib/spanEdit'
 import { newGestureKey, withHistoryGroup } from '@/store/history'
+import { gridLines, sortedSegments, barLength, beatLength } from '@/lib/beatGrid'
+import { snapToActiveGrid } from '@/store/snap'
 import { Playhead } from './Playhead'
 import { FormDiagramFigure, type SpanDecoration } from '@/widgets/form-diagram/figure'
 import { EDITOR_THEME } from '@/widgets/form-diagram/theme'
-import type { Layer, Span, FormDiagramData, PointMarker, VocabTerm } from '@/types/strata'
+import type { Layer, Span, FormDiagramData, PointMarker, VocabTerm, GridSegment } from '@/types/strata'
 import {
   ContextMenu,
   ContextMenuTrigger,
@@ -322,6 +324,47 @@ const LayerInteraction = memo(function LayerInteraction({
   )
 })
 
+/**
+ * The beat grid behind the diagram: bar lines, and beat lines once they're far
+ * enough apart to read. Zoomed out, bar lines thin to every 2nd, 4th… bar. Free
+ * stretches between grid segments get no lines at all.
+ */
+const BeatGridLines = memo(function BeatGridLines({
+  grid,
+  duration,
+  pps,
+  height,
+}: {
+  grid: GridSegment[] | undefined
+  duration: number
+  pps: number
+  height: number
+}) {
+  const segs = sortedSegments(grid)
+  if (!segs.length || pps <= 0) return null
+  const minBar = Math.min(...segs.map(barLength)) * pps
+  const minBeat = Math.min(...segs.map(beatLength)) * pps
+  const showBeats = minBeat >= 6
+  let every = 1
+  while (minBar * every < 8) every *= 2
+  const lines = gridLines(segs, duration, 0, duration)
+  return (
+    <g aria-hidden pointerEvents="none">
+      {lines.map((l) =>
+        l.bar !== null ? (
+          (l.bar - 1) % every === 0 && (
+            <line key={l.time} x1={l.time * pps} x2={l.time * pps} y1={0} y2={height} stroke="var(--ruler)" strokeOpacity={0.45} />
+          )
+        ) : (
+          showBeats && (
+            <line key={l.time} x1={l.time * pps} x2={l.time * pps} y1={0} y2={height} stroke="var(--hairline)" strokeOpacity={0.6} />
+          )
+        ),
+      )}
+    </g>
+  )
+})
+
 /** A marker's target: covers its glyph and caption, for select and drag. */
 function MarkerHitTarget({
   placement,
@@ -449,7 +492,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
       const gesture = newGestureKey('boundary-drag')
       const onMove = (ev: PointerEvent) =>
         withHistoryGroup(gesture, () =>
-          setAdjacentBoundary(layerId, leftId, rightId, clientXToTime(ev.clientX), minWidth),
+          setAdjacentBoundary(layerId, leftId, rightId, snapToActiveGrid(clientXToTime(ev.clientX)), minWidth),
         )
       const onUp = () => {
         window.removeEventListener('pointermove', onMove)
@@ -565,7 +608,11 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
         if (!dragged) return
         const t = clampToTrack(clientXToTime(ev.clientX))
         withHistoryGroup(gesture, () =>
-          updatePointMarker(marker.id, { timestamp: snapTime(t, candidates, pps) }),
+          updatePointMarker(marker.id, {
+            // The beat grid wins when snapping is on and the time is inside it;
+            // otherwise markers snap to nearby boundaries and markers as before.
+            timestamp: snapToActiveGrid(t) !== t ? snapToActiveGrid(t) : snapTime(t, candidates, pps),
+          }),
         )
       }
       const onUp = () => {
@@ -615,6 +662,9 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
           display: 'block',
         }}
       >
+
+        {/* The beat grid, behind everything (editor only for now). */}
+        <BeatGridLines grid={doc?.beatGrid} duration={duration} pps={pps} height={svgHeight} />
 
         {/* The drawing itself: the same pure figure that export uses. */}
         {pps > 0 && (

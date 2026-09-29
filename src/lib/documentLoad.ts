@@ -17,7 +17,7 @@
  * layer the app can't draw is kept in the document and saved back unchanged.
  */
 
-import type { StrataDocument, Layer, Span, FormDiagramData } from '@/types/strata'
+import type { StrataDocument, Layer, Span, FormDiagramData, GridSegment } from '@/types/strata'
 import { findOverlaps } from '@/lib/spanEdit'
 import { formatTime } from '@/lib/youtube'
 import { FILE_FORMAT_VERSION, migrate } from '@/lib/migrations'
@@ -101,6 +101,7 @@ export function readDocument(raw: unknown): LoadResult {
     pointMarkers: readPointMarkers(input.pointMarkers),
     layers,
   } as StrataDocument
+  if (input.beatGrid !== undefined) doc.beatGrid = readBeatGrid(input.beatGrid, notices)
 
   return { doc: fillMissingSlugs(doc), notices }
 }
@@ -223,6 +224,27 @@ function readSpan(raw: unknown, where: string, spanIds: Set<string>): Span {
     throw new DocumentError(`${where} ends (${raw.endTime}s) at or before it starts (${raw.startTime}s).`)
   }
   return raw as unknown as Span
+}
+
+/** Grid segments that make sense (a start, a positive tempo, whole beats per bar), in time order. */
+function readBeatGrid(raw: unknown, notices: string[]): GridSegment[] {
+  if (!Array.isArray(raw)) return []
+  const ok = raw.filter(
+    (g): g is GridSegment =>
+      isObj(g) &&
+      typeof g.id === 'string' &&
+      isNum(g.start) &&
+      g.start >= 0 &&
+      isNum(g.bpm) &&
+      g.bpm > 0 &&
+      Number.isInteger(g.beatsPerBar) &&
+      (g.beatsPerBar as number) >= 1,
+  )
+  if (ok.length < raw.length) {
+    const n = raw.length - ok.length
+    notices.push(`${n} beat-grid segment${n === 1 ? " couldn't" : "s couldn't"} be read and ${n === 1 ? 'was' : 'were'} left out.`)
+  }
+  return ok.sort((a, b) => a.start - b.start)
 }
 
 function readPointMarkers(raw: unknown): StrataDocument['pointMarkers'] {

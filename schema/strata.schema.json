@@ -80,10 +80,15 @@
     "bpm": {
       "type": ["number", "null"],
       "minimum": 0,
-      "description": "Beats per minute of the track. Used by the BPM grid utility to generate bar-level time points in the shared pool for span boundary snapping. Null if not applicable or not set. For variable-tempo tracks, set the dominant BPM and adjust individual time points manually."
+      "description": "Beats per minute of the track: the default tempo for a new beatGrid segment. Null if not applicable or not set."
     },
     "timeSignature": {
       "$ref": "#/$defs/TimeSignature"
+    },
+    "beatGrid": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/GridSegment" },
+      "description": "Bars and beats, laid down by the analyst in segments. Each segment starts on a downbeat and keeps one tempo and meter; the time between segments has no grid (a freeform passage). Beats are computed from the segments, never stored. Omit when the analysis has no grid."
     },
     "homeKey": {
       "$ref": "#/$defs/HomeKey"
@@ -150,8 +155,23 @@
       ]
     },
 
+    "GridSegment": {
+      "type": "object",
+      "required": ["id", "start", "bpm", "beatsPerBar"],
+      "additionalProperties": false,
+      "description": "One stretch of the beat grid. Runs from its first downbeat until its own end, the next segment, or the end of the track, whichever comes first.",
+      "properties": {
+        "id": { "type": "string" },
+        "start": { "type": "number", "minimum": 0, "description": "Recording time of the segment's first downbeat, seconds." },
+        "end": { "type": ["number", "null"], "minimum": 0, "description": "Where the grid stops and a free stretch begins. Null or absent: it runs to the next segment or the end of the track." },
+        "bpm": { "type": "number", "exclusiveMinimum": 0 },
+        "beatsPerBar": { "type": "integer", "minimum": 1, "description": "Beats in a bar: the time signature's numerator." },
+        "beatUnit": { "type": "integer", "minimum": 1, "description": "The note value of a beat (the time signature's denominator). Display only. Omit for 4." },
+        "firstBar": { "type": ["integer", "null"], "description": "Bar number at the segment's start. Null or absent: continue counting from the previous segment." }
+      }
+    },
     "TimeSignature": {
-      "description": "Time signature of the track. Used with bpm to generate the BPM grid. Null if not set.",
+      "description": "Time signature of the track: the default meter for a new beatGrid segment. Null if not set.",
       "oneOf": [
         { "type": "null" },
         {

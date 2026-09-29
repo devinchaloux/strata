@@ -7,6 +7,9 @@ import { useAudioPlayer } from '@/hooks/useAudioPlayer'
 import { extractVideoId, formatClock, isInputFocused } from '@/lib/youtube'
 import { pickAudioFile } from '@/lib/fileIO'
 import { setPlayerElement } from '@/lib/playerClearance'
+import { snapToActiveGrid } from '@/store/snap'
+import { segmentAt, sortedSegments, tapTempo } from '@/lib/beatGrid'
+import { newGestureKey, withHistoryGroup } from '@/store/history'
 import { SeekBar } from './SeekBar'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import type { PlaybackRate } from '@/store/uiStore'
@@ -221,7 +224,7 @@ export function PlayerDock() {
   // Spacebar (which needs an active layer) this needs no layer context.
   function placeMarkerAtPlayhead() {
     const id = crypto.randomUUID()
-    addPointMarker({ id, timestamp: useUIStore.getState().currentTime })
+    addPointMarker({ id, timestamp: snapToActiveGrid(useUIStore.getState().currentTime) })
     selectPointMarker(id)
   }
 
@@ -297,7 +300,7 @@ export function PlayerDock() {
       const ui = useUIStore.getState()
       if (ui.playbackState === 'playing') {
         if (ui.activeLayerId) {
-          useDocumentStore.getState().placeBoundary(ui.activeLayerId, ui.currentTime)
+          useDocumentStore.getState().placeBoundary(ui.activeLayerId, snapToActiveGrid(ui.currentTime))
         }
       } else {
         engineRef.current.play()
@@ -321,6 +324,43 @@ export function PlayerDock() {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Beat grid by ear (lib/beatGrid.ts). G on a downbeat starts a grid segment
+  // there (or picks the grid up again after a free passage); Shift+G stops the
+  // one running; T, tapped on each beat while playing, sets the tempo of the
+  // segment under the playhead. Taps are read in media time, so they stay
+  // right at 0.5× playback, and one run of taps is one undo step.
+  useEffect(() => {
+    let taps: number[] = []
+    let lastTapWall = 0
+    let tapGesture = ''
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.metaKey || e.ctrlKey || e.altKey || isInputFocused()) return
+      const ui = useUIStore.getState()
+      const store = useDocumentStore.getState()
+      if (!store.document || ui.playerStatus !== 'ready') return
+      if (e.key === 'g' || e.key === 'G') {
+        e.preventDefault()
+        if (e.shiftKey) store.endGridAt(ui.currentTime)
+        else store.startGridAt(ui.currentTime)
+      } else if ((e.key === 't' || e.key === 'T') && ui.playbackState === 'playing') {
+        e.preventDefault()
+        const wall = performance.now()
+        if (wall - lastTapWall > 2000) {
+          taps = []
+          tapGesture = newGestureKey('tap-tempo')
+        }
+        lastTapWall = wall
+        taps.push(ui.currentTime)
+        const bpm = tapTempo(taps)
+        const doc = store.document
+        const hit = segmentAt(sortedSegments(doc.beatGrid), ui.currentTime, doc.duration)
+        if (bpm && hit) withHistoryGroup(tapGesture, () => store.updateGridSegment(hit.seg.id, { bpm }))
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
   // "Locate" flow: a local-source document was opened but the browser can't

@@ -3080,3 +3080,45 @@ zero for PNG export); no API newer than Safari 15.4 or Firefox 95 is used; the
 dialog-dimming hole uses unprefixed `clip-path: polygon(evenodd, …)`, which
 both support. Still to test by hand in both: playback, the video below the
 fold, drag, and PNG export.
+
+---
+
+## Beat Grid (2026-09-29)
+
+**Decision:** The beat grid is a list of segments on the document
+(`beatGrid`). A segment starts on a downbeat and keeps one tempo and meter
+until its own end, the next segment, or the end of the track; the time between
+segments has no grid. Beats and bar lines are computed (`lib/beatGrid.ts`),
+never stored. The analyst lays it down by ear while listening: G on a downbeat
+starts a segment there (which also picks the grid up after a free passage, or
+marks a tempo change or renumbering), Shift+G stops the one running, and T
+tapped on each beat sets its tempo from a least-squares fit of the last eight
+taps, measured in media time so it holds at slower playback speeds. The Grid
+popover in the diagram's top bar lists the segments for editing.
+**Rationale:** Devin's demo has a clean grid that falls apart in an unquantized
+breakdown and returns after it, and classical tempo is rarely constant, so one
+BPM for a whole piece can't work. YouTube gives no access to the audio, so
+nothing can be detected from a waveform; laying the grid by ear matches how an
+analyst hears it anyway. Storing segments instead of thousands of time points
+keeps the file small and makes a correction a single edit.
+**Supersedes:** the earlier plan for a "BPM grid utility" that wrote bar-level
+time points into `sharedTimePoints` with `sourceLayerId: null` (entries above).
+The `bpm` and `timeSignature` fields remain, as the defaults for a new segment.
+
+**Decision:** Bar numbers continue across a free stretch; a segment's
+`firstBar` overrides the count where the analyst wants (Devin, 2026-09-29). A
+cut-short last bar counts, unless it is under a tenth of a bar.
+
+**Decision:** Snapping to the grid is off by default, with Off / Beats / Bars
+in the Grid popover; it is view state, not saved. When on, placements (Space,
+M, the Boundary and Marker buttons) and drags inside a segment pull to the
+nearest beat or bar, as in a DAW; free stretches don't snap.
+**Rationale:** Devin: on by default would fight classical music, whose tempo
+is not consistent. Tying snapping to a chosen vocabulary package was
+considered and rejected, because choosing terminology is a different act from
+wanting a grid.
+
+**Decision:** Grid lines draw behind the diagram (bar lines, and beat lines
+once they are at least 6 px apart), and the ruler gains a bar-number strip
+where each segment shows as a band, so a free stretch reads as a gap. Both are
+editor-only for now; exporting the grid is a later question.

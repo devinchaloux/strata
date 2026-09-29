@@ -78,10 +78,30 @@ These fields appear at the root of every `.strata` file.
 | Field | Type | Required | What it means |
 |---|---|---|---|
 | `notes` | text or null | No | Document-level free text for the analyst. Methodological notes, analytical caveats, summary of findings. Not the same as the Written Analysis widget — this is a simple overview field, not timestamped prose. |
-| `bpm` | decimal number or null | No | Beats per minute of the track. Used by the BPM grid utility to generate bar-level time points in the shared pool so span boundaries can snap to beats and bars. Null if not applicable or not set. For variable-tempo tracks, set the dominant BPM and adjust individual time points manually. |
-| `timeSignature` | object or null | No | Time signature, used together with `bpm` to generate the BPM grid. Contains `numerator` (beats per measure, e.g. 4) and `denominator` (note value per beat, e.g. 4 for a quarter note). Null if not set. |
+| `bpm` | decimal number or null | No | Beats per minute of the track: the tempo a new beat-grid segment starts with. Null if not applicable or not set. |
+| `timeSignature` | object or null | No | Time signature: the meter a new beat-grid segment starts with. Contains `numerator` (beats per measure, e.g. 4) and `denominator` (note value per beat, e.g. 4 for a quarter note). Null if not set. |
+| `beatGrid` | list of Grid Segments | No | Bars and beats, laid down by the analyst — see [Beat Grid](#beat-grid) below. Omit when there is no grid. |
 | `homeKey` | object or null | No | The document's tonic and mode — see [Home Key](#home-key) below. Null if not set. |
 | `showCadenceCaptions` | true/false | No | Whether cadence-related point marker detail (type abbreviation, harmonic context) renders on the diagram. Point markers aren't owned by any layer, so this is a document-wide switch rather than a per-layer one. Omit for `true` (shown) — the default. |
+
+### Beat Grid
+
+The grid is laid down by ear in **segments**. Each starts on a downbeat and
+keeps one tempo and meter until its own `end`, the next segment, or the end of
+the track. The time between segments has no grid: a freeform breakdown, a
+rubato passage. Beats and bar lines are computed from the segments; they are
+never stored. A new segment picks the grid up after a free passage, and also
+marks a tempo or meter change, or a renumbering.
+
+| Field | Type | Required | What it means |
+|---|---|---|---|
+| `id` | text | Yes | Identifier. |
+| `start` | decimal number | Yes | Recording time of the segment's first downbeat, seconds. |
+| `end` | decimal number or null | No | Where the grid stops and a free stretch begins. Omit to run on to the next segment or the end of the track. |
+| `bpm` | decimal number | Yes | Tempo in beats per minute. |
+| `beatsPerBar` | whole number | Yes | Beats in a bar (the time signature's numerator). |
+| `beatUnit` | whole number | No | The note value of a beat (the denominator). Display only. Omit for 4. |
+| `firstBar` | whole number or null | No | The bar number at `start`. Omit to continue counting from the previous segment, across any free stretch between them; set it to renumber (for example after a hypermetric reinterpretation). |
 
 ### Home Key
 

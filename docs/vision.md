@@ -442,6 +442,8 @@ The analyst places control points wherever they want. Two points at the same int
 
 #### BPM Grid (Optional Scaffolding)
 
+> **Status (2026-09-29):** built as a document-level beat grid of segments rather than time points in the shared pool; see `docs/decisions.md`, "Beat Grid", and the Beat Grid section of the schema reference.
+
 If the analyst sets a BPM at the layer level, the widget displays faint gridlines at bar or four-bar intervals and offers snapping. This is scaffolding only — it never constrains the data. Time points contributed to the shared pool by this scaffold are available to the form diagram and other widgets. Tempo changes and added measures are handled by correcting the pool directly; they do not break the data model.
 
 #### Relationship to the Form Diagram
@@ -734,7 +736,7 @@ Build only if the community demands it and the resources exist.
 - **Music video staging — dedicated widget?** Standard form diagram + point marker likely covers this. Revisit if that user community arrives.
 - **Hierarchical enforcement toggle — exact UX of the warning dialog.** Content of the warning, confirmation flow, and how the toggle state is surfaced in the layer UI. Resolve before form diagram widget UI is finalized.
 - **Energy contour — live reference import (v2).** When control points become live references to span IDs rather than hard-copied timestamps, what happens to a control point whose source span is deleted? Needs a conflict resolution design.
-- **BPM grid utility — scope.** Is the BPM grid generator a utility built into the energy contour widget, a standalone utility that writes to the shared pool, or a layer-level setting? The shared pool architecture suggests standalone, but the UX is unresolved.
+- **BPM grid utility — scope.** Is the BPM grid generator a utility built into the energy contour widget, a standalone utility that writes to the shared pool, or a layer-level setting? The shared pool architecture suggests standalone, but the UX is unresolved. *Resolved 2026-09-29: a document-level beat grid of segments, laid down by ear; see "Beat Grid" in `docs/decisions.md`.*
 
 ---
 
