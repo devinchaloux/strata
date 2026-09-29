@@ -10,6 +10,7 @@ import {
   tapTempo,
 } from '@/lib/beatGrid'
 import { useDocumentStore } from '@/store/documentStore'
+import { useUIStore } from '@/store/uiStore'
 import { makeDoc } from './fixtures'
 
 // 120 BPM in 4/4: a beat is 0.5 s, a bar 2 s.
@@ -101,5 +102,14 @@ describe('grid in the store', () => {
     expect(store().document!.beatGrid).toHaveLength(2)
     store().removeGridSegment(segs[0].id)
     expect(store().document!.beatGrid).toHaveLength(1)
+  })
+})
+
+describe('the snap preference', () => {
+  it('is remembered in the browser', () => {
+    useUIStore.getState().setSnapMode('bar')
+    expect(localStorage.getItem('strata:snapMode')).toBe('bar')
+    useUIStore.getState().setSnapMode('off')
+    expect(localStorage.getItem('strata:snapMode')).toBe('off')
   })
 })

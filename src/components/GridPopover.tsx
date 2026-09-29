@@ -89,7 +89,9 @@ export function GridPopover() {
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[26rem] p-3 text-xs">
         <div className="flex items-center justify-between">
-          <span className="font-medium text-foreground">Snap to the grid</span>
+          <span className="font-medium text-foreground" title="Your choice is remembered in this browser for every file.">
+            Snap to the grid
+          </span>
           <div className="flex overflow-hidden rounded border border-border" role="radiogroup" aria-label="Snap to the grid">
             {SNAP_OPTIONS.map(([mode, label]) => (
               <button

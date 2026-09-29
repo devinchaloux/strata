@@ -3122,3 +3122,18 @@ wanting a grid.
 once they are at least 6 px apart), and the ruler gains a bar-number strip
 where each segment shows as a band, so a free stretch reads as a gap. Both are
 editor-only for now; exporting the grid is a later question.
+
+---
+
+## Snapping Remembered as a Preference (2026-09-29)
+
+**Decision (amends "Beat Grid"):** The snap choice (Off / Beats / Bars) is the
+analyst's own default: Off on a first visit, then whatever they last chose,
+remembered in this browser for every file. It is still never written into the
+`.strata` file.
+**Rationale:** Devin: an app default rather than a per-visit setting. Analysts
+of metrically regular music would otherwise switch snapping on in every
+session; analysts of rubato music keep it off once and never think about it.
+It is a way of working, not part of the analysis, so a collaborator opening
+the same file keeps their own. It is per browser because Strata has no
+accounts.

@@ -109,8 +109,10 @@ export interface UIState {
   // The export dialog (SVG / PNG of the form diagram).
   exportOpen: boolean
 
-  // Snapping to the beat grid: the analyst's choice, off by default
-  // (docs/decisions.md, "Beat Grid"). View state, not saved in the file.
+  // Snapping to the beat grid: the analyst's own default, off until they
+  // choose otherwise, then remembered in this browser across files and visits.
+  // A working preference, not part of the analysis, so never in the file
+  // (docs/decisions.md, "Snapping Remembered as a Preference").
   snapMode: SnapMode
 
   // A request for the player to jump to a time, from outside the transport
@@ -166,6 +168,18 @@ export interface UIState {
 // Store
 // ---------------------------------------------------------------------------
 
+const SNAP_KEY = 'strata:snapMode'
+
+/** The analyst's remembered snap choice; Off for a first visit or anything unreadable. */
+function readSnapPreference(): SnapMode {
+  try {
+    const v = localStorage.getItem(SNAP_KEY)
+    return v === 'beat' || v === 'bar' ? v : 'off'
+  } catch {
+    return 'off'
+  }
+}
+
 const useUIStore = create<UIState>()((set) => ({
   currentTime: 0,
   duration: 0,
@@ -196,7 +210,7 @@ const useUIStore = create<UIState>()((set) => ({
   documentSettingsOpen: false,
   appMessage: null,
   exportOpen: false,
-  snapMode: 'off',
+  snapMode: readSnapPreference(),
   seekRequest: null,
 
   setCurrentTime: (time) => set({ currentTime: time }),
@@ -246,7 +260,14 @@ const useUIStore = create<UIState>()((set) => ({
   showAppMessage: (title, lines) => set({ appMessage: { title, lines } }),
   dismissAppMessage: () => set({ appMessage: null }),
   setExportOpen: (open) => set({ exportOpen: open }),
-  setSnapMode: (mode) => set({ snapMode: mode }),
+  setSnapMode: (mode) => {
+    try {
+      localStorage.setItem(SNAP_KEY, mode)
+    } catch {
+      // Storage blocked (a private window): the choice lasts this visit only.
+    }
+    set({ snapMode: mode })
+  },
   requestSeek: (time) => set((s) => ({ seekRequest: { time, n: (s.seekRequest?.n ?? 0) + 1 } })),
 }))
 
