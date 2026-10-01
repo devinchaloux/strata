@@ -169,6 +169,18 @@ export async function saveFileAs(doc: StrataDocument): Promise<FileSystemFileHan
  * everywhere (no File System Access API) — the file is read-only media, so a
  * writable handle buys nothing. Resolves null on cancel.
  */
+/** Ask for a text file (a vocabulary pack, say) and read it; null if cancelled. */
+export function pickTextFile(accept: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = accept
+    input.onchange = async () => resolve((await input.files?.[0]?.text()) ?? null)
+    input.addEventListener('cancel', () => resolve(null))
+    input.click()
+  })
+}
+
 export function pickAudioFile(): Promise<File | null> {
   return new Promise((resolve) => {
     const input = document.createElement('input')

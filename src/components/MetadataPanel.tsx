@@ -17,6 +17,7 @@ import { useMerge } from '@/hooks/useMerge'
 import { formatTime, formatClock } from '@/lib/youtube'
 import { TimeInput } from './TimeInput'
 import { TypePicker } from './TypePicker'
+import { labelFollowsType } from '@/lib/vocabulary'
 import { blockForSpan, blockForRange } from '@/widgets/written-analysis/commentary'
 import { capFromBoundaryType } from '@/lib/formShape'
 import { slugify } from '@/lib/slug'
@@ -459,14 +460,17 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           )}
         </Field>
 
-        {/* Type — picking one also names an unlabeled span after it. */}
+        {/* Type — the label follows it while the label is empty or still the
+            one the old type gave (lib/vocabulary.ts, labelFollowsType). */}
         <Field label="Type">
           <TypePicker
             kind="span"
             value={span.type}
             onPick={(id, term) => {
+              const custom = useDocumentStore.getState().document?.vocabulary.spanTypes ?? []
+              const follows = labelFollowsType(span.label, span.type, custom)
               update({ type: id })
-              if (term && !span.label) setSpanLabels([span.id], term.label)
+              if (term && follows) setSpanLabels([span.id], term.label)
             }}
           />
         </Field>
@@ -754,16 +758,17 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
           />
         </Field>
 
-        {/* Type — unlabeled spans take the type's label as well. */}
+        {/* Type — each span's label follows it unless the analyst wrote their own. */}
         <Field label="Type">
           <TypePicker
             kind="span"
             value={type === MIXED ? null : type || null}
             mixed={type === MIXED}
             onPick={(id, term) => {
+              const custom = useDocumentStore.getState().document?.vocabulary.spanTypes ?? []
+              const following = spans.filter((s) => labelFollowsType(s.label, s.type, custom)).map((s) => s.id)
               setAll({ type: id })
-              const unlabeled = spans.filter((s) => !s.label).map((s) => s.id)
-              if (term && unlabeled.length) setSpanLabels(unlabeled, term.label)
+              if (term && following.length) setSpanLabels(following, term.label)
             }}
           />
         </Field>

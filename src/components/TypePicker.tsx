@@ -33,6 +33,8 @@ import {
   type TermKind,
 } from '@/lib/vocabulary'
 import type { VocabTerm } from '@/types/strata'
+import { exportVocabPack, exportableCount, packSource, readVocabPack } from '@/lib/vocabPack'
+import { downloadBlob, fileBaseName, pickTextFile } from '@/lib/fileIO'
 
 
 interface Row {
@@ -113,7 +115,9 @@ export function TypePicker({
     if (!doc) return []
     const used =
       kind === 'span' ? doc.layers.flatMap(formSpans).map((s) => s.type) : doc.pointMarkers.map((m) => m.type)
-    const ids = [...new Set([...custom.map((t) => t.id), ...used.filter((t): t is string => !!t)])]
+    // Terms from an imported pack get their own group below, unless in use.
+    const own = custom.filter((t) => !t.source).map((t) => t.id)
+    const ids = [...new Set([...own, ...used.filter((t): t is string => !!t)])]
     return ids
       .map((id) => findTerm(id, kind, custom))
       .filter((t): t is PickerTerm => !!t)
@@ -128,6 +132,8 @@ export function TypePicker({
     (l) => l[libKey].length > 0 && (l.tier === 'built-in' || enabledPacks.includes(l.id)),
   )
   const packs = LIBRARIES.filter((l) => l.tier === 'pack' && l[libKey].length > 0)
+  // Imported packs, by the source each term records.
+  const imported = [...new Set(custom.map((t) => t.source).filter((s): s is string => !!s))]
 
   // ── The rows, in display order, so arrow keys can walk them ──
   const sections: { title?: string; lib?: string; rows: Row[] }[] = []
@@ -146,7 +152,7 @@ export function TypePicker({
         key: hit.term.id,
         id: hit.term.id,
         term: hit.term,
-        note: hit.term.custom ? 'this file' : lib ? (lib.tier === 'pack' ? `${lib.label} · pack` : lib.label) : undefined,
+        note: hit.term.custom ? (custom.find((c) => c.id === hit.term.id)?.source ?? 'this file') : lib ? (lib.tier === 'pack' ? `${lib.label} · pack` : lib.label) : undefined,
       })
     }
     const newId = slugify(q)
@@ -175,6 +181,16 @@ export function TypePicker({
           : [],
       })
     }
+    for (const src of imported) {
+      const key = `source:${src}`
+      sections.push({
+        title: src,
+        lib: key,
+        rows: expanded.includes(key)
+          ? custom.filter((t) => t.source === src).map((t) => ({ key: `${key}-${t.id}`, id: t.id, term: findTerm(t.id, kind, custom) }))
+          : [],
+      })
+    }
   }
   const flat = sections.flatMap((s) => [...s.rows.filter((r) => r.chip), ...s.rows.filter((r) => !r.chip)])
 
@@ -184,6 +200,25 @@ export function TypePicker({
       onPick(row.id, row.term)
     })
     setOpen(false)
+  }
+
+  // A pack's terms are copied into the file, so it opens without the pack.
+  async function importPack() {
+    const raw = await pickTextFile('.json,application/json')
+    if (raw === null) return
+    const showAppMessage = useUIStore.getState().showAppMessage
+    try {
+      const { pack, skipped: unreadable } = readVocabPack(raw)
+      const result = useDocumentStore.getState().importVocabPack(pack)
+      if (!result) return
+      const skipped = [...unreadable, ...result.skipped]
+      showAppMessage(`Imported “${packSource(pack)}”`, [
+        `${result.added} new type${result.added === 1 ? '' : 's'}${result.updated ? `, ${result.updated} updated` : ''}. They're under “${packSource(pack)}” in the Type list.`,
+        ...(skipped.length ? ['Left out:', ...skipped] : []),
+      ])
+    } catch (err) {
+      showAppMessage('Couldn’t import that pack', [err instanceof Error ? err.message : String(err)])
+    }
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
@@ -319,6 +354,20 @@ export function TypePicker({
                   </label>
                 ))}
                 <p className="mt-1 text-[11px] text-muted-foreground">Search finds pack terms even when a pack is off.</p>
+                <div className="mt-2 flex flex-wrap gap-2 border-t border-border pt-2">
+                  <button type="button" className="rounded border border-border px-2 py-0.5 text-xs hover:bg-accent" onClick={importPack}>
+                    Import a pack file…
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded border border-border px-2 py-0.5 text-xs hover:bg-accent disabled:opacity-40"
+                    disabled={!doc || exportableCount(doc) === 0}
+                    title="Save the types this file defines (not its letters) as a .vocab.json pack"
+                    onClick={() => doc && downloadBlob(new Blob([JSON.stringify(exportVocabPack(doc), null, 2)], { type: 'application/json' }), `${fileBaseName(doc)}.vocab.json`)}
+                  >
+                    Save this file’s types as a pack
+                  </button>
+                </div>
               </div>
             )}
           </div>

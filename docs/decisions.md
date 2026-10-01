@@ -3317,3 +3317,35 @@ segment table.
 **Rationale:** Devin asked for a start-at-the-beginning option and a manual
 route; tapping isn't always practical (a known tempo, or no time to tap).
 
+---
+
+## A Span's Label Follows Its Type (2026-10-01)
+
+**Decision:** Picking a type replaces the span's label when the label is empty
+or is still the label (or full name) of the type it had. A label the analyst
+wrote is never replaced. The rule is `labelFollowsType` in
+`src/lib/vocabulary.ts`; with several spans selected it applies to each.
+**Rationale:** Devin found it annoying that changing Chorus to Verse left the
+label reading "Chorus", and saw that always replacing it would be annoying the
+other way. A label that came from the type carries no analyst intent, so it
+can follow; one the analyst typed ("Verse 1", "THE DROP") does, so it stays.
+
+---
+
+## Vocabulary Packs (2026-10-01)
+
+**Decision:** Pack import and export are built, in the `.vocab.json` format
+the June build plan sketched, now with a JSON Schema
+(`schema/strata-vocab.schema.json`) and an optional `strataVocabPack: 1`
+marker. Importing copies the terms into the file with `source`
+"{name} v{version}"; a term whose id is built in or already defined in the
+file is left out and named; re-importing the same pack replaces its terms.
+Imported terms appear as their own collapsed group in the Type picker.
+Exporting writes the file's own types, without letters or other packs' terms.
+Both live under Packs at the foot of the Type picker.
+**Rationale:** Pack import was a v1 commitment (Phase 0.6) so the tool is not
+a dead end for traditions the built-ins miss. Copying keeps the `.strata`
+file self-contained. Refusing a clashing id keeps one id meaning one thing
+inside a file, which corpus queries rely on. The criteria for promoting a pack
+term to a built-in remain the maintainer's to write.
+

@@ -582,3 +582,19 @@ export function spanTypeName(id: string | null | undefined, custom: VocabTerm[])
   const t = findTerm(id, 'span', custom)
   return t ? (t.name ?? t.label) : id
 }
+
+/**
+ * Whether a span's label should change with its type: when it is empty, or
+ * still the label (or full name) its current type gave it. A label the analyst
+ * wrote ("Verse 1", "THE DROP") is theirs and never follows.
+ */
+export function labelFollowsType(
+  label: string | null | undefined,
+  currentType: string | null | undefined,
+  custom: VocabTerm[],
+): boolean {
+  const l = label?.trim()
+  if (!l) return true
+  const t = findTerm(currentType, 'span', custom)
+  return !!t && (l === t.label || l === t.name)
+}

@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/devinchaloux/strata/schema/strata-vocab.schema.json",
+  "title": "Strata vocabulary pack (.vocab.json)",
+  "description": "A shareable list of span, point-marker and mode types. Importing copies the terms into a .strata file's vocabulary, each tagged with source '{name} v{version}', so the analysis opens without the pack. See schema/strata-schema-reference.md, 'Vocabulary packs'.",
+  "type": "object",
+  "required": ["name", "terms"],
+  "properties": {
+    "strataVocabPack": {
+      "const": 1,
+      "description": "Marks the file as a Strata vocabulary pack, and gives the pack format's version. Written on export; optional on import."
+    },
+    "name": { "type": "string", "minLength": 1, "description": "The pack's display name." },
+    "version": { "type": "string", "description": "The pack's own version, e.g. '1.0.0'. Defaults to 1.0.0 on import." },
+    "author": { "type": "string" },
+    "description": { "type": "string" },
+    "terms": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "kind"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+          "label": { "type": "string", "minLength": 1 },
+          "description": { "type": "string" },
+          "kind": { "type": "string", "enum": ["span", "point-marker", "mode"] },
+          "broader": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" }
+          }
+        }
+      }
+    }
+  }
+}

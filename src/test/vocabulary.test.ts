@@ -10,6 +10,7 @@ import {
   parseLetter,
   searchTerms,
   typesUnder,
+  labelFollowsType,
 } from '@/lib/vocabulary'
 import { useDocumentStore } from '@/store/documentStore'
 import { makeDoc } from './fixtures'
@@ -102,5 +103,21 @@ describe('the file’s own terms', () => {
     expect(findTerm('a-prime', 'span', custom)?.label).toBe('A′')
     expect(findTerm('chorus', 'span', custom)?.label).toBe('Chorus')
     expect(findTerm('chorus', 'point-marker', custom)).toBeUndefined()
+  })
+})
+
+describe('labelFollowsType', () => {
+  const custom = [letterTerm('B', 0)]
+  it('follows an empty label, or the one the type gave', () => {
+    expect(labelFollowsType(null, null, custom)).toBe(true)
+    expect(labelFollowsType('', 'chorus', custom)).toBe(true)
+    expect(labelFollowsType('Chorus', 'chorus', custom)).toBe(true)
+    expect(labelFollowsType('B', 'b-section', custom)).toBe(true)
+    expect(labelFollowsType('Slow introduction', 'slow-introduction', custom)).toBe(true) // full name
+  })
+  it('keeps a label the analyst wrote', () => {
+    expect(labelFollowsType('Verse 1', 'verse', custom)).toBe(false)
+    expect(labelFollowsType('THE DROP', 'drop', custom)).toBe(false)
+    expect(labelFollowsType('Chorus', null, custom)).toBe(false)
   })
 })

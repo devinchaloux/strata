@@ -4,6 +4,7 @@ import type { StrataDocument, Layer, LayerBase, Span, PointMarker, SharedTimePoi
 import { formSpans } from '@/lib/layers'
 import { sortedSegments, segmentAt, segmentEnd, extendBack } from '@/lib/beatGrid'
 import type { FormDiagramData } from '@/types/strata'
+import { mergeVocabPack, type MergeResult, type VocabPack } from '@/lib/vocabPack'
 import { placeBoundaryInSpans, setSpanEdge, findOverlaps, MIN_SPAN_WIDTH } from '@/lib/spanEdit'
 import { groupingHandleSet, breakHistoryGroup } from '@/store/history'
 import { slugify, uniqueSlug, slugsInUse, allSpans, resolveSlugCollisions } from '@/lib/slug'
@@ -115,6 +116,8 @@ interface DocumentState {
   updatePointMarker: (id: string, patch: Partial<Omit<PointMarker, 'id'>>) => void
   /** Add a term to the file's own vocabulary, unless one with its id is already there. */
   addVocabTerm: (list: 'spanTypes' | 'pointMarkerTypes', term: VocabTerm) => void
+  /** Merge a vocabulary pack's terms into the file (lib/vocabPack.ts). One undo step. */
+  importVocabPack: (pack: VocabPack) => MergeResult | null
   removePointMarker: (id: string) => void
 
   // Beat grid (lib/beatGrid.ts). startGridAt begins a segment on the downbeat
@@ -545,6 +548,15 @@ const useDocumentStore = create<DocumentState>()(
             updatedAt: now(),
           },
         })
+      },
+
+      importVocabPack: (pack) => {
+        const doc = get().document
+        if (!doc) return null
+        const result = mergeVocabPack(doc.vocabulary, pack)
+        if (result.added || result.updated)
+          set({ document: { ...doc, vocabulary: result.vocabulary, updatedAt: now() } })
+        return result
       },
 
       updatePointMarker: (id, patch) => {

@@ -166,6 +166,20 @@ Each term in either list has these fields:
 
 > **Example:** A Hepokoski/Darcy analyst would define `{ "id": "medial-caesura", "label": "Medial Caesura", "description": "The HC that divides the exposition..." }` in `pointMarkerTypes`. Every point marker in this document typed `medial-caesura` draws from this definition — including its display name and tooltip.
 
+
+### Vocabulary packs
+
+A vocabulary pack is a separate `.vocab.json` file (schema: `strata-vocab.schema.json`) for sharing types between analyses and analysts. It is not part of a `.strata` file: importing a pack copies its terms into the file's `vocabulary`, each with `source` set to `"{name} v{version}"`, so the analysis still opens without the pack.
+
+| Field | Type | Required | What it means |
+|---|---|---|---|
+| `strataVocabPack` | the number 1 | No | Marks the file as a Strata pack. Written on export. |
+| `name` | text | Yes | The pack's name, shown as a group in the Type picker. |
+| `version` | text | No | The pack's version, e.g. `1.0.0`. |
+| `author`, `description` | text | No | Who made it and what it covers. |
+| `terms` | list | Yes | Vocabulary terms as above, each with a `kind` (`span`, `point-marker` or `mode`). |
+
+On import, a term whose id the app already ships, or that the file already defines, is left out and named, so an id never changes meaning inside a file. Importing the same pack again (any version) replaces its earlier terms. Exporting ("Save this file's types as a pack" in the Type picker) writes the file's own types, leaving out letters (made on demand) and terms from other packs.
 ---
 
 ## 4. Shared Time Points
