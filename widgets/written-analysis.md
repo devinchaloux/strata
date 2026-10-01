@@ -16,7 +16,7 @@ lookup, re-anchoring, the text format, HTML export) and `CommentaryPanel.tsx`
 
 ## 1. Writing
 
-- Select one span; the Inspector shows a **Commentary** box under Notes.
+- Select one span; the Inspector's **Describe** tab shows a **Commentary** box.
 - Typing saves as you go; one editing session is one undo step.
 - The first commentary in a file creates a layer labelled "Commentary". The
   analyst never adds it by hand.
