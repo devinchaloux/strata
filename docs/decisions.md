@@ -3381,3 +3381,33 @@ about what turning a pack on adds. Twelve checkboxes, truncated descriptions
 and two file buttons crowded a menu meant for choosing a type. Showing the
 count and real type names answers "what does this add" before switching it on.
 
+---
+
+## Paused Clicks Stay Paused; Open Caps Fill and Join; Issue Links (2026-10-01)
+
+**Decision:** A seek made while YouTube is not playing keeps it paused: the
+player is paused after the seek, and if YouTube starts it anyway the state
+handler pauses it again. Only play (Space, K, the button) or a double-click
+starts playback.
+**Rationale:** Devin: a click on a span started playback. YouTube's player
+begins a video that hasn't yet played (unstarted or cued) when it is seeked,
+so the click-to-move-the-playhead added the same day was starting playback.
+
+**Decision:** A span with an open cap fills down to the baseline on the open
+side (a closed fill path drawn under the open outline). Where two spans meet
+and both caps at that boundary are open, both draw to the boundary itself, so
+their tops and fills join into one; this is the one exception to drawing spans
+as separate islands.
+**Rationale:** The outline is an open path, and SVG closes an open path's fill
+with a straight line back to its start, which cut diagonally from the top's
+end to the opposite corner. Devin: two open spans "should draw across the gap
+and connect".
+
+**Decision:** "Report an issue" in the toolbar opens a GitHub issue form
+(`.github/ISSUE_TEMPLATE/report.yml`) prefilled with the app version and the
+browser. The Libraries dialog links to a vocabulary suggestion form
+(`vocabulary.yml`), prefilled with the library when opened from one; the
+dialog's full type lists are now one column.
+**Rationale:** Devin asked for both. Issue forms keep reports structured, and
+prefilling saves the reporter looking up what the maintainer needs first.
+

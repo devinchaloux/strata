@@ -11,6 +11,7 @@ import { DocumentSettingsDialog } from '@/components/DocumentSettingsDialog'
 import { LinkSourceDialog } from '@/components/LinkSourceDialog'
 import { ExportDialog } from '@/components/ExportDialog'
 import { LibrariesDialog } from '@/components/LibrariesDialog'
+import { reportIssueUrl } from '@/lib/issues'
 import { HelpDialog } from '@/components/HelpDialog'
 import {
   AlertDialog,
@@ -577,6 +578,18 @@ export default function App() {
         <IconToolbarButton onClick={() => setHelpOpen(true)} title="How Strata works (?)">
           <CircleHelp size={14} />
         </IconToolbarButton>
+        {/* A link, not a button: it opens GitHub's issue form in a new tab,
+            prefilled with the version and browser (lib/issues.ts). */}
+        <a
+          href={reportIssueUrl()}
+          target="_blank"
+          rel="noreferrer"
+          title="Report a bug or suggest an improvement on GitHub"
+          className="rounded-md px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground
+            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+        >
+          Report an issue
+        </a>
 
         {isDirty && (
           <span

@@ -7,6 +7,7 @@
  * a click away, so turning one on never adds an unknown. Packs only change
  * what the list shows; search reaches every type either way. Importing a
  * `.vocab.json` copies its types into this analysis (lib/vocabPack.ts).
+ * Suggestions for the built-in vocabulary open a GitHub issue form.
  */
 import { useState } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
@@ -16,8 +17,10 @@ import { Switch } from '@/components/ui/switch'
 import { LIBRARIES, builtInTerm, type Library } from '@/lib/vocabulary'
 import { exportVocabPack, exportableCount, packSource, readVocabPack } from '@/lib/vocabPack'
 import { downloadBlob, fileBaseName, pickTextFile } from '@/lib/fileIO'
+import { suggestVocabularyUrl } from '@/lib/issues'
 
 const SAMPLE = 4
+
 
 function PackRow({ lib }: { lib: Library }) {
   const on = useUIStore((s) => s.enabledPacks.includes(lib.id))
@@ -38,13 +41,23 @@ function PackRow({ lib }: { lib: Library }) {
         </label>
         <p className="text-xs text-muted-foreground">{lib.description}</p>
         {showAll ? (
-          <ul className="mt-1 grid grid-cols-2 gap-x-4 text-xs text-foreground">
-            {terms.map((t) => (
-              <li key={t.id} title={t.definition}>
-                {t.name && t.name !== t.label ? `${t.name} (${t.label})` : t.label}
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="mt-1 flex flex-col gap-0.5 text-xs text-foreground">
+              {terms.map((t) => (
+                <li key={t.id} title={t.definition}>
+                  {t.name && t.name !== t.label ? `${t.name} (${t.label})` : t.label}
+                </li>
+              ))}
+            </ul>
+            <a
+              href={suggestVocabularyUrl(lib.label)}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-1 inline-block text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+            >
+              Suggest a change to {lib.label} ↗
+            </a>
+          </>
         ) : (
           <p className="mt-0.5 text-xs text-foreground">
             {names.slice(0, SAMPLE).join(', ')}
@@ -154,6 +167,12 @@ export function LibrariesDialog() {
               </button>
             )}
           </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Missing a type, or think one is wrong?{' '}
+            <a href={suggestVocabularyUrl()} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-foreground">
+              Suggest a change on GitHub ↗
+            </a>
+          </p>
           {notice && (
             <p role="status" className="mt-2 text-xs text-foreground">
               {notice.join(' ')}

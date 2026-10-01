@@ -1,0 +1,35 @@
+name: Report an issue
+description: Something in Strata isn't working, or could work better.
+title: ""
+labels: ["report"]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of issue?
+      options:
+        - Something doesn't work (a bug)
+        - Something is confusing or hard to use
+        - An idea or request
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to make it happen again
+      description: Optional. Steps, or a .strata file attached here if it helps (only one you're happy to make public).
+  - type: input
+    id: version
+    attributes:
+      label: Strata version
+  - type: input
+    id: browser
+    attributes:
+      label: Browser

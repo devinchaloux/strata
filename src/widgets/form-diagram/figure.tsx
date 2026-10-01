@@ -14,6 +14,8 @@
 import { memo, type ComponentType } from 'react'
 import {
   buildShapePath,
+  buildFillPath,
+  openJoins,
   capFromBoundaryType,
   lineStyleDash,
   textOnFill,
@@ -66,9 +68,12 @@ function SpanFigure({
   labelLayout,
   theme,
   Decoration,
+  join,
 }: {
   span: Span
   layer: Layer
+  /** Sides that join an open-capped neighbour (formShape.openJoins). */
+  join?: { start: boolean; end: boolean }
   pps: number
   /** Resolved above-label from the layer's neighbour-aware layout pass. */
   labelLayout?: ResolvedLabel
@@ -143,15 +148,22 @@ function SpanFigure({
           strokeWidth={STROKE_WIDTH}
         />
       ) : (
-        <path
-          d={buildShapePath({ width, startCap, endCap, inset: ISLAND_INSET })}
-          fill={fill}
-          stroke={stroke}
-          strokeWidth={STROKE_WIDTH}
-          strokeDasharray={lineStyleDash(span.lineStyle)}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
+        <>
+          {/* With an open cap the outline and the fill differ: the fill still
+              runs down to the baseline on the open side. */}
+          {(startCap === 'open' || endCap === 'open') && (
+            <path d={buildFillPath({ width, startCap, endCap, inset: ISLAND_INSET, joinStart: join?.start, joinEnd: join?.end })} fill={fill} stroke="none" />
+          )}
+          <path
+            d={buildShapePath({ width, startCap, endCap, inset: ISLAND_INSET, joinStart: join?.start, joinEnd: join?.end })}
+            fill={startCap === 'open' || endCap === 'open' ? 'none' : fill}
+            stroke={stroke}
+            strokeWidth={STROKE_WIDTH}
+            strokeDasharray={lineStyleDash(span.lineStyle)}
+            strokeLinejoin="round"
+            strokeLinecap={join?.start || join?.end ? 'butt' : 'round'}
+          />
+        </>
       )}
 
       {Decoration && <Decoration span={span} width={width} height={bodyHeight} />}
@@ -234,6 +246,7 @@ export const LayerFigure = memo(function LayerFigure({
 }) {
   if (!layer.visibility) return null
   const labels = layerLabelLayout(layer, pps, totalWidth)
+  const joins = openJoins((layer.data as FormDiagramData).spans)
   return (
     <g transform={`translate(0, ${topY})`}>
       {/* Overlap order, not time order, so an elided bracket can sit on top of
@@ -245,6 +258,7 @@ export const LayerFigure = memo(function LayerFigure({
           layer={layer}
           pps={pps}
           labelLayout={labels?.get(span.id)}
+          join={joins.get(span.id)}
           theme={theme}
           Decoration={Decoration}
         />

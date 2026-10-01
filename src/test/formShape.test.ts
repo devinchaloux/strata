@@ -1,9 +1,12 @@
+import { makeSpan } from './fixtures'
 import { describe, it, expect } from 'vitest'
 import {
   estimateTextWidth,
   spanDrawOrder,
   truncateToWidth,
   buildShapePath,
+  buildFillPath,
+  openJoins,
   capFromBoundaryType,
   lineStyleDash,
   ELISION_EXTEND,
@@ -399,5 +402,27 @@ describe('spanDrawOrder', () => {
 
   it('ignores the flag across a gap, where nothing overlaps', () => {
     expect(ids(spanDrawOrder([s('a', 0, 1, true), s('b', 2, 3)]))).toEqual(['a', 'b'])
+  })
+})
+
+describe('open caps', () => {
+  it('fill down to the baseline on the open side', () => {
+    const fill = buildFillPath({ width: 100, startCap: 'open', endCap: 'rounded' })
+    expect(fill.startsWith('M 0 28 L 0 0')).toBe(true) // straight down at the open start
+    expect(fill.endsWith('Z')).toBe(true)
+    // The outline itself still has no tail there.
+    expect(buildShapePath({ width: 100, startCap: 'open', endCap: 'rounded' }).startsWith('M 0 0')).toBe(true)
+  })
+
+  it('join across the gap only where both caps at a shared boundary are open', () => {
+    const a = makeSpan('a', 0, 10)
+    const b = makeSpan('b', 10, 20)
+    const c = makeSpan('c', 20, 30)
+    const spans = [{ ...a, endCap: 'open' as const }, { ...b, startCap: 'open' as const, endCap: 'open' as const }, c]
+    const joins = openJoins(spans)
+    expect(joins.get('a')).toEqual({ start: false, end: true })
+    expect(joins.get('b')).toEqual({ start: true, end: false }) // c's start isn't open
+    // A joined side draws to the boundary, not the island inset.
+    expect(buildShapePath({ width: 100, startCap: 'open', endCap: 'open', inset: 1.5, joinStart: true }).startsWith('M 0 0')).toBe(true)
   })
 })
