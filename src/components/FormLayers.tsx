@@ -286,6 +286,8 @@ const LayerInteraction = memo(function LayerInteraction({
   // it opens. A menu per span meant hundreds of menu components re-rendering on
   // every edit of a large analysis.
   const [menuSpanId, setMenuSpanId] = useState<string | null>(null)
+  // Reading view: spans still select and seek, but nothing edits.
+  const reading = useUIStore((s) => s.readingView)
   if (!layer.visibility) return null
   const spans = (layer.data as FormDiagramData).spans
   const bodyHeight = layerBodyHeight(layer)
@@ -298,6 +300,15 @@ const LayerInteraction = memo(function LayerInteraction({
     setMenuSpanId(id)
     if (id && !useUIStore.getState().selectedSpanIds.includes(id)) useUIStore.getState().selectSpan(id)
   }
+
+  if (reading)
+    return (
+      <g transform={`translate(0, ${topY})`}>
+        {spans.map((span) => (
+          <SpanHitTarget key={span.id} span={span} layer={layer} pps={pps} dragCommittedRef={dragCommittedRef} />
+        ))}
+      </g>
+    )
 
   return (
     <g transform={`translate(0, ${topY})`}>
@@ -436,6 +447,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   const viewportWidth = useUIStore((s) => s.viewportWidth)
   const clearSelection = useUIStore((s) => s.clearSelection)
   const setSelection = useUIStore((s) => s.setSelection)
+  const reading = useUIStore((s) => s.readingView)
   const setAdjacentBoundary = useDocumentStore((s) => s.setAdjacentBoundary)
   const duration = useDocumentStore((s) => s.document?.duration ?? 0)
 
@@ -721,7 +733,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
               onClick={handleBandClick}
             />
             {bandLayout.placements.map((p) => (
-              <MarkerHitTarget key={p.marker.id} placement={p} bandTop={stackH} onPointerDown={beginMarkerDrag(p.marker)} />
+              <MarkerHitTarget key={p.marker.id} placement={p} bandTop={stackH} onPointerDown={reading ? () => undefined : beginMarkerDrag(p.marker)} />
             ))}
           </g>
         )}
@@ -746,8 +758,8 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
       {/* Playback cursor — mirrors the ruler cursor so the two read as one line */}
       <Playhead height={svgHeight} opacity={0.5} />
 
-      {/* Types for the selection, on number keys (QuickTypeBar.tsx). */}
-      <QuickTypeBar containerRef={containerRef} layers={layers} pps={pps} scrollOffset={scrollOffset} />
+      {/* Types for the selection, on number keys (QuickTypeBar.tsx); not while reading. */}
+      {!reading && <QuickTypeBar containerRef={containerRef} layers={layers} pps={pps} scrollOffset={scrollOffset} />}
     </div>
   )
 }

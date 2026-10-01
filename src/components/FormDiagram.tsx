@@ -99,6 +99,7 @@ function SortableLayerHeaderRow({
 }) {
   const setActiveLayer = useUIStore((s) => s.setActiveLayer)
   const updateLayer = useDocumentStore((s) => s.updateLayer)
+  const reading = useUIStore((s) => s.readingView)
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: layer.id })
@@ -144,6 +145,18 @@ function SortableLayerHeaderRow({
     // half of that was built.
     backgroundColor: active ? 'hsl(var(--primary) / 0.07)' : undefined,
   }
+
+  // Reading: just the level's name.
+  if (reading)
+    return (
+      <div ref={setNodeRef} style={{ ...style, backgroundColor: undefined }} className="flex items-center px-2">
+        {!collapsed && (
+          <span className="truncate text-xs" style={{ color: 'var(--ink-primary)' }}>
+            {layer.label}
+          </span>
+        )}
+      </div>
+    )
 
   return (
     <div
@@ -505,6 +518,8 @@ export function FormDiagram() {
   // Timeline state lives here so the zoom controls can render in the widget top
   // bar while the ruler (TimelineAxis) renders below. One shared instance.
   const timeline = useTimeline()
+  const reading = useUIStore((s) => s.readingView)
+  const showDiagram = useUIStore((s) => !s.readingView || s.readingShow.diagram)
   if (!doc) return null
 
   const fitZoom = computeFitZoom(timeline.duration, timeline.viewportWidth)
@@ -549,7 +564,7 @@ export function FormDiagram() {
       {/* The open area above the widget card (flex-1, so it shrinks as a tall
           layer stack claims the room). The written-analysis widget reads here;
           with no commentary yet it shows a one-line hint instead. */}
-      <div className="relative flex flex-1 min-h-0 items-center justify-center overflow-y-auto">
+      <div className={`relative flex min-h-0 flex-1 overflow-y-auto ${reading ? 'items-start justify-start' : 'items-center justify-center'}`}>
         {/* The written-analysis widget reads here: the commentary for what's
             playing (see widgets/written-analysis/CommentaryPanel). */}
         <CommentaryPanel />
@@ -560,17 +575,23 @@ export function FormDiagram() {
           timeline below. The border overlay (absolute, pointer-events-none, z-10)
           paints above the absolutely-positioned FormLayers SVG so all four edges
           are visible — an inset outline would be covered by the SVG on bottom/right. */}
+      {/* Reading can hide the diagram; it stays mounted (hidden) so the
+          timeline keeps its measurements. */}
+      <div className={showDiagram ? 'contents' : 'hidden'}>
       <div
         data-keeps-selection
         className="relative shrink-0 overflow-hidden rounded-md bg-[var(--canvas)]"
         style={{ marginBottom: 4 }}
       >
-        <WidgetTopBar
-          collapsed={collapsed}
-          onToggleCollapsed={toggleCollapsed}
-          hidden={hidden}
-          zoom={zoomProps}
-        />
+        {/* Editing controls are off while reading. */}
+        {!reading && (
+          <WidgetTopBar
+            collapsed={collapsed}
+            onToggleCollapsed={toggleCollapsed}
+            hidden={hidden}
+            zoom={zoomProps}
+          />
+        )}
         <div className="flex w-full" style={{ height: stackH }}>
           <LayerHeaders layers={visible} collapsed={collapsed} />
           <FormLayers layers={visible} />
@@ -600,6 +621,7 @@ export function FormDiagram() {
             grid={doc.beatGrid}
           />
         </div>
+      </div>
       </div>
     </div>
   )

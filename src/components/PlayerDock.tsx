@@ -118,6 +118,9 @@ const VIDEO_MINI_WIDTH = Math.round((VIDEO_MIN * 16) / 9)
  */
 const VIDEO_DOCKED_W = 480
 const VIDEO_DOCKED_H = 270
+// The reading view's video: wide enough to watch, leaving half the column for
+// the commentary beside it. Exported so the commentary can make room for it.
+export const READING_VIDEO_W = 'min(640px, 46%)'
 
 /**
  * The bottom dock: transport bar plus the collapsible video panel. Source-
@@ -150,6 +153,7 @@ export function PlayerDock() {
     playerError,
     videoMini,
     toggleVideoMini,
+    readingView,
     audioFile,
     setAudioFile,
     setLinkSourceOpen,
@@ -316,7 +320,7 @@ export function PlayerDock() {
       if (e.metaKey || e.ctrlKey || e.altKey) return
       if (isInputFocused()) return
       const ui = useUIStore.getState()
-      if (ui.playerStatus !== 'ready' || !ui.activeLayerId) return
+      if (ui.playerStatus !== 'ready' || !ui.activeLayerId || ui.readingView) return
       e.preventDefault()
       useDocumentStore.getState().placeBoundary(ui.activeLayerId, snapToActiveGrid(engineRef.current.now()))
     }
@@ -331,7 +335,7 @@ export function PlayerDock() {
       if (e.key !== 'm' && e.key !== 'M') return
       if (e.metaKey || e.ctrlKey || e.altKey) return
       if (isInputFocused()) return
-      if (useUIStore.getState().playerStatus !== 'ready') return
+      if (useUIStore.getState().playerStatus !== 'ready' || useUIStore.getState().readingView) return
       e.preventDefault()
       placeMarkerAtPlayhead()
     }
@@ -357,7 +361,7 @@ export function PlayerDock() {
       if (e.metaKey || e.ctrlKey || e.altKey || isInputFocused()) return
       const ui = useUIStore.getState()
       const store = useDocumentStore.getState()
-      if (!store.document || ui.playerStatus !== 'ready') return
+      if (!store.document || ui.playerStatus !== 'ready' || ui.readingView) return
       e.preventDefault()
       if (e.shiftKey) {
         store.endGridAt(engineRef.current.now())
@@ -485,7 +489,7 @@ export function PlayerDock() {
         )}
 
         {/* ── Source linking affordances ── */}
-        {doc && !isLinked && (
+        {doc && !isLinked && !readingView && (
           <button
             onClick={() => setLinkSourceOpen(true)}
             className="ml-auto shrink-0 rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground
@@ -508,7 +512,7 @@ export function PlayerDock() {
           </button>
         )}
 
-        {doc && isLinked && (
+        {doc && isLinked && !readingView && (
           <TransportButton
             onClick={() => setLinkSourceOpen(true)}
             title="Change source…"
@@ -519,7 +523,7 @@ export function PlayerDock() {
 
         {/* Scroll to the docked video and back. It can't be hidden (YouTube's
             rules), so this is how it gets out of the way. */}
-        {videoId && !videoMini && (
+        {videoId && !videoMini && !readingView && (
           <Tooltip>
             <TooltipTrigger asChild>
               <button
@@ -541,7 +545,7 @@ export function PlayerDock() {
 
         {/* Video placement — docked below, or a mini player in the corner.
             There is deliberately no "hide": see VIDEO_MIN below. */}
-        {videoId && (
+        {videoId && !readingView && (
           <TransportButton
             onClick={toggleVideoMini}
             title={videoMini ? 'Dock the video below the play bar' : 'Shrink the video to a corner'}
@@ -569,14 +573,19 @@ export function PlayerDock() {
       {videoId && (
         <div
           className={
-            videoMini
-              ? 'absolute right-3 top-3 z-[60] overflow-hidden rounded-md border border-border shadow-lg'
-              : 'relative z-[60] m-3 overflow-hidden rounded-md border border-border'
+            readingView
+              ? 'absolute left-4 top-4 z-[60] overflow-hidden rounded-lg border border-border'
+              : videoMini
+                ? 'absolute right-3 top-3 z-[60] overflow-hidden rounded-md border border-border shadow-lg'
+                : 'relative z-[60] m-3 overflow-hidden rounded-md border border-border'
           }
           style={{
-            ...(videoMini
-              ? { width: VIDEO_MINI_WIDTH, height: VIDEO_MIN }
-              : { width: `min(${VIDEO_DOCKED_W}px, calc(100% - 24px))`, minWidth: VIDEO_MIN, height: VIDEO_DOCKED_H }),
+            // Reading: large, top left, beside the commentary (READING_VIDEO_W).
+            ...(readingView
+              ? { width: READING_VIDEO_W, aspectRatio: '16 / 9', minWidth: VIDEO_MIN, minHeight: VIDEO_MIN }
+              : videoMini
+                ? { width: VIDEO_MINI_WIDTH, height: VIDEO_MIN }
+                : { width: `min(${VIDEO_DOCKED_W}px, calc(100% - 24px))`, minWidth: VIDEO_MIN, height: VIDEO_DOCKED_H }),
             pointerEvents: 'auto',
           }}
           ref={registerVideo}

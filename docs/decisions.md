@@ -3499,3 +3499,19 @@ alternatives and asked for "some tabs within it ... to make it a simpler menu".
 The boundary type (an analytical claim) stays in More, apart from the drawn
 shape, as before; choosing a boundary type still resets that end's shape.
 
+---
+
+## The Reading View (2026-10-01)
+
+**Decision:** "Reading view" in the toolbar lays the analysis out for reading:
+the video large at top left, the commentary stack beside it in reading size,
+the diagram below, and the play bar. The header shows the piece and Show chips
+(Commentary, Form diagram, Lyrics), which change only this view, never the
+file's own visibility. Editing is off: no Inspector, quick-type bar, level
+controls, drags, right-click menu, B, M, T, undo or merge; clicking a span
+still moves playback there. Edit or Esc returns. The same workspace is
+restyled rather than replaced, so the YouTube player is never moved in the
+page (which would reload it).
+**Rationale:** Devin: "LOVE LOVE LOVE the reading view idea". It is the view
+for teaching and for sharing, and the shareable link (next) opens in it.
+

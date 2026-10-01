@@ -124,6 +124,10 @@ export interface UIState {
   typePickerRequest: number
   /** The span Inspector's open tab, kept as the selection moves. */
   inspectorTab: InspectorTab
+  /** Reading view: the analysis laid out for reading, with editing off. */
+  readingView: boolean
+  /** What the reading view shows (view state; the file's own visibility is untouched). */
+  readingShow: { commentary: boolean; diagram: boolean }
   // Lyrics in the commentary stack: also the analyst's remembered preference.
   showLyrics: boolean
 
@@ -177,6 +181,8 @@ export interface UIState {
   setLibrariesOpen: (open: boolean) => void
   requestTypePicker: () => void
   setInspectorTab: (tab: InspectorTab) => void
+  setReadingView: (on: boolean) => void
+  setReadingShow: (part: 'commentary' | 'diagram', on: boolean) => void
   setShowLyrics: (show: boolean) => void
   requestSeek: (time: number, play?: boolean) => void
 }
@@ -248,6 +254,8 @@ const useUIStore = create<UIState>()((set) => ({
   librariesOpen: false,
   typePickerRequest: 0,
   inspectorTab: 'describe',
+  readingView: false,
+  readingShow: { commentary: true, diagram: true },
   seekRequest: null,
 
   setCurrentTime: (time) => set({ currentTime: time }),
@@ -314,6 +322,8 @@ const useUIStore = create<UIState>()((set) => ({
   setLibrariesOpen: (open) => set({ librariesOpen: open }),
   requestTypePicker: () => set((s) => ({ typePickerRequest: s.typePickerRequest + 1 })),
   setInspectorTab: (tab) => set({ inspectorTab: tab }),
+  setReadingView: (on) => set({ readingView: on, selectedSpanIds: [], selectionAnchorId: null, selectedPointMarkerId: null }),
+  setReadingShow: (part, on) => set((s) => ({ readingShow: { ...s.readingShow, [part]: on } })),
   requestSeek: (time, play) => set((s) => ({ seekRequest: { time, n: (s.seekRequest?.n ?? 0) + 1, play } })),
 }))
 

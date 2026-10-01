@@ -1,5 +1,5 @@
 /**
- * HelpDialog — how Strata works in seven steps, and every keyboard shortcut.
+ * HelpDialog — how Strata works in eight steps, and every keyboard shortcut.
  *
  * Opened from the toolbar's ? button, the empty state, or the ? key. The
  * shortcut list is written out by hand: when a shortcut changes in App or
@@ -23,6 +23,7 @@ const STEPS: [string, string][] = [
   ['Levels', 'Add a level (+ above the level names) for another level of form, or another framework.'],
   ['Write', 'A selected span’s Commentary box holds prose that appears while that passage plays.'],
   ['Keep', 'Save a .strata file. Export makes a figure (SVG or PNG) or a commentary page (HTML).'],
+  ['Read', 'Reading view lays the analysis out to read or teach from: the video, the commentary in reading size, and the diagram, with editing off. Esc goes back.'],
 ]
 
 const KEYS: [string, [string, string][]][] = [

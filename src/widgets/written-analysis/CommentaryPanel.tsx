@@ -20,6 +20,7 @@ import type { AnalysisBlock, StrataDocument } from '@/types/strata'
 import { formSpans, analysisLayers } from '@/lib/layers'
 import { spanTypeName } from '@/lib/vocabulary'
 import { EyeOff } from 'lucide-react'
+import { READING_VIDEO_W } from '@/components/PlayerDock'
 import {
   anchorRange,
   allBlocks,
@@ -52,6 +53,7 @@ function CommentaryText({ doc, text }: { doc: StrataDocument; text: string }) {
   const selectSpan = useUIStore((s) => s.selectSpan)
   const selectPointMarker = useUIStore((s) => s.selectPointMarker)
   const requestSeek = useUIStore((s) => s.requestSeek)
+  const reading = useUIStore((s) => s.readingView)
 
   // A link goes to a span (selected, played from its start) or a point marker
   // (selected, played from its moment).
@@ -72,7 +74,7 @@ function CommentaryText({ doc, text }: { doc: StrataDocument; text: string }) {
   return (
     <>
       {parseCommentary(text).map((para, i) => (
-        <p key={i} className="max-w-[65ch] text-[14px] leading-relaxed text-foreground">
+        <p key={i} className={`max-w-[65ch] leading-relaxed text-foreground ${reading ? 'text-[17px]' : 'text-[14px]'}`}>
           {para.map((piece, j) =>
             piece.kind === 'bold' ? (
               <strong key={j}>{piece.value}</strong>
@@ -110,6 +112,7 @@ function CommentaryText({ doc, text }: { doc: StrataDocument; text: string }) {
  */
 function PassageBlock({ doc, block }: { doc: StrataDocument; block: AnalysisBlock }) {
   const [editing, setEditing] = useState(false)
+  const reading = useUIStore((s) => s.readingView)
   const setCommentaryText = useDocumentStore((s) => s.setCommentaryText)
   const range = anchorRange(doc, block.anchor)
   return (
@@ -128,7 +131,7 @@ function PassageBlock({ doc, block }: { doc: StrataDocument; block: AnalysisBloc
           {editing ? 'Done' : 'Edit'}
         </button>
       </header>
-      {editing ? (
+      {editing && !reading ? (
         <textarea
           autoFocus
           className="w-full resize-y rounded border border-border bg-card px-2 py-1 text-[13px] leading-relaxed text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -159,6 +162,7 @@ function Level({
   showLyrics: boolean
 }) {
   const { layer, span, block } = row
+  const reading = useUIStore((s) => s.readingView)
   const heading = span.label || spanTypeName(span.type, doc.vocabulary.spanTypes) || 'Untitled span'
   return (
     <article
@@ -167,7 +171,7 @@ function Level({
     >
       <header className="flex items-baseline gap-2">
         <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{layer.label}</span>
-        <h2 className="text-sm font-semibold text-foreground">{heading}</h2>
+        <h2 className={`font-semibold text-foreground ${reading ? 'text-xl' : 'text-sm'}`}>{heading}</h2>
         <span className="text-xs tabular-nums text-muted-foreground">
           {mmss(span.startTime)}–{mmss(span.endTime)}
         </span>
@@ -175,7 +179,7 @@ function Level({
       {span.annotation && <p className="text-[13px] italic text-muted-foreground">{span.annotation}</p>}
       {block && <CommentaryText doc={doc} text={block.text} />}
       {showLyrics && span.lyrics && (
-        <p className="whitespace-pre-line text-[13px] leading-relaxed text-muted-foreground">{span.lyrics}</p>
+        <p className={`whitespace-pre-line leading-relaxed text-muted-foreground ${reading ? 'text-[15px] italic' : 'text-[13px]'}`}>{span.lyrics}</p>
       )}
     </article>
   )
@@ -202,6 +206,8 @@ export function CommentaryPanel() {
   const showLyrics = useUIStore((s) => s.showLyrics)
   const setShowLyrics = useUIStore((s) => s.setShowLyrics)
   const selectedIds = useUIStore((s) => s.selectedSpanIds)
+  const reading = useUIStore((s) => s.readingView)
+  const showInReading = useUIStore((s) => s.readingShow.commentary)
   // A string key of what the stack holds now: equal strings mean no re-render.
   const momentKey = useUIStore((s) => {
     if (!doc) return ''
@@ -209,12 +215,13 @@ export function CommentaryPanel() {
     return [...passagesAt(doc, t).map((b) => b.id), ...stackAt(doc, t).map((r) => r.span.id)].join(',')
   })
   if (!doc) return null
+  if (reading && !showInReading) return null
 
   // Before there's anything to read, this space coaches the next step of a
   // first analysis: link a source, mark boundaries, then describe a span.
   const hasSpans = doc.layers.some((l) => formSpans(l).length > 0)
   const step = nextStep(doc)
-  if (!hasSpans) return <Hint>{step}</Hint>
+  if (!hasSpans) return reading ? null : <Hint>{step}</Hint>
 
   // Hidden commentary shows nothing here; the diagram's "Hidden:" chips bring
   // it back, as for a hidden layer.
@@ -229,7 +236,12 @@ export function CommentaryPanel() {
   const rows = stackAt(doc, t)
   const anyLyrics = doc.layers.some((l) => formSpans(l).some((s) => s.lyrics))
 
-  const controls = (
+  // Reading: the video sits top left (PlayerDock, READING_VIDEO_W), so the
+  // commentary starts to its right, larger; the header's Show chips replace
+  // these controls, and no editing hints show.
+  const hasVideo = doc.source.type === 'youtube' && !!doc.source.url
+  const readingStyle = reading && hasVideo ? { marginLeft: `calc(${READING_VIDEO_W} + 40px)` } : undefined
+  const controls = reading ? null : (
     <div className="absolute right-3 top-2 flex items-center gap-1">
       {anyLyrics && (
         <button
@@ -257,13 +269,17 @@ export function CommentaryPanel() {
     return (
       <>
         {controls}
-        <Hint>Nothing is marked at this moment.</Hint>
+        {!reading && <Hint>Nothing is marked at this moment.</Hint>}
       </>
     )
   return (
     <>
       {controls}
-      <div className="flex w-full max-w-[42rem] flex-col gap-3 self-start px-4 py-4" aria-live="polite">
+      <div
+        className={`flex w-full flex-col gap-3 self-start px-4 py-4 ${reading ? 'max-w-[44rem] gap-4' : 'max-w-[42rem]'}`}
+        style={readingStyle}
+        aria-live="polite"
+      >
         {passages.map((b) => (
           <PassageBlock key={b.id} doc={doc} block={b} />
         ))}
@@ -277,7 +293,7 @@ export function CommentaryPanel() {
             showLyrics={showLyrics}
           />
         ))}
-        {step && <p className="mt-1 text-xs text-muted-foreground">{step}</p>}
+        {step && !reading && <p className="mt-1 text-xs text-muted-foreground">{step}</p>}
       </div>
     </>
   )
