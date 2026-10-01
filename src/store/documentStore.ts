@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import { temporal } from 'zundo'
 import type { StrataDocument, Layer, LayerBase, Span, PointMarker, SharedTimePoint, GridSegment } from '@/types/strata'
-import { sortedSegments, segmentAt } from '@/lib/beatGrid'
+import { formSpans } from '@/lib/layers'
+import { sortedSegments, segmentAt, segmentEnd, extendBack } from '@/lib/beatGrid'
 import type { FormDiagramData } from '@/types/strata'
 import { placeBoundaryInSpans, setSpanEdge, findOverlaps, MIN_SPAN_WIDTH } from '@/lib/spanEdit'
 import { groupingHandleSet, breakHistoryGroup } from '@/store/history'
@@ -588,10 +589,28 @@ const useDocumentStore = create<DocumentState>()(
         })
       },
 
-      layGridFromTaps: (start, bpm, id) => {
+      layGridFromTaps: (tappedStart, bpm, id) => {
         const doc = get().document
         if (!doc) return null
         const segs = sortedSegments(doc.beatGrid)
+        const own = segs.find((g) => g.id === id)
+        const others = segs.filter((g) => g.id !== id)
+        // Reach back to where the music plausibly starts: the latest section
+        // boundary before the taps, or the end of the grid before them, or the
+        // track's start. Taps inside a running segment mark a tempo change
+        // there instead, so they don't reach back.
+        const inRunning = segmentAt(others, tappedStart, doc.duration)
+        const beatsPerBar = (own ?? inRunning?.seg ?? others.find((g) => g.start < tappedStart))?.beatsPerBar
+          ?? doc.timeSignature?.numerator ?? 4
+        let start = tappedStart
+        if (!inRunning) {
+          const gridFloor = Math.max(0, ...others.map((_, i) => segmentEnd(others, i, doc.duration)).filter((e) => e <= tappedStart))
+          const boundaryFloor = Math.max(
+            0,
+            ...doc.layers.flatMap(formSpans).flatMap((s) => [s.startTime, s.endTime]).filter((t) => t <= tappedStart + 0.05),
+          )
+          start = extendBack(tappedStart, (beatsPerBar * 60) / bpm, Math.max(gridFloor, boundaryFloor))
+        }
         // The same run refines its own segment; a run that begins on a segment's
         // first downbeat (within half a beat) refines that one instead of
         // stacking a second segment on top of it.

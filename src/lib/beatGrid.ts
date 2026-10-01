@@ -121,8 +121,10 @@ export function snapToGrid(t: number, segs: GridSegment[], duration: number, mod
  * A grid from a run of taps, the first on a downbeat: the tempo, and where the
  * first tap "should" have landed, from a least-squares line through every tap
  * in the run (beat k at start + k × beat). Fitting the start as well as the
- * tempo keeps one early or late first tap from shifting the whole grid. Needs
- * four taps.
+ * tempo keeps one early or late first tap from shifting the whole grid. The
+ * tempo is rounded to a whole BPM, the likeliest value for produced music
+ * (tapping by hand gives 128.4 for a track at 128), and the start refitted to
+ * it; a fractional tempo is typed in the Grid popover. Needs four taps.
  */
 export function fitTaps(taps: number[]): { start: number; bpm: number } | null {
   const n = taps.length
@@ -135,7 +137,24 @@ export function fitTaps(taps: number[]): { start: number; bpm: number } | null {
     num += (i - meanI) * (t - meanT)
     den += (i - meanI) ** 2
   })
-  const beat = num / den
-  if (!(beat > 0)) return null
-  return { start: Math.max(0, meanT - beat * meanI), bpm: Math.round((60 / beat) * 10) / 10 }
+  const rawBeat = num / den
+  if (!(rawBeat > 0)) return null
+  const bpm = Math.max(1, Math.round(60 / rawBeat))
+  const beat = 60 / bpm
+  // With the tempo fixed, the best start is the mean of each tap less its beats.
+  const start = taps.reduce((sum, t, i) => sum + (t - i * beat), 0) / n
+  return { start: Math.max(0, start), bpm }
+}
+
+/**
+ * Where a tapped grid really begins. Analysts often start tapping a bar or two
+ * in, once they've found the beat; the grid reaches back by whole bars to the
+ * earliest bar line at or after `floor` (within a tenth of a bar, for a
+ * boundary placed by ear), so it starts with the music rather than with the
+ * first tap.
+ */
+export function extendBack(start: number, barLen: number, floor: number): number {
+  if (barLen <= 0 || start <= floor) return start
+  const bars = Math.floor((start - floor) / barLen + 0.1)
+  return Math.max(0, start - bars * barLen)
 }

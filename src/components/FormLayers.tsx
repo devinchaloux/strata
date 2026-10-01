@@ -228,6 +228,10 @@ function SpanHitTarget({
       toggleSpan(span.id)
     } else {
       selectSpan(span.id)
+      // Paused, a click also moves the playhead to the span, so pressing play
+      // starts there. While playing it only selects: a click to edit shouldn't
+      // pull the analyst out of what they're hearing.
+      if (useUIStore.getState().playbackState !== 'playing') useUIStore.getState().requestSeek(span.startTime)
     }
   }
 
@@ -621,7 +625,10 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
       const onUp = () => {
         window.removeEventListener('pointermove', onMove)
         window.removeEventListener('pointerup', onUp)
-        if (!dragged) selectPointMarker(marker.id)
+        if (!dragged) {
+          selectPointMarker(marker.id)
+          if (useUIStore.getState().playbackState !== 'playing') useUIStore.getState().requestSeek(marker.timestamp)
+        }
       }
       window.addEventListener('pointermove', onMove)
       window.addEventListener('pointerup', onUp)

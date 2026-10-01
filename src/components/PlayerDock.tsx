@@ -401,10 +401,16 @@ export function PlayerDock() {
         {/* Play / Pause — spinner covers both mid-playback buffering and the
             initial source-loading window, so a loading source doesn't just
             look like an inert disabled button. */}
-        <TransportButton
+        {/* The one filled control in the bar, so play and pause are always easy
+            to find and the current state reads at a glance. */}
+        <button
           onClick={handlePlayPause}
           disabled={!isReady}
           title={isLoading ? 'Loading…' : isPlaying ? 'Pause (K)' : 'Play (K)'}
+          aria-label={isLoading ? 'Loading' : isPlaying ? 'Pause' : 'Play'}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-colors
+            hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card
+            disabled:opacity-40"
         >
           {isBuffering || isLoading ? (
             <SpinnerIcon />
@@ -413,7 +419,7 @@ export function PlayerDock() {
           ) : (
             <PlayIcon />
           )}
-        </TransportButton>
+        </button>
 
         {/* Seek bar */}
         <SeekBar

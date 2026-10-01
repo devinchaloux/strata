@@ -12,6 +12,7 @@ import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { firstBarNumbers, segmentEnd, sortedSegments, type SnapMode } from '@/lib/beatGrid'
 import { formatClock } from '@/lib/youtube'
+import { TimeInput } from '@/components/TimeInput'
 import { X } from 'lucide-react'
 import type { GridSegment } from '@/types/strata'
 
@@ -109,7 +110,8 @@ export function GridPopover() {
 
         <p className="mt-3 leading-relaxed text-muted-foreground">
           While it plays, tap <kbd className="rounded border border-border px-1">T</kbd> on each beat, starting on a
-          downbeat. After four taps the grid runs from your first tap at the tempo you tapped. Press{' '}
+          downbeat. After four taps the grid appears at the tempo you tapped (to the nearest BPM; type a decimal
+          below if you need one), reaching back to the last section boundary before your taps. Press{' '}
           <kbd className="rounded border border-border px-1">Shift+T</kbd> where it stops for a free passage, and tap
           again where the beat comes back.
         </p>
@@ -142,7 +144,11 @@ export function GridPopover() {
             <tbody>
               {segs.map((g, i) => (
                 <tr key={g.id}>
-                  <td className="tabular-nums text-foreground">{formatClock(g.start)}</td>
+                  <td className="w-24">
+                    {/* Editable: a tapped grid reaches back to where the music
+                        seems to start, which the analyst may want to trim. */}
+                    <TimeInput title="Where this stretch of grid starts (a downbeat)" value={g.start} onCommit={(t) => update(g, { start: Math.max(0, t) })} />
+                  </td>
                   <td className="w-16">
                     <NumberCell label="Tempo in BPM" value={g.bpm} onCommit={(v) => v && update(g, { bpm: v })} />
                   </td>

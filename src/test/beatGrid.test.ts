@@ -8,10 +8,11 @@ import {
   snapToGrid,
   sortedSegments,
   fitTaps,
+  extendBack,
 } from '@/lib/beatGrid'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
-import { makeDoc } from './fixtures'
+import { makeDoc, makeLayer, makeSpan } from './fixtures'
 
 // 120 BPM in 4/4: a beat is 0.5 s, a bar 2 s.
 const seg = (id: string, start: number, extra: Partial<GridSegment> = {}): GridSegment => ({
@@ -99,17 +100,31 @@ describe('grid in the store', () => {
 })
 
 describe('tap-along in the store', () => {
-  it('lays a segment from a tap run, refines it, and picks the grid up after a free stretch', () => {
-    const store = () => useDocumentStore.getState()
+  const store = () => useDocumentStore.getState()
+  const grid = () => store().document!.beatGrid!.map((g) => [+g.start.toFixed(2), g.end ?? null, g.bpm])
+
+  it('reaches back to the last section boundary before the taps', () => {
+    // A section starts at 4 s; tapping (120 BPM, 2 s bars) begins a bar later.
+    store().loadDocument({ ...makeDoc([makeLayer('L', [makeSpan('a', 0, 4), makeSpan('b', 4, 60)])]), duration: 200 })
+    const id = store().layGridFromTaps(6, 120)
+    expect(grid()).toEqual([[4, null, 120]])
+    store().layGridFromTaps(6.02, 120, id) // the same run, refined
+    expect(store().document!.beatGrid).toHaveLength(1)
+  })
+
+  it('keeps a free stretch free when the grid is picked up after it', () => {
+    store().loadDocument({ ...makeDoc([makeLayer('L', [makeSpan('a', 0, 40), makeSpan('b', 44, 100)])]), duration: 200 })
+    store().layGridFromTaps(0, 120)
+    store().endGridAt(40) // the breakdown, 40–44
+    store().layGridFromTaps(48, 120) // tapping two bars after the beat returns at 44
+    expect(grid()).toEqual([[0, 40, 120], [44, null, 120]])
+  })
+
+  it('marks a tempo change, not a reach back, inside a running segment', () => {
     store().loadDocument({ ...makeDoc([]), duration: 200 })
-    const id = store().layGridFromTaps(10, 118)
-    store().layGridFromTaps(10.02, 120, id) // the same run, refined
-    expect(store().document!.beatGrid!.map((g) => [g.start, g.bpm])).toEqual([[10.02, 120]])
-    store().endGridAt(60) // the breakdown
-    store().layGridFromTaps(64, 120) // tapping again where the beat returns
-    expect(store().document!.beatGrid!.map((g) => [g.start, g.end ?? null])).toEqual([[10.02, 60], [64, null]])
-    store().layGridFromTaps(64.1, 121) // a new run on the same downbeat refines, not stacks
-    expect(store().document!.beatGrid).toHaveLength(2)
+    store().layGridFromTaps(0, 120)
+    store().layGridFromTaps(50, 126)
+    expect(grid()).toEqual([[0, null, 120], [50, null, 126]])
   })
 })
 
@@ -123,12 +138,22 @@ describe('the snap preference', () => {
 })
 
 describe('fitTaps', () => {
-  it('fits the start and tempo of a run of taps', () => {
+  it('rounds the tempo to a whole BPM and fits the start to it', () => {
     expect(fitTaps([10, 10.5, 11])).toBeNull()
-    // 120 BPM from 10 s, with a late first tap: the fitted start stays near 10.
-    const fit = fitTaps([10.04, 10.5, 11.01, 11.49, 12, 12.5])!
-    // Six hand taps, one 40 ms late, land within a couple of BPM; more taps refine it.
-    expect(Math.abs(fit.bpm - 120)).toBeLessThan(2)
+    // Twelve hand taps at 120 BPM with ±15 ms of wobble: 120 exactly, start near 10.
+    const wobble = [0.01, -0.015, 0.012, 0, -0.01, 0.015, -0.012, 0.005, -0.008, 0.01, -0.005, 0]
+    const fit = fitTaps(wobble.map((w, i) => 10 + i * 0.5 + w))!
+    expect(fit.bpm).toBe(120)
     expect(fit.start).toBeCloseTo(10, 1)
+  })
+})
+
+describe('extendBack', () => {
+  it('reaches back by whole bars to the floor', () => {
+    // 2 s bars; tapping began at 10.0 with music from 4.0 → the grid starts at 4.
+    expect(extendBack(10, 2, 4)).toBeCloseTo(4)
+    // A boundary placed a hair late (4.1) still takes the bar at 4.
+    expect(extendBack(10, 2, 4.1)).toBeCloseTo(4)
+    expect(extendBack(10, 2, 10)).toBe(10)
   })
 })

@@ -3186,3 +3186,36 @@ Shift+T stops the grid at the playhead. G and Shift+G are gone.
 feature, and G started a "new grid layer" instead. Tapping along is the
 gesture musicians already know, and fitting the start as well as the tempo
 means a slightly early or late first tap doesn't shift the whole grid.
+
+---
+
+## Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)
+
+**Decision:** Tapped tempo rounds to a whole BPM, and the grid's start is
+refitted to that tempo; a fractional tempo is typed in the Grid popover.
+**Rationale:** Devin tapped Krewella's "Alive" (128 BPM) and got 128.4 and
+128.6. Produced music is almost always at a whole BPM, so the rounded value
+is the likeliest one. Rounding only lands right once the estimate is within
+half a BPM, and every further tap in a run refines it, so tapping a few bars
+longer settles it. No genre-based preference (such as even tempos) is applied.
+
+**Decision:** A tapped grid reaches back by whole bars to where the music
+plausibly starts: the latest section boundary before the taps, the end of the
+grid before them, or the track's start, whichever is latest (a boundary
+placed by ear may be up to a tenth of a bar late). Taps inside a running
+segment still mark a tempo change there. The segment's start is editable in
+the Grid popover.
+**Rationale:** Devin: "if you play and then you start tapping on the 2nd bar
+because you need a minute to adjust, it starts at that measure. I don't like
+that." Using section boundaries as the floor keeps a breakdown marked as free
+from being filled in again.
+
+**Decision:** Paused, a single click on a span (or marker) also moves the
+playhead to it; while playing, a click only selects. Double-click still plays
+from it.
+**Rationale:** Devin expected a click to bring the playhead to a section.
+While listening, a click to edit shouldn't jump playback.
+
+**Decision:** Play/pause is the one filled, larger control in the play bar.
+**Rationale:** Devin couldn't readily see how to pause, partly because Space
+places a boundary during playback rather than pausing.
