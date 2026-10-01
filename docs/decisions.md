@@ -3515,3 +3515,23 @@ page (which would reload it).
 **Rationale:** Devin: "LOVE LOVE LOVE the reading view idea". It is the view
 for teaching and for sharing, and the shareable link (next) opens in it.
 
+---
+
+## Sharing by Link (2026-10-01)
+
+**Decision:** An analysis is shared as a link that carries the address of its
+`.strata` file: `?src=<address>`. The analyst puts the saved file anywhere a
+browser may read it (their own site, a GitHub repository or Gist; GitHub page
+links are read as their raw file), pastes its address in Share… (reading
+view), and copies the link. Opening the link fetches the file and shows it in
+the reading view, with lyrics off for that visit (the reader can turn them on;
+their own lyrics preference is not changed). "Edit a copy" leaves the reading
+view; saving makes the reader's own file. The Share dialog notes when an
+analysis has lyrics and offers a copy without them. Only http and https
+addresses are followed.
+**Rationale:** Devin's option 2 of the sharing options: links and embeds with
+no Strata server to run, store or moderate. It applies the lyrics policy:
+files keep lyrics, public views leave them out by default. A file host that
+forbids other sites from reading files (no CORS) can't be used; the error
+says so.
+

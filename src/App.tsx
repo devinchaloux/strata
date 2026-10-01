@@ -13,6 +13,8 @@ import { ExportDialog } from '@/components/ExportDialog'
 import { LibrariesDialog } from '@/components/LibrariesDialog'
 import { reportIssueUrl } from '@/lib/issues'
 import { ReadingHeader } from '@/components/ReadingHeader'
+import { ShareDialog } from '@/components/ShareDialog'
+import { fetchSharedAnalysis, srcParam } from '@/lib/shareLink'
 import { HelpDialog } from '@/components/HelpDialog'
 import {
   AlertDialog,
@@ -328,6 +330,7 @@ export default function App() {
   const setActiveLayer = useUIStore((s) => s.setActiveLayer)
   const clearSelection = useUIStore((s) => s.clearSelection)
   const readingView = useUIStore((s) => s.readingView)
+  const sharedFrom = useUIStore((s) => s.sharedFrom)
   const setReadingView = useUIStore((s) => s.setReadingView)
   const selectedSpanCount = useUIStore((s) => s.selectedSpanIds.length)
   const selectedMarkerId = useUIStore((s) => s.selectedPointMarkerId)
@@ -437,6 +440,28 @@ export default function App() {
     window.addEventListener('pointerdown', onPointerDown)
     return () => window.removeEventListener('pointerdown', onPointerDown)
   }, [clearSelection])
+
+  // A shared link (?src=…) opens that analysis in the reading view, with
+  // lyrics off for this visit unless the reader turns them on
+  // (docs/decisions.md, "Sharing by Link").
+  useEffect(() => {
+    const src = srcParam(window.location.href)
+    if (!src) return
+    const ui = useUIStore.getState()
+    ui.setSharedFrom(src)
+    fetchSharedAnalysis(src)
+      .then((result) => {
+        loadDocument(result.doc)
+        useDocumentStore.temporal.getState().clear()
+        ui.setShowLyrics(false, false)
+        ui.setReadingView(true)
+        if (result.notices.length) ui.showAppMessage('Opened with warnings', result.notices)
+      })
+      .catch((err: unknown) => {
+        ui.setSharedFrom(null)
+        ui.showAppMessage('Couldn’t open the shared analysis', [err instanceof Error ? err.message : String(err), src])
+      })
+  }, [loadDocument])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -674,10 +699,11 @@ export default function App() {
       {/* Export — the form diagram as an SVG or PNG figure */}
       <ExportDialog />
       <LibrariesDialog />
+      <ShareDialog />
       <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} />
 
       {/* Crash recovery modal */}
-      {pendingRecovery && (
+      {pendingRecovery && !sharedFrom && (
         <RecoveryModal
           savedAt={pendingRecovery.savedAt}
           onRestore={restoreRecovery}

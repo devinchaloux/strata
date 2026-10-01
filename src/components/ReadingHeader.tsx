@@ -32,6 +32,8 @@ export function ReadingHeader() {
   const showLyrics = useUIStore((s) => s.showLyrics)
   const setShowLyrics = useUIStore((s) => s.setShowLyrics)
   const setReadingView = useUIStore((s) => s.setReadingView)
+  const setShareOpen = useUIStore((s) => s.setShareOpen)
+  const sharedFrom = useUIStore((s) => s.sharedFrom)
   if (!doc) return null
 
   const hasCommentary = analysisLayers(doc).length > 0
@@ -46,15 +48,22 @@ export function ReadingHeader() {
         <span className="mr-1 text-xs text-muted-foreground">Show</span>
         {hasCommentary && <Chip on={show.commentary} label="Commentary" onClick={() => setShow('commentary', !show.commentary)} />}
         <Chip on={show.diagram} label="Form diagram" onClick={() => setShow('diagram', !show.diagram)} />
-        {hasLyrics && <Chip on={showLyrics} label="Lyrics" onClick={() => setShowLyrics(!showLyrics)} />}
+        {hasLyrics && <Chip on={showLyrics} label="Lyrics" onClick={() => setShowLyrics(!showLyrics, !sharedFrom)} />}
       </div>
       <button
         type="button"
-        onClick={() => setReadingView(false)}
-        title="Back to editing (Esc)"
-        className="ml-3 rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+        onClick={() => setShareOpen(true)}
+        className="ml-3 rounded-md border border-border px-3 py-1 text-xs font-medium text-foreground hover:bg-accent"
       >
-        Edit
+        Share…
+      </button>
+      <button
+        type="button"
+        onClick={() => setReadingView(false)}
+        title={sharedFrom ? 'Edit your own copy (save it to keep it)' : 'Back to editing (Esc)'}
+        className="ml-2 rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+      >
+        {sharedFrom ? 'Edit a copy' : 'Edit'}
       </button>
     </>
   )

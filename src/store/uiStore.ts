@@ -183,7 +183,13 @@ export interface UIState {
   setInspectorTab: (tab: InspectorTab) => void
   setReadingView: (on: boolean) => void
   setReadingShow: (part: 'commentary' | 'diagram', on: boolean) => void
-  setShowLyrics: (show: boolean) => void
+  /** `remember: false` changes this visit only (a shared analysis hides lyrics without touching the analyst's preference). */
+  setShowLyrics: (show: boolean, remember?: boolean) => void
+  /** The address a shared analysis was opened from (?src=), or null. */
+  sharedFrom: string | null
+  setSharedFrom: (url: string | null) => void
+  shareOpen: boolean
+  setShareOpen: (open: boolean) => void
   requestSeek: (time: number, play?: boolean) => void
 }
 
@@ -305,10 +311,14 @@ const useUIStore = create<UIState>()((set) => ({
   showAppMessage: (title, lines) => set({ appMessage: { title, lines } }),
   dismissAppMessage: () => set({ appMessage: null }),
   setExportOpen: (open) => set({ exportOpen: open }),
-  setShowLyrics: (show) => {
-    writePreference(LYRICS_KEY, show ? 'on' : 'off')
+  setShowLyrics: (show, remember = true) => {
+    if (remember) writePreference(LYRICS_KEY, show ? 'on' : 'off')
     set({ showLyrics: show })
   },
+  sharedFrom: null,
+  setSharedFrom: (url) => set({ sharedFrom: url }),
+  shareOpen: false,
+  setShareOpen: (open) => set({ shareOpen: open }),
   setSnapMode: (mode) => {
     writePreference(SNAP_KEY, mode)
     set({ snapMode: mode })
