@@ -33,8 +33,6 @@ import {
   type TermKind,
 } from '@/lib/vocabulary'
 import type { VocabTerm } from '@/types/strata'
-import { exportVocabPack, exportableCount, packSource, readVocabPack } from '@/lib/vocabPack'
-import { downloadBlob, fileBaseName, pickTextFile } from '@/lib/fileIO'
 
 
 interface Row {
@@ -98,12 +96,11 @@ export function TypePicker({
   const doc = useDocumentStore((s) => s.document)
   const addVocabTerm = useDocumentStore((s) => s.addVocabTerm)
   const enabledPacks = useUIStore((s) => s.enabledPacks)
-  const setPackEnabled = useUIStore((s) => s.setPackEnabled)
+  const setLibrariesOpen = useUIStore((s) => s.setLibrariesOpen)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [expanded, setExpanded] = useState<string[]>([])
   const [active, setActive] = useState(0)
-  const [showPacks, setShowPacks] = useState(false)
 
   const list = kind === 'span' ? 'spanTypes' : 'pointMarkerTypes'
   const custom = useMemo(() => doc?.vocabulary[list] ?? [], [doc, list])
@@ -131,7 +128,6 @@ export function TypePicker({
   const libraries = LIBRARIES.filter(
     (l) => l[libKey].length > 0 && (l.tier === 'built-in' || enabledPacks.includes(l.id)),
   )
-  const packs = LIBRARIES.filter((l) => l.tier === 'pack' && l[libKey].length > 0)
   // Imported packs, by the source each term records.
   const imported = [...new Set(custom.map((t) => t.source).filter((s): s is string => !!s))]
 
@@ -202,25 +198,6 @@ export function TypePicker({
     setOpen(false)
   }
 
-  // A pack's terms are copied into the file, so it opens without the pack.
-  async function importPack() {
-    const raw = await pickTextFile('.json,application/json')
-    if (raw === null) return
-    const showAppMessage = useUIStore.getState().showAppMessage
-    try {
-      const { pack, skipped: unreadable } = readVocabPack(raw)
-      const result = useDocumentStore.getState().importVocabPack(pack)
-      if (!result) return
-      const skipped = [...unreadable, ...result.skipped]
-      showAppMessage(`Imported “${packSource(pack)}”`, [
-        `${result.added} new type${result.added === 1 ? '' : 's'}${result.updated ? `, ${result.updated} updated` : ''}. They're under “${packSource(pack)}” in the Type list.`,
-        ...(skipped.length ? ['Left out:', ...skipped] : []),
-      ])
-    } catch (err) {
-      showAppMessage('Couldn’t import that pack', [err instanceof Error ? err.message : String(err)])
-    }
-  }
-
   function onKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault()
@@ -243,7 +220,6 @@ export function TypePicker({
         if (o) {
           setQuery('')
           setActive(0)
-          setShowPacks(false)
         }
       }}
     >
@@ -336,45 +312,17 @@ export function TypePicker({
         </div>
 
         {!q && (
-          <div className="border-t border-border p-2">
+          <div className="border-t border-border px-2 py-1.5">
             <button
               type="button"
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-              onClick={() => setShowPacks((v) => !v)}
+              className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+              onClick={() => {
+                setOpen(false)
+                setLibrariesOpen(true)
+              }}
             >
-              {showPacks ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-              Packs ({enabledPacks.filter((p) => packs.some((l) => l.id === p)).length} of {packs.length} on)
+              More libraries…
             </button>
-            {showPacks && (
-              <div className="mt-1 flex flex-col gap-0.5">
-                {packs.map((p) => (
-                  <label key={p.id} className="flex items-baseline gap-2 text-xs" title={p.description}>
-                    <input
-                      type="checkbox"
-                      checked={enabledPacks.includes(p.id)}
-                      onChange={(e) => setPackEnabled(p.id, e.target.checked)}
-                    />
-                    <span className="text-foreground">{p.label}</span>
-                    <span className="truncate text-muted-foreground">{p.description}</span>
-                  </label>
-                ))}
-                <p className="mt-1 text-[11px] text-muted-foreground">Search finds pack terms even when a pack is off.</p>
-                <div className="mt-2 flex flex-wrap gap-2 border-t border-border pt-2">
-                  <button type="button" className="rounded border border-border px-2 py-0.5 text-xs hover:bg-accent" onClick={importPack}>
-                    Import a pack file…
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded border border-border px-2 py-0.5 text-xs hover:bg-accent disabled:opacity-40"
-                    disabled={!doc || exportableCount(doc) === 0}
-                    title="Save the types this file defines (not its letters) as a .vocab.json pack"
-                    onClick={() => doc && downloadBlob(new Blob([JSON.stringify(exportVocabPack(doc), null, 2)], { type: 'application/json' }), `${fileBaseName(doc)}.vocab.json`)}
-                  >
-                    Save this file’s types as a pack
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         )}
       </PopoverContent>

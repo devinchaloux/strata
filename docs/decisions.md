@@ -3342,7 +3342,8 @@ marker. Importing copies the terms into the file with `source`
 file is left out and named; re-importing the same pack replaces its terms.
 Imported terms appear as their own collapsed group in the Type picker.
 Exporting writes the file's own types, without letters or other packs' terms.
-Both live under Packs at the foot of the Type picker.
+Both live in the Libraries dialog ("More libraries…" at the foot of the Type
+picker); see "The Libraries Dialog".
 **Rationale:** Pack import was a v1 commitment (Phase 0.6) so the tool is not
 a dead end for traditions the built-ins miss. Copying keeps the `.strata`
 file self-contained. Refusing a clashing id keeps one id meaning one thing
@@ -3363,4 +3364,20 @@ an unreadable file, a malformed YouTube link and a corrupt audio file each say
 what went wrong in plain words.
 **Rationale:** Devin asked for a beta launch pass. Fields named only by
 placement were read by screen readers as unnamed edit boxes.
+
+---
+
+## The Libraries Dialog (2026-10-01)
+
+**Decision:** Packs are switched on and off in a Libraries dialog, opened by
+"More libraries…" at the foot of the Type picker, not in the picker itself.
+Each pack is one row: a switch, its name, how many types it has, what it is
+for, and its first few types by name, with the rest a click away. Below,
+"Packs from a file" lists imported packs and holds Import, and Save your
+types as a pack (shown only when the analysis has types of its own). The
+import result is a line in the dialog, not a separate message.
+**Rationale:** Devin found the packs panel in the picker too busy and unclear
+about what turning a pack on adds. Twelve checkboxes, truncated descriptions
+and two file buttons crowded a menu meant for choosing a type. Showing the
+count and real type names answers "what does this add" before switching it on.
 

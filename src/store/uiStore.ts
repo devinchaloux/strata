@@ -116,6 +116,8 @@ export interface UIState {
   snapMode: SnapMode
   /** Vocabulary packs the analyst has switched on in the type picker (lib/vocabulary.ts). */
   enabledPacks: string[]
+  /** The Libraries dialog (packs on or off, import, share). */
+  librariesOpen: boolean
   // Lyrics in the commentary stack: also the analyst's remembered preference.
   showLyrics: boolean
 
@@ -166,6 +168,7 @@ export interface UIState {
   setExportOpen: (open: boolean) => void
   setSnapMode: (mode: SnapMode) => void
   setPackEnabled: (id: string, on: boolean) => void
+  setLibrariesOpen: (open: boolean) => void
   setShowLyrics: (show: boolean) => void
   requestSeek: (time: number, play?: boolean) => void
 }
@@ -234,6 +237,7 @@ const useUIStore = create<UIState>()((set) => ({
   snapMode: readSnapPreference(),
   showLyrics: readPreference(LYRICS_KEY) === 'on',
   enabledPacks: (readPreference(PACKS_KEY) ?? '').split(',').filter(Boolean),
+  librariesOpen: false,
   seekRequest: null,
 
   setCurrentTime: (time) => set({ currentTime: time }),
@@ -297,6 +301,7 @@ const useUIStore = create<UIState>()((set) => ({
       writePreference(PACKS_KEY, enabledPacks.join(','))
       return { enabledPacks }
     }),
+  setLibrariesOpen: (open) => set({ librariesOpen: open }),
   requestSeek: (time, play) => set((s) => ({ seekRequest: { time, n: (s.seekRequest?.n ?? 0) + 1, play } })),
 }))
 

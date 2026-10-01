@@ -10,6 +10,7 @@ import { MergeConflictDialog } from '@/components/MergeConflictDialog'
 import { DocumentSettingsDialog } from '@/components/DocumentSettingsDialog'
 import { LinkSourceDialog } from '@/components/LinkSourceDialog'
 import { ExportDialog } from '@/components/ExportDialog'
+import { LibrariesDialog } from '@/components/LibrariesDialog'
 import { HelpDialog } from '@/components/HelpDialog'
 import {
   AlertDialog,
@@ -637,6 +638,7 @@ export default function App() {
 
       {/* Export — the form diagram as an SVG or PNG figure */}
       <ExportDialog />
+      <LibrariesDialog />
       <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} />
 
       {/* Crash recovery modal */}

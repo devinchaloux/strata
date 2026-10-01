@@ -179,7 +179,7 @@ A vocabulary pack is a separate `.vocab.json` file (schema: `strata-vocab.schema
 | `author`, `description` | text | No | Who made it and what it covers. |
 | `terms` | list | Yes | Vocabulary terms as above, each with a `kind` (`span`, `point-marker` or `mode`). |
 
-On import, a term whose id the app already ships, or that the file already defines, is left out and named, so an id never changes meaning inside a file. Importing the same pack again (any version) replaces its earlier terms. Exporting ("Save this file's types as a pack" in the Type picker) writes the file's own types, leaving out letters (made on demand) and terms from other packs.
+On import, a term whose id the app already ships, or that the file already defines, is left out and named, so an id never changes meaning inside a file. Importing the same pack again (any version) replaces its earlier terms. Exporting ("Save your types as a pack" in the Libraries dialog, opened from the Type picker) writes the file's own types, leaving out letters (made on demand) and terms from other packs.
 ---
 
 ## 4. Shared Time Points
