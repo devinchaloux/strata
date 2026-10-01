@@ -3453,3 +3453,19 @@ still to be proposed and reviewed; the widget's name is still open.
 **Rationale:** Devin agreed that sound layers should be corpus-comparable in
 the same way as span types.
 
+---
+
+## Quick Type (2026-10-01)
+
+**Decision:** With spans selected in one level, a bar floats just above the
+diagram, in line with the selection, offering types on number keys: on a
+lettered level its letters and the next one (up to nine); otherwise six, the
+level's own types in order of first appearance, then the unused types of the
+library it draws on. 1–9 picks; "/" or More… opens the Inspector's full Type
+list with search. A pick types every selected span in one undo step, and labels
+follow the type as in the Inspector. The bar sits above the diagram rather than
+over the levels so it never hides brackets or labels.
+**Rationale:** Devin liked the sketch ("Love the quick type idea"): labelling a
+piece one span at a time through the Inspector is the slowest part of a first
+pass, and the level's likely types are known from what it already uses.
+

@@ -51,6 +51,8 @@ const KEYS: [string, [string, string][]][] = [
       ['↑ ↓', 'Span in the layer above / below'],
       ['Shift+← →', 'Extend the selection'],
       ['Enter', 'Edit the selected span’s label'],
+      ['1–9', 'Give the selected spans a type from the quick-type bar'],
+      ['/', 'Choose from every type, with search'],
       ['Esc', 'Clear the selection'],
     ],
   ],

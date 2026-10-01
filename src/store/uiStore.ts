@@ -118,6 +118,8 @@ export interface UIState {
   enabledPacks: string[]
   /** The Libraries dialog (packs on or off, import, share). */
   librariesOpen: boolean
+  /** Bumped to ask the Inspector's span Type picker to open (the "/" key). */
+  typePickerRequest: number
   // Lyrics in the commentary stack: also the analyst's remembered preference.
   showLyrics: boolean
 
@@ -169,6 +171,7 @@ export interface UIState {
   setSnapMode: (mode: SnapMode) => void
   setPackEnabled: (id: string, on: boolean) => void
   setLibrariesOpen: (open: boolean) => void
+  requestTypePicker: () => void
   setShowLyrics: (show: boolean) => void
   requestSeek: (time: number, play?: boolean) => void
 }
@@ -238,6 +241,7 @@ const useUIStore = create<UIState>()((set) => ({
   showLyrics: readPreference(LYRICS_KEY) === 'on',
   enabledPacks: (readPreference(PACKS_KEY) ?? '').split(',').filter(Boolean),
   librariesOpen: false,
+  typePickerRequest: 0,
   seekRequest: null,
 
   setCurrentTime: (time) => set({ currentTime: time }),
@@ -302,6 +306,7 @@ const useUIStore = create<UIState>()((set) => ({
       return { enabledPacks }
     }),
   setLibrariesOpen: (open) => set({ librariesOpen: open }),
+  requestTypePicker: () => set((s) => ({ typePickerRequest: s.typePickerRequest + 1 })),
   requestSeek: (time, play) => set((s) => ({ seekRequest: { time, n: (s.seekRequest?.n ?? 0) + 1, play } })),
 }))
 

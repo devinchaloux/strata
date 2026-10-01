@@ -11,15 +11,15 @@
  * work through the list. lib/vocabulary.ts holds the terms; docs/decisions.md,
  * "Vocabulary Libraries", the reasons.
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { inputClass } from '@/components/Field'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { newGestureKey, withHistoryGroup } from '@/store/history'
-import { formSpans } from '@/lib/layers'
 import { slugify } from '@/lib/slug'
+import { typeSuggestions } from '@/lib/typeSuggestions'
 import {
   LIBRARIES,
   builtInTerm,
@@ -29,9 +29,6 @@ import {
   parseLetter,
   searchTerms,
   termTitle,
-  typesInOrder,
-  likelyLibrary,
-  type Library,
   type PickerTerm,
   type TermKind,
 } from '@/lib/vocabulary'
@@ -107,6 +104,15 @@ export function TypePicker({
   const [query, setQuery] = useState('')
   const [expanded, setExpanded] = useState<string[]>([])
   const [active, setActive] = useState(0)
+  // The quick-type bar's "/" (and its More… button) open the span picker.
+  const typePickerRequest = useUIStore((s) => s.typePickerRequest)
+  useEffect(() => {
+    if (typePickerRequest && kind === 'span') {
+      setQuery('')
+      setActive(0)
+      setOpen(true)
+    }
+  }, [typePickerRequest, kind])
 
   const list = kind === 'span' ? 'spanTypes' : 'pointMarkerTypes'
   const custom = useMemo(() => doc?.vocabulary[list] ?? [], [doc, list])
@@ -115,35 +121,12 @@ export function TypePicker({
 
   // What the file and this layer already use, in order of first appearance
   // (Intro, Verse, Chorus …), and the library the layer seems to be drawing
-  // on, whose unused types are suggested.
-  const { inLayer, elsewhere, suggested } = useMemo(() => {
-    const empty = { inLayer: [] as PickerTerm[], elsewhere: [] as PickerTerm[], suggested: null as { lib: Library; terms: PickerTerm[] } | null }
-    if (!doc) return empty
-    const resolve = (ids: string[]) => ids.map((id) => findTerm(id, kind, custom)).filter((t): t is PickerTerm => !!t)
-    const layer = layerId ? doc.layers.find((l) => l.id === layerId) : undefined
-    const layerIds = layer ? typesInOrder(formSpans(layer).map((s) => ({ type: s.type, time: s.startTime }))) : []
-    const fileIds =
-      kind === 'span'
-        ? typesInOrder(doc.layers.flatMap(formSpans).map((s) => ({ type: s.type, time: s.startTime })))
-        : typesInOrder(doc.pointMarkers.map((m) => ({ type: m.type, time: m.timestamp })))
-    // The file's own terms not yet used come last; imported packs have their own group.
-    const unusedOwn = custom.filter((t) => !t.source && !fileIds.includes(t.id) && !isLetterId(t.id)).map((t) => t.id)
-    const usedLetters = fileIds.filter(isLetterId)
-    const ownLetters = custom.filter((t) => isLetterId(t.id) && !usedLetters.includes(t.id)).map((t) => t.id)
-    const elsewhereIds = [...fileIds.filter((id) => !layerIds.includes(id)), ...ownLetters, ...unusedOwn]
-    const lib = likelyLibrary(layerIds.length ? layerIds : fileIds, kind)
-    const key = kind === 'span' ? 'spanTypes' : 'pointMarkerTypes'
-    return {
-      inLayer: resolve(layerIds),
-      elsewhere: resolve(elsewhereIds),
-      suggested: lib ? { lib, terms: resolve(lib[key].filter((id) => !fileIds.includes(id))) } : null,
-    }
-  }, [doc, custom, kind, layerId])
+  // on, whose unused types are suggested (lib/typeSuggestions.ts).
+  const { inLayer, elsewhere, suggested, nextLetter: next } = useMemo(
+    () => (doc ? typeSuggestions(doc, kind, layerId) : { inLayer: [], elsewhere: [], suggested: null, nextLetter: 'A' }),
+    [doc, kind, layerId],
+  )
   const inFile = [...inLayer, ...elsewhere]
-
-  const usedLetters = inFile.filter((t) => isLetterId(t.id)).map((t) => t.id.charCodeAt(0) - 97)
-  const nextIndex = usedLetters.length ? Math.max(...usedLetters) + 1 : 0
-  const next = nextIndex < 26 ? String.fromCharCode(65 + nextIndex) : null
 
   const libraries = LIBRARIES.filter(
     (l) => l[libKey].length > 0 && (l.tier === 'built-in' || enabledPacks.includes(l.id)),
