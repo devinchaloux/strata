@@ -11,6 +11,8 @@ import {
   searchTerms,
   typesUnder,
   labelFollowsType,
+  typesInOrder,
+  likelyLibrary,
 } from '@/lib/vocabulary'
 import { useDocumentStore } from '@/store/documentStore'
 import { makeDoc } from './fixtures'
@@ -119,5 +121,19 @@ describe('labelFollowsType', () => {
     expect(labelFollowsType('Verse 1', 'verse', custom)).toBe(false)
     expect(labelFollowsType('THE DROP', 'drop', custom)).toBe(false)
     expect(labelFollowsType('Chorus', null, custom)).toBe(false)
+  })
+})
+
+describe('picker ordering and suggestions', () => {
+  it('orders types by first appearance', () => {
+    expect(typesInOrder([
+      { type: 'chorus', time: 30 }, { type: 'intro', time: 0 }, { type: 'verse', time: 10 }, { type: 'chorus', time: 60 }, { type: null, time: 5 },
+    ])).toEqual(['intro', 'verse', 'chorus'])
+  })
+  it('guesses the library a layer is drawing on', () => {
+    expect(likelyLibrary(['intro', 'verse', 'chorus'], 'span')?.id).toBe('pop-rock')
+    expect(likelyLibrary(['caplin-transition', 'caplin-main-theme'], 'span')?.id).toBe('caplin')
+    expect(likelyLibrary(['drop', 'buildup', 'intro'], 'span')?.id).toBe('edm')
+    expect(likelyLibrary(['a-section'], 'span')).toBeNull()
   })
 })

@@ -465,6 +465,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         <Field label="Type">
           <TypePicker
             kind="span"
+            layerId={layer.id}
             value={span.type}
             onPick={(id, term) => {
               const custom = useDocumentStore.getState().document?.vocabulary.spanTypes ?? []
@@ -762,6 +763,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
         <Field label="Type">
           <TypePicker
             kind="span"
+            layerId={entries.every((e) => e.layer.id === entries[0].layer.id) ? entries[0].layer.id : undefined}
             value={type === MIXED ? null : type || null}
             mixed={type === MIXED}
             onPick={(id, term) => {

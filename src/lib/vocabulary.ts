@@ -598,3 +598,30 @@ export function labelFollowsType(
   const t = findTerm(currentType, 'span', custom)
   return !!t && (l === t.label || l === t.name)
 }
+
+// ── Ordering and suggestions for the picker ──
+
+/** Type ids in the order they first sound: Intro, Verse, Prechorus, Chorus … */
+export function typesInOrder(items: { type?: string | null; time: number }[]): string[] {
+  const out: string[] = []
+  for (const it of [...items].sort((a, b) => a.time - b.time)) if (it.type && !out.includes(it.type)) out.push(it.type)
+  return out
+}
+
+/**
+ * The library the given types mostly come from, as a guess at the framework a
+ * layer is being analysed in: most of the types listed in it, then the
+ * smaller (more specific) library on a tie. Packs count whether or not they
+ * are switched on. Null when none of the types is in a library.
+ */
+export function likelyLibrary(typeIds: string[], kind: TermKind): Library | null {
+  const key = kind === 'span' ? 'spanTypes' : 'pointMarkerTypes'
+  let best: { lib: Library; hits: number } | null = null
+  for (const lib of LIBRARIES) {
+    if (lib.id === 'letters' || !lib[key].length) continue
+    const hits = typeIds.filter((id) => lib[key].includes(id)).length
+    if (!hits) continue
+    if (!best || hits > best.hits || (hits === best.hits && lib[key].length < best.lib[key].length)) best = { lib, hits }
+  }
+  return best?.lib ?? null
+}

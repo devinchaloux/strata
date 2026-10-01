@@ -3411,3 +3411,21 @@ dialog's full type lists are now one column.
 **Rationale:** Devin asked for both. Issue forms keep reports structured, and
 prefilling saves the reporter looking up what the maintainer needs first.
 
+---
+
+## The Type Picker Follows the Layer (2026-10-01)
+
+**Decision:** Opened from a span, the Type picker leads with "In this layer":
+the types the span's layer already uses, in the order they first sound
+(Intro, Verse, Prechorus, Chorus …), then "Elsewhere in this file" in the same
+order, then "Suggested from <library>": the unused types of the library the
+layer seems to be drawing on (the one holding most of its types; the smaller
+library on a tie; packs count whether or not they are on), eight at a time
+with a link to the whole library. The next-letter chip shows only on a layer
+that already uses letters. Point markers, which have no layer, use the file.
+**Rationale:** Devin chose first-appearance order over A–Z ("a — order by
+first appearance") and asked that a layer working in one library surface it,
+or recommend from it. The guess is drawn from what the analyst has already
+picked, so it never presumes a framework the layer hasn't used, and search
+still reaches everything.
+

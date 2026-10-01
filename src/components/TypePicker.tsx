@@ -29,6 +29,9 @@ import {
   parseLetter,
   searchTerms,
   termTitle,
+  typesInOrder,
+  likelyLibrary,
+  type Library,
   type PickerTerm,
   type TermKind,
 } from '@/lib/vocabulary'
@@ -86,9 +89,12 @@ export function TypePicker({
   value,
   mixed,
   onPick,
+  layerId,
 }: {
   kind: TermKind
   value: string | null | undefined
+  /** The layer being typed, for "In this layer" and its suggestions. */
+  layerId?: string
   /** Several selected items disagree. */
   mixed?: boolean
   onPick: (id: string | null, term?: PickerTerm) => void
@@ -107,19 +113,33 @@ export function TypePicker({
   const libKey = kind === 'span' ? 'spanTypes' : 'pointMarkerTypes'
   const current = findTerm(value, kind, custom)
 
-  // The types this file already uses, letters in order, then the rest A–Z.
-  const inFile = useMemo(() => {
-    if (!doc) return []
-    const used =
-      kind === 'span' ? doc.layers.flatMap(formSpans).map((s) => s.type) : doc.pointMarkers.map((m) => m.type)
-    // Terms from an imported pack get their own group below, unless in use.
-    const own = custom.filter((t) => !t.source).map((t) => t.id)
-    const ids = [...new Set([...own, ...used.filter((t): t is string => !!t)])]
-    return ids
-      .map((id) => findTerm(id, kind, custom))
-      .filter((t): t is PickerTerm => !!t)
-      .sort((a, b) => Number(!isLetterId(a.id)) - Number(!isLetterId(b.id)) || a.label.localeCompare(b.label))
-  }, [doc, custom, kind])
+  // What the file and this layer already use, in order of first appearance
+  // (Intro, Verse, Chorus …), and the library the layer seems to be drawing
+  // on, whose unused types are suggested.
+  const { inLayer, elsewhere, suggested } = useMemo(() => {
+    const empty = { inLayer: [] as PickerTerm[], elsewhere: [] as PickerTerm[], suggested: null as { lib: Library; terms: PickerTerm[] } | null }
+    if (!doc) return empty
+    const resolve = (ids: string[]) => ids.map((id) => findTerm(id, kind, custom)).filter((t): t is PickerTerm => !!t)
+    const layer = layerId ? doc.layers.find((l) => l.id === layerId) : undefined
+    const layerIds = layer ? typesInOrder(formSpans(layer).map((s) => ({ type: s.type, time: s.startTime }))) : []
+    const fileIds =
+      kind === 'span'
+        ? typesInOrder(doc.layers.flatMap(formSpans).map((s) => ({ type: s.type, time: s.startTime })))
+        : typesInOrder(doc.pointMarkers.map((m) => ({ type: m.type, time: m.timestamp })))
+    // The file's own terms not yet used come last; imported packs have their own group.
+    const unusedOwn = custom.filter((t) => !t.source && !fileIds.includes(t.id) && !isLetterId(t.id)).map((t) => t.id)
+    const usedLetters = fileIds.filter(isLetterId)
+    const ownLetters = custom.filter((t) => isLetterId(t.id) && !usedLetters.includes(t.id)).map((t) => t.id)
+    const elsewhereIds = [...fileIds.filter((id) => !layerIds.includes(id)), ...ownLetters, ...unusedOwn]
+    const lib = likelyLibrary(layerIds.length ? layerIds : fileIds, kind)
+    const key = kind === 'span' ? 'spanTypes' : 'pointMarkerTypes'
+    return {
+      inLayer: resolve(layerIds),
+      elsewhere: resolve(elsewhereIds),
+      suggested: lib ? { lib, terms: resolve(lib[key].filter((id) => !fileIds.includes(id))) } : null,
+    }
+  }, [doc, custom, kind, layerId])
+  const inFile = [...inLayer, ...elsewhere]
 
   const usedLetters = inFile.filter((t) => isLetterId(t.id)).map((t) => t.id.charCodeAt(0) - 97)
   const nextIndex = usedLetters.length ? Math.max(...usedLetters) + 1 : 0
@@ -132,7 +152,7 @@ export function TypePicker({
   const imported = [...new Set(custom.map((t) => t.source).filter((s): s is string => !!s))]
 
   // ── The rows, in display order, so arrow keys can walk them ──
-  const sections: { title?: string; lib?: string; rows: Row[] }[] = []
+  const sections: { title?: string; lib?: string; rows: Row[]; lettered?: boolean }[] = []
   const q = query.trim()
   if (q) {
     const letter = kind === 'span' ? parseLetter(q) : null
@@ -159,14 +179,36 @@ export function TypePicker({
   } else {
     // [none] first and on its own, so clearing a type never reads as a term.
     if (value || mixed) sections.push({ rows: [{ key: 'none', id: null, text: '[none]', muted: true }] })
-    const top: Row[] = []
-    top.push(...inFile.map((t) => ({ key: `file-${t.id}`, id: t.id, term: t, chip: isLetterId(t.id) })))
+    const rowsOf = (terms: PickerTerm[], prefix: string): Row[] =>
+      terms.map((t) => ({ key: `${prefix}-${t.id}`, id: t.id, term: t, chip: isLetterId(t.id) }))
     // The next letter after the highest one this file uses (A in a new file).
+    const nextRow: Row[] = []
     if (kind === 'span' && next) {
       const t = letterTerm(next, 0)
-      top.push({ key: 'next-letter', id: t.id, add: t, term: { ...t, kind: 'span' }, chip: true, muted: true })
+      nextRow.push({ key: 'next-letter', id: t.id, add: t, term: { ...t, kind: 'span' }, chip: true, muted: true })
     }
-    sections.push({ title: 'In this file', rows: top })
+    if (layerId && inLayer.length) {
+      // Offer the next letter only on a layer that is lettered.
+      const lettered = inLayer.some((t) => isLetterId(t.id))
+      sections.push({ title: 'In this layer', rows: [...rowsOf(inLayer, 'layer'), ...(lettered ? nextRow : [])], lettered })
+      if (elsewhere.length) sections.push({ title: 'Elsewhere in this file', rows: rowsOf(elsewhere, 'file') })
+    } else {
+      sections.push({ title: 'In this file', rows: [...rowsOf(inFile, 'file'), ...nextRow] })
+    }
+    // Recommendations: the rest of the library this layer draws on, so the
+    // next type is usually one click away without searching.
+    if (suggested?.terms.length) {
+      const SHOWN = 8
+      sections.push({
+        title: `Suggested from ${suggested.lib.label}`,
+        rows: [
+          ...rowsOf(suggested.terms.slice(0, SHOWN), 'suggest'),
+          ...(suggested.terms.length > SHOWN
+            ? [{ key: 'suggest-more', id: '__expand__', text: `All of ${suggested.lib.label}…`, muted: true }]
+            : []),
+        ],
+      })
+    }
     for (const lib of libraries) {
       const isOpen = expanded.includes(lib.id)
       sections.push({
@@ -191,6 +233,11 @@ export function TypePicker({
   const flat = sections.flatMap((s) => [...s.rows.filter((r) => r.chip), ...s.rows.filter((r) => !r.chip)])
 
   function pick(row: Row) {
+    if (row.id === '__expand__' && suggested) {
+      // Open the library's full group below rather than choosing a type.
+      setExpanded((x) => (x.includes(suggested.lib.id) ? x : [...x, suggested.lib.id]))
+      return
+    }
     withHistoryGroup(newGestureKey('type-pick'), () => {
       if (row.add) addVocabTerm(list, row.add)
       onPick(row.id, row.term)
@@ -301,7 +348,7 @@ export function TypePicker({
               })}
               {/* Letters are made, not listed: any letter A–Z with up to three
                   primes, typed in the search box. */}
-              {!q && s.title === 'In this file' && kind === 'span' && (
+              {!q && (s.title === 'In this file' || s.lettered) && kind === 'span' && (
                 <p className="px-2 pb-1 text-xs text-muted-foreground">
                   Any letter: type it and press Enter (K, or B&apos; for B′, C&apos;&apos; for C″).
                 </p>
