@@ -12,6 +12,7 @@
 import type {
   AnalysisBlock,
   BlockAnchor,
+  Layer,
   PointMarker,
   Span,
   StrataDocument,
@@ -350,4 +351,38 @@ export function commentaryToMarkdown(doc: StrataDocument): string {
     }
   }
   return out.join('\n') + '\n'
+}
+
+// ── The stack at a moment ───────────────────────────────────────────────────
+
+export interface StackRow {
+  layer: Layer
+  span: Span
+  /** The span's commentary, if any (from a visible commentary layer). */
+  block?: AnalysisBlock
+}
+
+/**
+ * Every level at once for a moment: in each visible form layer from the top of
+ * the stack down (rotation → section → phrase), the span covering `t`, with
+ * its commentary. Layers with nothing at `t` are skipped.
+ */
+export function stackAt(doc: StrataDocument, t: number): StackRow[] {
+  const visibleBlocks = allBlocks(doc).filter(({ layer }) => layer.visibility)
+  return doc.layers
+    .filter((l) => l.type === 'form-diagram' && l.visibility)
+    .sort((a, b) => b.displayOrder - a.displayOrder)
+    .flatMap((layer) => {
+      const span = formSpans(layer).find((s) => t >= s.startTime && t < s.endTime)
+      if (!span) return []
+      const block = visibleBlocks.find(({ block: b }) => 'spanId' in b.anchor && b.anchor.spanId === span.id)?.block
+      return [{ layer, span, block }]
+    })
+}
+
+/** Commentary on stretches of time (not on one span) that cover `t`. */
+export function passagesAt(doc: StrataDocument, t: number): AnalysisBlock[] {
+  return allBlocks(doc)
+    .filter(({ layer, block }) => layer.visibility && 'start' in block.anchor && t >= block.anchor.start && t < block.anchor.end)
+    .map(({ block }) => block)
 }

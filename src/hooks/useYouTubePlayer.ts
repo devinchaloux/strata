@@ -215,5 +215,18 @@ export function useYouTubePlayer(
     [storeSetRate],
   )
 
-  return { play, pause, seek, setRate }
+  // The exact recording time now, read from the player at the moment of a key
+  // press. The store's currentTime is the last frame's reading (up to ~16 ms
+  // old), which is too coarse for marking or tapping by ear.
+  const now = useCallback((): number => {
+    try {
+      const t = playerRef.current?.getCurrentTime()
+      if (typeof t === 'number' && isFinite(t)) return Math.max(0, t - offsetRef.current)
+    } catch {
+      // Not ready: fall back to the last frame's time.
+    }
+    return useUIStore.getState().currentTime
+  }, [])
+
+  return { play, pause, seek, setRate, now }
 }

@@ -114,11 +114,13 @@ export interface UIState {
   // A working preference, not part of the analysis, so never in the file
   // (docs/decisions.md, "Snapping Remembered as a Preference").
   snapMode: SnapMode
+  // Lyrics in the commentary stack: also the analyst's remembered preference.
+  showLyrics: boolean
 
   // A request for the player to jump to a time, from outside the transport
   // (e.g. a commentary link). PlayerDock owns the engine and carries it out;
   // `n` makes two requests for the same time distinct.
-  seekRequest: { time: number; n: number } | null
+  seekRequest: { time: number; n: number; play?: boolean } | null
 
   // Actions — playback
   setCurrentTime: (time: number) => void
@@ -161,7 +163,8 @@ export interface UIState {
   dismissAppMessage: () => void
   setExportOpen: (open: boolean) => void
   setSnapMode: (mode: SnapMode) => void
-  requestSeek: (time: number) => void
+  setShowLyrics: (show: boolean) => void
+  requestSeek: (time: number, play?: boolean) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -169,15 +172,29 @@ export interface UIState {
 // ---------------------------------------------------------------------------
 
 const SNAP_KEY = 'strata:snapMode'
+const LYRICS_KEY = 'strata:showLyrics'
+
+// Preferences live in this browser's storage; a blocked store (a private
+// window) just means the default each visit.
+function readPreference(key: string): string | null {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+function writePreference(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    // The choice lasts this visit only.
+  }
+}
 
 /** The analyst's remembered snap choice; Off for a first visit or anything unreadable. */
 function readSnapPreference(): SnapMode {
-  try {
-    const v = localStorage.getItem(SNAP_KEY)
-    return v === 'beat' || v === 'bar' ? v : 'off'
-  } catch {
-    return 'off'
-  }
+  const v = readPreference(SNAP_KEY)
+  return v === 'beat' || v === 'bar' ? v : 'off'
 }
 
 const useUIStore = create<UIState>()((set) => ({
@@ -211,6 +228,7 @@ const useUIStore = create<UIState>()((set) => ({
   appMessage: null,
   exportOpen: false,
   snapMode: readSnapPreference(),
+  showLyrics: readPreference(LYRICS_KEY) === 'on',
   seekRequest: null,
 
   setCurrentTime: (time) => set({ currentTime: time }),
@@ -260,15 +278,15 @@ const useUIStore = create<UIState>()((set) => ({
   showAppMessage: (title, lines) => set({ appMessage: { title, lines } }),
   dismissAppMessage: () => set({ appMessage: null }),
   setExportOpen: (open) => set({ exportOpen: open }),
+  setShowLyrics: (show) => {
+    writePreference(LYRICS_KEY, show ? 'on' : 'off')
+    set({ showLyrics: show })
+  },
   setSnapMode: (mode) => {
-    try {
-      localStorage.setItem(SNAP_KEY, mode)
-    } catch {
-      // Storage blocked (a private window): the choice lasts this visit only.
-    }
+    writePreference(SNAP_KEY, mode)
     set({ snapMode: mode })
   },
-  requestSeek: (time) => set((s) => ({ seekRequest: { time, n: (s.seekRequest?.n ?? 0) + 1 } })),
+  requestSeek: (time, play) => set((s) => ({ seekRequest: { time, n: (s.seekRequest?.n ?? 0) + 1, play } })),
 }))
 
 export { useUIStore }

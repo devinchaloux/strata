@@ -1,4 +1,5 @@
 import { Playhead } from './Playhead'
+import { useUIStore } from '@/store/uiStore'
 import { generateTicks } from '@/lib/timeline'
 import { gridLines, segmentEnd, sortedSegments, barLength } from '@/lib/beatGrid'
 import type { GridSegment } from '@/types/strata'
@@ -66,10 +67,19 @@ export function TimelineAxis({
       className="shrink-0 border-b select-none"
       style={{ borderColor: 'hsl(var(--border))' }}
     >
+      {/* Clicking the ruler moves the playhead there: the quickest way to get
+          around without reaching for the video's own controls. */}
       <div
         ref={containerRef}
         className="relative overflow-hidden"
-        style={{ height }}
+        style={{ height, cursor: hasDocument ? 'pointer' : undefined }}
+        title={hasDocument ? 'Click to move the playhead here' : undefined}
+        onClick={(e) => {
+          if (!hasDocument || pps <= 0) return
+          const rect = e.currentTarget.getBoundingClientRect()
+          const t = (scrollOffset + e.clientX - rect.left) / pps
+          useUIStore.getState().requestSeek(Math.max(0, Math.min(duration, t)))
+        }}
       >
         {hasDocument ? (
           <>

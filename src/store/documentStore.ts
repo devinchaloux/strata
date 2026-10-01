@@ -121,6 +121,9 @@ interface DocumentState {
   // The segment running at `time` stops there; a free stretch follows.
   endGridAt: (time: number) => void
   updateGridSegment: (id: string, patch: Partial<Omit<GridSegment, 'id'>>) => void
+  // Tap-along: lay (or, with `id`, refine) a segment from a run of taps whose
+  // first fell on a downbeat. Returns the segment's id for the next tap.
+  layGridFromTaps: (start: number, bpm: number, id?: string | null) => string | null
   removeGridSegment: (id: string) => void
 
   // Shared time point pool
@@ -583,6 +586,41 @@ const useDocumentStore = create<DocumentState>()(
             updatedAt: now(),
           },
         })
+      },
+
+      layGridFromTaps: (start, bpm, id) => {
+        const doc = get().document
+        if (!doc) return null
+        const segs = sortedSegments(doc.beatGrid)
+        // The same run refines its own segment; a run that begins on a segment's
+        // first downbeat (within half a beat) refines that one instead of
+        // stacking a second segment on top of it.
+        const existing =
+          segs.find((g) => g.id === id) ?? segs.find((g) => Math.abs(g.start - start) < 30 / bpm)
+        if (existing) {
+          set({
+            document: {
+              ...doc,
+              beatGrid: sortedSegments(segs.map((g) => (g.id === existing.id ? { ...g, start, bpm } : g))),
+              updatedAt: now(),
+            },
+          })
+          return existing.id
+        }
+        const running = segmentAt(segs, start, doc.duration)?.seg
+        const before = [...segs].reverse().find((g) => g.start < start)
+        const model = running ?? before
+        const beatUnit = model?.beatUnit ?? doc.timeSignature?.denominator
+        const seg: GridSegment = {
+          id: crypto.randomUUID(),
+          start,
+          bpm,
+          beatsPerBar: model?.beatsPerBar ?? doc.timeSignature?.numerator ?? 4,
+          ...(beatUnit ? { beatUnit } : {}),
+          ...(running?.end != null && running.end > start ? { end: running.end } : {}),
+        }
+        set({ document: { ...doc, beatGrid: sortedSegments([...segs, seg]), updatedAt: now() } })
+        return seg.id
       },
 
       updateGridSegment: (id, patch) => {

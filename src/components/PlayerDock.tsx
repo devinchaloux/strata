@@ -8,7 +8,7 @@ import { extractVideoId, formatClock, isInputFocused } from '@/lib/youtube'
 import { pickAudioFile } from '@/lib/fileIO'
 import { setPlayerElement } from '@/lib/playerClearance'
 import { snapToActiveGrid } from '@/store/snap'
-import { segmentAt, sortedSegments, tapTempo } from '@/lib/beatGrid'
+import { fitTaps } from '@/lib/beatGrid'
 import { newGestureKey, withHistoryGroup } from '@/store/history'
 import { SeekBar } from './SeekBar'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
@@ -224,14 +224,16 @@ export function PlayerDock() {
   // Spacebar (which needs an active layer) this needs no layer context.
   function placeMarkerAtPlayhead() {
     const id = crypto.randomUUID()
-    addPointMarker({ id, timestamp: snapToActiveGrid(useUIStore.getState().currentTime) })
+    addPointMarker({ id, timestamp: snapToActiveGrid(engineRef.current.now()) })
     selectPointMarker(id)
   }
 
   // Seek requests from outside the transport (commentary links).
   const seekRequest = useUIStore((s) => s.seekRequest)
   useEffect(() => {
-    if (seekRequest && useUIStore.getState().playerStatus === 'ready') engineRef.current.seek(seekRequest.time)
+    if (!seekRequest || useUIStore.getState().playerStatus !== 'ready') return
+    engineRef.current.seek(seekRequest.time)
+    if (seekRequest.play && useUIStore.getState().playbackState !== 'playing') engineRef.current.play()
   }, [seekRequest])
 
   // ── Duration adoption ──────────────────────────────────────────────────────
@@ -300,7 +302,7 @@ export function PlayerDock() {
       const ui = useUIStore.getState()
       if (ui.playbackState === 'playing') {
         if (ui.activeLayerId) {
-          useDocumentStore.getState().placeBoundary(ui.activeLayerId, snapToActiveGrid(ui.currentTime))
+          useDocumentStore.getState().placeBoundary(ui.activeLayerId, snapToActiveGrid(engineRef.current.now()))
         }
       } else {
         engineRef.current.play()
@@ -326,37 +328,43 @@ export function PlayerDock() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Beat grid by ear (lib/beatGrid.ts). G on a downbeat starts a grid segment
-  // there (or picks the grid up again after a free passage); Shift+G stops the
-  // one running; T, tapped on each beat while playing, sets the tempo of the
-  // segment under the playhead. Taps are read in media time, so they stay
-  // right at 0.5× playback, and one run of taps is one undo step.
+  // Beat grid by ear (lib/beatGrid.ts), all on one key. T is tap-along: tap on
+  // each beat while it plays, starting on a downbeat; from the fourth tap the
+  // grid runs from the first tap at the tapped tempo, and each further tap
+  // refines it. A new run after a free passage picks the grid up again; a run
+  // within an existing segment marks a tempo change from there. Shift+T stops
+  // the grid at the playhead: free from here. Taps are read in media time, so
+  // they stay right at slower playback, and one run is one undo step.
   useEffect(() => {
     let taps: number[] = []
     let lastTapWall = 0
     let tapGesture = ''
+    let tapSegment: string | null = null
     function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 't' && e.key !== 'T') return
       if (e.metaKey || e.ctrlKey || e.altKey || isInputFocused()) return
       const ui = useUIStore.getState()
       const store = useDocumentStore.getState()
       if (!store.document || ui.playerStatus !== 'ready') return
-      if (e.key === 'g' || e.key === 'G') {
-        e.preventDefault()
-        if (e.shiftKey) store.endGridAt(ui.currentTime)
-        else store.startGridAt(ui.currentTime)
-      } else if ((e.key === 't' || e.key === 'T') && ui.playbackState === 'playing') {
-        e.preventDefault()
-        const wall = performance.now()
-        if (wall - lastTapWall > 2000) {
-          taps = []
-          tapGesture = newGestureKey('tap-tempo')
-        }
-        lastTapWall = wall
-        taps.push(ui.currentTime)
-        const bpm = tapTempo(taps)
-        const doc = store.document
-        const hit = segmentAt(sortedSegments(doc.beatGrid), ui.currentTime, doc.duration)
-        if (bpm && hit) withHistoryGroup(tapGesture, () => store.updateGridSegment(hit.seg.id, { bpm }))
+      e.preventDefault()
+      if (e.shiftKey) {
+        store.endGridAt(engineRef.current.now())
+        return
+      }
+      if (ui.playbackState !== 'playing') return
+      const wall = performance.now()
+      if (wall - lastTapWall > 2000) {
+        taps = []
+        tapGesture = newGestureKey('tap-along')
+        tapSegment = null
+      }
+      lastTapWall = wall
+      taps.push(engineRef.current.now())
+      const fit = fitTaps(taps)
+      if (fit) {
+        withHistoryGroup(tapGesture, () => {
+          tapSegment = store.layGridFromTaps(fit.start, fit.bpm, tapSegment)
+        })
       }
     }
     window.addEventListener('keydown', onKeyDown)

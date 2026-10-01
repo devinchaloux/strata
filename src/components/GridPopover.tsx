@@ -1,8 +1,8 @@
 /**
  * GridPopover — the beat grid's controls, in the diagram's top bar.
  *
- * Snapping (Off / Beats / Bars, off by default), how to lay the grid down by
- * ear (G on a downbeat, Shift+G to stop, T to tap the tempo), and the list of
+ * Snapping (Off / Beats / Bars, remembered as the analyst's default), how to
+ * lay the grid down by ear (T to tap along, Shift+T to stop), and the list of
  * segments with their tempo, meter, first bar and end, each editable. A
  * segment's first bar left blank continues the count from the one before.
  * lib/beatGrid.ts has the rules; docs/decisions.md, "Beat Grid", the reasons.
@@ -108,10 +108,10 @@ export function GridPopover() {
         </div>
 
         <p className="mt-3 leading-relaxed text-muted-foreground">
-          Lay the grid down by ear: press <kbd className="rounded border border-border px-1">G</kbd> on a downbeat to
-          start it there, or to pick it up again after a free passage;{' '}
-          <kbd className="rounded border border-border px-1">Shift+G</kbd> to stop it; and while it plays, tap{' '}
-          <kbd className="rounded border border-border px-1">T</kbd> on each beat to set its tempo.
+          While it plays, tap <kbd className="rounded border border-border px-1">T</kbd> on each beat, starting on a
+          downbeat. After four taps the grid runs from your first tap at the tempo you tapped. Press{' '}
+          <kbd className="rounded border border-border px-1">Shift+T</kbd> where it stops for a free passage, and tap
+          again where the beat comes back.
         </p>
 
         <div className="mt-2 flex gap-2">

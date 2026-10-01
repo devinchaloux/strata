@@ -28,19 +28,23 @@ lookup, re-anchoring, the text format, HTML export) and `CommentaryPanel.tsx`
 
 ## 2. Reading
 
-- The panel sits in the open area above the form diagram.
-- During playback it shows every block whose anchor contains the playhead,
-  earliest-starting first.
-- While paused with exactly one span selected, that span's commentary shows
-  instead, if it has any; with several selected, the commentary on the
-  stretch they cover.
-- Each block is headed by its span's label (or type), or "Passage" for a
-  time-range block, and its time range.
-- The panel re-renders only when the set of active blocks changes, never per
-  frame.
-- **Hide commentary** (top right of the panel) sets the commentary layer's
-  visibility off; it then appears in the diagram's "Hidden:" chips, which
-  bring it back, as for a hidden form layer. Exports are unaffected.
+- The panel sits in the open area above the form diagram and shows a moment
+  as a **stack**: in each visible layer, from the top of the diagram down
+  (rotation → section → phrase), the span sounding then, with its layer, label,
+  times, annotation and commentary. Lower levels are indented, so the nesting
+  reads at a glance.
+- Commentary on a stretch of time ("Passage") covering the moment comes first,
+  with its in-place **Edit** button.
+- The moment is the playhead during playback. Paused with spans selected, it
+  is where the selection begins: a selected rotation shows the rotation and
+  what opens it; a selected phrase, the phrase and everything it sits inside.
+  The selected span's level is marked.
+- **Lyrics on/off** (top right, shown when any span has lyrics) adds each
+  span's lyrics to its level. The choice is remembered in the browser.
+- The panel re-renders only when the stack's spans change, never per frame.
+- **Hide commentary** (top right) sets the commentary layer's visibility off;
+  the panel then shows nothing and the diagram's "Hidden:" chips bring it back,
+  as for a hidden form layer. Exports are unaffected.
 
 ## 3. Text format
 

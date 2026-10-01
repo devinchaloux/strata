@@ -249,6 +249,8 @@ function SpanHitTarget({
       onMouseEnter={() => hoverSpan(span.id)}
       onMouseLeave={() => hoverSpan(null)}
       onClick={handleClick}
+      // Double-click plays from the span's start.
+      onDoubleClick={() => useUIStore.getState().requestSeek(span.startTime, true)}
     >
       {titleText && <title>{titleText}</title>}
     </rect>
@@ -387,6 +389,7 @@ function MarkerHitTarget({
       fill="transparent"
       style={{ cursor: 'ew-resize' }}
       onPointerDown={onPointerDown}
+      onDoubleClick={() => useUIStore.getState().requestSeek(marker.timestamp, true)}
       // The container's click clears the selection, and a marker click bubbles
       // to it; stopping it here keeps the selection the pointerup just made.
       onClick={(e) => e.stopPropagation()}

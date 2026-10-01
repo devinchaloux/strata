@@ -118,23 +118,24 @@ export function snapToGrid(t: number, segs: GridSegment[], duration: number, mod
 }
 
 /**
- * Tempo from tapped beats (times in seconds, oldest first): the slope of a
- * least-squares line through the last eight taps, which evens out the wobble of
- * tapping by hand. Needs four taps; returns BPM to one decimal place, or null.
+ * A grid from a run of taps, the first on a downbeat: the tempo, and where the
+ * first tap "should" have landed, from a least-squares line through every tap
+ * in the run (beat k at start + k × beat). Fitting the start as well as the
+ * tempo keeps one early or late first tap from shifting the whole grid. Needs
+ * four taps.
  */
-export function tapTempo(taps: number[]): number | null {
-  const recent = taps.slice(-8)
-  const n = recent.length
+export function fitTaps(taps: number[]): { start: number; bpm: number } | null {
+  const n = taps.length
   if (n < 4) return null
   const meanI = (n - 1) / 2
-  const meanT = recent.reduce((a, b) => a + b, 0) / n
+  const meanT = taps.reduce((a, b) => a + b, 0) / n
   let num = 0
   let den = 0
-  recent.forEach((t, i) => {
+  taps.forEach((t, i) => {
     num += (i - meanI) * (t - meanT)
     den += (i - meanI) ** 2
   })
-  const secondsPerBeat = num / den
-  if (!(secondsPerBeat > 0)) return null
-  return Math.round((60 / secondsPerBeat) * 10) / 10
+  const beat = num / den
+  if (!(beat > 0)) return null
+  return { start: Math.max(0, meanT - beat * meanI), bpm: Math.round((60 / beat) * 10) / 10 }
 }

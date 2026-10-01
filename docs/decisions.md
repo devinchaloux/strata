@@ -3137,3 +3137,52 @@ session; analysts of rubato music keep it off once and never think about it.
 It is a way of working, not part of the analysis, so a collaborator opening
 the same file keeps their own. It is per browser because Strata has no
 accounts.
+
+---
+
+## The Commentary Stack (2026-10-01)
+
+**Decision (replaces the one-block reading view):** The reading panel shows a
+moment as a stack: in each visible layer from the top down, the span sounding
+then, with its label, annotation and commentary, indented one step per level;
+commentary on a stretch of time covering the moment comes first. Paused with
+spans selected, the moment is where the selection begins. A remembered
+Lyrics on/off toggle adds each span's lyrics.
+**Rationale:** Devin wants the full context of a moment: a phrase's
+annotation, the section's above it, the rotation's above that, all at once.
+Showing one block at a time hid exactly the nesting a layered analysis
+records. The selection's start (not its middle) is the moment because that is
+where the selected passage begins: a rotation reads with what opens it.
+
+---
+
+## Getting Around the Timeline (2026-10-01)
+
+**Decision:** Clicking the ruler moves the playhead there; double-clicking a
+span or a marker plays from it.
+**Rationale:** The only way to move playback was the video's own controls or
+the seek bar, which Devin found annoying when moving between sections.
+
+**Decision:** Space, M and tap-along read the player's exact time at the key
+press, not the last frame's (up to ~16 ms old), and the local-audio player
+listens for the media `playing` event.
+**Rationale:** Marking and tapping by ear need the moment of the key press.
+Without `playing`, a seek left local audio reporting "buffering" while it
+played on, so Space and tap-along silently did nothing after any jump.
+
+---
+
+## Beat Grid Input: Tap Along (2026-10-01)
+
+**Decision (amends "Beat Grid"):** The grid is laid with one key. T is
+tap-along: tap on each beat while it plays, starting on a downbeat; from the
+fourth tap the grid runs from the first tap at the tapped tempo, both fitted
+by least squares over the whole run, and each further tap refines it (one
+undo step per run). A run where the beat returns after a free passage picks
+the grid up; a run inside an existing segment starts a new one there (a tempo
+change); a run beginning on a segment's first downbeat refines that segment.
+Shift+T stops the grid at the playhead. G and Shift+G are gone.
+**Rationale:** Devin found G confusing: he expected a tap-to-metronome
+feature, and G started a "new grid layer" instead. Tapping along is the
+gesture musicians already know, and fitting the start as well as the tempo
+means a slightly early or late first tap doesn't shift the whole grid.

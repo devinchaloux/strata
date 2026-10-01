@@ -7,7 +7,7 @@ import {
   segmentEnd,
   snapToGrid,
   sortedSegments,
-  tapTempo,
+  fitTaps,
 } from '@/lib/beatGrid'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
@@ -79,13 +79,6 @@ describe('snapToGrid', () => {
   })
 })
 
-describe('tapTempo', () => {
-  it('needs four taps, then reads the tempo through the wobble', () => {
-    expect(tapTempo([0, 0.5, 1])).toBeNull()
-    expect(tapTempo([0, 0.49, 1.01, 1.5, 2.02, 2.49])).toBeCloseTo(120, 0)
-  })
-})
-
 describe('grid in the store', () => {
   it('starts, splits, stops and edits segments, carrying tempo forward', () => {
     const store = () => useDocumentStore.getState()
@@ -105,11 +98,37 @@ describe('grid in the store', () => {
   })
 })
 
+describe('tap-along in the store', () => {
+  it('lays a segment from a tap run, refines it, and picks the grid up after a free stretch', () => {
+    const store = () => useDocumentStore.getState()
+    store().loadDocument({ ...makeDoc([]), duration: 200 })
+    const id = store().layGridFromTaps(10, 118)
+    store().layGridFromTaps(10.02, 120, id) // the same run, refined
+    expect(store().document!.beatGrid!.map((g) => [g.start, g.bpm])).toEqual([[10.02, 120]])
+    store().endGridAt(60) // the breakdown
+    store().layGridFromTaps(64, 120) // tapping again where the beat returns
+    expect(store().document!.beatGrid!.map((g) => [g.start, g.end ?? null])).toEqual([[10.02, 60], [64, null]])
+    store().layGridFromTaps(64.1, 121) // a new run on the same downbeat refines, not stacks
+    expect(store().document!.beatGrid).toHaveLength(2)
+  })
+})
+
 describe('the snap preference', () => {
   it('is remembered in the browser', () => {
     useUIStore.getState().setSnapMode('bar')
     expect(localStorage.getItem('strata:snapMode')).toBe('bar')
     useUIStore.getState().setSnapMode('off')
     expect(localStorage.getItem('strata:snapMode')).toBe('off')
+  })
+})
+
+describe('fitTaps', () => {
+  it('fits the start and tempo of a run of taps', () => {
+    expect(fitTaps([10, 10.5, 11])).toBeNull()
+    // 120 BPM from 10 s, with a late first tap: the fitted start stays near 10.
+    const fit = fitTaps([10.04, 10.5, 11.01, 11.49, 12, 12.5])!
+    // Six hand taps, one 40 ms late, land within a couple of BPM; more taps refine it.
+    expect(Math.abs(fit.bpm - 120)).toBeLessThan(2)
+    expect(fit.start).toBeCloseTo(10, 1)
   })
 })
