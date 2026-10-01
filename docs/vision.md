@@ -312,7 +312,7 @@ An EDM analysis file will typically have two or three form layers and no written
 
 Span boundaries are placed and adjusted through a layered interaction model designed around the correction workflow:
 
-- **Spacebar** — places a boundary at the current playback timestamp. This is the primary capture gesture during a listening pass.
+- **B** — places a boundary at the current playback timestamp. This is the primary capture gesture during a listening pass. (Spacebar until 2026-10-01; Space now plays and pauses.)
 - **Arrow keys** — nudge the selected boundary by small increments (approximately one video frame). This addresses the most common correction case: a boundary placed slightly early or late.
 - **Boundary drag** — drag a boundary handle for larger adjustments. Hard-stops at adjacent boundaries; a boundary cannot be dragged through a neighboring span. Spans have a minimum enforced width to prevent accidental collapse.
 - **Merge** — an explicit action (not a drag consequence) that combines two or more consecutive spans. See merge design below.

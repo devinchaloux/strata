@@ -112,7 +112,7 @@ export function ColorPicker({ value, fallback, onChange, nullLabel }: ColorPicke
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <button
-          className="flex h-7 w-full items-center gap-1.5 rounded border px-2 text-[11px] hover:bg-accent focus:outline-none focus:ring-1 focus:ring-ring"
+          className="flex h-7 w-full items-center gap-1.5 rounded border px-2 text-xs hover:bg-accent focus:outline-none focus:ring-1 focus:ring-ring"
           style={{
             borderColor: 'hsl(var(--border))',
             borderStyle: inheriting ? 'dashed' : 'solid',
@@ -162,11 +162,11 @@ export function ColorPicker({ value, fallback, onChange, nullLabel }: ColorPicke
 
         {/* Hex input + live preview */}
         <div className="mb-2 flex items-center gap-1.5">
-          <span className="shrink-0 text-[11px]" style={{ color: 'hsl(var(--muted-foreground))' }}>
+          <span className="shrink-0 text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>
             #
           </span>
           <input
-            className="h-6 flex-1 rounded border px-1.5 font-mono text-[11px] outline-none focus:ring-1 focus:ring-ring"
+            className="h-6 flex-1 rounded border px-1.5 font-mono text-xs outline-none focus:ring-1 focus:ring-ring"
             style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--foreground))' }}
             placeholder="rrggbb"
             value={hexInput.replace(/^#/, '')}
@@ -186,7 +186,7 @@ export function ColorPicker({ value, fallback, onChange, nullLabel }: ColorPicke
         {/* No color */}
         <button
           onClick={pickNone}
-          className="mb-1 flex w-full items-center gap-1.5 rounded border px-2 py-1 text-[11px] hover:bg-accent"
+          className="mb-1 flex w-full items-center gap-1.5 rounded border px-2 py-1 text-xs hover:bg-accent"
           style={{
             borderColor: isNone ? 'hsl(var(--ring))' : 'hsl(var(--border))',
             color: 'hsl(var(--muted-foreground))',
@@ -200,7 +200,7 @@ export function ColorPicker({ value, fallback, onChange, nullLabel }: ColorPicke
         <button
           onClick={reset}
           disabled={inheriting}
-          className="flex w-full items-center gap-1.5 rounded border px-2 py-1 text-[11px] hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex w-full items-center gap-1.5 rounded border px-2 py-1 text-xs hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
           style={{
             borderColor: 'hsl(var(--border))',
             borderStyle: 'dashed',

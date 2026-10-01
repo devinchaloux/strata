@@ -120,9 +120,9 @@ export function TimelineAxis({
                 <text
                   key={l.time}
                   x={l.time * pps + 2}
-                  y={9}
+                  y={10}
                   fill="hsl(var(--muted-foreground))"
-                  fontSize={8.5}
+                  fontSize={10}
                   style={{ fontVariantNumeric: 'tabular-nums' }}
                 >
                   {l.bar}
@@ -144,7 +144,7 @@ export function TimelineAxis({
                     x={3}
                     y={LABEL_Y}
                     fill="hsl(var(--muted-foreground))"
-                    fontSize={9}
+                    fontSize={10.5}
                     style={{ fontVariantNumeric: 'tabular-nums' }}
                     dominantBaseline="auto"
                   >

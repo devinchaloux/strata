@@ -6,7 +6,7 @@
  * follow the 0.4 spec. Deferred within this slice: click-to-seek on the time
  * range (needs the player wired globally — slice 3), the curated color swatch
  * picker (basic color inputs for now), and Split at playhead (shares logic with
- * spacebar placement — slice 3).
+ * boundary placement — slice 3).
  */
 
 import { useState, useEffect } from 'react'
@@ -57,7 +57,7 @@ function Segmented<T extends string>({
           <button
             key={o.value}
             onClick={() => onChange(o.value)}
-            className="flex-1 rounded px-1.5 py-0.5 text-[11px] transition-colors"
+            className="flex-1 rounded px-1.5 py-0.5 text-xs transition-colors"
             style={{
               backgroundColor: active ? 'hsl(var(--primary))' : 'transparent',
               color: active ? 'hsl(var(--primary-foreground))' : 'hsl(var(--muted-foreground))',
@@ -147,7 +147,7 @@ function EndsGrid({
   end: [EndSelect, EndSelect]
   showCaps: boolean
 }) {
-  const head = 'text-[10px] font-medium uppercase tracking-wide text-muted-foreground'
+  const head = 'text-[11px] font-medium uppercase tracking-wide text-muted-foreground'
   const select = (c: EndSelect) => (
     <select
       aria-label={c.label}
@@ -165,7 +165,7 @@ function EndsGrid({
   )
   const row = (name: string, [boundary, cap]: [EndSelect, EndSelect]) => (
     <>
-      <span className="text-[11px] text-muted-foreground">{name}</span>
+      <span className="text-xs text-muted-foreground">{name}</span>
       {select(boundary)}
       {showCaps && select(cap)}
     </>
@@ -392,7 +392,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             <span className="text-muted-foreground">→</span>
             <TimeInput value={span.endTime} onCommit={commitEnd} title="End time" />
           </div>
-          <div className="mt-1 text-[10px] text-muted-foreground">
+          <div className="mt-1 text-[11px] text-muted-foreground">
             Duration {formatTime(duration)}
           </div>
         </div>
@@ -447,11 +447,11 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             <span className={span.slug ? 'text-foreground' : 'text-muted-foreground'}>
               {span.slug ?? '—'}
             </span>
-            {span.slug && <span className="text-[10px] text-muted-foreground">copy</span>}
+            {span.slug && <span className="text-[11px] text-muted-foreground">copy</span>}
           </button>
           {slugStale && (
             <button
-              className="mt-1 text-[10px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+              className="mt-1 text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
               onClick={() => regenerateSlug(span.id)}
             >
               Update slug to match the label
@@ -502,7 +502,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           <div className="mb-3">
             <button
               onClick={() => setShapeFieldsExpanded((v) => !v)}
-              className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
+              className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
             >
               {shapeFieldsExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
               More fields (shape)
@@ -555,7 +555,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         </Field>
 
         {/* Advanced */}
-        <div className="mt-4 mb-2 border-t pt-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground" style={{ borderColor: 'var(--hairline)' }}>
+        <div className="mt-4 mb-2 border-t pt-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground" style={{ borderColor: 'var(--hairline)' }}>
           Advanced
         </div>
 
@@ -609,7 +609,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             onClick={() => copy(span.id)}
           >
             <span className="truncate text-muted-foreground">{span.id}</span>
-            <span className="ml-1 shrink-0 text-[10px] text-muted-foreground">copy</span>
+            <span className="ml-1 shrink-0 text-[11px] text-muted-foreground">copy</span>
           </button>
         </Field>
 
@@ -619,7 +619,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             onClick={() => prevId && performMerge([prevId, span.id])}
             disabled={!prevId}
             title={prevId ? 'Merge with previous span' : 'No previous span in this layer'}
-            className="flex-1 rounded border border-border px-2 py-1 text-[11px] text-foreground hover:bg-accent disabled:opacity-40"
+            className="flex-1 rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
           >
             Merge ←
           </button>
@@ -627,7 +627,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             onClick={() => nextId && performMerge([span.id, nextId])}
             disabled={!nextId}
             title={nextId ? 'Merge with next span' : 'No next span in this layer'}
-            className="flex-1 rounded border border-border px-2 py-1 text-[11px] text-foreground hover:bg-accent disabled:opacity-40"
+            className="flex-1 rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
           >
             → Merge
           </button>
@@ -639,13 +639,13 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             onClick={handleSplit}
             disabled={!canSplit}
             title={canSplit ? 'Split at playhead' : 'Move the playhead inside this span to split'}
-            className="flex-1 rounded border border-border px-2 py-1 text-[11px] text-foreground hover:bg-accent disabled:opacity-40"
+            className="flex-1 rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
           >
             Split
           </button>
           <button
             onClick={handleDelete}
-            className="flex-1 rounded px-2 py-1 text-[11px] font-medium text-destructive hover:bg-destructive/10"
+            className="flex-1 rounded px-2 py-1 text-xs font-medium text-destructive hover:bg-destructive/10"
           >
             Delete
           </button>
@@ -723,7 +723,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
           {eligibility.ok ? `Merge ${spans.length} spans` : 'Merge'}
         </button>
         {!eligibility.ok && (
-          <p className="-mt-3 mb-4 text-[10px] text-muted-foreground">{mergeReason}</p>
+          <p className="-mt-3 mb-4 text-[11px] text-muted-foreground">{mergeReason}</p>
         )}
 
         <Field
@@ -740,7 +740,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
           />
         </Field>
 
-        <div className="mb-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        <div className="mb-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
           Apply to all selected
         </div>
 
@@ -836,7 +836,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
         </Field>
 
         {/* Colors */}
-        <div className="mt-4 mb-2 border-t pt-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground" style={{ borderColor: 'var(--hairline)' }}>
+        <div className="mt-4 mb-2 border-t pt-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground" style={{ borderColor: 'var(--hairline)' }}>
           Advanced
         </div>
         <div className="flex gap-2">

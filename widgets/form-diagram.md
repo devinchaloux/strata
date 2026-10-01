@@ -142,7 +142,7 @@ overlap inside one layer; that design is retired and was never built.*
 
 A layer's spans lie end to end, with gaps allowed. Overlap between analytical
 frameworks is expressed by putting them on separate layers, which is what the
-multi-layer model is for. Every editing gesture keeps a layer tiled — spacebar
+multi-layer model is for. Every editing gesture keeps a layer tiled — B
 splits a span or fills a gap, a boundary drag moves a shared edge with a
 hard-stop, numeric time entry moves a shared edge or stops at a gap — and the
 document store refuses any write that would create an overlap. A file that
@@ -200,7 +200,7 @@ Full design rationale in `docs/decisions.md`. This section is the implementation
 
 | Gesture | Behavior |
 |---|---|
-| **Spacebar** | Place a boundary at `currentTime` — split the span containing `currentTime`, or mark a boundary in empty layer space |
+| **B** | Place a boundary at `currentTime` — split the span containing `currentTime`, or mark a boundary in empty layer space. (Space until 2026-10-01; Space now plays and pauses.) |
 | **Arrow keys** | Nudge the selected boundary ±1 frame (~0.033s); `Shift` = ±10 frames |
 | **Drag boundary handle** | Move boundary; hard-stops at adjacent span boundaries; minimum span width enforced |
 | **Click span** | Select span; open metadata panel (per Phase 0.4 spec) |
@@ -208,7 +208,7 @@ Full design rationale in `docs/decisions.md`. This section is the implementation
 
 Whole-span dragging is not implemented. Span movement is always via boundary adjustment.
 
-### 5.2 Boundary Placement (Spacebar Logic)
+### 5.2 Boundary Placement (B)
 
 1. Determine the span (if any) that contains `currentTime`: `span.startTime ≤ currentTime ≤ span.endTime`
 2. If a containing span exists: split it into `[span.startTime, currentTime]` and `[currentTime, span.endTime]`. The first child inherits the original span's `label`, `type`, and metadata; the second child is created blank.
@@ -239,7 +239,7 @@ These are confirmed design decisions awaiting their dedicated spec sessions:
 
 - Span metadata panel: sidebar vs. inline, trigger (click vs. double-click)
 - Context menu: exact actions on right-click
-- Spacebar behavior when `currentTime` is in empty layer space
+- Boundary (B) behavior when `currentTime` is in empty layer space
 - Layer panel placement and controls
 - Merge conflict dialog design and multi-select interaction model
 

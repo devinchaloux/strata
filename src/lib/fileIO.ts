@@ -201,7 +201,7 @@ export function createEmptyDocument(): StrataDocument {
     source: { type: 'youtube', url: '', sourceOffset: 0 },
     vocabulary: { spanTypes: [], pointMarkerTypes: [], modes: [] },
     sharedTimePoints: [],
-    // One layer to start in, so Space marks a boundary straight away; a new
+    // One layer to start in, so B marks a boundary straight away; a new
     // analysis with no layers had nowhere for the first boundary to go.
     layers: [
       {

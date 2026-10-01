@@ -154,7 +154,7 @@ function SortableLayerHeaderRow({
       onMouseLeave={collapsed ? disarmHover : undefined}
       className={`flex items-center ${collapsed ? 'cursor-pointer justify-center' : 'gap-1 pl-1 pr-1.5'}`}
     >
-      {/* Active-layer accent bar (load-bearing per 0.4 §2 — spacebar target) */}
+      {/* Active-layer accent bar (load-bearing per 0.4 §2 — boundary-key (B) target) */}
       {active && (
         <span
           aria-hidden
@@ -166,7 +166,7 @@ function SortableLayerHeaderRow({
       {/* Hover-reveal label tooltip (collapsed rail only) */}
       {collapsed && hoverLabel && (
         <span
-          className="pointer-events-none absolute left-full top-1/2 z-50 ml-1.5 -translate-y-1/2 whitespace-nowrap rounded px-2 py-1 text-[11px] text-white shadow-md"
+          className="pointer-events-none absolute left-full top-1/2 z-50 ml-1.5 -translate-y-1/2 whitespace-nowrap rounded px-2 py-1 text-xs text-white shadow-md"
           style={{ backgroundColor: 'var(--ink-primary)' }}
           role="tooltip"
         >
@@ -194,7 +194,7 @@ function SortableLayerHeaderRow({
             {...attributes}
             {...listeners}
             className="shrink-0 touch-none cursor-grab active:cursor-grabbing hover:opacity-100"
-            style={{ color: 'var(--ink-faint)', opacity: 0.6 }}
+            style={{ color: 'var(--ink-muted)' }}
             title="Drag to reorder"
             aria-label="Drag to reorder layer"
           >
@@ -226,12 +226,12 @@ function SortableLayerHeaderRow({
                 }
               }}
               onClick={(e) => e.stopPropagation()}
-              className="min-w-0 flex-1 rounded border bg-white px-1 text-[11px] outline-none"
+              className="min-w-0 flex-1 rounded border bg-white px-1 text-xs outline-none"
               style={{ borderColor: 'hsl(var(--primary))', color: 'var(--ink-primary)' }}
             />
           ) : (
             <button
-              className="min-w-0 flex-1 truncate text-left text-[11px]"
+              className="min-w-0 flex-1 truncate text-left text-xs"
               style={{ color: 'var(--ink-primary)', fontWeight: active ? 500 : 400 }}
               title={`${layer.label}. Click to make active; double-click to rename.`}
               onClick={() => setActiveLayer(layer.id)}
@@ -469,14 +469,14 @@ function WidgetTopBar({
 
       {hidden.length > 0 && (
         <div className="flex items-center gap-1 overflow-hidden">
-          <span className="text-[10px]" style={{ color: 'var(--ink-muted)' }}>
+          <span className="text-[11px]" style={{ color: 'var(--ink-muted)' }}>
             Hidden:
           </span>
           {hidden.map((l) => (
             <button
               key={l.id}
               onClick={() => updateLayer(l.id, { visibility: true })}
-              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] hover:bg-accent"
+              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] hover:bg-accent"
               style={{ color: 'var(--ink-muted)' }}
               title={`Show ${l.label}`}
             >

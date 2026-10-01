@@ -114,7 +114,7 @@ export function MergeConflictDialog() {
 
         {/* Resolve — interactive radio groups */}
         <div className="space-y-4">
-          <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
             Resolve
           </div>
           {conflicts.map((c) => (
@@ -145,7 +145,7 @@ export function MergeConflictDialog() {
                       )}
                       <span className="text-foreground">{optionLabel(c.field, opt)}</span>
                       {COLOR_FIELDS.includes(c.field) && opt !== null && (
-                        <span className="ml-auto font-mono text-[10px] text-muted-foreground">{opt}</span>
+                        <span className="ml-auto font-mono text-[11px] text-muted-foreground">{opt}</span>
                       )}
                     </label>
                   )
@@ -157,7 +157,7 @@ export function MergeConflictDialog() {
 
         {/* Auto-resolved — read-only */}
         <div className="space-y-1 border-t pt-3" style={{ borderColor: 'var(--hairline)' }}>
-          <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
             Auto-resolved
           </div>
           {autoRows.map((r) => (

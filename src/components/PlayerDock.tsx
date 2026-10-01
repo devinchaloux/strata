@@ -221,7 +221,7 @@ export function PlayerDock() {
   }
 
   // Place a point marker at the current playhead — document-level, so unlike
-  // Spacebar (which needs an active layer) this needs no layer context.
+  // a boundary (B, which needs an active layer) this needs no layer context.
   function placeMarkerAtPlayhead() {
     const id = crypto.randomUUID()
     addPointMarker({ id, timestamp: snapToActiveGrid(engineRef.current.now()) })
@@ -249,7 +249,7 @@ export function PlayerDock() {
   }, [duration, updateMeta])
 
   // ── Keyboard shortcuts (engine-agnostic) ──────────────────────────────────
-  // K play/pause · J back 10s · L forward 10s · Home rewind. Modifier check
+  // K play/pause (as Space) · J back 10s · L forward 10s · Home rewind. Modifier check
   // matters: Ctrl+J is merge — without the guard both actions would fire.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -286,13 +286,15 @@ export function PlayerDock() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  // Spacebar (Phase 0.4 §8): while playing, place a boundary at the playhead on
-  // the active layer; while paused, start playback. Live state is read via
-  // getState() so the listener stays bound once. Text fields keep native space;
+  // Space plays and pauses; B places a boundary at the playhead on the active
+  // layer. (Space did both until 2026-10-01: boundary while playing, play while
+  // paused. Devin kept reaching for it to pause.) Live state is read via
+  // getState() so the listeners stay bound once. Text fields keep native space;
   // for buttons we preventDefault so a focused transport button isn't re-fired.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.code !== 'Space') return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
       const el = e.target as HTMLElement | null
       const tag = el?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable) {
@@ -300,20 +302,30 @@ export function PlayerDock() {
       }
       e.preventDefault()
       const ui = useUIStore.getState()
-      if (ui.playbackState === 'playing') {
-        if (ui.activeLayerId) {
-          useDocumentStore.getState().placeBoundary(ui.activeLayerId, snapToActiveGrid(engineRef.current.now()))
-        }
-      } else {
-        engineRef.current.play()
-      }
+      if (ui.playerStatus !== 'ready') return
+      if (ui.playbackState === 'playing') engineRef.current.pause()
+      else engineRef.current.play()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'b' && e.key !== 'B') return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (isInputFocused()) return
+      const ui = useUIStore.getState()
+      if (ui.playerStatus !== 'ready' || !ui.activeLayerId) return
+      e.preventDefault()
+      useDocumentStore.getState().placeBoundary(ui.activeLayerId, snapToActiveGrid(engineRef.current.now()))
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
   // M — place a point marker at the current playhead (document-level, so no
-  // active-layer requirement, unlike Spacebar). Works during playback or paused.
+  // active-layer requirement, unlike B). Works during playback or paused.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key !== 'm' && e.key !== 'M') return
@@ -401,16 +413,10 @@ export function PlayerDock() {
         {/* Play / Pause — spinner covers both mid-playback buffering and the
             initial source-loading window, so a loading source doesn't just
             look like an inert disabled button. */}
-        {/* The one filled control in the bar, so play and pause are always easy
-            to find and the current state reads at a glance. */}
-        <button
+        <TransportButton
           onClick={handlePlayPause}
           disabled={!isReady}
-          title={isLoading ? 'Loading…' : isPlaying ? 'Pause (K)' : 'Play (K)'}
-          aria-label={isLoading ? 'Loading' : isPlaying ? 'Pause' : 'Play'}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-colors
-            hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card
-            disabled:opacity-40"
+          title={isLoading ? 'Loading…' : isPlaying ? 'Pause (Space)' : 'Play (Space)'}
         >
           {isBuffering || isLoading ? (
             <SpinnerIcon />
@@ -419,7 +425,12 @@ export function PlayerDock() {
           ) : (
             <PlayIcon />
           )}
-        </button>
+        </TransportButton>
+        {/* The key, written out: the shortcut is the quickest way to pause, so
+            it shouldn't live only in a tooltip. */}
+        <kbd className="-ml-1 shrink-0 rounded border border-border px-1 text-xs leading-4 text-muted-foreground" aria-hidden>
+          Space
+        </kbd>
 
         {/* Seek bar */}
         <SeekBar
@@ -459,8 +470,8 @@ export function PlayerDock() {
             that create them belong there too rather than in the player chrome.
             The M shortcut still works globally — this handler stays, only its
             button moved. Phase 0.4 §8's requirement that the current meaning of
-            Space always be visible is still met, by the Boundary button's live
-            Space chip. */}
+            Space always be visible is now met by the key label beside Play, and
+            B by the Boundary button's chip. */}
 
         {/* Playback error — bad video ID, unsupported audio file, etc. */}
         {playerStatus === 'error' && (

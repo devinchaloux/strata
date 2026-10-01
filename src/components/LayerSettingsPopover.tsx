@@ -43,7 +43,7 @@ export function LayerSettingsPopover({
 
   const labelStyle = { color: 'var(--ink-muted)' }
   const fieldClass =
-    'w-full rounded border px-2 py-1 text-[12px] outline-none focus:ring-1 focus:ring-ring'
+    'w-full rounded border px-2 py-1 text-[13px] outline-none focus:ring-1 focus:ring-ring'
   const fieldStyle = { borderColor: 'var(--hairline)', color: 'var(--ink-primary)' }
 
   return (
@@ -51,7 +51,7 @@ export function LayerSettingsPopover({
       <PopoverTrigger asChild>
         <button
           className="shrink-0 rounded p-0.5 hover:bg-accent"
-          style={{ color: 'var(--ink-faint)' }}
+          style={{ color: 'var(--ink-muted)' }}
           title="Layer settings"
           aria-label="Layer settings"
         >
@@ -63,7 +63,7 @@ export function LayerSettingsPopover({
         <div className="space-y-3">
           {/* Rename */}
           <div className="space-y-1">
-            <label className="block text-[11px] font-medium" style={labelStyle}>
+            <label className="block text-xs font-medium" style={labelStyle}>
               Label
             </label>
             <input
@@ -76,7 +76,7 @@ export function LayerSettingsPopover({
 
           {/* Description */}
           <div className="space-y-1">
-            <label className="block text-[11px] font-medium" style={labelStyle}>
+            <label className="block text-xs font-medium" style={labelStyle}>
               Description
             </label>
             <textarea
@@ -95,9 +95,9 @@ export function LayerSettingsPopover({
 
           {/* Default colors */}
           <div className="space-y-2">
-            <p className="text-[11px] font-medium" style={labelStyle}>Default colors</p>
+            <p className="text-xs font-medium" style={labelStyle}>Default colors</p>
             <div className="flex items-center gap-2">
-              <span className="w-12 shrink-0 text-[11px]" style={labelStyle}>Fill</span>
+              <span className="w-12 shrink-0 text-xs" style={labelStyle}>Fill</span>
               <ColorPicker
                 value={layer.fillColorDefault}
                 fallback={FILL_DEFAULT}
@@ -108,7 +108,7 @@ export function LayerSettingsPopover({
               />
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-12 shrink-0 text-[11px]" style={labelStyle}>Stroke</span>
+              <span className="w-12 shrink-0 text-xs" style={labelStyle}>Stroke</span>
               <ColorPicker
                 value={layer.strokeColorDefault}
                 fallback={STROKE_DEFAULT}
@@ -124,7 +124,7 @@ export function LayerSettingsPopover({
 
           {/* Text size — the layer-level fontScale; uniform within a layer. */}
           <div className="flex items-center justify-between">
-            <span className="text-[12px]" style={{ color: 'var(--ink-primary)' }}>
+            <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
               Text size
             </span>
             <div className="flex overflow-hidden rounded border" style={{ borderColor: 'var(--hairline)' }} role="radiogroup" aria-label="Text size">
@@ -137,7 +137,7 @@ export function LayerSettingsPopover({
                     aria-checked={on}
                     aria-label={{ sm: 'Small', md: 'Medium', lg: 'Large' }[size]}
                     onClick={() => updateLayer(layer.id, { fontScale: size })}
-                    className={cn('px-2 py-0.5 text-[11px]', on ? 'bg-accent font-medium' : 'hover:bg-accent/60')}
+                    className={cn('px-2 py-0.5 text-xs', on ? 'bg-accent font-medium' : 'hover:bg-accent/60')}
                     style={{ color: on ? 'var(--ink-primary)' : 'var(--ink-muted)' }}
                   >
                     {{ sm: 'S', md: 'M', lg: 'L' }[size]}
@@ -154,10 +154,10 @@ export function LayerSettingsPopover({
               visual: same Span data model and interactions either way. */}
           <label className="flex cursor-pointer items-center justify-between">
             <span className="flex flex-col gap-0.5">
-              <span className="text-[12px]" style={{ color: 'var(--ink-primary)' }}>
+              <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
                 Key-area layer (thin bars)
               </span>
-              <span className="text-[10px]" style={{ color: 'var(--ink-muted)' }}>
+              <span className="text-[11px]" style={{ color: 'var(--ink-muted)' }}>
                 Thin bars instead of brackets, for key areas rather than sections.
               </span>
             </span>
@@ -172,7 +172,7 @@ export function LayerSettingsPopover({
 
           {/* Lock */}
           <label className="flex cursor-pointer items-center justify-between">
-            <span className="flex items-center gap-1.5 text-[12px]" style={{ color: 'var(--ink-primary)' }}>
+            <span className="flex items-center gap-1.5 text-[13px]" style={{ color: 'var(--ink-primary)' }}>
               <Lock size={13} style={{ color: 'var(--ink-muted)' }} />
               Lock layer
             </span>
@@ -188,7 +188,7 @@ export function LayerSettingsPopover({
           {/* Delete — confirmation dialog is owned by LayerHeaders (see header). */}
           <button
             onClick={onRequestDelete}
-            className="flex w-full items-center gap-1.5 rounded px-2 py-1 text-[12px] hover:bg-accent"
+            className="flex w-full items-center gap-1.5 rounded px-2 py-1 text-[13px] hover:bg-accent"
             style={{ color: 'hsl(var(--destructive))' }}
           >
             <Trash2 size={13} />

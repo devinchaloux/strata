@@ -91,7 +91,7 @@ interface DocumentState {
   setCommentaryText: (blockId: string, text: string) => void
   removeSpan: (layerId: string, spanId: string) => void
   mergeSpans: (layerId: string, spanIds: string[], result: Span) => void
-  // Spacebar / Split: place a boundary at `time`, splitting the containing span
+  // B (boundary) / Split: place a boundary at `time`, splitting the containing span
   // (or filling the gap it falls in — an empty layer is one gap). No-op if the
   // cut isn't valid.
   placeBoundary: (layerId: string, time: number) => void

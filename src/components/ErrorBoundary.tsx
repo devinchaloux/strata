@@ -42,7 +42,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
               ? 'Your analysis was saved for recovery the moment this happened. Reload the page and choose Restore to pick up where you left off.'
               : 'Reload the page to start again.'}
           </p>
-          <pre className="mb-4 max-h-32 overflow-auto rounded bg-muted p-2 text-[11px] text-muted-foreground">
+          <pre className="mb-4 max-h-32 overflow-auto rounded bg-muted p-2 text-xs text-muted-foreground">
             {error.message}
           </pre>
           <button

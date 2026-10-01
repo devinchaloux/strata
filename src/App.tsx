@@ -382,7 +382,7 @@ export default function App() {
     useDocumentStore.temporal.getState().clear()
   }, [loadDocument])
 
-  // Space places boundaries in the active layer, so there must always be one
+  // B places boundaries in the active layer, so there must always be one
   // when the document has a form layer: after New, Open, Demo, or deleting the
   // active layer, the top form layer takes over.
   const layers = useDocumentStore((s) => s.document?.layers)
@@ -519,7 +519,7 @@ export default function App() {
           <StrataMark />
           <span className="text-sm font-semibold tracking-tight text-foreground">Strata</span>
           <span
-            className="rounded border border-border px-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+            className="rounded border border-border px-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
             title="Strata is in beta. Save often, and keep a copy of files that matter."
           >
             Beta

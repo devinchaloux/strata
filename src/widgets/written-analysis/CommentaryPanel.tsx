@@ -72,7 +72,7 @@ function CommentaryText({ doc, text }: { doc: StrataDocument; text: string }) {
   return (
     <>
       {parseCommentary(text).map((para, i) => (
-        <p key={i} className="max-w-[65ch] text-[13.5px] leading-relaxed text-foreground">
+        <p key={i} className="max-w-[65ch] text-[14px] leading-relaxed text-foreground">
           {para.map((piece, j) =>
             piece.kind === 'bold' ? (
               <strong key={j}>{piece.value}</strong>
@@ -117,12 +117,12 @@ function PassageBlock({ doc, block }: { doc: StrataDocument; block: AnalysisBloc
       <header className="flex items-baseline gap-2">
         <h2 className="text-sm font-semibold text-foreground">Passage</h2>
         {range && (
-          <span className="text-[11px] tabular-nums text-muted-foreground">
+          <span className="text-xs tabular-nums text-muted-foreground">
             {mmss(range[0])}–{mmss(range[1])}
           </span>
         )}
         <button
-          className="ml-auto text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          className="ml-auto text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
           onClick={() => setEditing((v) => !v)}
         >
           {editing ? 'Done' : 'Edit'}
@@ -166,16 +166,16 @@ function Level({
       style={{ marginLeft: depth * 14 }}
     >
       <header className="flex items-baseline gap-2">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{layer.label}</span>
+        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{layer.label}</span>
         <h2 className="text-sm font-semibold text-foreground">{heading}</h2>
-        <span className="text-[11px] tabular-nums text-muted-foreground">
+        <span className="text-xs tabular-nums text-muted-foreground">
           {mmss(span.startTime)}–{mmss(span.endTime)}
         </span>
       </header>
-      {span.annotation && <p className="text-[12.5px] italic text-muted-foreground">{span.annotation}</p>}
+      {span.annotation && <p className="text-[13px] italic text-muted-foreground">{span.annotation}</p>}
       {block && <CommentaryText doc={doc} text={block.text} />}
       {showLyrics && span.lyrics && (
-        <p className="whitespace-pre-line text-[12.5px] leading-relaxed text-muted-foreground">{span.lyrics}</p>
+        <p className="whitespace-pre-line text-[13px] leading-relaxed text-muted-foreground">{span.lyrics}</p>
       )}
     </article>
   )
@@ -190,7 +190,7 @@ function nextStep(doc: StrataDocument): string | null {
   const linked = !!doc.source.url || (doc.source.type === 'local' && !!doc.source.filename)
   if (!linked) return 'Link a video or audio file to start: use Link video or audio in the play bar.'
   if (!doc.layers.some((l) => formSpans(l).length > 0))
-    return 'Play, and press Space at each boundary you hear. M places a point marker.'
+    return 'Press Space to play, and B at each boundary you hear. M places a point marker.'
   if (!allBlocks(doc).length)
     return 'Click a span to describe it. What you write in its Commentary box shows here while that passage plays.'
   return null
@@ -233,7 +233,7 @@ export function CommentaryPanel() {
     <div className="absolute right-3 top-2 flex items-center gap-1">
       {anyLyrics && (
         <button
-          className={`rounded px-1.5 py-0.5 text-[11px] hover:bg-accent ${showLyrics ? 'text-foreground' : 'text-muted-foreground'}`}
+          className={`rounded px-1.5 py-0.5 text-xs hover:bg-accent ${showLyrics ? 'text-foreground' : 'text-muted-foreground'}`}
           aria-pressed={showLyrics}
           onClick={() => setShowLyrics(!showLyrics)}
           title="Show each span's lyrics in the stack"
@@ -243,7 +243,7 @@ export function CommentaryPanel() {
       )}
       {commentaryLayers.length > 0 && (
         <button
-          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
           onClick={() => commentaryLayers.forEach((l) => updateLayer(l.id, { visibility: false }))}
           title="Hide the commentary; show it again from the diagram's Hidden list"
         >

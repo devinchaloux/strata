@@ -807,6 +807,7 @@ a new entry is added noting the reversal and why.
 
 **Decision:** Spacebar while playing places a span boundary at `currentTime` on the active layer, without pausing playback. Spacebar while paused starts playback. Both behaviors coexist on the same key without a mode switch. A small persistent context indicator in the transport bar shows the current Spacebar action.
 **Rationale:** Spacebar-to-place (while playing, without pausing) is the correct capture gesture for live annotation: the analyst listens through the track and taps when a new section begins. Audio Timeliner's two-step workflow (Spacebar to mark → then draw bubble) was explicitly rejected by Devin. BriFormer improved this with direct placement; Strata improves further with no separate placement step. The dual behavior (place while playing, start-play while paused) requires UI acknowledgment: the context indicator ensures analysts always know what Space will do.
+*Reversed 2026-10-01:* Space plays and pauses; B places a boundary. See "Space Plays, B Marks a Boundary".
 
 ---
 
@@ -2362,6 +2363,7 @@ persistent `Space: boundary / Space: play` indicator is removed from the
 transport bar.
 
 **Rationale:** Space is context-dependent: it places a boundary while playing
+*Superseded 2026-10-01:* the Boundary chip always reads B, and Space is labelled beside Play.
 and starts playback while paused (Phase 0.4 §8). An earlier draft of this
 decision excluded Space from the bar entirely, on the grounds that a fixed
 label would be wrong half the time and the transport already carried a live
@@ -3269,4 +3271,49 @@ neutral terms, Osborn's riser to buildup, Covach's verse–chorus and AABA
 subtypes, among others) are proposals: whether two terms are the same
 concept is Devin's call, and the closing-section terms are left unlinked
 because their definitions differ.
+
+---
+
+## Space Plays, B Marks a Boundary (2026-10-01)
+
+**Decision:** Space plays and pauses (as K does). B places a boundary on the
+active layer at the playhead, playing or paused. The key is written beside
+the Play button ("Space") and on the Boundary button ("B"). The play button
+goes back to the plain transport style.
+**Rationale:** Reverses the Phase 0.4 choice that Space place a boundary while
+playing and start playback while paused. Devin kept reaching for Space to
+pause and placing a boundary instead: "I'm getting tripped up on space bar
+being the boundary and to start the play." Space as play/pause matches every
+other player. He asked for the *key* that pauses to be visible, not a bigger
+button, so the label carries it.
+
+**Decision:** The Type picker opens beside the Inspector and never runs taller
+than the screen; its list scrolls inside it. "[none]" sits alone at the top,
+in brackets, so clearing a type doesn't read as a term. The current type is
+marked. The fixed A–H letter buttons are gone: the file's letters are chips,
+a dashed chip offers the next letter after the highest one used, and any
+letter A–Z with up to three primes is typed in the search box ("K", "B'").
+**Rationale:** Opening below the field, the picker ran off the bottom of the
+screen when a library was expanded. Phrase analysis can use many letters, and
+eight buttons with a prime toggle capped the obvious path at H while taking
+room; typing reaches all of them in two keystrokes.
+
+**Decision:** Accessibility pass on text size and contrast. No interface text
+is below 11px: the 9–10px labels, chips and hints are now 11px, 11px text is
+12px, Inspector inputs are 13px, the commentary reading text 14px, and the
+ruler's time and bar numbers are 10.5 and 10px. Two icon buttons drawn in the
+faint ink (layer settings, drag handle) now use the muted ink, which meets
+the 3:1 contrast for controls. The symbol-palette toggle reads "♭♯", spelled
+out as "Insert symbol" while its field is in use.
+**Rationale:** Devin found the text too small in places. The muted text color
+(#64748b on white, 4.8:1) already passes AA; the faint one (#94a3b8, 2.6:1)
+did not. The diagram's own text keeps its sizes, since they drive the
+figure's layout and export; each layer's text size setting enlarges it. The
+⇒ glyph on the palette toggle read as an arrow, not as "insert a symbol".
+
+**Decision:** The Grid popover can lay a grid by hand: "Start at 0:00" or
+"Start at playhead", then the tempo, meter and first bar are typed in the
+segment table.
+**Rationale:** Devin asked for a start-at-the-beginning option and a manual
+route; tapping isn't always practical (a known tempo, or no time to tap).
 

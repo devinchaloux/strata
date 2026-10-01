@@ -2,7 +2,7 @@
  * Pure span-editing logic — no React, no store. Unit-tested in isolation.
  *
  * These functions take the current spans array and return a new one (or null
- * for a no-op). The document store wraps them; the spacebar handler and the
+ * for a no-op). The document store wraps them; the boundary-key (B) handler and the
  * metadata panel's Split action both call through the store.
  */
 
@@ -20,7 +20,7 @@ export const MIN_SPAN_WIDTH = 0.25
 export const MIN_BOUNDARY_DRAG_PX = 8
 
 /**
- * Place a boundary at `time` on a layer's spans (the spacebar / Split gesture,
+ * Place a boundary at `time` on a layer's spans (the B / Split gesture,
  * Phase 0.4 §8). Returns the new spans array, or null if nothing should happen.
  *
  * - Inside a span: split it into [start, time] and [time, end]. The new cut is
@@ -29,7 +29,7 @@ export const MIN_BOUNDARY_DRAG_PX = 8
  *   (type, label, colors, line style, confidence).
  * - Inside a gap: fill the gap with two bare spans, [gapStart, time] and
  *   [time, gapEnd]. An empty layer is simply one gap covering the whole track,
- *   so this is the same rule the first spacebar press has always followed.
+ *   so this is the same rule the first boundary press has always followed.
  *   Gaps are an analyst's choice (Devin, 2026-09-27), made by deleting spans;
  *   this is how one gets filled again.
  *

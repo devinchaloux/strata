@@ -17,7 +17,7 @@ const MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator
 
 const STEPS: [string, string][] = [
   ['Start', 'New analysis, then link a YouTube video or a local audio file. The video sits below the diagram; the Video button scrolls to it.'],
-  ['Mark', 'Play, and press Space at each boundary you hear. M places a point marker, such as a cadence.'],
+  ['Mark', 'Play (Space), and press B at each boundary you hear. M places a point marker, such as a cadence.'],
   ['Describe', 'Click a span to label it and fill in its details in the Inspector. Drag a boundary to adjust it.'],
   ['Layer', 'Add a layer (+ in the layer panel) for another level of form, or another framework.'],
   ['Write', 'A selected span’s Commentary box holds prose that appears while that passage plays.'],
@@ -28,8 +28,8 @@ const KEYS: [string, [string, string][]][] = [
   [
     'Playback',
     [
-      ['Space', 'Play; while playing, place a boundary on the active layer'],
-      ['K', 'Play or pause'],
+      ['Space or K', 'Play or pause'],
+      ['B', 'Place a boundary on the active layer at the playhead'],
       ['J / L', 'Back / forward 10 seconds'],
       ['Home', 'Back to the start'],
       ['M', 'Place a point marker at the playhead'],
@@ -105,7 +105,7 @@ export function HelpDialog({ open, onOpenChange }: { open: boolean; onOpenChange
                 {rows.map(([key, what]) => (
                   <div key={key} className="flex items-baseline gap-3">
                     <dt className="w-28 shrink-0">
-                      <kbd className="rounded border border-border bg-secondary px-1.5 py-0.5 font-sans text-[11px] text-foreground">
+                      <kbd className="rounded border border-border bg-secondary px-1.5 py-0.5 font-sans text-xs text-foreground">
                         {key}
                       </kbd>
                     </dt>

@@ -2,7 +2,8 @@
  * GridPopover — the beat grid's controls, in the diagram's top bar.
  *
  * Snapping (Off / Beats / Bars, remembered as the analyst's default), how to
- * lay the grid down by ear (T to tap along, Shift+T to stop), and the list of
+ * lay the grid down by ear (T to tap along, Shift+T to stop) or by hand (start
+ * at 0:00 or the playhead, then type the values), and the list of
  * segments with their tempo, meter, first bar and end, each editable. A
  * segment's first bar left blank continues the count from the one before.
  * lib/beatGrid.ts has the rules; docs/decisions.md, "Beat Grid", the reasons.
@@ -22,7 +23,7 @@ const SNAP_OPTIONS: [SnapMode, string][] = [
   ['bar', 'Bars'],
 ]
 
-const cell = 'w-full rounded border border-border bg-card px-1 py-0.5 text-[11px] tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-ring'
+const cell = 'w-full rounded border border-border bg-card px-1 py-0.5 text-xs tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-ring'
 
 /** A number field that commits on blur or Enter; blank commits null. */
 function NumberCell({
@@ -80,11 +81,11 @@ export function GridPopover() {
         <button
           type="button"
           title="Beat grid and snapping"
-          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           Grid
           {snapMode !== 'off' && (
-            <span className="rounded bg-accent px-1 text-[9px] text-foreground">snap {snapMode === 'bar' ? 'bars' : 'beats'}</span>
+            <span className="rounded bg-accent px-1 text-[11px] text-foreground">snap {snapMode === 'bar' ? 'bars' : 'beats'}</span>
           )}
         </button>
       </PopoverTrigger>
@@ -116,7 +117,17 @@ export function GridPopover() {
           again where the beat comes back.
         </p>
 
-        <div className="mt-2 flex gap-2">
+        {/* By hand, for when tapping isn't practical: start a segment, then
+            type its tempo and meter in the table. */}
+        <p className="mt-3 font-medium text-foreground">Or set it by hand</p>
+        <div className="mt-1 flex flex-wrap gap-2">
+          <button
+            className="rounded border border-border px-2 py-0.5 hover:bg-accent disabled:opacity-40"
+            disabled={segs.some((g) => g.start < 0.05)}
+            onClick={() => startGridAt(0)}
+          >
+            Start at 0:00
+          </button>
           <button className="rounded border border-border px-2 py-0.5 hover:bg-accent" onClick={() => startGridAt(now())}>
             Start at playhead
           </button>
@@ -128,11 +139,12 @@ export function GridPopover() {
             Stop at playhead
           </button>
         </div>
+        <p className="mt-1 text-muted-foreground">Then type the tempo, meter and first bar below; every value is editable.</p>
 
         {segs.length > 0 && (
           <table className="mt-3 w-full border-separate border-spacing-x-1 border-spacing-y-1">
             <thead>
-              <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
+              <tr className="text-left text-[11px] uppercase tracking-wide text-muted-foreground">
                 <th className="font-medium">From</th>
                 <th className="font-medium">BPM</th>
                 <th className="font-medium">Meter</th>

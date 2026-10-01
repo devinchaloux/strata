@@ -316,7 +316,7 @@ export interface LayerBase {
    * intended for key-area layers (Span.keyArea captions), but the field is
    * generic, not key-area-specific. A layer setting, buried in Layer Settings,
    * not surfaced in the main "add layer" flow. Purely visual — no data-model
-   * implication; the same Span/spacebar/drag/merge interactions apply either way.
+   * implication; the same Span/boundary-key/drag/merge interactions apply either way.
    */
   spanShape?: 'bracket' | 'bar'
   /**
