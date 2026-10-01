@@ -16,6 +16,7 @@ import { useUIStore } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
 import { formatTime, formatClock } from '@/lib/youtube'
 import { TimeInput } from './TimeInput'
+import { TypePicker } from './TypePicker'
 import { blockForSpan, blockForRange } from '@/widgets/written-analysis/commentary'
 import { capFromBoundaryType } from '@/lib/formShape'
 import { slugify } from '@/lib/slug'
@@ -319,7 +320,6 @@ export function MetadataPanel() {
 // ---------------------------------------------------------------------------
 
 function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
-  const doc = useDocumentStore((s) => s.document)
   const updateSpan = useDocumentStore((s) => s.updateSpan)
   const removeSpan = useDocumentStore((s) => s.removeSpan)
   const placeBoundary = useDocumentStore((s) => s.placeBoundary)
@@ -348,7 +348,6 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
 
   const update = (patch: Partial<Omit<Span, 'id'>>) => updateSpan(layer.id, span.id, patch)
 
-  const spanTypes = doc?.vocabulary.spanTypes ?? []
 
   // Key-area ("bar") layers lead with keyArea and tuck the bracket-only visual
   // fields (caps, stroke — meaningless on a flat bar) under "more fields".
@@ -460,24 +459,16 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           )}
         </Field>
 
-        {/* Type */}
+        {/* Type — picking one also names an unlabeled span after it. */}
         <Field label="Type">
-          <select
-            className={inputClass}
-            value={span.type ?? ''}
-            onChange={(e) => update({ type: e.target.value || null })}
-          >
-            <option value="">None</option>
-            {spanTypes.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.label}
-              </option>
-            ))}
-            {/* Preserve a value not present in the vocab list */}
-            {span.type && !spanTypes.some((t) => t.id === span.type) && (
-              <option value={span.type}>{span.type}</option>
-            )}
-          </select>
+          <TypePicker
+            kind="span"
+            value={span.type}
+            onPick={(id, term) => {
+              update({ type: id })
+              if (term && !span.label) setSpanLabels([span.id], term.label)
+            }}
+          />
         </Field>
 
         {/* Annotation */}
@@ -686,7 +677,6 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
 
   const spans = entries.map((e) => e.span)
   const ids = spans.map((s) => s.id)
-  const spanTypes = doc?.vocabulary.spanTypes ?? []
 
   // Apply a patch to every selected span (one undo step).
   const setAll = (patch: Partial<Omit<Span, 'id'>>) => updateSpans(ids, patch)
@@ -764,20 +754,18 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
           />
         </Field>
 
-        {/* Type */}
+        {/* Type — unlabeled spans take the type's label as well. */}
         <Field label="Type">
-          <select
-            className={inputClass}
-            value={type === MIXED ? '' : type}
-            onChange={(e) => setAll({ type: e.target.value || null })}
-          >
-            <option value="">{type === MIXED ? 'Mixed' : 'None'}</option>
-            {spanTypes.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.label}
-              </option>
-            ))}
-          </select>
+          <TypePicker
+            kind="span"
+            value={type === MIXED ? null : type || null}
+            mixed={type === MIXED}
+            onPick={(id, term) => {
+              setAll({ type: id })
+              const unlabeled = spans.filter((s) => !s.label).map((s) => s.id)
+              if (term && unlabeled.length) setSpanLabels(unlabeled, term.label)
+            }}
+          />
         </Field>
 
         {/* Annotation */}

@@ -114,6 +114,8 @@ export interface UIState {
   // A working preference, not part of the analysis, so never in the file
   // (docs/decisions.md, "Snapping Remembered as a Preference").
   snapMode: SnapMode
+  /** Vocabulary packs the analyst has switched on in the type picker (lib/vocabulary.ts). */
+  enabledPacks: string[]
   // Lyrics in the commentary stack: also the analyst's remembered preference.
   showLyrics: boolean
 
@@ -163,6 +165,7 @@ export interface UIState {
   dismissAppMessage: () => void
   setExportOpen: (open: boolean) => void
   setSnapMode: (mode: SnapMode) => void
+  setPackEnabled: (id: string, on: boolean) => void
   setShowLyrics: (show: boolean) => void
   requestSeek: (time: number, play?: boolean) => void
 }
@@ -173,6 +176,7 @@ export interface UIState {
 
 const SNAP_KEY = 'strata:snapMode'
 const LYRICS_KEY = 'strata:showLyrics'
+const PACKS_KEY = 'strata:packs'
 
 // Preferences live in this browser's storage; a blocked store (a private
 // window) just means the default each visit.
@@ -229,6 +233,7 @@ const useUIStore = create<UIState>()((set) => ({
   exportOpen: false,
   snapMode: readSnapPreference(),
   showLyrics: readPreference(LYRICS_KEY) === 'on',
+  enabledPacks: (readPreference(PACKS_KEY) ?? '').split(',').filter(Boolean),
   seekRequest: null,
 
   setCurrentTime: (time) => set({ currentTime: time }),
@@ -286,6 +291,12 @@ const useUIStore = create<UIState>()((set) => ({
     writePreference(SNAP_KEY, mode)
     set({ snapMode: mode })
   },
+  setPackEnabled: (id, on) =>
+    set((s) => {
+      const enabledPacks = on ? [...new Set([...s.enabledPacks, id])] : s.enabledPacks.filter((p) => p !== id)
+      writePreference(PACKS_KEY, enabledPacks.join(','))
+      return { enabledPacks }
+    }),
   requestSeek: (time, play) => set((s) => ({ seekRequest: { time, n: (s.seekRequest?.n ?? 0) + 1, play } })),
 }))
 

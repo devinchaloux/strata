@@ -19,12 +19,8 @@ import { parseTimecode } from '@/lib/timecode'
 import type { ConfidenceLevel, PointMarker } from '@/types/strata'
 import { Field, inputClass } from '@/components/Field'
 import { toAccidentals } from '@/lib/musicSymbols'
-import {
-  BUILT_IN_POINT_MARKER_TYPE_GROUPS,
-  findPointMarkerType,
-  formatMarkerCaption,
-  pickerLabel,
-} from '@/lib/pointMarkerTypes'
+import { TypePicker } from '@/components/TypePicker'
+import { formatMarkerCaption } from '@/lib/pointMarkerTypes'
 
 
 function Segmented<T extends string>({
@@ -192,37 +188,7 @@ export function PointMarkerPanel() {
       case 'type':
         return (
           <Field key="type" label="Type">
-            <select
-              className={inputClass}
-              value={marker!.type ?? ''}
-              onChange={(e) => update({ type: e.target.value || null })}
-            >
-              <option value="">None</option>
-              {BUILT_IN_POINT_MARKER_TYPE_GROUPS.map((g) => (
-                <optgroup key={g.label} label={g.label}>
-                  {g.terms.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {pickerLabel(t)}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-              {markerTypes.length > 0 && (
-                <optgroup label="This document">
-                  {markerTypes.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {pickerLabel(t)}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-              {/* Escape hatch: a type from a pack or a future build that this
-                  version doesn't know about still shows, rather than silently
-                  resetting the marker's data to none. */}
-              {marker!.type && !findPointMarkerType(marker!.type, markerTypes) && (
-                <option value={marker!.type}>{marker!.type}</option>
-              )}
-            </select>
+            <TypePicker kind="point-marker" value={marker!.type} onPick={(id) => update({ type: id })} />
           </Field>
         )
       case 'harmonicContext':

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { temporal } from 'zundo'
-import type { StrataDocument, Layer, LayerBase, Span, PointMarker, SharedTimePoint, GridSegment } from '@/types/strata'
+import type { StrataDocument, Layer, LayerBase, Span, PointMarker, SharedTimePoint, GridSegment, VocabTerm } from '@/types/strata'
 import { formSpans } from '@/lib/layers'
 import { sortedSegments, segmentAt, segmentEnd, extendBack } from '@/lib/beatGrid'
 import type { FormDiagramData } from '@/types/strata'
@@ -113,6 +113,8 @@ interface DocumentState {
   // Point marker actions
   addPointMarker: (marker: PointMarker) => void
   updatePointMarker: (id: string, patch: Partial<Omit<PointMarker, 'id'>>) => void
+  /** Add a term to the file's own vocabulary, unless one with its id is already there. */
+  addVocabTerm: (list: 'spanTypes' | 'pointMarkerTypes', term: VocabTerm) => void
   removePointMarker: (id: string) => void
 
   // Beat grid (lib/beatGrid.ts). startGridAt begins a segment on the downbeat
@@ -528,6 +530,18 @@ const useDocumentStore = create<DocumentState>()(
             pointMarkers: [...doc.pointMarkers, marker].sort(
               (a, b) => a.timestamp - b.timestamp
             ),
+            updatedAt: now(),
+          },
+        })
+      },
+
+      addVocabTerm: (list, term) => {
+        const doc = get().document
+        if (!doc || doc.vocabulary[list].some((t) => t.id === term.id)) return
+        set({
+          document: {
+            ...doc,
+            vocabulary: { ...doc.vocabulary, [list]: [...doc.vocabulary[list], term] },
             updatedAt: now(),
           },
         })

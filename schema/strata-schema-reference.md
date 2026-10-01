@@ -140,12 +140,14 @@ The `source` field describes where the audio comes from and how to align it with
 
 The `vocabulary` field stores custom type terms defined specifically for this document. All spans and point markers have a `type` field that draws from a controlled vocabulary — these custom terms extend the global built-in list.
 
+The built-in list ships with the app, not in the file, organised into **libraries**: General, Pop/Rock, Song form, EDM, Common practice, Jazz and Form letters, plus optional packs such as Caplin formal functions and Sonata Theory. A library only groups terms for the picker; a term has one id whichever library it was picked from, so a file never records the library. Form letters (`a-section`, `a-prime`, `b-double-prime` …) are made on demand and stored here as custom terms.
+
 The vocabulary is split into three lists:
 
 | Field | What it contains | v1 UI? |
 |---|---|---|
-| `spanTypes` | Custom terms for span types (e.g. a custom section type used in this corpus) | Planned for v2 |
-| `pointMarkerTypes` | Custom terms for point marker types (e.g. `medial-caesura`, `EEC`, `energy-peak`) | Yes — v1 |
+| `spanTypes` | Custom terms for span types: letters made in the picker, and types the analyst adds by name | Yes |
+| `pointMarkerTypes` | Custom terms for point marker types (e.g. `energy-peak`) | Yes |
 | `modes` | Custom mode terms beyond the built-in major/minor/church-mode starter list (e.g. Renaissance 8-mode or 12-mode systems) | Yes — a minimal picker; same mechanism as the other two lists |
 
 ### Vocabulary Term
@@ -158,6 +160,9 @@ Each term in either list has these fields:
 | `label` | text | Yes | Human-readable display name shown in the type picker and UI. |
 | `description` | text | No | Explanation of what this term means. Shown as a tooltip when the analyst is choosing a type. |
 | `color` | hex color or null | No | Optional default color for spans or markers of this type. |
+| `kind` | text | No | `span`, `point-marker` or `mode`: which list the term belongs in when a pack is imported. |
+| `source` | text | No | Which pack the term came from, e.g. `My Pack v1.0.0`. Absent for terms made in this file. |
+| `broader` | list of term IDs | No | The more general terms this one counts as in a query. A `caplin-transition` with `broader: ["transition"]` is found by a search for all transitions, alongside Sonata Theory's `hd-tr-zone`. The built-in terms carry their own links in the app. |
 
 > **Example:** A Hepokoski/Darcy analyst would define `{ "id": "medial-caesura", "label": "Medial Caesura", "description": "The HC that divides the exposition..." }` in `pointMarkerTypes`. Every point marker in this document typed `medial-caesura` draws from this definition — including its display name and tooltip.
 

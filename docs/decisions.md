@@ -227,6 +227,7 @@ a new entry is added noting the reversal and why.
 
 **Decision:** The built-in vocabulary type picker groups terms by analytical tradition: General, Pop/Rock, EDM, Common Practice, Jazz, Form Letters. A document-level tradition preference controls which group expands by default.
 **Rationale:** A flat list of 45+ terms is overwhelming when an analyst needs only 8. Grouping by tradition makes the picker navigable and surfaces the most relevant terms first. The tradition preference is set at document creation and can be changed in document settings; it affects the picker's default state only, never restricts which terms are available.
+*Status, 2026-10-01:* built as libraries (see "Vocabulary Libraries"). There is no document-level tradition preference yet: every library starts collapsed under the file's own types, and search reaches all of them.
 
 ---
 
@@ -252,6 +253,7 @@ a new entry is added noting the reversal and why.
 
 **Decision:** The built-in vocabulary starter set ships with 45 terms: 32 span types across General, EDM, Common Practice, and Jazz traditions; 13 point marker types across General, Cadences, and H&D groups. Full list in `_private/build-plan.md` under "v1 Scope."
 **Rationale:** 45 terms is enough to cover immediate use cases across EDM, common-practice, and jazz scholarship without overwhelming the picker. Terms missing from the starter set are addressed via the "Add custom type" flow (v1) or vocabulary pack import (v1). The list will expand through stress-testing on real analyses; it is not intended to be comprehensive at launch.
+*Status, 2026-10-01:* superseded by the proposed lists in "Vocabulary Libraries" (about 200 terms in built-in libraries and packs), pending Devin's review.
 
 ---
 
@@ -3219,3 +3221,52 @@ While listening, a click to edit shouldn't jump playback.
 **Decision:** Play/pause is the one filled, larger control in the play bar.
 **Rationale:** Devin couldn't readily see how to pause, partly because Space
 places a boundary during playback rather than pausing.
+
+---
+
+## Vocabulary Libraries (2026-10-01)
+
+**Decision:** The built-in vocabulary ships in code (`src/lib/vocabulary.ts`)
+as terms grouped into libraries. Built-in libraries: General, Pop/Rock, Song
+form, EDM, Common practice, Jazz, Form letters. Packs, switched on in the
+picker and remembered in the browser: Caplin formal functions, Sonata Theory,
+Schmalfeldt, Schenkerian, Pop/Rock extended, SRDC phrase functions, Rock
+harmony, Hip-hop, Peres sonic functions, Trance, EDM-pop, DJ set, Production
+mechanisms, Jazz: arranging & feel, Jazz: interaction & events. The terms are
+the drafted proposals, built in so they can be tried while Devin reviews them;
+any can still be renamed, redefined or dropped.
+**Rationale:** Devin: "I don't necessarily want to have all this surfaced to
+pick from", but the corpus needs consistent ids. A library only groups terms
+for the picker; a term has one id and one definition wherever it is listed
+(`breakdown` is in EDM and Pop/Rock), so a query never depends on which
+library the analyst picked from, and a file never records the library.
+Built-in terms aren't copied into files, as with the point-marker types and
+modes before them; ids are what files store.
+
+**Decision:** The Type picker shows a working set: the types this file already
+uses (its letters as a row of chips), the letter maker, then each library as a
+collapsed group. Typing searches every library, packs included whether or not
+they are on, plus the file's own terms; a typed letter ("B′") offers that
+letter; any other text can become a type of this file's own. Picking a type
+for an unlabeled span also gives it the type's label. The point-marker Type
+field uses the same picker.
+**Rationale:** The old select listed only the file's own types, so the demo's
+A, B, C′, F′ read as a list of examples with primes on some and not others.
+Letters are made, not listed (as decided in Phase 0.6), so A, A′ and
+A″ always share one id scheme (`a-section`, `a-prime`, `a-double-prime`).
+Search across everything means a pack never hides a term, only declutters.
+
+**Decision:** `VocabTerm` gains an optional `broader: string[]`: the more
+general terms a term counts as in a query, as SKOS's `broader`. Built-in terms
+carry theirs in code; a file's own terms can carry them in the file.
+`typesUnder('transition')` returns `transition`, `caplin-transition` and
+`hd-tr-zone`, so "all transitions" finds every framework's.
+**Rationale:** Devin asked how someone who marks a Caplin transition could
+later ask for all transitions. Keeping framework terms separate preserves what
+each theory means; `broader` lets a query roll them up without merging them.
+The links shipped (Caplin's and Sonata Theory's themes and transition to the
+neutral terms, Osborn's riser to buildup, Covach's verse–chorus and AABA
+subtypes, among others) are proposals: whether two terms are the same
+concept is Devin's call, and the closing-section terms are left unlinked
+because their definitions differ.
+

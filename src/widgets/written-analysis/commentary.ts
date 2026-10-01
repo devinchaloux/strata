@@ -19,6 +19,7 @@ import type {
   WrittenAnalysisLayer,
 } from '@/types/strata'
 import { formSpans, analysisLayers } from '@/lib/layers'
+import { spanTypeName } from '@/lib/vocabulary'
 
 /** Blank-line separator used when two pieces of commentary are combined. */
 export const JOIN = '\n\n'
@@ -241,7 +242,7 @@ function sections(doc: StrataDocument) {
     .map(({ block }) => {
       const span = 'spanId' in block.anchor ? spans.get(block.anchor.spanId) : undefined
       const range = anchorRange(doc, block.anchor) ?? [0, 0]
-      const heading = span ? span.label || span.type || 'Untitled span' : 'Passage'
+      const heading = span ? span.label || spanTypeName(span.type, doc.vocabulary.spanTypes) || 'Untitled span' : 'Passage'
       return { block, span, range, heading }
     })
     .sort((a, b) => a.range[0] - b.range[0])

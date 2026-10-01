@@ -298,6 +298,11 @@
         "source": {
           "type": "string",
           "description": "Pack provenance string, e.g. 'My Pack v1.0.0'. Set on import; absent for built-ins and project-local terms."
+        },
+        "broader": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+          "description": "Ids of more general terms this one counts as in a query (SKOS 'broader'): a 'caplin-transition' with broader ['transition'] is found by a search for all transitions. Built-in or custom ids."
         }
       }
     },

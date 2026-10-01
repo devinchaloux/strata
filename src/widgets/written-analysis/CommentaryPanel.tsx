@@ -18,6 +18,7 @@ import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import type { AnalysisBlock, StrataDocument } from '@/types/strata'
 import { formSpans, analysisLayers } from '@/lib/layers'
+import { spanTypeName } from '@/lib/vocabulary'
 import { EyeOff } from 'lucide-react'
 import {
   anchorRange,
@@ -158,7 +159,7 @@ function Level({
   showLyrics: boolean
 }) {
   const { layer, span, block } = row
-  const heading = span.label || span.type || 'Untitled span'
+  const heading = span.label || spanTypeName(span.type, doc.vocabulary.spanTypes) || 'Untitled span'
   return (
     <article
       className={`flex flex-col gap-1.5 border-l-2 py-1 pl-3 ${selected ? 'border-primary' : 'border-border'}`}

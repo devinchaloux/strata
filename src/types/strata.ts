@@ -109,6 +109,8 @@ export interface VocabTerm {
   kind?: 'span' | 'point-marker' | 'mode'
   /** Pack provenance string, e.g. "My Pack v1.0.0". Set on import; absent for built-ins. */
   source?: string
+  /** Ids of more general terms this one counts as in a query (SKOS "broader"). See lib/vocabulary.ts. */
+  broader?: string[]
 }
 
 export interface Vocabulary {

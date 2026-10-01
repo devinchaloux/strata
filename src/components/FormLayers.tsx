@@ -22,6 +22,7 @@ import { layoutMarkerBand, BAND_TOP_GAP, BAND_ROW_HEIGHT, GLYPH_HALF, type Marke
 import { MIN_SPAN_WIDTH, MIN_BOUNDARY_DRAG_PX } from '@/lib/spanEdit'
 import { newGestureKey, withHistoryGroup } from '@/store/history'
 import { gridLines, sortedSegments, barLength, beatLength } from '@/lib/beatGrid'
+import { spanTypeName } from '@/lib/vocabulary'
 import { snapToActiveGrid } from '@/store/snap'
 import { Playhead } from './Playhead'
 import { FormDiagramFigure, type SpanDecoration } from '@/widgets/form-diagram/figure'
@@ -205,6 +206,7 @@ function SpanHitTarget({
   const toggleSpan = useUIStore((s) => s.toggleSpan)
   const setSelection = useUIStore((s) => s.setSelection)
   const hoverSpan = useUIStore((s) => s.hoverSpan)
+  const spanTypes = useDocumentStore((s) => s.document?.vocabulary.spanTypes ?? EMPTY_TERMS)
 
   // Modifier-aware selection (Merge UX §1): plain click single-selects;
   // ctrl/cmd-click toggles; shift-click selects the range from the anchor.
@@ -239,7 +241,7 @@ function SpanHitTarget({
   const width = (span.endTime - span.startTime) * pps
   if (width <= 0) return null
   const displayLabel = layer.spanShape === 'bar' ? span.keyArea || span.label : span.label
-  const titleText = [displayLabel, span.type].filter(Boolean).join(' · ')
+  const titleText = [displayLabel, spanTypeName(span.type, spanTypes)].filter(Boolean).join(' · ')
 
   return (
     <rect
