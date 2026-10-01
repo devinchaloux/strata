@@ -1,4 +1,6 @@
 # Form Diagram Widget
+
+*Naming (2026-10-01): the interface calls a form diagram's rows **levels**; the file format and this spec still call them layers. See docs/decisions.md, "Levels, Not Layers, in the Interface".*
 *Widget type: `"form-diagram"` | v1.0 | June 2026*
 
 The form diagram is the v1 widget and the proof of concept for the Strata widget system. It is the data spine of the analysis: the layer all other widgets reference for span boundaries and section identity.

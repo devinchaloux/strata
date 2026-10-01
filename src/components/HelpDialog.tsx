@@ -20,7 +20,7 @@ const STEPS: [string, string][] = [
   ['Mark', 'Play (Space), and press B at each boundary you hear. M places a point marker, such as a cadence.'],
   ['Describe', 'Click a span to choose its Type (search, or type a letter such as B′) and fill in its details in the Inspector. Drag a boundary to adjust it.'],
   ['Grid', 'Optional: tap T along with the beat, or set a tempo in the Grid menu, to number bars and snap to beats.'],
-  ['Layer', 'Add a layer (+ in the layer panel) for another level of form, or another framework.'],
+  ['Levels', 'Add a level (+ above the level names) for another level of form, or another framework.'],
   ['Write', 'A selected span’s Commentary box holds prose that appears while that passage plays.'],
   ['Keep', 'Save a .strata file. Export makes a figure (SVG or PNG) or a commentary page (HTML).'],
 ]
@@ -30,7 +30,7 @@ const KEYS: [string, [string, string][]][] = [
     'Playback',
     [
       ['Space or K', 'Play or pause'],
-      ['B', 'Place a boundary on the active layer at the playhead'],
+      ['B', 'Place a boundary on the active level at the playhead'],
       ['J / L', 'Back / forward 10 seconds'],
       ['Home', 'Back to the start'],
       ['M', 'Place a point marker at the playhead'],
@@ -48,7 +48,7 @@ const KEYS: [string, [string, string][]][] = [
       ['Shift-click', 'Select a run of spans'],
       ['Drag', 'On empty space: select every span the box touches'],
       ['← →', 'Previous / next span'],
-      ['↑ ↓', 'Span in the layer above / below'],
+      ['↑ ↓', 'Span in the level above / below'],
       ['Shift+← →', 'Extend the selection'],
       ['Enter', 'Edit the selected span’s label'],
       ['1–9', 'Give the selected spans a type from the quick-type bar'],

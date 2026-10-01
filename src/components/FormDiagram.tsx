@@ -182,8 +182,8 @@ function SortableLayerHeaderRow({
           }}
           className="shrink-0 hover:opacity-80"
           style={{ color: 'var(--ink-muted)' }}
-          title="Hide layer"
-          aria-label="Hide layer"
+          title="Hide level"
+          aria-label="Hide level"
         >
           <Eye size={14} />
         </button>
@@ -196,7 +196,7 @@ function SortableLayerHeaderRow({
             className="shrink-0 touch-none cursor-grab active:cursor-grabbing hover:opacity-100"
             style={{ color: 'var(--ink-muted)' }}
             title="Drag to reorder"
-            aria-label="Drag to reorder layer"
+            aria-label="Drag to reorder level"
           >
             <GripVertical size={13} />
           </button>
@@ -204,8 +204,8 @@ function SortableLayerHeaderRow({
             onClick={() => updateLayer(layer.id, { visibility: false })}
             className="shrink-0 hover:opacity-80"
             style={{ color: 'var(--ink-muted)' }}
-            title="Hide layer"
-            aria-label="Hide layer"
+            title="Hide level"
+            aria-label="Hide level"
           >
             <Eye size={14} />
           </button>
@@ -455,8 +455,8 @@ function WidgetTopBar({
         onClick={onToggleCollapsed}
         className="rounded p-0.5 hover:bg-accent"
         style={{ color: 'var(--ink-muted)' }}
-        title={collapsed ? 'Expand layer panel' : 'Collapse layer panel'}
-        aria-label={collapsed ? 'Expand layer panel' : 'Collapse layer panel'}
+        title={collapsed ? 'Expand level names' : 'Collapse level names'}
+        aria-label={collapsed ? 'Expand level names' : 'Collapse level names'}
       >
         {collapsed ? <ChevronsRight size={15} /> : <ChevronsLeft size={15} />}
       </button>

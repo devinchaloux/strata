@@ -3469,3 +3469,15 @@ over the levels so it never hides brackets or labels.
 piece one span at a time through the Inspector is the slowest part of a first
 pass, and the level's likely types are known from what it already uses.
 
+---
+
+## Levels, Not Layers, in the Interface (2026-10-01)
+
+**Decision:** The form diagram's rows are called **levels** in the interface
+(Add a level, Hide level, Level settings, "In this level"). The file format
+keeps `layers`, and so do the code and the specs, so no file changes.
+**Rationale:** "Layers" is the broadest name for the planned instrumentation
+and texture widget, which Devin wants to call Layers. The form diagram's rows
+are levels of form (large-scale form, sections, phrases), so the rename fits
+them and frees the word. Agreed by Devin.
+

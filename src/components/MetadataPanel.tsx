@@ -623,7 +623,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           <button
             onClick={() => prevId && performMerge([prevId, span.id])}
             disabled={!prevId}
-            title={prevId ? 'Merge with previous span' : 'No previous span in this layer'}
+            title={prevId ? 'Merge with previous span' : 'No previous span in this level'}
             className="flex-1 rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
           >
             Merge ←
@@ -631,7 +631,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           <button
             onClick={() => nextId && performMerge([span.id, nextId])}
             disabled={!nextId}
-            title={nextId ? 'Merge with next span' : 'No next span in this layer'}
+            title={nextId ? 'Merge with next span' : 'No next span in this level'}
             className="flex-1 rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
           >
             → Merge

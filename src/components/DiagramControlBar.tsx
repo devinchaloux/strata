@@ -61,10 +61,10 @@ export function DiagramControlBar() {
 
   const canPlaceBoundary = activeLayerId !== null && playheadMoved
   const boundaryTitle = !activeLayerId
-    ? 'Pick an active layer to place a boundary in'
+    ? 'Pick an active level to place a boundary in'
     : !playheadMoved
       ? 'Move the playhead to place a boundary'
-      : 'Place a boundary in the active layer at the playhead (B)'
+      : 'Place a boundary in the active level at the playhead (B)'
 
   return (
     <div className="flex shrink-0 items-center gap-0.5">

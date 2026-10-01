@@ -52,8 +52,8 @@ export function LayerSettingsPopover({
         <button
           className="shrink-0 rounded p-0.5 hover:bg-accent"
           style={{ color: 'var(--ink-muted)' }}
-          title="Layer settings"
-          aria-label="Layer settings"
+          title="Level settings"
+          aria-label="Level settings"
         >
           <MoreHorizontal size={14} />
         </button>
@@ -85,7 +85,7 @@ export function LayerSettingsPopover({
                 updateLayer(layer.id, { description: e.target.value || null })
               }
               rows={2}
-              placeholder="The framework or purpose of this layer"
+              placeholder="The framework or purpose of this level"
               className={cn(fieldClass, 'resize-none')}
               style={fieldStyle}
             />
@@ -164,7 +164,7 @@ export function LayerSettingsPopover({
             <Switch
               checked={layer.spanShape === 'bar'}
               onCheckedChange={(v) => updateLayer(layer.id, { spanShape: v ? 'bar' : 'bracket' })}
-              aria-label="Key-area layer (thin bars)"
+              aria-label="Key-area level (thin bars)"
             />
           </label>
 
@@ -179,7 +179,7 @@ export function LayerSettingsPopover({
             <Switch
               checked={layer.locked}
               onCheckedChange={(v) => updateLayer(layer.id, { locked: v })}
-              aria-label="Lock layer"
+              aria-label="Lock level"
             />
           </label>
 
