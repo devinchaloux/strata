@@ -157,3 +157,14 @@ describe('extendBack', () => {
     expect(extendBack(10, 2, 10)).toBe(10)
   })
 })
+
+describe('barAt', () => {
+  it("numbers bars as the ruler does, and none in a free stretch", async () => {
+    const { barAt } = await import('@/lib/beatGrid')
+    const segs = sortedSegments([seg('a', 0, { end: 20 }), seg('b', 40)])
+    expect(barAt(segs, 0, 100)).toBe(1)
+    expect(barAt(segs, 3.9, 100)).toBe(2)
+    expect(barAt(segs, 30, 100)).toBeNull()
+    expect(barAt(segs, 40, 100)).toBe(11)
+  })
+})

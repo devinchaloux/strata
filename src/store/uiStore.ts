@@ -4,6 +4,8 @@ import type { Span } from '@/types/strata'
 import type { MergeConflict } from '@/lib/mergeSpans'
 import type { SnapMode } from '@/lib/beatGrid'
 
+export type InspectorTab = 'describe' | 'shape' | 'more'
+
 // Re-export so consumers don't need a separate import
 export type { YTPlayerState }
 
@@ -120,6 +122,8 @@ export interface UIState {
   librariesOpen: boolean
   /** Bumped to ask the Inspector's span Type picker to open (the "/" key). */
   typePickerRequest: number
+  /** The span Inspector's open tab, kept as the selection moves. */
+  inspectorTab: InspectorTab
   // Lyrics in the commentary stack: also the analyst's remembered preference.
   showLyrics: boolean
 
@@ -172,6 +176,7 @@ export interface UIState {
   setPackEnabled: (id: string, on: boolean) => void
   setLibrariesOpen: (open: boolean) => void
   requestTypePicker: () => void
+  setInspectorTab: (tab: InspectorTab) => void
   setShowLyrics: (show: boolean) => void
   requestSeek: (time: number, play?: boolean) => void
 }
@@ -242,6 +247,7 @@ const useUIStore = create<UIState>()((set) => ({
   enabledPacks: (readPreference(PACKS_KEY) ?? '').split(',').filter(Boolean),
   librariesOpen: false,
   typePickerRequest: 0,
+  inspectorTab: 'describe',
   seekRequest: null,
 
   setCurrentTime: (time) => set({ currentTime: time }),
@@ -307,6 +313,7 @@ const useUIStore = create<UIState>()((set) => ({
     }),
   setLibrariesOpen: (open) => set({ librariesOpen: open }),
   requestTypePicker: () => set((s) => ({ typePickerRequest: s.typePickerRequest + 1 })),
+  setInspectorTab: (tab) => set({ inspectorTab: tab }),
   requestSeek: (time, play) => set((s) => ({ seekRequest: { time, n: (s.seekRequest?.n ?? 0) + 1, play } })),
 }))
 

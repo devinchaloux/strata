@@ -3481,3 +3481,21 @@ and texture widget, which Devin wants to call Layers. The form diagram's rows
 are levels of form (large-scale form, sections, phrases), so the rename fits
 them and frees the word. Agreed by Devin.
 
+---
+
+## The Span Inspector: a Header and Three Tabs (2026-10-01)
+
+**Decision:** The single-span Inspector keeps a fixed header (where the span
+is, with previous/next; the label as a large field; the Type; start, end,
+length and bars when a grid covers it) above three tabs: **Describe**
+(annotation, commentary, lyrics; key area first on a key-area level),
+**Shape** (each end's shape as five pictures, elided either way; line; fill
+and stroke; fills already used in the level), and **More** (short label, slug,
+confidence, boundary types, key area, notes, parent, id). Split, Merge and
+Delete sit in a footer that never scrolls away. The chosen tab is kept as the
+selection moves. The multi-span panel is unchanged.
+**Rationale:** Devin preferred the first Inspector sketch to the three
+alternatives and asked for "some tabs within it ... to make it a simpler menu".
+The boundary type (an analytical claim) stays in More, apart from the drawn
+shape, as before; choosing a boundary type still resets that end's shape.
+

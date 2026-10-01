@@ -9,10 +9,8 @@
  * boundary placement — slice 3).
  */
 
-import { useState, useEffect } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
-import { useUIStore } from '@/store/uiStore'
+import { useUIStore, type InspectorTab } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
 import { formatTime, formatClock } from '@/lib/youtube'
 import { TimeInput } from './TimeInput'
@@ -24,6 +22,8 @@ import { slugify } from '@/lib/slug'
 import { ColorPicker } from '@/components/ui/color-picker'
 import { Field, inputClass } from '@/components/Field'
 import { toAccidentals } from '@/lib/musicSymbols'
+import { barAt, sortedSegments } from '@/lib/beatGrid'
+import { formSpans } from '@/lib/layers'
 import type {
   Span,
   Layer,
@@ -275,30 +275,63 @@ function OverlapFields({ layer, span }: { layer: Layer; span: Span }) {
   )
 }
 
-/** Overlap order and stroke. The caps live beside the boundary types in
- *  EndsGrid, still in the open (Devin's call, 2026-07-25): picking a boundary
- *  type updates its cap in place, on the same row. */
-function ShapeFields({
-  layer,
-  span,
-  update,
-}: {
-  layer: Layer
-  span: Span
-  update: (patch: Partial<Omit<Span, 'id'>>) => void
-}) {
-  return (
-    <>
-      <OverlapFields layer={layer} span={span} />
+// The Inspector's tabs (remembered across spans in uiStore.inspectorTab).
+const INSPECTOR_TABS: [InspectorTab, string][] = [
+  ['describe', 'Describe'],
+  ['shape', 'Shape'],
+  ['more', 'More'],
+]
 
-      <Field label="Stroke">
-        <Segmented
-          options={LINESTYLE_OPTS}
-          value={span.lineStyle ?? 'solid'}
-          onChange={(v) => update({ lineStyle: v })}
-        />
-      </Field>
-    </>
+// One end of a bracket in the shape picker: a dashed line marks the boundary,
+// so an elided end visibly reaches past it.
+const CAP_ICONS: Record<'start' | 'end', { cap: CapStyle; name: string; bx: number; d: string }[]> = {
+  start: [
+    { cap: 'rounded', name: 'Rounded', bx: 8, d: 'M 8 22 L 8 12 A 10 10 0 0 1 18 2 L 40 2' },
+    { cap: 'square', name: 'Square', bx: 8, d: 'M 8 22 L 8 2 L 40 2' },
+    { cap: 'angled', name: 'Angled', bx: 8, d: 'M 8 22 L 16 2 L 40 2' },
+    { cap: 'open', name: 'Open', bx: 8, d: 'M 8 2 L 40 2' },
+    { cap: 'elision', name: 'Elided', bx: 14, d: 'M 4 22 L 4 12 A 10 10 0 0 1 14 2 L 40 2' },
+  ],
+  end: [
+    { cap: 'rounded', name: 'Rounded', bx: 32, d: 'M 0 2 L 22 2 A 10 10 0 0 1 32 12 L 32 22' },
+    { cap: 'square', name: 'Square', bx: 32, d: 'M 0 2 L 32 2 L 32 22' },
+    { cap: 'angled', name: 'Angled', bx: 32, d: 'M 0 2 L 24 2 L 32 22' },
+    { cap: 'open', name: 'Open', bx: 32, d: 'M 0 2 L 32 2' },
+    { cap: 'elision', name: 'Elided', bx: 26, d: 'M 0 2 L 26 2 A 10 10 0 0 1 36 12 L 36 22' },
+  ],
+}
+
+/** The five shapes for one end of a bracket, as pictures. */
+function CapRow({ side, value, onChange }: { side: 'start' | 'end'; value: CapStyle; onChange: (c: CapStyle) => void }) {
+  const name = side === 'start' ? 'Start' : 'End'
+  const chosen = CAP_ICONS[side].find((o) => o.cap === value)?.name
+  return (
+    <div className="flex items-center gap-2">
+      <span className="flex w-14 shrink-0 flex-col text-xs leading-tight">
+        <span className="text-muted-foreground">{name}</span>
+        <span className="text-foreground">{chosen}</span>
+      </span>
+      <div className="grid flex-1 grid-cols-5 gap-1" role="radiogroup" aria-label={`${name} shape`}>
+        {CAP_ICONS[side].map((o) => (
+          <button
+            key={o.cap}
+            role="radio"
+            aria-checked={value === o.cap}
+            aria-label={o.name}
+            title={o.name}
+            onClick={() => onChange(o.cap)}
+            className={`flex h-9 items-center justify-center rounded-md bg-card text-foreground hover:bg-accent ${
+              value === o.cap ? 'border-2 border-foreground' : 'border border-border'
+            }`}
+          >
+            <svg width="32" height="20" viewBox="0 0 40 22" aria-hidden>
+              <line x1={o.bx} y1={0} x2={o.bx} y2={22} stroke="var(--hairline)" strokeDasharray="2 2" />
+              <path d={o.d} fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinejoin="round" strokeLinecap="round" />
+            </svg>
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -355,8 +388,9 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   // Boundary type stays visible either way — it's analytical data, not a
   // visual choice, and still applies to a key area's transition character.
   const isBar = layer.spanShape === 'bar'
-  const [shapeFieldsExpanded, setShapeFieldsExpanded] = useState(false)
-  useEffect(() => setShapeFieldsExpanded(false), [span.id])
+  const doc = useDocumentStore((s) => s.document)
+  const tab = useUIStore((s) => s.inspectorTab)
+  const setTab = useUIStore((s) => s.setInspectorTab)
 
   function handleDelete() {
     removeSpan(layer.id, span.id)
@@ -383,81 +417,52 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
     setSpanEdgeAction(layer.id, span.id, 'end', t)
   }
 
+  // Bar numbers, when a beat grid covers the span.
+  const segs = sortedSegments(doc?.beatGrid)
+  const firstBar = segs.length ? barAt(segs, span.startTime, doc?.duration ?? 0) : null
+  const lastBar = segs.length ? barAt(segs, Math.max(span.startTime, span.endTime - 1e-3), doc?.duration ?? 0) : null
+  const siblings = formSpans(layer)
+  const position = siblings.findIndex((s) => s.id === span.id) + 1
+  // Fills already used in this level, for one-click reuse.
+  const usedFills = [...new Set(siblings.map((s) => s.fillColor).filter((c): c is string => !!c && c !== 'none'))].slice(0, 8)
+
   return (
-    <div className="flex flex-col">
-      <div className="px-3 py-3">
-        {/* Time range (editable) + duration */}
-        <div className="mb-3 rounded bg-muted px-2 py-1.5">
-          <div className="flex items-center justify-between gap-1">
-            <TimeInput value={span.startTime} onCommit={commitStart} title="Start time" />
-            <span className="text-muted-foreground">→</span>
-            <TimeInput value={span.endTime} onCommit={commitEnd} title="End time" />
-          </div>
-          <div className="mt-1 text-[11px] text-muted-foreground">
-            Duration {formatTime(duration)}
-          </div>
+    <div className="flex h-full flex-col">
+      <div className="flex flex-col gap-2 border-b px-3 pb-2 pt-3" style={{ borderColor: 'var(--hairline)' }}>
+        {/* Where this span is, and stepping to its neighbours. */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>
+            {layer.label} · span {position} of {siblings.length}
+          </span>
+          <span className="flex gap-1">
+            <button
+              aria-label="Previous span"
+              disabled={!prevId}
+              onClick={() => prevId && selectSpan(prevId)}
+              className="h-6 w-6 rounded border border-border text-foreground hover:bg-accent disabled:opacity-40"
+            >
+              ‹
+            </button>
+            <button
+              aria-label="Next span"
+              disabled={!nextId}
+              onClick={() => nextId && selectSpan(nextId)}
+              className="h-6 w-6 rounded border border-border text-foreground hover:bg-accent disabled:opacity-40"
+            >
+              ›
+            </button>
+          </span>
         </div>
 
-        {/* Label */}
+        {/* Label, as the panel's title */}
         <Field label="Label" symbols>
           <input
             data-inspector-label
-            className={inputClass}
+            className={`${inputClass} !text-lg font-semibold`}
             value={span.label ?? ''}
             placeholder="Unlabeled"
             onChange={(e) => setSpanLabels([span.id], e.target.value === '' ? null : e.target.value)}
           />
-        </Field>
-
-        {/* Short label — shown in place of the full label when the diagram is
-            too zoomed out to fit it; never abbreviated further by the app. */}
-        <Field label="Short label" tooltip="Shown when the full label doesn't fit." symbols>
-          <input
-            className={inputClass}
-            value={span.shortLabel ?? ''}
-            placeholder="e.g. V1"
-            onChange={(e) => update({ shortLabel: e.target.value || null })}
-          />
-        </Field>
-
-        {/* Key area — leads the panel on a key-area (bar) layer, since that's
-            the whole point of the layer; tucked into Advanced otherwise. */}
-        {isBar && (
-          <Field label="Key area" tooltip={KEY_AREA_TIP}>
-            <input
-              className={inputClass}
-              value={span.keyArea ?? ''}
-              placeholder={KEY_AREA_PLACEHOLDER}
-              onChange={(e) => update({ keyArea: toAccidentals(e.target.value) || null })}
-            />
-          </Field>
-        )}
-
-        {/* Slug (read-only, click to copy). Once saved it no longer follows
-            the label (lib/slug.ts), so a rename offers an explicit regenerate. */}
-        <Field
-          label="Slug"
-          tooltip="The name commentary links ([[its-slug]]) and embeds use for this span. It stays the same after the file is saved, so renaming the span doesn't break links to it."
-        >
-          <button
-            className={`${inputClass} flex items-center justify-between text-left`}
-            title="Click to copy"
-            onClick={() => span.slug && copy(span.slug)}
-            disabled={!span.slug}
-          >
-            <span className={span.slug ? 'text-foreground' : 'text-muted-foreground'}>
-              {span.slug ?? '—'}
-            </span>
-            {span.slug && <span className="text-[11px] text-muted-foreground">copy</span>}
-          </button>
-          {slugStale && (
-            <button
-              className="mt-1 text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-              onClick={() => regenerateSlug(span.id)}
-            >
-              Update slug to match the label
-            </button>
-          )}
         </Field>
 
         {/* Type — the label follows it while the label is empty or still the
@@ -476,185 +481,253 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           />
         </Field>
 
-        {/* Annotation */}
-        <Field label="Annotation" tooltip="Shown inside the shape on the diagram." symbols>
-          <textarea
-            className={`${inputClass} resize-y`}
-            rows={2}
-            value={span.annotation ?? ''}
-            onChange={(e) => update({ annotation: e.target.value || null })}
-          />
-        </Field>
+        {/* Time range (editable), duration and bars */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <TimeInput value={span.startTime} onCommit={commitStart} title="Start time" />
+          <span className="text-muted-foreground">→</span>
+          <TimeInput value={span.endTime} onCommit={commitEnd} title="End time" />
+          <span className="text-xs text-muted-foreground">
+            {formatTime(duration)}
+            {firstBar !== null && lastBar !== null && ` · bar${firstBar === lastBar ? ` ${firstBar}` : `s ${firstBar}–${lastBar}`}`}
+          </span>
+        </div>
 
-        {/* Confidence */}
-        <Field label="Confidence">
-          <Segmented
-            options={CONFIDENCE_OPTS}
-            value={span.confidence ?? 'definite'}
-            onChange={(v) => update({ confidence: v })}
-          />
-        </Field>
-
-        {/* Ends — boundary type and cap per side. On a key-area bar the caps
-            mean nothing, so they join the shape fields behind the disclosure. */}
-        <SpanEnds span={span} update={update} showCaps={!isBar || shapeFieldsExpanded} />
-
-        {/* Shape — visual caps + stroke (the analyst's drawing choice, decoupled
-            from the boundary-type data above). Meaningless on a flat key-area
-            bar, so tucked under "more fields" there — never removed, just
-            de-emphasized (docs/decisions.md "Key-Area Bar Layers"). */}
-        {isBar ? (
-          <div className="mb-3">
+        <div className="mt-1 flex gap-4" role="tablist" aria-label="Span fields">
+          {INSPECTOR_TABS.map(([id, name]) => (
             <button
-              onClick={() => setShapeFieldsExpanded((v) => !v)}
-              className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
+              key={id}
+              role="tab"
+              aria-selected={tab === id}
+              onClick={() => setTab(id)}
+              className={`-mb-2 border-b-2 pb-1.5 text-[13px] ${
+                tab === id ? 'border-foreground font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
             >
-              {shapeFieldsExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-              More fields (shape)
+              {name}
             </button>
-            {shapeFieldsExpanded && (
-              <div className="mt-2">
-                <ShapeFields layer={layer} span={span} update={update} />
+          ))}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-3 py-3" role="tabpanel">
+        {tab === 'describe' && (
+          <>
+            {/* Key area leads on a key-area (bar) level, the point of the level. */}
+            {isBar && (
+              <Field label="Key area" tooltip={KEY_AREA_TIP}>
+                <input
+                  className={inputClass}
+                  value={span.keyArea ?? ''}
+                  placeholder={KEY_AREA_PLACEHOLDER}
+                  onChange={(e) => update({ keyArea: toAccidentals(e.target.value) || null })}
+                />
+              </Field>
+            )}
+
+            <Field label="Annotation" tooltip="Shown inside the shape on the diagram." symbols>
+              <textarea
+                className={`${inputClass} resize-y`}
+                rows={2}
+                value={span.annotation ?? ''}
+                onChange={(e) => update({ annotation: e.target.value || null })}
+              />
+            </Field>
+
+            {/* Written analysis: prose about this span, shown above the diagram
+                while it plays. Stored in the document's commentary layer, not on
+                the span, so it can outlive the span (see widgets/written-analysis). */}
+            <Field
+              label="Commentary"
+              symbols
+              tooltip="Shows above the diagram while this span plays. Link to a span or point marker with [[its-slug]]; **bold** and *italic* work."
+            >
+              <textarea
+                className={`${inputClass} resize-y`}
+                rows={6}
+                value={commentary}
+                placeholder="Write about this passage."
+                onChange={(e) => setSpanCommentary(span.id, e.target.value)}
+              />
+            </Field>
+
+            <Field label="Lyrics">
+              <textarea
+                className={`${inputClass} resize-y`}
+                rows={2}
+                value={span.lyrics ?? ''}
+                onChange={(e) => update({ lyrics: e.target.value || null })}
+              />
+            </Field>
+          </>
+        )}
+
+        {tab === 'shape' && (
+          <>
+            {/* Each end its own shape (a flat key-area bar has none). */}
+            {!isBar && (
+              <div className="mb-3 flex flex-col gap-2">
+                <CapRow side="start" value={span.startCap ?? capFromBoundaryType(span.startBoundaryType)} onChange={(c) => update({ startCap: c })} />
+                <CapRow side="end" value={span.endCap ?? capFromBoundaryType(span.endBoundaryType)} onChange={(c) => update({ endCap: c })} />
+                <button
+                  className="self-start text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                  onClick={() => update({ endCap: span.startCap ?? capFromBoundaryType(span.startBoundaryType) })}
+                >
+                  Same at both ends
+                </button>
               </div>
             )}
-          </div>
-        ) : (
-          <ShapeFields layer={layer} span={span} update={update} />
+            {!isBar && <OverlapFields layer={layer} span={span} />}
+            {!isBar && (
+              <Field label="Line">
+                <Segmented options={LINESTYLE_OPTS} value={span.lineStyle ?? 'solid'} onChange={(v) => update({ lineStyle: v })} />
+              </Field>
+            )}
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Field label="Fill">
+                  <ColorPicker value={span.fillColor} fallback={layer.fillColorDefault} onChange={(c) => update({ fillColor: c })} />
+                </Field>
+              </div>
+              <div className="flex-1">
+                <Field label="Stroke">
+                  <ColorPicker value={span.strokeColor} fallback={layer.strokeColorDefault} onChange={(c) => update({ strokeColor: c })} />
+                </Field>
+              </div>
+            </div>
+            {usedFills.length > 0 && (
+              <div className="mb-3 flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">In this level</span>
+                {usedFills.map((c) => (
+                  <button
+                    key={c}
+                    aria-label={`Fill ${c}`}
+                    title={c}
+                    onClick={() => update({ fillColor: c })}
+                    className="h-5 w-5 rounded border border-border"
+                    style={{ background: c }}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
 
-        {/* Notes */}
-        <Field label="Notes" tooltip="For you; not shown on the diagram." symbols>
-          <textarea
-            className={`${inputClass} resize-y`}
-            rows={2}
-            value={span.notes ?? ''}
-            onChange={(e) => update({ notes: e.target.value || null })}
-          />
-        </Field>
+        {tab === 'more' && (
+          <>
+            {/* Short label — shown in place of the full label when the diagram is
+                too zoomed out to fit it; never abbreviated further by the app. */}
+            <Field label="Short label" tooltip="Shown when the full label doesn't fit." symbols>
+              <input
+                className={inputClass}
+                value={span.shortLabel ?? ''}
+                placeholder="e.g. V1"
+                onChange={(e) => update({ shortLabel: e.target.value || null })}
+              />
+            </Field>
 
-        {/* Written analysis: prose about this span, shown above the diagram
-            while it plays. Stored in the document's commentary layer, not on
-            the span, so it can outlive the span (see widgets/written-analysis). */}
-        <Field
-          label="Commentary"
-          symbols
-          tooltip="Shows above the diagram while this span plays. Link to a span or point marker with [[its-slug]]; **bold** and *italic* work."
+            {/* Slug (read-only, click to copy). Once saved it no longer follows
+                the label (lib/slug.ts), so a rename offers an explicit regenerate. */}
+            <Field
+              label="Slug"
+              tooltip="The name commentary links ([[its-slug]]) and embeds use for this span. It stays the same after the file is saved, so renaming the span doesn't break links to it."
+            >
+              <button
+                className={`${inputClass} flex items-center justify-between text-left`}
+                title="Click to copy"
+                onClick={() => span.slug && copy(span.slug)}
+                disabled={!span.slug}
+              >
+                <span className={span.slug ? 'text-foreground' : 'text-muted-foreground'}>{span.slug ?? '—'}</span>
+                {span.slug && <span className="text-[11px] text-muted-foreground">copy</span>}
+              </button>
+              {slugStale && (
+                <button
+                  className="mt-1 text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                  onClick={() => regenerateSlug(span.id)}
+                >
+                  Update slug to match the label
+                </button>
+              )}
+            </Field>
+
+            <Field label="Confidence">
+              <Segmented options={CONFIDENCE_OPTS} value={span.confidence ?? 'definite'} onChange={(v) => update({ confidence: v })} />
+            </Field>
+
+            {/* Boundary types: the analytical claim about each end (choosing one
+                also resets that end's shape to match). */}
+            <SpanEnds span={span} update={update} showCaps={false} />
+
+            {!isBar && (
+              <Field label="Key area" tooltip={KEY_AREA_TIP}>
+                <input
+                  className={inputClass}
+                  value={span.keyArea ?? ''}
+                  placeholder={KEY_AREA_PLACEHOLDER}
+                  onChange={(e) => update({ keyArea: toAccidentals(e.target.value) || null })}
+                />
+              </Field>
+            )}
+
+            <Field label="Notes" tooltip="For you; not shown on the diagram." symbols>
+              <textarea
+                className={`${inputClass} resize-y`}
+                rows={2}
+                value={span.notes ?? ''}
+                onChange={(e) => update({ notes: e.target.value || null })}
+              />
+            </Field>
+
+            <Field label="Parent">
+              <div className={`${inputClass} text-muted-foreground`}>{span.parentId ?? 'none'}</div>
+            </Field>
+
+            <Field label="ID">
+              <button
+                className={`${inputClass} flex items-center justify-between text-left`}
+                title="Click to copy"
+                onClick={() => copy(span.id)}
+              >
+                <span className="truncate text-muted-foreground">{span.id}</span>
+                <span className="ml-1 shrink-0 text-[11px] text-muted-foreground">copy</span>
+              </button>
+            </Field>
+          </>
+        )}
+      </div>
+
+      {/* Actions, always in reach */}
+      <div className="flex gap-1.5 border-t px-3 py-2" style={{ borderColor: 'var(--hairline)' }}>
+        <button
+          onClick={handleSplit}
+          disabled={!canSplit}
+          title={canSplit ? 'Split at playhead' : 'Move the playhead inside this span to split'}
+          className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
         >
-          <textarea
-            className={`${inputClass} resize-y`}
-            rows={5}
-            value={commentary}
-            placeholder="Write about this passage."
-            onChange={(e) => setSpanCommentary(span.id, e.target.value)}
-          />
-        </Field>
-
-        {/* Lyrics */}
-        <Field label="Lyrics">
-          <textarea
-            className={`${inputClass} resize-y`}
-            rows={2}
-            value={span.lyrics ?? ''}
-            onChange={(e) => update({ lyrics: e.target.value || null })}
-          />
-        </Field>
-
-        {/* Advanced */}
-        <div className="mt-4 mb-2 border-t pt-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground" style={{ borderColor: 'var(--hairline)' }}>
-          Advanced
-        </div>
-
-        {/* Colors */}
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <Field label="Fill">
-              <ColorPicker
-                value={span.fillColor}
-                fallback={layer.fillColorDefault}
-                onChange={(c) => update({ fillColor: c })}
-              />
-            </Field>
-          </div>
-          <div className="flex-1">
-            <Field label="Stroke">
-              <ColorPicker
-                value={span.strokeColor}
-                fallback={layer.strokeColorDefault}
-                onChange={(c) => update({ strokeColor: c })}
-              />
-            </Field>
-          </div>
-        </div>
-
-        {/* Key area — secondary here since this layer isn't shape-dedicated to
-            it; leads the panel instead on a key-area (bar) layer, above. */}
-        {!isBar && (
-          <Field label="Key area" tooltip={KEY_AREA_TIP}>
-            <input
-              className={inputClass}
-              value={span.keyArea ?? ''}
-              placeholder={KEY_AREA_PLACEHOLDER}
-              onChange={(e) => update({ keyArea: toAccidentals(e.target.value) || null })}
-            />
-          </Field>
-        )}
-
-        {/* Parent (read-only in v1) */}
-        <Field label="Parent">
-          <div className={`${inputClass} text-muted-foreground`}>
-            {span.parentId ?? 'none'}
-          </div>
-        </Field>
-
-        {/* ID (read-only, copy) */}
-        <Field label="ID">
-          <button
-            className={`${inputClass} flex items-center justify-between text-left`}
-            title="Click to copy"
-            onClick={() => copy(span.id)}
-          >
-            <span className="truncate text-muted-foreground">{span.id}</span>
-            <span className="ml-1 shrink-0 text-[11px] text-muted-foreground">copy</span>
-          </button>
-        </Field>
-
-        {/* Merge with neighbor (Merge UX §3.4) */}
-        <div className="mt-4 flex gap-2 border-t pt-3" style={{ borderColor: 'var(--hairline)' }}>
-          <button
-            onClick={() => prevId && performMerge([prevId, span.id])}
-            disabled={!prevId}
-            title={prevId ? 'Merge with previous span' : 'No previous span in this level'}
-            className="flex-1 rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
-          >
-            Merge ←
-          </button>
-          <button
-            onClick={() => nextId && performMerge([span.id, nextId])}
-            disabled={!nextId}
-            title={nextId ? 'Merge with next span' : 'No next span in this level'}
-            className="flex-1 rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
-          >
-            → Merge
-          </button>
-        </div>
-
-        {/* Actions */}
-        <div className="mt-2 flex gap-2">
-          <button
-            onClick={handleSplit}
-            disabled={!canSplit}
-            title={canSplit ? 'Split at playhead' : 'Move the playhead inside this span to split'}
-            className="flex-1 rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
-          >
-            Split
-          </button>
-          <button
-            onClick={handleDelete}
-            className="flex-1 rounded px-2 py-1 text-xs font-medium text-destructive hover:bg-destructive/10"
-          >
-            Delete
-          </button>
-        </div>
+          Split
+        </button>
+        <button
+          onClick={() => prevId && performMerge([prevId, span.id])}
+          disabled={!prevId}
+          title={prevId ? 'Merge with previous span' : 'No previous span in this level'}
+          className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
+        >
+          Merge ←
+        </button>
+        <button
+          onClick={() => nextId && performMerge([span.id, nextId])}
+          disabled={!nextId}
+          title={nextId ? 'Merge with next span' : 'No next span in this level'}
+          className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
+        >
+          → Merge
+        </button>
+        <button
+          onClick={handleDelete}
+          className="ml-auto rounded px-2 py-1 text-xs font-medium text-destructive hover:bg-destructive/10"
+        >
+          Delete
+        </button>
       </div>
     </div>
   )

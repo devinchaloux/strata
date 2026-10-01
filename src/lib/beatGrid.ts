@@ -158,3 +158,14 @@ export function extendBack(start: number, barLen: number, floor: number): number
   const bars = Math.floor((start - floor) / barLen + 0.1)
   return Math.max(0, start - bars * barLen)
 }
+
+/**
+ * The bar a time falls in, counting as the ruler does (firstBarNumbers), or
+ * null in a free stretch with no grid.
+ */
+export function barAt(segs: GridSegment[], t: number, duration: number): number | null {
+  const hit = segmentAt(segs, t, duration)
+  if (!hit) return null
+  const first = firstBarNumbers(segs, duration)[hit.i]
+  return first + Math.floor((t - hit.seg.start) / barLength(hit.seg) + 1e-6)
+}
