@@ -186,6 +186,7 @@ export function SourceLinkForm({
       {mode === 'youtube' ? (
         <div>
           <input
+            aria-label="YouTube URL or video ID"
             className={inputClass}
             placeholder="Paste a YouTube URL or video ID…"
             value={urlText}

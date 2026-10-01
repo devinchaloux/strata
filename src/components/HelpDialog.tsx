@@ -1,5 +1,5 @@
 /**
- * HelpDialog — how Strata works in six steps, and every keyboard shortcut.
+ * HelpDialog — how Strata works in seven steps, and every keyboard shortcut.
  *
  * Opened from the toolbar's ? button, the empty state, or the ? key. The
  * shortcut list is written out by hand: when a shortcut changes in App or
@@ -18,7 +18,8 @@ const MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator
 const STEPS: [string, string][] = [
   ['Start', 'New analysis, then link a YouTube video or a local audio file. The video sits below the diagram; the Video button scrolls to it.'],
   ['Mark', 'Play (Space), and press B at each boundary you hear. M places a point marker, such as a cadence.'],
-  ['Describe', 'Click a span to label it and fill in its details in the Inspector. Drag a boundary to adjust it.'],
+  ['Describe', 'Click a span to choose its Type (search, or type a letter such as B′) and fill in its details in the Inspector. Drag a boundary to adjust it.'],
+  ['Grid', 'Optional: tap T along with the beat, or set a tempo in the Grid menu, to number bars and snap to beats.'],
   ['Layer', 'Add a layer (+ in the layer panel) for another level of form, or another framework.'],
   ['Write', 'A selected span’s Commentary box holds prose that appears while that passage plays.'],
   ['Keep', 'Save a .strata file. Export makes a figure (SVG or PNG) or a commentary page (HTML).'],
@@ -40,7 +41,7 @@ const KEYS: [string, [string, string][]][] = [
   [
     'Selecting',
     [
-      ['Click', 'Select a span'],
+      ['Click', 'Select a span; paused, also move the playhead to it'],
       ['Double-click', 'Play from a span or marker'],
       ['Click the ruler', 'Move the playhead there'],
       [`${MOD}-click`, 'Add or remove a span'],

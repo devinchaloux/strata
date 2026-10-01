@@ -248,7 +248,12 @@ export function TypePicker({
       }}
     >
       <PopoverTrigger asChild>
-        <button type="button" className={`${inputClass} flex items-center justify-between text-left`} title={current?.definition}>
+        <button
+          type="button"
+          aria-label={`Type: ${triggerText}`}
+          className={`${inputClass} flex items-center justify-between text-left`}
+          title={current?.definition}
+        >
           <span className={current || value ? 'truncate text-foreground' : 'text-muted-foreground'}>{triggerText}</span>
           <ChevronDown size={12} className="shrink-0 text-muted-foreground" aria-hidden />
         </button>

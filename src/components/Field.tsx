@@ -42,10 +42,21 @@ export function Field({
 }) {
   const box = React.useRef<HTMLDivElement>(null)
   const [paletteOpen, setPaletteOpen] = React.useState(false)
+  const labelId = React.useId()
+  // Name the control by its visible label, so a screen reader announces
+  // "Label, edit text" rather than an unnamed field. A control that already
+  // carries its own name keeps it.
+  const control =
+    React.isValidElement<Record<string, unknown>>(children) &&
+    typeof children.type === 'string' &&
+    !children.props['aria-label'] &&
+    !children.props['aria-labelledby']
+      ? React.cloneElement(children, { 'aria-labelledby': labelId })
+      : children
   return (
     <div className="group mb-3" ref={box}>
       <div className="mb-1 flex items-center gap-1">
-        <label className="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <label id={labelId} className="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
           {label}
         </label>
         {tooltip && (
@@ -88,7 +99,7 @@ export function Field({
           </button>
         )}
       </div>
-      {children}
+      {control}
       {symbols && paletteOpen && (
         <div className="mt-1 flex flex-wrap gap-0.5" role="toolbar" aria-label="Symbols">
           {PALETTE_SYMBOLS.map((sym) => (

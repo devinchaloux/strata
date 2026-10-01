@@ -3349,3 +3349,18 @@ file self-contained. Refusing a clashing id keeps one id meaning one thing
 inside a file, which corpus queries rely on. The criteria for promoting a pack
 term to a built-in remain the maintainer's to write.
 
+---
+
+## Beta Launch Pass (2026-10-01)
+
+**Decision:** Before the beta: the README lists what works now (B for
+boundaries, the vocabulary and packs, the beat grid, the commentary stack,
+local audio) and gains a five-step getting started; the in-app guide gains the
+Type and Grid steps; every Inspector and dialog field is named for screen
+readers by its visible label (`Field` links them); the YouTube link field has
+a name of its own. Empty and error states were walked through: a first visit,
+an unreadable file, a malformed YouTube link and a corrupt audio file each say
+what went wrong in plain words.
+**Rationale:** Devin asked for a beta launch pass. Fields named only by
+placement were read by screen readers as unnamed edit boxes.
+
