@@ -3429,3 +3429,27 @@ or recommend from it. The guess is drawn from what the analyst has already
 picked, so it never presumes a framework the layer hasn't used, and search
 still reaches everything.
 
+---
+
+## Lyrics Stay in the File; Shared Views Leave Them Out by Default (2026-10-01)
+
+**Decision:** A `.strata` file keeps its lyrics; nothing strips them on save or
+download. When an analysis is shared publicly (a hosted reading view or link,
+once those exist), lyrics are off by default, with a short note on why and a
+switch to include them. Today's exports (figure, commentary page) contain no
+lyrics, so nothing changes yet.
+**Rationale:** Lyrics are someone else's copyrighted text, but an analysis
+quoting them is arguably transformative, and analysts will want them in their
+own files. Devin: "stripping them out when people will want them in the file is
+a bit hostile." The decision to publish them belongs at the moment of public
+sharing, so that is where the default and the warning sit.
+
+## Sound Layers Come From a Shared List (2026-10-01)
+
+**Decision:** The planned instrumentation/texture widget names each row from a
+controlled list (drums, bass, lead, vocal …) with custom additions, like span
+types, so rows compare across files. The list itself is a content decision
+still to be proposed and reviewed; the widget's name is still open.
+**Rationale:** Devin agreed that sound layers should be corpus-comparable in
+the same way as span types.
+
