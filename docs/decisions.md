@@ -3573,3 +3573,18 @@ hidden now. Make the tabs jump out"); the elided picture looked the same as
 rounded; and "it's necessary to define what 'confidence' means ... I don't
 suspect many people will use it."
 
+---
+
+## Menus Keep Clear of the Player (2026-10-02)
+
+**Decision:** Every popover (Type list, Grid, layer settings, colour pickers
+and the rest) measures itself when it opens and, if it would cross the
+YouTube player, shifts by the smallest move left, right, up or down that
+clears it and still fits the window (`nudgeClear` in lib/playerClearance.ts,
+applied with the CSS `translate` property so Radix's own placement and
+animation are untouched). Dialogs already keep clear by the same rule.
+**Rationale:** The player must sit above everything (YouTube allows nothing in
+front of it), so a menu opening over it was hidden behind it: Devin hit this
+with the Grid menu. Moving the menu, not the player, keeps the rule without
+hiding anything.
+

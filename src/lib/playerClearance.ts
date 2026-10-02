@@ -71,3 +71,34 @@ export function setPlayerElement(el: HTMLElement | null) {
 export function getPlayerElement(): HTMLElement | null {
   return playerElement
 }
+
+/**
+ * How far to move a popover (menu, picker) so it is clear of the player:
+ * the smallest shift left, right, up or down that clears it and still fits
+ * the window. {0, 0} when it doesn't overlap; when nothing fits, the shift
+ * that leaves the least overlap. docs/decisions.md, "Menus Keep Clear of
+ * the Player".
+ */
+export function nudgeClear(content: Rect, player: Rect, viewport: { w: number; h: number }): { dx: number; dy: number } {
+  const overlap = (r: Rect) =>
+    Math.max(0, Math.min(r.x + r.w, player.x + player.w + CLEARANCE) - Math.max(r.x, player.x - CLEARANCE)) *
+    Math.max(0, Math.min(r.y + r.h, player.y + player.h + CLEARANCE) - Math.max(r.y, player.y - CLEARANCE))
+  if (overlap(content) === 0) return { dx: 0, dy: 0 }
+  const moves = [
+    { dx: player.x - CLEARANCE - (content.x + content.w), dy: 0 }, // to its left
+    { dx: player.x + player.w + CLEARANCE - content.x, dy: 0 }, // to its right
+    { dx: 0, dy: player.y - CLEARANCE - (content.y + content.h) }, // above it
+    { dx: 0, dy: player.y + player.h + CLEARANCE - content.y }, // below it
+  ]
+  const fits = (m: { dx: number; dy: number }) => {
+    const x = content.x + m.dx
+    const y = content.y + m.dy
+    return x >= 0 && y >= 0 && x + content.w <= viewport.w && y + content.h <= viewport.h
+  }
+  const size = (m: { dx: number; dy: number }) => Math.abs(m.dx) + Math.abs(m.dy)
+  const fitting = moves.filter(fits).sort((a, b) => size(a) - size(b))
+  if (fitting.length) return fitting[0]
+  // Nothing fits whole: keep the move that leaves least of it over the player.
+  const shifted = (m: { dx: number; dy: number }) => ({ ...content, x: content.x + m.dx, y: content.y + m.dy })
+  return [{ dx: 0, dy: 0 }, ...moves].sort((a, b) => overlap(shifted(a)) - overlap(shifted(b)))[0]
+}
