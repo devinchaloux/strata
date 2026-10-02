@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { hasLyrics, rawFileUrl, shareUrl, srcParam, withoutLyrics } from '@/lib/shareLink'
+import { driveFileId, fileHost, hasLyrics, rawFileUrl, shareUrl, srcParam, withoutLyrics } from '@/lib/shareLink'
 import { formSpans } from '@/lib/layers'
 import { makeDoc, makeLayer, makeSpan } from './fixtures'
 
@@ -18,6 +18,31 @@ describe('share links', () => {
   it('turn a GitHub page link into the raw file', () => {
     expect(rawFileUrl('https://github.com/me/notes/blob/main/alive.strata')).toBe('https://raw.githubusercontent.com/me/notes/main/alive.strata')
     expect(rawFileUrl('https://example.org/a.strata')).toBe('https://example.org/a.strata')
+  })
+
+  it('read a Dropbox share link from its direct-download host', () => {
+    expect(rawFileUrl('https://www.dropbox.com/scl/fi/abc/alive.strata?rlkey=k1&dl=0')).toBe(
+      'https://dl.dropboxusercontent.com/scl/fi/abc/alive.strata?rlkey=k1',
+    )
+    expect(rawFileUrl('https://www.dropbox.com/s/xyz/alive.strata?dl=0')).toBe('https://dl.dropboxusercontent.com/s/xyz/alive.strata')
+  })
+
+  it('read a OneDrive share link through the sharing API', () => {
+    const out = rawFileUrl('https://1drv.ms/u/s!AbCd?e=x')!
+    expect(out.startsWith('https://api.onedrive.com/v1.0/shares/u!')).toBe(true)
+    expect(out.endsWith('/root/content')).toBe(true)
+    // base64url: no '+', '/' or '=' inside the encoded link
+    const token = out.slice(out.indexOf('u!') + 2, out.indexOf('/root'))
+    expect(token).toMatch(/^[A-Za-z0-9_-]+$/)
+  })
+
+  it('read a Google Drive link only with an API key', () => {
+    const link = 'https://drive.google.com/file/d/1AbC-d_E/view?usp=sharing'
+    expect(fileHost(link)).toBe('gdrive')
+    expect(driveFileId(link)).toBe('1AbC-d_E')
+    expect(driveFileId('https://drive.google.com/open?id=XYZ')).toBe('XYZ')
+    expect(rawFileUrl(link)).toBeNull()
+    expect(rawFileUrl(link, 'KEY')).toBe('https://www.googleapis.com/drive/v3/files/1AbC-d_E?alt=media&key=KEY')
   })
 
   it('can leave lyrics out of a copy', () => {

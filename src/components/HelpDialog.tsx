@@ -23,7 +23,7 @@ const STEPS: [string, string][] = [
   ['Layers', 'Add a layer (+ above the layer names) for another level of form, or another framework.'],
   ['Write', 'A selected span’s Commentary box holds prose that appears while that passage plays.'],
   ['Keep', 'Save a .strata file. Export makes a figure (SVG or PNG) or a commentary page (HTML).'],
-  ['Read', 'Reading view lays the analysis out to read or teach from: the video, the commentary in reading size, and the diagram, with editing off. Share… there makes a link to a copy you’ve put online. Esc goes back.'],
+  ['Read', 'Reading view lays the analysis out to read or teach from: the video, the commentary in reading size, and the diagram, with editing off. Share… (in the toolbar or the reading view) makes a link to a copy you’ve put online: Dropbox, OneDrive, GitHub or your own site. Esc goes back.'],
 ]
 
 const KEYS: [string, [string, string][]][] = [

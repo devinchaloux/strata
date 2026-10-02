@@ -2,8 +2,9 @@
  * ShareDialog — make a link that opens this analysis in the reading view.
  *
  * Strata stores nothing on a server, so the analyst puts the .strata file
- * online first (their site, a GitHub repository or a Gist) and pastes its
- * address here; the link carries that address (lib/shareLink.ts). Lyrics are
+ * online first (their site, GitHub, Dropbox, OneDrive, or Google Drive where
+ * set up) and pastes its address or share link here; the link carries that
+ * address (lib/shareLink.ts). Opened from the toolbar or the reading view. Lyrics are
  * someone else's text: readers see them only if they turn them on, and the
  * analyst can download a copy without them to share instead.
  */
@@ -13,8 +14,17 @@ import { useUIStore } from '@/store/uiStore'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { inputClass } from '@/components/Field'
 import { downloadBlob, fileBaseName } from '@/lib/fileIO'
-import { hasLyrics, shareUrl, withoutLyrics } from '@/lib/shareLink'
+import { fileHost, hasLyrics, hostSupported, shareUrl, withoutLyrics, type FileHost } from '@/lib/shareLink'
 import { version as APP_VERSION } from '../../package.json'
+
+// What the dialog says about a recognised share link, under the address.
+const HOST_NOTE: Record<FileHost, string> = {
+  github: 'GitHub: the page link works; Strata reads the raw file.',
+  dropbox: 'Dropbox: works with a share link.',
+  onedrive: 'OneDrive: share it with “Anyone with the link”. Work and school accounts may not allow it.',
+  gdrive: 'Google Drive: share it with “Anyone with the link”.',
+  web: '',
+}
 
 export function ShareDialog() {
   const open = useUIStore((s) => s.shareOpen)
@@ -26,9 +36,14 @@ export function ShareDialog() {
   if (!doc) return null
 
   const fileUrl = address.trim() || sharedFrom || ''
-  const valid = /^https?:\/\/\S+$/.test(fileUrl)
+  const host = fileHost(fileUrl)
+  // A link this build can't open (Google Drive without its key) isn't offered.
+  const valid = /^https?:\/\/\S+$/.test(fileUrl) && hostSupported(host)
   const link = valid ? shareUrl(fileUrl, window.location.href) : ''
   const lyrics = hasLyrics(doc)
+  const note = hostSupported(host)
+    ? HOST_NOTE[host]
+    : 'Google Drive links can’t be opened by this copy of Strata yet. Dropbox, OneDrive and GitHub work.'
 
   function copy() {
     navigator.clipboard?.writeText(link)
@@ -53,8 +68,8 @@ export function ShareDialog() {
         <DialogHeader>
           <DialogTitle>Share as a link</DialogTitle>
           <DialogDescription>
-            Put the saved .strata file online where browsers can read it, such as your own site, a GitHub repository or a
-            Gist, then paste its address. The link opens it in the reading view.
+            Save the .strata file somewhere online that you can share: Dropbox, OneDrive, a GitHub repository or Gist, or
+            your own site. Paste its share link here. The link below opens it in Strata’s reading view.
           </DialogDescription>
         </DialogHeader>
 
@@ -66,6 +81,7 @@ export function ShareDialog() {
             placeholder={sharedFrom ?? 'https://…/alive.strata'}
             onChange={(e) => setAddress(e.target.value)}
           />
+          {note && <span className={hostSupported(host) ? '' : 'text-destructive'}>{note}</span>}
         </label>
 
         <div className="flex flex-col gap-1 text-xs text-muted-foreground">

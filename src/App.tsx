@@ -652,6 +652,15 @@ export default function App() {
         >
           Reading view
         </button>
+        <button
+          onClick={() => useUIStore.getState().setShareOpen(true)}
+          disabled={!doc}
+          title="Make a link that opens this analysis in the reading view"
+          className="rounded-md px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-40
+            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+        >
+          Share…
+        </button>
         {/* A link, not a button: it opens GitHub's issue form in a new tab,
             prefilled with the version and browser (lib/issues.ts). */}
         <a

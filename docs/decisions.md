@@ -3651,3 +3651,25 @@ label of Rotation 1, which ran past the range: labels were laid out on the
 whole track and then clipped. Cutting first means everything is laid out for
 the figure actually drawn. Layer choice moved into the dialog because what goes
 in a figure is a separate decision from what is useful on screen while editing.
+
+## Share From the Toolbar; Dropbox, OneDrive and Google Drive Links (2026-10-02)
+
+**Decision:** Share… sits in the editing toolbar as well as the reading view.
+The Share dialog takes the share link a file service gives, and Strata reads
+it as the file: a GitHub page link as its raw file, a Dropbox link from
+Dropbox's direct-download host (`dl.dropboxusercontent.com`, which lets other
+sites read files), and a OneDrive link through OneDrive's sharing API. The
+shared link keeps the address the analyst pasted; the conversion happens when
+the file is fetched, so a better route later improves old links too. Google
+Drive files can be read by another site only through Google's Drive API, which
+needs a browser API key, so Drive links work only in a build given one
+(`VITE_GOOGLE_API_KEY`); without it the dialog says so plainly when a Drive
+link is pasted, and suggests the services that work. The dialog notes what
+each service needs ("Anyone with the link").
+**Rationale:** Devin asked for Share outside the reading view and for Google
+Drive and OneDrive links, since that is where scholars keep files. Neither
+Drive's nor OneDrive's ordinary download address lets another site read the
+file, which is what a link-only design with no Strata server needs. Dropbox
+and OneDrive have routes that allow it; Drive's needs a Google Cloud key,
+which is a setup decision rather than code. OneDrive work and school accounts
+can block anonymous reading, and the error says what to check.
