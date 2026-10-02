@@ -85,4 +85,7 @@ npm run build    # typecheck + production build
 
 ## License
 
-MIT. See [`LICENSE`](LICENSE).
+The code is MIT. See [`LICENSE`](LICENSE).
+
+The example analyses in [`public/demos/`](public/demos/) are
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); see that folder's README.

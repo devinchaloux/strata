@@ -13,6 +13,7 @@ import { Download } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { exportFormDiagramSvg, exportLayers } from '@/widgets/form-diagram/exportSvg'
+import { isStaleBuildError, STALE_BUILD_MESSAGE } from '@/lib/staleBuild'
 import { downloadBlob, fileBaseName } from '@/lib/fileIO'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -101,7 +102,8 @@ export function ExportDialog() {
       .catch((e: unknown) => {
         if (cancelled) return
         setSvg('')
-        console.error('Export preview failed:', e)
+        if (isStaleBuildError(e)) showAppMessage(STALE_BUILD_MESSAGE.title, STALE_BUILD_MESSAGE.lines)
+        else console.error('Export preview failed:', e)
       })
     return () => {
       cancelled = true
