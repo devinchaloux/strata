@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { driveFileId, fileHost, hasLyrics, rawFileUrl, shareUrl, srcParam, withoutLyrics } from '@/lib/shareLink'
+import { fileHost, hasLyrics, rawFileUrl, shareUrl, srcParam, withoutLyrics } from '@/lib/shareLink'
 import { formSpans } from '@/lib/layers'
 import { makeDoc, makeLayer, makeSpan } from './fixtures'
 
@@ -36,13 +36,10 @@ describe('share links', () => {
     expect(token).toMatch(/^[A-Za-z0-9_-]+$/)
   })
 
-  it('read a Google Drive link only with an API key', () => {
+  it('recognise a Google Drive link and decline it', () => {
     const link = 'https://drive.google.com/file/d/1AbC-d_E/view?usp=sharing'
     expect(fileHost(link)).toBe('gdrive')
-    expect(driveFileId(link)).toBe('1AbC-d_E')
-    expect(driveFileId('https://drive.google.com/open?id=XYZ')).toBe('XYZ')
     expect(rawFileUrl(link)).toBeNull()
-    expect(rawFileUrl(link, 'KEY')).toBe('https://www.googleapis.com/drive/v3/files/1AbC-d_E?alt=media&key=KEY')
   })
 
   it('can leave lyrics out of a copy', () => {

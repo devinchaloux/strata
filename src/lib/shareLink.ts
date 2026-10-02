@@ -1,7 +1,7 @@
 /**
  * Sharing an analysis by link. The analyst puts the .strata file online
  * anywhere a browser may read it (their own site, a GitHub repository or
- * Gist, Dropbox, OneDrive, or Google Drive where set up), and a Strata link
+ * Gist, Dropbox or OneDrive), and a Strata link
  * carries its address: `?src=<file address>`. Opening
  * the link fetches the file and shows it in the reading view. No Strata server
  * stores anything. docs/decisions.md, "Sharing by Link".
@@ -51,12 +51,6 @@ export function fileHost(url: string): FileHost {
   return 'web'
 }
 
-/** A Google Drive file id from its share link (…/file/d/ID/view, or ?id=ID). */
-export function driveFileId(url: string): string | null {
-  const m = /\/file\/d\/([\w-]+)/.exec(url) ?? /[?&]id=([\w-]+)/.exec(url)
-  return m ? m[1] : null
-}
-
 /** base64url, as OneDrive's sharing API wants a share link encoded. */
 function base64Url(s: string): string {
   return btoa(String.fromCharCode(...new TextEncoder().encode(s)))
@@ -73,11 +67,11 @@ function base64Url(s: string): string {
  *     other sites read the file
  *   - OneDrive: a 1drv.ms or onedrive.live.com link → the OneDrive sharing
  *     API's download address for it
- *   - Google Drive: only through Google's Drive API, which needs an API key
- *     (`googleApiKey`); without one, null.
+ *   - Google Drive: none. Drive lets other sites read a file only through
+ *     Google's Drive API with an API key, which Strata doesn't have; null.
  * Any other address is used as it is.
  */
-export function rawFileUrl(url: string, googleApiKey?: string): string | null {
+export function rawFileUrl(url: string): string | null {
   const u = url.trim()
   switch (fileHost(u)) {
     case 'github': {
@@ -92,32 +86,26 @@ export function rawFileUrl(url: string, googleApiKey?: string): string | null {
     }
     case 'onedrive':
       return `https://api.onedrive.com/v1.0/shares/u!${base64Url(u)}/root/content`
-    case 'gdrive': {
-      const id = driveFileId(u)
-      if (!id || !googleApiKey) return null
-      return `https://www.googleapis.com/drive/v3/files/${id}?alt=media&key=${encodeURIComponent(googleApiKey)}`
-    }
+    case 'gdrive':
+      return null
     default:
       return u
   }
 }
 
-/** The Google API key Strata is built with, if any (for Drive links). */
-const GOOGLE_API_KEY: string | undefined = import.meta.env.VITE_GOOGLE_API_KEY || undefined
-
-/** Whether links to this host can be opened by this build of Strata. */
+/** Whether Strata can open links to this host. */
 export function hostSupported(host: FileHost): boolean {
-  return host !== 'gdrive' || !!GOOGLE_API_KEY
+  return host !== 'gdrive'
 }
 
 /** Fetch and read a shared file, with errors written for the reader. */
 export async function fetchSharedAnalysis(url: string): Promise<LoadResult> {
   const host = fileHost(url)
-  const address = rawFileUrl(url, GOOGLE_API_KEY)
+  const address = rawFileUrl(url)
   if (!address) {
     throw new Error(
       host === 'gdrive'
-        ? 'Google Drive links can’t be opened by this copy of Strata yet. Dropbox, OneDrive, GitHub and most websites work.'
+        ? 'Google Drive doesn’t let other sites read its files, so Strata can’t open Drive links. Dropbox, OneDrive, GitHub and most websites work.'
         : 'This doesn’t look like a link to a file.',
     )
   }

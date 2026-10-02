@@ -41,7 +41,8 @@ What works today:
   stacked with the spans around it, with `[[slug]]` links and optional lyrics.
 - **Sources.** A YouTube video or a local audio file.
 - **Reading view and links.** A reading layout for teaching, and a link that
-  opens a `.strata` file hosted anywhere (your site, GitHub) in it.
+  opens a `.strata` file shared from Dropbox, OneDrive, GitHub or your own site
+  in it.
 - **Export.** The diagram as SVG or PNG; the commentary as one HTML page.
 - **Files.** Everything saves to one `.strata` file (JSON), validated against
   [`schema/strata.schema.json`](schema/strata.schema.json).

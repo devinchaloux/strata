@@ -2,8 +2,7 @@
  * ShareDialog — make a link that opens this analysis in the reading view.
  *
  * Strata stores nothing on a server, so the analyst puts the .strata file
- * online first (their site, GitHub, Dropbox, OneDrive, or Google Drive where
- * set up) and pastes its address or share link here; the link carries that
+ * online first (their site, GitHub, Dropbox or OneDrive) and pastes its address or share link here; the link carries that
  * address (lib/shareLink.ts). Opened from the toolbar or the reading view. Lyrics are
  * someone else's text: readers see them only if they turn them on, and the
  * analyst can download a copy without them to share instead.
@@ -22,7 +21,7 @@ const HOST_NOTE: Record<FileHost, string> = {
   github: 'GitHub: the page link works; Strata reads the raw file.',
   dropbox: 'Dropbox: works with a share link.',
   onedrive: 'OneDrive: share it with “Anyone with the link”. Work and school accounts may not allow it.',
-  gdrive: 'Google Drive: share it with “Anyone with the link”.',
+  gdrive: '',
   web: '',
 }
 
@@ -37,13 +36,13 @@ export function ShareDialog() {
 
   const fileUrl = address.trim() || sharedFrom || ''
   const host = fileHost(fileUrl)
-  // A link this build can't open (Google Drive without its key) isn't offered.
+  // A link Strata can't open (Google Drive) isn't offered.
   const valid = /^https?:\/\/\S+$/.test(fileUrl) && hostSupported(host)
   const link = valid ? shareUrl(fileUrl, window.location.href) : ''
   const lyrics = hasLyrics(doc)
   const note = hostSupported(host)
     ? HOST_NOTE[host]
-    : 'Google Drive links can’t be opened by this copy of Strata yet. Dropbox, OneDrive and GitHub work.'
+    : 'Google Drive doesn’t let other sites read its files, so Strata can’t open Drive links. Dropbox, OneDrive and GitHub work.'
 
   function copy() {
     navigator.clipboard?.writeText(link)
