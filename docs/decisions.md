@@ -3557,3 +3557,19 @@ not appear on a span that already has a type; and quick entry for shapes and
 colours would help on a first pass. `Layer.library` is a working preference,
 not a constraint: any type can still be picked.
 
+---
+
+## Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)
+
+**Decision:** The Inspector's tabs are a segmented control (Describe, Shape &
+color, More) rather than underlined text, and the middle tab names colour as
+well as shape. The elided end's picture draws its neighbour's bracket too, so
+the overlap shows. Confidence moves to the foot of More, with a tooltip saying
+what it records (certainty about where the boundaries fall) and that it is not
+drawn; the schema reference, which claimed confidence was drawn dashed or
+faded, is corrected to match.
+**Rationale:** Devin couldn't find the shape and colour pickers ("It feels very
+hidden now. Make the tabs jump out"); the elided picture looked the same as
+rounded; and "it's necessary to define what 'confidence' means ... I don't
+suspect many people will use it."
+

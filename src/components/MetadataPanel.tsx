@@ -98,6 +98,10 @@ function findSpans(layers: Layer[], spanIds: string[]): SpanEntry[] {
   return out
 }
 
+// What Confidence records (schema/strata-schema-reference.md, §8).
+const CONFIDENCE_TIP =
+  'How sure you are of where this span’s boundaries fall: Definite (the default), Approx. (something changes here, but the exact point is fuzzy) or Spec. (a hypothesis you may revise). It records your certainty for later queries; it doesn’t change the drawing.'
+
 const CONFIDENCE_OPTS: { value: ConfidenceLevel; label: string }[] = [
   { value: 'definite', label: 'Definite' },
   { value: 'approximate', label: 'Approx.' },
@@ -278,26 +282,27 @@ function OverlapFields({ layer, span }: { layer: Layer; span: Span }) {
 // The Inspector's tabs (remembered across spans in uiStore.inspectorTab).
 const INSPECTOR_TABS: [InspectorTab, string][] = [
   ['describe', 'Describe'],
-  ['shape', 'Shape'],
+  ['shape', 'Shape & color'],
   ['more', 'More'],
 ]
 
 // One end of a bracket in the shape picker: a dashed line marks the boundary,
 // so an elided end visibly reaches past it.
-const CAP_ICONS: Record<'start' | 'end', { cap: CapStyle; name: string; bx: number; d: string }[]> = {
+// An elided end also draws its neighbour (faint), so the overlap shows.
+const CAP_ICONS: Record<'start' | 'end', { cap: CapStyle; name: string; bx: number; d: string; n?: string }[]> = {
   start: [
     { cap: 'rounded', name: 'Rounded', bx: 8, d: 'M 8 22 L 8 12 A 10 10 0 0 1 18 2 L 40 2' },
     { cap: 'square', name: 'Square', bx: 8, d: 'M 8 22 L 8 2 L 40 2' },
     { cap: 'angled', name: 'Angled', bx: 8, d: 'M 8 22 L 16 2 L 40 2' },
     { cap: 'open', name: 'Open', bx: 8, d: 'M 8 2 L 40 2' },
-    { cap: 'elision', name: 'Elided', bx: 14, d: 'M 4 22 L 4 12 A 10 10 0 0 1 14 2 L 40 2' },
+    { cap: 'elision', name: 'Elided', bx: 14, d: 'M 4 22 L 4 12 A 10 10 0 0 1 14 2 L 40 2', n: 'M 0 6 L 6 6 A 8 8 0 0 1 14 14 L 14 22' },
   ],
   end: [
     { cap: 'rounded', name: 'Rounded', bx: 32, d: 'M 0 2 L 22 2 A 10 10 0 0 1 32 12 L 32 22' },
     { cap: 'square', name: 'Square', bx: 32, d: 'M 0 2 L 32 2 L 32 22' },
     { cap: 'angled', name: 'Angled', bx: 32, d: 'M 0 2 L 24 2 L 32 22' },
     { cap: 'open', name: 'Open', bx: 32, d: 'M 0 2 L 32 2' },
-    { cap: 'elision', name: 'Elided', bx: 26, d: 'M 0 2 L 26 2 A 10 10 0 0 1 36 12 L 36 22' },
+    { cap: 'elision', name: 'Elided', bx: 26, d: 'M 0 2 L 26 2 A 10 10 0 0 1 36 12 L 36 22', n: 'M 26 22 L 26 14 A 8 8 0 0 1 34 6 L 40 6' },
   ],
 }
 
@@ -326,6 +331,7 @@ function CapRow({ side, value, onChange }: { side: 'start' | 'end'; value: CapSt
           >
             <svg width="32" height="20" viewBox="0 0 40 22" aria-hidden>
               <line x1={o.bx} y1={0} x2={o.bx} y2={22} stroke="var(--hairline)" strokeDasharray="2 2" />
+              {o.n && <path d={o.n} fill="none" stroke="var(--ink-muted)" strokeWidth={1.25} strokeLinejoin="round" />}
               <path d={o.d} fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinejoin="round" strokeLinecap="round" />
             </svg>
           </button>
@@ -492,15 +498,17 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           </span>
         </div>
 
-        <div className="mt-1 flex gap-4" role="tablist" aria-label="Span fields">
+        {/* The three tabs as one segmented control, so they read as the way
+            into the rest of the span's fields. */}
+        <div className="mt-1 flex gap-1 rounded-lg bg-muted p-1" role="tablist" aria-label="Span fields">
           {INSPECTOR_TABS.map(([id, name]) => (
             <button
               key={id}
               role="tab"
               aria-selected={tab === id}
               onClick={() => setTab(id)}
-              className={`-mb-2 border-b-2 pb-1.5 text-[13px] ${
-                tab === id ? 'border-foreground font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'
+              className={`flex-auto whitespace-nowrap rounded-md px-2 py-1.5 text-[13px] font-medium transition-colors ${
+                tab === id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:bg-card/60 hover:text-foreground'
               }`}
             >
               {name}
@@ -650,10 +658,6 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
               )}
             </Field>
 
-            <Field label="Confidence">
-              <Segmented options={CONFIDENCE_OPTS} value={span.confidence ?? 'definite'} onChange={(v) => update({ confidence: v })} />
-            </Field>
-
             {/* Boundary types: the analytical claim about each end (choosing one
                 also resets that end's shape to match). */}
             <SpanEnds span={span} update={update} showCaps={false} />
@@ -676,6 +680,11 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
                 value={span.notes ?? ''}
                 onChange={(e) => update({ notes: e.target.value || null })}
               />
+            </Field>
+
+            {/* Rarely needed, so near the bottom. */}
+            <Field label="Confidence" tooltip={CONFIDENCE_TIP}>
+              <Segmented options={CONFIDENCE_OPTS} value={span.confidence ?? 'definite'} onChange={(v) => update({ confidence: v })} />
             </Field>
 
             <Field label="Parent">

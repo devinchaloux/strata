@@ -344,11 +344,13 @@ Point markers serve two distinct purposes that share a single data structure:
 
 Three confidence levels are used on both spans and point markers. **All three are optional — omitting the field implies `definite`.**
 
-| Value | What it means | Rendered as |
-|---|---|---|
-| `definite` | The analyst is confident in this boundary or event identification. Default — no need to set this explicitly. | Solid border / solid line |
-| `approximate` | The boundary is in roughly the right place but interpretively fuzzy — the analyst knows something is here but the exact location is uncertain. | Dashed border / dashed line |
-| `speculative` | The analyst placed this as a hypothesis that may be revised. | Dashed + reduced opacity |
+| Value | What it means |
+|---|---|
+| `definite` | The analyst is confident in this boundary or event identification. Default — no need to set this explicitly. |
+| `approximate` | The boundary is in roughly the right place but interpretively fuzzy — the analyst knows something is here but the exact location is uncertain. |
+| `speculative` | The analyst placed this as a hypothesis that may be revised. |
+
+The app does not draw confidence: it is recorded for queries. An analyst who wants it visible sets the span's line to dashed (`lineStyle`), a separate, purely visual choice.
 
 Confidence is an analytical claim, not a quality flag. A speculative span is not a mistake — it is an honest record of interpretive uncertainty.
 
