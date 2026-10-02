@@ -320,6 +320,13 @@ export interface LayerBase {
    */
   spanShape?: 'bracket' | 'bar'
   /**
+   * The vocabulary library this layer draws its types from (lib/vocabulary.ts
+   * library id, or 'letters'). The Type picker and quick entry lead with it;
+   * it never restricts which types the layer may use. Absent = guessed from
+   * the types already in the layer.
+   */
+  library?: string | null
+  /**
    * Text size for this layer's labels and annotations: sm (9.5 / 8.5 px),
    * md (11 / 9, the default when absent) or lg (13 / 11). Uniform within a
    * layer; there is no per-span font size.

@@ -52,3 +52,21 @@ describe('applySpanType', () => {
     expect(store.getState().document!.vocabulary.spanTypes.map((t) => t.id)).not.toContain('c-section')
   })
 })
+
+describe('a layer’s chosen library', () => {
+  it('leads quick types after the layer’s own, in library order', () => {
+    const d = doc()
+    const s = d.layers[0]
+    d.layers[0] = { ...s, library: 'edm' }
+    const q = quickTypes(d, 'S', 8).map((o) => o.term.id)
+    expect(q.slice(0, 3)).toEqual(['intro', 'verse', 'chorus'])
+    expect(q).toContain('drop')
+    expect(q).toContain('buildup')
+  })
+
+  it('makes a layer lettered when the library is letters', () => {
+    const d = makeDoc([makeLayer('E', [makeSpan('e1', 0, 10)])])
+    d.layers[0] = { ...d.layers[0], library: 'letters' }
+    expect(quickTypes(d, 'E').map((o) => o.term.label)).toEqual(['A'])
+  })
+})

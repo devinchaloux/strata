@@ -26,6 +26,7 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { ColorPicker } from '@/components/ui/color-picker'
 import { cn } from '@/lib/utils'
+import { LIBRARIES } from '@/lib/vocabulary'
 import type { Layer } from '@/types/strata'
 
 // Factory defaults — used as the fallback preview in the reset button.
@@ -89,6 +90,27 @@ export function LayerSettingsPopover({
               className={cn(fieldClass, 'resize-none')}
               style={fieldStyle}
             />
+          </div>
+
+          {/* Where the Type list and quick entry draw this layer's types from. */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium" style={labelStyle} htmlFor={`library-${layer.id}`}>
+              Library
+            </label>
+            <select
+              id={`library-${layer.id}`}
+              value={layer.library ?? ''}
+              onChange={(e) => updateLayer(layer.id, { library: e.target.value || null })}
+              className={fieldClass}
+              style={fieldStyle}
+            >
+              <option value="">Guess from its types</option>
+              {LIBRARIES.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="h-px" style={{ background: 'var(--hairline)' }} />

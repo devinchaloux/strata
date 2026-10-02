@@ -3536,3 +3536,24 @@ files keep lyrics, public views leave them out by default. A file host that
 forbids other sites from reading files (no CORS) can't be used; the error
 says so.
 
+---
+
+## Quick Entry (2026-10-02)
+
+**Decision:** The quick-type bar becomes quick entry, with a switch in the
+diagram's top bar: **Off, Type, Shape, Fill** (remembered in the browser).
+Type offers the layer's own types, then its library's in the library's order;
+a layer's library can be chosen on the bar or in Layer settings and is saved
+as the new optional `Layer.library` (absent: guessed from the layer's types).
+Other layers' types are left to the full Type list. In Type mode the bar
+does not appear once every selected span has a type. Shape offers each end's
+shape and the line; Fill offers the layer default and eight colours. The bar
+stays inside the window, and its clicks no longer reach the diagram.
+**Rationale:** Devin: the bar ran off screen at the left; More… closed it (its
+click bubbled through the React portal to the diagram, which cleared the
+selection); "How do I choose what kind of quick type options there are? This
+initial list is not very helpful" (it mixed in other layers' types); it should
+not appear on a span that already has a type; and quick entry for shapes and
+colours would help on a first pass. `Layer.library` is a working preference,
+not a constraint: any type can still be picked.
+

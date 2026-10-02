@@ -23,7 +23,7 @@ import { MIN_SPAN_WIDTH, MIN_BOUNDARY_DRAG_PX } from '@/lib/spanEdit'
 import { newGestureKey, withHistoryGroup } from '@/store/history'
 import { gridLines, sortedSegments, barLength, beatLength } from '@/lib/beatGrid'
 import { spanTypeName } from '@/lib/vocabulary'
-import { QuickTypeBar } from './QuickTypeBar'
+import { QuickEntryBar } from './QuickEntryBar'
 import { snapToActiveGrid } from '@/store/snap'
 import { Playhead } from './Playhead'
 import { FormDiagramFigure, type SpanDecoration } from '@/widgets/form-diagram/figure'
@@ -758,8 +758,8 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
       {/* Playback cursor — mirrors the ruler cursor so the two read as one line */}
       <Playhead height={svgHeight} opacity={0.5} />
 
-      {/* Types for the selection, on number keys (QuickTypeBar.tsx); not while reading. */}
-      {!reading && <QuickTypeBar containerRef={containerRef} layers={layers} pps={pps} scrollOffset={scrollOffset} />}
+      {/* Quick entry for the selection, on number keys (QuickEntryBar.tsx); not while reading. */}
+      {!reading && <QuickEntryBar containerRef={containerRef} layers={layers} pps={pps} scrollOffset={scrollOffset} />}
     </div>
   )
 }

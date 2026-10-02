@@ -420,6 +420,10 @@
           "enum": ["bracket", "bar"],
           "description": "Visual style for this layer's spans. Absent/'bracket' = today's rendering (analytical bracket/arc shapes). 'bar' draws thin flat rects instead — intended for key-area layers (Span.keyArea captions), but the field is generic, not key-area-specific. A layer setting, buried in layer settings, not surfaced in the main add-layer flow. Purely visual; the same Span data model and interactions (spacebar, drag, merge) apply either way."
         },
+        "library": {
+          "type": ["string", "null"],
+          "description": "The vocabulary library this layer draws its types from (an id such as 'pop-rock' or 'caplin', or 'letters'). The type picker and quick entry lead with it. A working preference for the editor; it does not restrict which types the layer may use."
+        },
         "fontScale": {
           "type": "string",
           "enum": ["sm", "md", "lg"],

@@ -5,6 +5,8 @@ import type { MergeConflict } from '@/lib/mergeSpans'
 import type { SnapMode } from '@/lib/beatGrid'
 
 export type InspectorTab = 'describe' | 'shape' | 'more'
+/** What the quick-entry bar on the diagram sets, or off. */
+export type QuickEntry = 'off' | 'type' | 'shape' | 'fill'
 
 // Re-export so consumers don't need a separate import
 export type { YTPlayerState }
@@ -124,6 +126,9 @@ export interface UIState {
   typePickerRequest: number
   /** The span Inspector's open tab, kept as the selection moves. */
   inspectorTab: InspectorTab
+  /** The quick-entry bar's mode, remembered in the browser. */
+  quickEntry: QuickEntry
+  setQuickEntry: (mode: QuickEntry) => void
   /** Reading view: the analysis laid out for reading, with editing off. */
   readingView: boolean
   /** What the reading view shows (view state; the file's own visibility is untouched). */
@@ -200,6 +205,7 @@ export interface UIState {
 const SNAP_KEY = 'strata:snapMode'
 const LYRICS_KEY = 'strata:showLyrics'
 const PACKS_KEY = 'strata:packs'
+const QUICK_KEY = 'strata:quickEntry'
 
 // Preferences live in this browser's storage; a blocked store (a private
 // window) just means the default each visit.
@@ -260,6 +266,11 @@ const useUIStore = create<UIState>()((set) => ({
   librariesOpen: false,
   typePickerRequest: 0,
   inspectorTab: 'describe',
+  quickEntry: (['off', 'type', 'shape', 'fill'] as const).find((m) => m === readPreference(QUICK_KEY)) ?? 'type',
+  setQuickEntry: (mode) => {
+    writePreference(QUICK_KEY, mode)
+    set({ quickEntry: mode })
+  },
   readingView: false,
   readingShow: { commentary: true, diagram: true },
   seekRequest: null,

@@ -216,6 +216,7 @@ Every layer, regardless of type, has these fields:
 | `fillColorDefault` / `strokeColorDefault` | hex color | Yes | Fallback fill and outline for spans in this layer that have no individual override. Required on every layer; a written-analysis layer carries them but doesn't draw with them. |
 | `displayOrder` | whole number | Yes | Rendering order. Lower numbers render first (at the bottom of the stack). |
 | `spanShape` | `bracket` or `bar` | No | Visual style for this layer's spans. Omit or `bracket` = today's rendering (the analytical bracket/arc shapes). `bar` draws thin flat rects instead — intended for key-area layers (spans carrying a `keyArea` caption), though the field itself is generic. A setting buried in layer settings, not offered when first creating a layer. Purely visual: the same span data model and interactions (placement, drag, merge) work identically either way. |
+| `library` | text or null | No | The vocabulary library this layer draws its types from (`pop-rock`, `caplin`, `letters` …). The type picker and quick entry lead with its types. A working preference only: any type can still be used. Omit to let the app guess from the types already in the layer. |
 | `fontScale` | `sm`, `md` or `lg` | No | Text size for this layer's labels and annotations: `sm` (label 9.5px, annotation 8.5px), `md` (11 / 9), `lg` (13 / 11). Omit for `md`. Uniform within a layer; there is no per-span font size. Purely visual. |
 | `data` | object | Yes | The layer's actual analytical data. Its structure depends on the `type` field — see below. |
 

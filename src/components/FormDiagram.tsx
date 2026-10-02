@@ -41,7 +41,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useDocumentStore } from '@/store/documentStore'
-import { useUIStore } from '@/store/uiStore'
+import { useUIStore, type QuickEntry } from '@/store/uiStore'
 import { useTimeline } from '@/hooks/useTimeline'
 import { computeFitZoom } from '@/lib/timeline'
 import { TimelineAxis } from './TimelineAxis'
@@ -479,6 +479,7 @@ function WidgetTopBar({
       <span aria-hidden style={{ width: 1, height: 12, background: 'var(--hairline)', margin: '0 4px' }} />
       <DiagramControlBar />
       <GridPopover />
+      <QuickEntrySwitch />
 
       {hidden.length > 0 && (
         <div className="flex items-center gap-1 overflow-hidden">
@@ -502,6 +503,39 @@ function WidgetTopBar({
 
       <div className="ml-auto">
         <ZoomControls {...zoom} />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * What the quick-entry bar sets for the selected spans (QuickEntryBar.tsx):
+ * types, shapes, fills, or nothing. Remembered in the browser.
+ */
+function QuickEntrySwitch() {
+  const mode = useUIStore((s) => s.quickEntry)
+  const setMode = useUIStore((s) => s.setQuickEntry)
+  const opts: [QuickEntry, string][] = [
+    ['off', 'Off'],
+    ['type', 'Type'],
+    ['shape', 'Shape'],
+    ['fill', 'Fill'],
+  ]
+  return (
+    <div className="ml-2 flex items-center gap-1" title="A bar of choices on number keys appears for the selected spans">
+      <span className="text-[11px] text-muted-foreground">Quick entry</span>
+      <div className="flex overflow-hidden rounded border border-border" role="radiogroup" aria-label="Quick entry">
+        {opts.map(([m, label]) => (
+          <button
+            key={m}
+            role="radio"
+            aria-checked={mode === m}
+            onClick={() => setMode(m)}
+            className={`px-1.5 py-0.5 text-[11px] ${mode === m ? 'bg-accent font-medium text-foreground' : 'text-muted-foreground hover:bg-accent/60'}`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
     </div>
   )
