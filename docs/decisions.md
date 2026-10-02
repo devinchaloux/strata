@@ -3477,6 +3477,7 @@ pass, and the level's likely types are known from what it already uses.
 (Add a level, Hide level, Level settings, "In this level"). The file format
 keeps `layers`, and so do the code and the specs, so no file changes.
 **Rationale:** "Layers" is the broadest name for the planned instrumentation
+*Reversed 2026-10-02:* Devin prefers to keep "layers" for the form diagram and will name the texture widget something else. The interface says "layer" again.
 and texture widget, which Devin wants to call Layers. The form diagram's rows
 are levels of form (large-scale form, sections, phrases), so the rename fits
 them and frees the word. Agreed by Devin.

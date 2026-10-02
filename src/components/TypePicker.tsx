@@ -173,7 +173,7 @@ export function TypePicker({
     if (layerId && inLayer.length) {
       // Offer the next letter only on a layer that is lettered.
       const lettered = inLayer.some((t) => isLetterId(t.id))
-      sections.push({ title: 'In this level', rows: [...rowsOf(inLayer, 'layer'), ...(lettered ? nextRow : [])], lettered })
+      sections.push({ title: 'In this layer', rows: [...rowsOf(inLayer, 'layer'), ...(lettered ? nextRow : [])], lettered })
       if (elsewhere.length) sections.push({ title: 'Elsewhere in this file', rows: rowsOf(elsewhere, 'file') })
     } else {
       sections.push({ title: 'In this file', rows: [...rowsOf(inFile, 'file'), ...nextRow] })

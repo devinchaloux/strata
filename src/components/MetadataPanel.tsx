@@ -596,7 +596,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             </div>
             {usedFills.length > 0 && (
               <div className="mb-3 flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">In this level</span>
+                <span className="text-xs text-muted-foreground">In this layer</span>
                 {usedFills.map((c) => (
                   <button
                     key={c}
@@ -709,7 +709,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         <button
           onClick={() => prevId && performMerge([prevId, span.id])}
           disabled={!prevId}
-          title={prevId ? 'Merge with previous span' : 'No previous span in this level'}
+          title={prevId ? 'Merge with previous span' : 'No previous span in this layer'}
           className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
         >
           Merge ←
@@ -717,7 +717,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         <button
           onClick={() => nextId && performMerge([span.id, nextId])}
           disabled={!nextId}
-          title={nextId ? 'Merge with next span' : 'No next span in this level'}
+          title={nextId ? 'Merge with next span' : 'No next span in this layer'}
           className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
         >
           → Merge

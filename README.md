@@ -27,7 +27,8 @@ What works today:
 
 - **Form diagram.** Mark boundaries by ear (B while it plays; Space plays and
   pauses), label and describe spans, drag boundaries, merge, and stack several
-  levels (large-scale form, sections, phrases) or frameworks. Point markers (M) for cadences and
+  layers for different levels of form (large-scale form, sections, phrases)
+  or frameworks. Point markers (M) for cadences and
   other events.
 - **Types from a shared vocabulary.** Built-in libraries (General, Pop/Rock,
   Song form, EDM, Common practice, Jazz, form letters) and optional packs

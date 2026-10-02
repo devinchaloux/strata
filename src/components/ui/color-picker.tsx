@@ -211,7 +211,7 @@ export function ColorPicker({ value, fallback, onChange, nullLabel }: ColorPicke
             className="h-3.5 w-3.5 shrink-0 rounded-sm border"
             style={{ backgroundColor: fallback, borderColor: 'rgba(0,0,0,0.15)', opacity: 0.5 }}
           />
-          {nullLabel ?? 'Use the level default'}
+          {nullLabel ?? 'Use the layer default'}
         </button>
       </PopoverContent>
     </Popover>

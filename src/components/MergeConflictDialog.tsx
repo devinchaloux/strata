@@ -65,7 +65,7 @@ export function MergeConflictDialog() {
     ) ?? []
 
   function optionLabel(field: ConflictField, value: string | null): string {
-    if (value === null) return field === 'parentId' ? 'None' : 'Level default'
+    if (value === null) return field === 'parentId' ? 'None' : 'Layer default'
     if (field === 'type') return spanTypes.find((t) => t.id === value)?.label ?? value
     if (field === 'parentId') {
       const s = allSpans.find((x) => x.id === value)

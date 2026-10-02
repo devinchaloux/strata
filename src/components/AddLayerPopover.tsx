@@ -67,8 +67,8 @@ export function AddLayerPopover() {
         <button
           className="rounded p-0.5 hover:bg-accent"
           style={{ color: 'var(--ink-muted)' }}
-          title="Add a level"
-          aria-label="Add a level"
+          title="Add a layer"
+          aria-label="Add a layer"
         >
           <Plus size={15} />
         </button>

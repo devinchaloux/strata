@@ -138,7 +138,7 @@ export function ExportDialog() {
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Export the form diagram</DialogTitle>
-          <DialogDescription>Hidden levels are left out. Hide a level to keep it out of the figure.</DialogDescription>
+          <DialogDescription>Hidden layers are left out. Hide a layer to keep it out of the figure.</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
@@ -183,7 +183,7 @@ export function ExportDialog() {
 
           <div className="max-h-[50vh] overflow-auto rounded border border-border bg-white p-2">
             {noLayers ? (
-              <p className="p-6 text-center text-xs text-muted-foreground">Every level is hidden, so there's nothing to export.</p>
+              <p className="p-6 text-center text-xs text-muted-foreground">Every layer is hidden, so there's nothing to export.</p>
             ) : (
               // The exported SVG itself, scaled to fit: the preview is the file.
               <div className="[&>svg]:h-auto [&>svg]:max-w-full" dangerouslySetInnerHTML={{ __html: svg }} />
