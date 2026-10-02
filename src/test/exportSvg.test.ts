@@ -6,7 +6,7 @@ import { readDocument } from '@/lib/documentLoad'
 import { exportFormDiagramSvg, cutLayerToRange } from '@/widgets/form-diagram/exportSvg'
 
 const alive = () =>
-  readDocument(JSON.parse(readFileSync(resolve(__dirname, '../../schema/alive.strata'), 'utf8'))).doc
+  readDocument(JSON.parse(readFileSync(resolve(__dirname, '../../public/demos/alive.strata'), 'utf8'))).doc
 
 const whole = (duration: number) => ({ start: 0, end: duration, width: 1200, includeMarkers: true, includeAxis: true })
 

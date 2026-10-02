@@ -28,12 +28,13 @@ function expectValid(doc: unknown) {
   expect(ok ? [] : validate.errors?.map((e) => `${e.instancePath} ${e.message}`)).toEqual([])
 }
 
-const fixture = (name: string) => JSON.parse(readFileSync(resolve(schemaDir, name), 'utf8'))
+// Paths from the repo root: the demo analyses live in public/demos, served by the app.
+const fixture = (path: string) => JSON.parse(readFileSync(resolve(__dirname, '../..', path), 'utf8'))
 
 describe('the JSON Schema', () => {
   it('accepts both bundled fixtures', () => {
-    expectValid(fixture('alive.strata'))
-    expectValid(fixture('example.strata'))
+    expectValid(fixture('public/demos/alive.strata'))
+    expectValid(fixture('schema/example.strata'))
   })
 
   it('accepts a fresh document from New', () => {
@@ -46,7 +47,7 @@ describe('documents the app writes', () => {
   const doc = () => JSON.parse(JSON.stringify(store().document)) // exactly what a save writes
 
   beforeEach(() => {
-    store().loadDocument(readDocument(fixture('alive.strata')).doc)
+    store().loadDocument(readDocument(fixture('public/demos/alive.strata')).doc)
   })
 
   it('stay valid after the common edits', () => {

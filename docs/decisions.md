@@ -3674,3 +3674,46 @@ OneDrive have routes that allow it. Drive's only route is Google's Drive API
 with an API key; Devin chose not to set one up, since hosting may be
 rethought as a whole. OneDrive work and school accounts can block anonymous
 reading, and the error says what to check.
+
+---
+
+## Example Analyses (2026-10-02)
+
+**Decision:** The example analyses live in `public/demos/`, which the app serves
+at `/demos/<file>`, and are listed in `src/lib/examples.ts`. The first screen
+lists them under "Or explore an example", replacing the single demo button. An
+example opens exactly as a shared link does, in the reading view with "Edit a
+copy", and the address bar takes its link (`?src=` pointing at the file on
+Strata's own address), so a website can link straight to an example too. The
+toolbar's Demo button stays and opens the first example for editing. The
+examples are licensed CC BY 4.0; the code stays MIT. "Alive" moved from
+`schema/` to `public/demos/`, and the tests read it there.
+**Rationale:** Devin wants a library of examples to share when Strata goes
+public, starting with a conference audience. Keeping them in this repo rather
+than a separate one means no second repository to manage, and the app serves
+the files from its own address, so no other site has to allow cross-site
+reading. The cost is that adding an example is a release. A separate repository
+is worth it later if the analyses become a body of work people cite and fork,
+rather than examples of the tool. CC BY 4.0 is Devin's choice: the usual
+licence for scholarly material, which MIT, a software licence, is not. This is
+the start of the demo corpus planned in `docs/vision.md` §1.5.
+
+---
+
+## Releases and Open Tabs (2026-10-02)
+
+**Decision:** Merging into `main` is a release. A tab that is already open keeps
+running the version it loaded, and gets the new one on its next reload. Its
+work is protected as before (the 30-second recovery copy, the warning before
+unloading with unsaved changes). The one part that can fail across a release
+is the SVG export, whose renderer loads only when first used: the old tab asks
+for a file the new release has replaced. That failure now shows "Strata has
+been updated" with the fix (save, then reload) instead of an empty preview
+(`src/lib/staleBuild.ts`).
+**Rationale:** Devin asked what happens to someone using Strata when he pushes
+an update. Each Vercel deployment is a complete, separate copy, so nothing
+changes under an open tab except files it hasn't fetched yet. Vercel's skew
+protection, which keeps old files available, is a paid-plan feature; a message
+is enough for the one place that needs it. A release can be undone with
+Vercel's Instant Rollback. The lasting risk is files saved by older versions,
+which format versioning handles, not open tabs.

@@ -30,8 +30,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { cn } from '@/lib/utils'
-import aliveRaw from '../schema/alive.strata?raw'
-import { readStrataFile } from '@/lib/fileIO'
+import { EXAMPLES, exampleFileUrl, exampleLink, type Example } from '@/lib/examples'
 import { spanNeighbour, firstSpan, spanRange } from '@/lib/spanNav'
 import { formSpans } from '@/lib/layers'
 import { newGestureKey, withHistoryGroup } from '@/store/history'
@@ -56,8 +55,8 @@ function ToolbarButton({
   onClick: () => void
   disabled?: boolean
   title?: string
-  // Dev/secondary affordance (e.g. Demo) — rendered lighter so it reads as
-  // non-primary chrome. (Demo itself is stripped before release.)
+  // Secondary affordance (e.g. Demo) — rendered lighter so it reads as
+  // non-primary chrome.
   muted?: boolean
   children: React.ReactNode
 }) {
@@ -125,12 +124,12 @@ function StrataMark({ size = 16 }: { size?: number }) {
 function EmptyState({
   onNew,
   onOpen,
-  onDemo,
+  onExample,
   onHelp,
 }: {
   onNew: () => void
   onOpen: () => void
-  onDemo: () => void
+  onExample: (example: Example) => void
   onHelp: () => void
 }) {
   return (
@@ -165,16 +164,30 @@ function EmptyState({
             Open file…
           </button>
         </div>
-        <button
-          onClick={onDemo}
-          className="mt-3 rounded text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline
-            focus-visible:outline-none focus-visible:underline"
-        >
-          Or explore the demo analysis
-        </button>
+        {/* Each example is a real link, so it can be opened in a new tab or copied. */}
+        <p className="mt-4 text-xs text-muted-foreground">Or explore an example:</p>
+        <ul className="mt-1 flex flex-col items-center gap-0.5">
+          {EXAMPLES.map((example) => (
+            <li key={example.file}>
+              <a
+                href={exampleLink(example, window.location.href)}
+                onClick={(e) => {
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
+                  e.preventDefault()
+                  onExample(example)
+                }}
+                className="rounded text-xs text-foreground underline-offset-4 transition-colors hover:underline
+                  focus-visible:outline-none focus-visible:underline"
+              >
+                <span className="font-medium">{example.title}</span>
+                <span className="text-muted-foreground"> · {example.artist}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
         <button
           onClick={onHelp}
-          className="mt-1.5 rounded text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline
+          className="mt-3 rounded text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline
             focus-visible:outline-none focus-visible:underline"
         >
           How it works
@@ -382,13 +395,51 @@ export default function App() {
     setSettingsOpen(true)
   }, [newFile, setSettingsOpen])
 
-  // Dev affordance — load the bundled "Alive" fixture to exercise the render path.
+  // A shared link (?src=…) opens that analysis in the reading view, with
+  // lyrics off for this visit unless the reader turns them on
+  // (docs/decisions.md, "Sharing by Link"). The examples open the same way.
+  const openShared = useCallback(
+    (src: string) => {
+      const ui = useUIStore.getState()
+      ui.setSharedFrom(src)
+      fetchSharedAnalysis(src)
+        .then((result) => {
+          loadDocument(result.doc)
+          useDocumentStore.temporal.getState().clear()
+          ui.setShowLyrics(false, false)
+          ui.setReadingView(true)
+          if (result.notices.length) ui.showAppMessage('Opened with warnings', result.notices)
+        })
+        .catch((err: unknown) => {
+          ui.setSharedFrom(null)
+          ui.showAppMessage('Couldn’t open the shared analysis', [err instanceof Error ? err.message : String(err), src])
+        })
+    },
+    [loadDocument],
+  )
+
+  // An example from the opening screen. The address bar takes the example's
+  // link, so what the reader sees is what they can copy and send.
+  const openExample = useCallback(
+    (example: Example) => {
+      window.history.pushState(null, '', exampleLink(example, window.location.href))
+      openShared(exampleFileUrl(example, window.location.origin))
+    },
+    [openShared],
+  )
+
+  // Toolbar Demo — the first example, straight into editing, for trying out
+  // the editor on a full analysis. Fetched like any example, so it is held to
+  // the same reader as Open.
   const loadDemo = useCallback(() => {
-    // Through the same reader as Open, so the demo can never drift from what
-    // a real file is held to.
-    const parsed = readStrataFile(aliveRaw).doc
-    loadDocument(parsed)
-    useDocumentStore.temporal.getState().clear()
+    fetchSharedAnalysis(exampleFileUrl(EXAMPLES[0], window.location.origin))
+      .then((result) => {
+        loadDocument(result.doc)
+        useDocumentStore.temporal.getState().clear()
+      })
+      .catch((err: unknown) => {
+        useUIStore.getState().showAppMessage('Couldn’t load the demo analysis', [err instanceof Error ? err.message : String(err)])
+      })
   }, [loadDocument])
 
   // B places boundaries in the active layer, so there must always be one
@@ -442,27 +493,11 @@ export default function App() {
     return () => window.removeEventListener('pointerdown', onPointerDown)
   }, [clearSelection])
 
-  // A shared link (?src=…) opens that analysis in the reading view, with
-  // lyrics off for this visit unless the reader turns them on
-  // (docs/decisions.md, "Sharing by Link").
+  // Opening the app with a shared link.
   useEffect(() => {
     const src = srcParam(window.location.href)
-    if (!src) return
-    const ui = useUIStore.getState()
-    ui.setSharedFrom(src)
-    fetchSharedAnalysis(src)
-      .then((result) => {
-        loadDocument(result.doc)
-        useDocumentStore.temporal.getState().clear()
-        ui.setShowLyrics(false, false)
-        ui.setReadingView(true)
-        if (result.notices.length) ui.showAppMessage('Opened with warnings', result.notices)
-      })
-      .catch((err: unknown) => {
-        ui.setSharedFrom(null)
-        ui.showAppMessage('Couldn’t open the shared analysis', [err instanceof Error ? err.message : String(err), src])
-      })
-  }, [loadDocument])
+    if (src) openShared(src)
+  }, [openShared])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -597,7 +632,7 @@ export default function App() {
 
         <ToolbarButton onClick={guardedNew}>New</ToolbarButton>
         <ToolbarButton onClick={guardedOpen}>Open</ToolbarButton>
-        <ToolbarButton onClick={guardedDemo} muted title="Load the bundled demo analysis">
+        <ToolbarButton onClick={guardedDemo} muted title={`Open the ${EXAMPLES[0].title} example for editing`}>
           Demo
         </ToolbarButton>
 
@@ -702,7 +737,7 @@ export default function App() {
             {doc ? (
               <FormDiagram />
             ) : (
-              <EmptyState onNew={guardedNew} onOpen={guardedOpen} onDemo={guardedDemo} onHelp={() => setHelpOpen(true)} />
+              <EmptyState onNew={guardedNew} onOpen={guardedOpen} onExample={openExample} onHelp={() => setHelpOpen(true)} />
             )}
           </div>
           {/* The play bar, then the docked video below the fold */}

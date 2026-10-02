@@ -5,8 +5,9 @@ import { resolve } from 'node:path'
 import { readDocument, DocumentError, SUPPORTED_FILE_FORMAT_VERSION } from '@/lib/documentLoad'
 import { makeDoc, makeLayer, makeSpan } from './fixtures'
 
-const fixture = (name: string) =>
-  JSON.parse(readFileSync(resolve(__dirname, '../../schema', name), 'utf8')) as Record<string, unknown>
+// Paths from the repo root: the demo analyses live in public/demos, served by the app.
+const fixture = (path: string) =>
+  JSON.parse(readFileSync(resolve(__dirname, '../..', path), 'utf8')) as Record<string, unknown>
 
 describe('readDocument — identifying a file', () => {
   it('refuses something that is not a Strata document', () => {
@@ -15,7 +16,7 @@ describe('readDocument — identifying a file', () => {
   })
 
   it('reads both bundled fixtures without notices', () => {
-    for (const name of ['alive.strata', 'example.strata']) {
+    for (const name of ['public/demos/alive.strata', 'schema/example.strata']) {
       const { notices } = readDocument(fixture(name))
       expect(notices).toEqual([])
     }
@@ -24,7 +25,7 @@ describe('readDocument — identifying a file', () => {
 
 describe('readDocument — older and hand-written files', () => {
   it('fills in vocabulary.modes for a file written before modes existed', () => {
-    const old = fixture('alive.strata')
+    const old = fixture('public/demos/alive.strata')
     delete (old.vocabulary as Record<string, unknown>).modes
     const { doc } = readDocument(old)
     expect(doc.vocabulary.modes).toEqual([])
