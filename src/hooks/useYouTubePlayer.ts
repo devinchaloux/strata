@@ -35,6 +35,10 @@ export function useYouTubePlayer(
 ) {
   const playerRef = useRef<YT.Player | null>(null)
   const rafRef = useRef<number>(0)
+  // Set by a seek made while not playing. YouTube starts a video that hasn't
+  // been played yet (unstarted or cued) when it is seeked, so a click on a
+  // span would begin playback; the state handler pauses it again instead.
+  const holdPausedRef = useRef(false)
   // Signals the rAF loop to stop on unmount
   const aliveRef = useRef(true)
   // Latest offset, readable from the rAF loop and commands without re-subscribing
@@ -141,6 +145,12 @@ export function useYouTubePlayer(
             startLoop()
           },
           onStateChange: (e) => {
+            // A seek while stopped asked to stay stopped (see `seek`).
+            if (e.data === 1 && holdPausedRef.current) {
+              holdPausedRef.current = false
+              e.target.pauseVideo()
+              return
+            }
             setPlaybackState(mapYTState(e.data))
             // Refresh duration after cuing — it may have been 0 before metadata loaded
             if (e.data === 5) {
@@ -192,6 +202,7 @@ export function useYouTubePlayer(
   // ---------------------------------------------------------------------------
 
   const play = useCallback(() => {
+    holdPausedRef.current = false
     playerRef.current?.playVideo()
   }, [])
 
@@ -201,7 +212,12 @@ export function useYouTubePlayer(
 
   const seek = useCallback(
     (time: number) => {
-      playerRef.current?.seekTo(Math.max(0, time + offsetRef.current), true)
+      const player = playerRef.current
+      const state = player?.getPlayerState?.()
+      const playing = state === 1 || state === 3
+      if (player && !playing) holdPausedRef.current = true
+      player?.seekTo(Math.max(0, time + offsetRef.current), true)
+      if (player && !playing) player.pauseVideo()
       setCurrentTime(Math.max(0, time))
     },
     [setCurrentTime],
@@ -215,5 +231,18 @@ export function useYouTubePlayer(
     [storeSetRate],
   )
 
-  return { play, pause, seek, setRate }
+  // The exact recording time now, read from the player at the moment of a key
+  // press. The store's currentTime is the last frame's reading (up to ~16 ms
+  // old), which is too coarse for marking or tapping by ear.
+  const now = useCallback((): number => {
+    try {
+      const t = playerRef.current?.getCurrentTime()
+      if (typeof t === 'number' && isFinite(t)) return Math.max(0, t - offsetRef.current)
+    } catch {
+      // Not ready: fall back to the last frame's time.
+    }
+    return useUIStore.getState().currentTime
+  }, [])
+
+  return { play, pause, seek, setRate, now }
 }

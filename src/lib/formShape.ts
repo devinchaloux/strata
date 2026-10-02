@@ -11,7 +11,8 @@
  *     - rounded → flat top meeting a vertical tail through a rounded corner
  *     - square  → flat top meeting a vertical tail at a sharp corner
  *     - angled  → a diagonal tail (processual feel)
- *     - open    → no tail on that side; the flat top just ends
+ *     - open    → no tail on that side; the flat top just ends (the fill still
+ *                 runs to the baseline; two open caps that meet join into one)
  *     - elision → the SAME rounded corner, drawn displaced OUTWARD past the
  *                 boundary so the bracket reaches into its neighbour
  *
@@ -36,7 +37,7 @@
  * colored fill reads as a solid block. One path, two idioms, no special-casing.
  */
 
-import type { BoundaryType, CapStyle, LineStyle, Layer, Span } from '@/types/strata'
+import type { BoundaryType, CapStyle, LineStyle, Layer, Span, FormDiagramData } from '@/types/strata'
 
 // ---------------------------------------------------------------------------
 // Metrics (starting values; tweakable once seen on real data)
@@ -176,6 +177,12 @@ export interface ShapePathOptions {
   endCap: CapStyle
   /** Inset per side (px) — the island gap. Default 0 (tests / measuring). */
   inset?: number
+  /**
+   * This side is an open cap that meets its neighbour's open cap: draw to the
+   * boundary itself, with no island gap, so the two tops join into one line.
+   */
+  joinStart?: boolean
+  joinEnd?: boolean
 }
 
 /**
@@ -189,14 +196,16 @@ export function buildShapePath({
   startCap,
   endCap,
   inset = 0,
+  joinStart = false,
+  joinEnd = false,
 }: ShapePathOptions): string {
   const H = height
   // An elision cap pushes outward past the boundary instead of insetting inward,
   // so the bracket overlaps its neighbour. Everything downstream is unchanged —
   // the cap draws its ordinary shape, just at a displaced x.
   const ext = Math.min(ELISION_EXTEND, width * ELISION_EXTEND_MAX_RATIO)
-  const L = inset - (startCap === 'elision' ? ext : 0)
-  const R = width - inset + (endCap === 'elision' ? ext : 0)
+  const L = joinStart ? 0 : inset - (startCap === 'elision' ? ext : 0)
+  const R = joinEnd ? width : width - inset + (endCap === 'elision' ? ext : 0)
   if (R <= L) return ''
 
   const span = R - L
@@ -243,6 +252,43 @@ export function buildShapePath({
   }
 
   return parts.join(' ')
+}
+
+/**
+ * The area a bracket fills, as a closed path. Needed only when a cap is open:
+ * the outline then has no tail on that side, and the fill's implicit close
+ * would cut diagonally from the top's end to the other baseline corner instead
+ * of running down to the bottom. Here an open side fills straight down, like a
+ * square cap with no line drawn.
+ */
+export function buildFillPath(opts: ShapePathOptions): string {
+  const d = buildShapePath({
+    ...opts,
+    startCap: opts.startCap === 'open' ? 'square' : opts.startCap,
+    endCap: opts.endCap === 'open' ? 'square' : opts.endCap,
+  })
+  return d ? `${d} Z` : ''
+}
+
+/**
+ * Which sides of each span join its neighbour: both caps at a shared boundary
+ * are open, so the two brackets draw as one continuous line across the gap
+ * (the one exception to drawing spans as separate islands).
+ */
+export function openJoins(spans: Span[]): Map<string, { start: boolean; end: boolean }> {
+  const sorted = [...spans].sort((a, b) => a.startTime - b.startTime)
+  const cap = (s: Span, side: 'start' | 'end'): CapStyle =>
+    side === 'start' ? (s.startCap ?? capFromBoundaryType(s.startBoundaryType)) : (s.endCap ?? capFromBoundaryType(s.endBoundaryType))
+  const out = new Map(sorted.map((s) => [s.id, { start: false, end: false }]))
+  for (let i = 1; i < sorted.length; i++) {
+    const a = sorted[i - 1]
+    const b = sorted[i]
+    if (Math.abs(a.endTime - b.startTime) < 1e-6 && cap(a, 'end') === 'open' && cap(b, 'start') === 'open') {
+      out.get(a.id)!.end = true
+      out.get(b.id)!.start = true
+    }
+  }
+  return out
 }
 
 
@@ -350,6 +396,47 @@ export function textX(spanX: number, width: number, just: Justification): number
   if (just === 'center') return spanX + width / 2
   if (just === 'right') return spanX + width - TEXT_PAD
   return spanX + TEXT_PAD
+}
+
+/**
+ * How far in from the span's edge a cap's outline reaches at depth `y` below
+ * the top: a rounded corner's arc, or an angled cap's diagonal. Square and
+ * open caps rise straight, so 0. Elided ends draw a rounded corner.
+ */
+export function capInsetAt(cap: CapStyle, width: number, y: number, height = SHAPE_HEIGHT): number {
+  const span = Math.max(0, width - 2 * ISLAND_INSET)
+  if (cap === 'rounded' || cap === 'elision') {
+    const r = Math.min(CORNER_RADIUS, span * CORNER_MAX_RATIO, height)
+    if (y >= r) return 0
+    const dy = r - Math.max(0, y)
+    return r - Math.sqrt(r * r - dy * dy)
+  }
+  if (cap === 'angled') return Math.min(ANGLE_INSET, span / 2) * Math.max(0, 1 - y / height)
+  return 0
+}
+
+/**
+ * The room for text inside a span whose top sits `yTop` below the shape's top:
+ * the padding on each side widens where a cap's corner cuts in, so inside text
+ * never runs into a rounded or angled end.
+ */
+export function insideTextBox(
+  width: number,
+  startCap: CapStyle,
+  endCap: CapStyle,
+  yTop: number,
+  height = SHAPE_HEIGHT,
+): { left: number; right: number } {
+  return {
+    left: ISLAND_INSET + TEXT_PAD + capInsetAt(startCap, width, yTop, height),
+    right: width - ISLAND_INSET - TEXT_PAD - capInsetAt(endCap, width, yTop, height),
+  }
+}
+
+/** textX within an inside box (insideTextBox) rather than the whole span. */
+export function insideTextX(box: { left: number; right: number }, just: Justification): number {
+  if (just === 'center') return (box.left + box.right) / 2
+  return just === 'right' ? box.right : box.left
 }
 
 /**
@@ -560,4 +647,22 @@ export function spanDrawOrder<T extends Pick<Span, 'startTime' | 'endTime' | 'en
     }
   })
   return out
+}
+
+/** Neighbour-aware above-label layout for a layer (one pass, so labels share room). */
+export function layerLabelLayout(layer: Layer, pps: number, totalWidth: number) {
+  if ((layer.rendering?.labelPosition ?? 'above') === 'inside') return null
+  const isBar = layer.spanShape === 'bar'
+  return layoutLayerLabels(
+    (layer.data as FormDiagramData).spans.map((s) => ({
+      id: s.id,
+      x: s.startTime * pps,
+      width: (s.endTime - s.startTime) * pps,
+      label: (isBar ? s.keyArea || s.label : s.label) ?? '',
+      shortLabel: isBar ? null : s.shortLabel,
+    })),
+    layerFonts(layer).label,
+    totalWidth,
+    (layer.rendering?.labelJustification ?? 'center') as Justification,
+  )
 }

@@ -6,22 +6,24 @@
  * follow the 0.4 spec. Deferred within this slice: click-to-seek on the time
  * range (needs the player wired globally — slice 3), the curated color swatch
  * picker (basic color inputs for now), and Split at playhead (shares logic with
- * spacebar placement — slice 3).
+ * boundary placement — slice 3).
  */
 
-import { useState, useEffect } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
-import { useUIStore } from '@/store/uiStore'
+import { useUIStore, type InspectorTab } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
 import { formatTime, formatClock } from '@/lib/youtube'
 import { TimeInput } from './TimeInput'
+import { TypePicker } from './TypePicker'
+import { labelFollowsType } from '@/lib/vocabulary'
 import { blockForSpan, blockForRange } from '@/widgets/written-analysis/commentary'
 import { capFromBoundaryType } from '@/lib/formShape'
 import { slugify } from '@/lib/slug'
 import { ColorPicker } from '@/components/ui/color-picker'
 import { Field, inputClass } from '@/components/Field'
 import { toAccidentals } from '@/lib/musicSymbols'
+import { barAt, sortedSegments } from '@/lib/beatGrid'
+import { formSpans } from '@/lib/layers'
 import type {
   Span,
   Layer,
@@ -56,7 +58,7 @@ function Segmented<T extends string>({
           <button
             key={o.value}
             onClick={() => onChange(o.value)}
-            className="flex-1 rounded px-1.5 py-0.5 text-[11px] transition-colors"
+            className="flex-1 rounded px-1.5 py-0.5 text-xs transition-colors"
             style={{
               backgroundColor: active ? 'hsl(var(--primary))' : 'transparent',
               color: active ? 'hsl(var(--primary-foreground))' : 'hsl(var(--muted-foreground))',
@@ -95,6 +97,10 @@ function findSpans(layers: Layer[], spanIds: string[]): SpanEntry[] {
   }
   return out
 }
+
+// What Confidence records (schema/strata-schema-reference.md, §8).
+const CONFIDENCE_TIP =
+  'How sure you are of where this span’s boundaries fall: Definite (the default), Approx. (something changes here, but the exact point is fuzzy) or Spec. (a hypothesis you may revise). It records your certainty for later queries; it doesn’t change the drawing.'
 
 const CONFIDENCE_OPTS: { value: ConfidenceLevel; label: string }[] = [
   { value: 'definite', label: 'Definite' },
@@ -146,7 +152,7 @@ function EndsGrid({
   end: [EndSelect, EndSelect]
   showCaps: boolean
 }) {
-  const head = 'text-[10px] font-medium uppercase tracking-wide text-muted-foreground'
+  const head = 'text-[11px] font-medium uppercase tracking-wide text-muted-foreground'
   const select = (c: EndSelect) => (
     <select
       aria-label={c.label}
@@ -164,7 +170,7 @@ function EndsGrid({
   )
   const row = (name: string, [boundary, cap]: [EndSelect, EndSelect]) => (
     <>
-      <span className="text-[11px] text-muted-foreground">{name}</span>
+      <span className="text-xs text-muted-foreground">{name}</span>
       {select(boundary)}
       {showCaps && select(cap)}
     </>
@@ -273,30 +279,65 @@ function OverlapFields({ layer, span }: { layer: Layer; span: Span }) {
   )
 }
 
-/** Overlap order and stroke. The caps live beside the boundary types in
- *  EndsGrid, still in the open (Devin's call, 2026-07-25): picking a boundary
- *  type updates its cap in place, on the same row. */
-function ShapeFields({
-  layer,
-  span,
-  update,
-}: {
-  layer: Layer
-  span: Span
-  update: (patch: Partial<Omit<Span, 'id'>>) => void
-}) {
-  return (
-    <>
-      <OverlapFields layer={layer} span={span} />
+// The Inspector's tabs (remembered across spans in uiStore.inspectorTab).
+const INSPECTOR_TABS: [InspectorTab, string][] = [
+  ['describe', 'Describe'],
+  ['shape', 'Shape & color'],
+  ['more', 'More'],
+]
 
-      <Field label="Stroke">
-        <Segmented
-          options={LINESTYLE_OPTS}
-          value={span.lineStyle ?? 'solid'}
-          onChange={(v) => update({ lineStyle: v })}
-        />
-      </Field>
-    </>
+// One end of a bracket in the shape picker: a dashed line marks the boundary,
+// so an elided end visibly reaches past it.
+// An elided end also draws its neighbour (faint), so the overlap shows.
+const CAP_ICONS: Record<'start' | 'end', { cap: CapStyle; name: string; bx: number; d: string; n?: string }[]> = {
+  start: [
+    { cap: 'rounded', name: 'Rounded', bx: 8, d: 'M 8 22 L 8 12 A 10 10 0 0 1 18 2 L 40 2' },
+    { cap: 'square', name: 'Square', bx: 8, d: 'M 8 22 L 8 2 L 40 2' },
+    { cap: 'angled', name: 'Angled', bx: 8, d: 'M 8 22 L 16 2 L 40 2' },
+    { cap: 'open', name: 'Open', bx: 8, d: 'M 8 2 L 40 2' },
+    { cap: 'elision', name: 'Elided', bx: 14, d: 'M 4 22 L 4 12 A 10 10 0 0 1 14 2 L 40 2', n: 'M 0 6 L 6 6 A 8 8 0 0 1 14 14 L 14 22' },
+  ],
+  end: [
+    { cap: 'rounded', name: 'Rounded', bx: 32, d: 'M 0 2 L 22 2 A 10 10 0 0 1 32 12 L 32 22' },
+    { cap: 'square', name: 'Square', bx: 32, d: 'M 0 2 L 32 2 L 32 22' },
+    { cap: 'angled', name: 'Angled', bx: 32, d: 'M 0 2 L 24 2 L 32 22' },
+    { cap: 'open', name: 'Open', bx: 32, d: 'M 0 2 L 32 2' },
+    { cap: 'elision', name: 'Elided', bx: 26, d: 'M 0 2 L 26 2 A 10 10 0 0 1 36 12 L 36 22', n: 'M 26 22 L 26 14 A 8 8 0 0 1 34 6 L 40 6' },
+  ],
+}
+
+/** The five shapes for one end of a bracket, as pictures. */
+function CapRow({ side, value, onChange }: { side: 'start' | 'end'; value: CapStyle; onChange: (c: CapStyle) => void }) {
+  const name = side === 'start' ? 'Start' : 'End'
+  const chosen = CAP_ICONS[side].find((o) => o.cap === value)?.name
+  return (
+    <div className="flex items-center gap-2">
+      <span className="flex w-14 shrink-0 flex-col text-xs leading-tight">
+        <span className="text-muted-foreground">{name}</span>
+        <span className="text-foreground">{chosen}</span>
+      </span>
+      <div className="grid flex-1 grid-cols-5 gap-1" role="radiogroup" aria-label={`${name} shape`}>
+        {CAP_ICONS[side].map((o) => (
+          <button
+            key={o.cap}
+            role="radio"
+            aria-checked={value === o.cap}
+            aria-label={o.name}
+            title={o.name}
+            onClick={() => onChange(o.cap)}
+            className={`flex h-9 items-center justify-center rounded-md bg-card text-foreground hover:bg-accent ${
+              value === o.cap ? 'border-2 border-foreground' : 'border border-border'
+            }`}
+          >
+            <svg width="32" height="20" viewBox="0 0 40 22" aria-hidden>
+              <line x1={o.bx} y1={0} x2={o.bx} y2={22} stroke="var(--hairline)" strokeDasharray="2 2" />
+              {o.n && <path d={o.n} fill="none" stroke="var(--ink-muted)" strokeWidth={1.25} strokeLinejoin="round" />}
+              <path d={o.d} fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinejoin="round" strokeLinecap="round" />
+            </svg>
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -319,7 +360,6 @@ export function MetadataPanel() {
 // ---------------------------------------------------------------------------
 
 function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
-  const doc = useDocumentStore((s) => s.document)
   const updateSpan = useDocumentStore((s) => s.updateSpan)
   const removeSpan = useDocumentStore((s) => s.removeSpan)
   const placeBoundary = useDocumentStore((s) => s.placeBoundary)
@@ -348,15 +388,15 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
 
   const update = (patch: Partial<Omit<Span, 'id'>>) => updateSpan(layer.id, span.id, patch)
 
-  const spanTypes = doc?.vocabulary.spanTypes ?? []
 
   // Key-area ("bar") layers lead with keyArea and tuck the bracket-only visual
   // fields (caps, stroke — meaningless on a flat bar) under "more fields".
   // Boundary type stays visible either way — it's analytical data, not a
   // visual choice, and still applies to a key area's transition character.
   const isBar = layer.spanShape === 'bar'
-  const [shapeFieldsExpanded, setShapeFieldsExpanded] = useState(false)
-  useEffect(() => setShapeFieldsExpanded(false), [span.id])
+  const doc = useDocumentStore((s) => s.document)
+  const tab = useUIStore((s) => s.inspectorTab)
+  const setTab = useUIStore((s) => s.setInspectorTab)
 
   function handleDelete() {
     removeSpan(layer.id, span.id)
@@ -383,282 +423,320 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
     setSpanEdgeAction(layer.id, span.id, 'end', t)
   }
 
+  // Bar numbers, when a beat grid covers the span.
+  const segs = sortedSegments(doc?.beatGrid)
+  const firstBar = segs.length ? barAt(segs, span.startTime, doc?.duration ?? 0) : null
+  const lastBar = segs.length ? barAt(segs, Math.max(span.startTime, span.endTime - 1e-3), doc?.duration ?? 0) : null
+  const siblings = formSpans(layer)
+  const position = siblings.findIndex((s) => s.id === span.id) + 1
+  // Fills already used in this level, for one-click reuse.
+  const usedFills = [...new Set(siblings.map((s) => s.fillColor).filter((c): c is string => !!c && c !== 'none'))].slice(0, 8)
+
   return (
-    <div className="flex flex-col">
-      <div className="px-3 py-3">
-        {/* Time range (editable) + duration */}
-        <div className="mb-3 rounded bg-muted px-2 py-1.5">
-          <div className="flex items-center justify-between gap-1">
-            <TimeInput value={span.startTime} onCommit={commitStart} title="Start time" />
-            <span className="text-muted-foreground">→</span>
-            <TimeInput value={span.endTime} onCommit={commitEnd} title="End time" />
-          </div>
-          <div className="mt-1 text-[10px] text-muted-foreground">
-            Duration {formatTime(duration)}
-          </div>
+    <div className="flex h-full flex-col">
+      <div className="flex flex-col gap-2 border-b px-3 pb-2 pt-3" style={{ borderColor: 'var(--hairline)' }}>
+        {/* Where this span is, and stepping to its neighbours. */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>
+            {layer.label} · span {position} of {siblings.length}
+          </span>
+          <span className="flex gap-1">
+            <button
+              aria-label="Previous span"
+              disabled={!prevId}
+              onClick={() => prevId && selectSpan(prevId)}
+              className="h-6 w-6 rounded border border-border text-foreground hover:bg-accent disabled:opacity-40"
+            >
+              ‹
+            </button>
+            <button
+              aria-label="Next span"
+              disabled={!nextId}
+              onClick={() => nextId && selectSpan(nextId)}
+              className="h-6 w-6 rounded border border-border text-foreground hover:bg-accent disabled:opacity-40"
+            >
+              ›
+            </button>
+          </span>
         </div>
 
-        {/* Label */}
+        {/* Label, as the panel's title */}
         <Field label="Label" symbols>
           <input
             data-inspector-label
-            className={inputClass}
+            className={`${inputClass} !text-lg font-semibold`}
             value={span.label ?? ''}
             placeholder="Unlabeled"
             onChange={(e) => setSpanLabels([span.id], e.target.value === '' ? null : e.target.value)}
           />
         </Field>
 
-        {/* Short label — shown in place of the full label when the diagram is
-            too zoomed out to fit it; never abbreviated further by the app. */}
-        <Field label="Short label" tooltip="Shown when the full label doesn't fit." symbols>
-          <input
-            className={inputClass}
-            value={span.shortLabel ?? ''}
-            placeholder="e.g. V1"
-            onChange={(e) => update({ shortLabel: e.target.value || null })}
+        {/* Type — the label follows it while the label is empty or still the
+            one the old type gave (lib/vocabulary.ts, labelFollowsType). */}
+        <Field label="Type">
+          <TypePicker
+            kind="span"
+            layerId={layer.id}
+            value={span.type}
+            onPick={(id, term) => {
+              const custom = useDocumentStore.getState().document?.vocabulary.spanTypes ?? []
+              const follows = labelFollowsType(span.label, span.type, custom)
+              update({ type: id })
+              if (term && follows) setSpanLabels([span.id], term.label)
+            }}
           />
         </Field>
 
-        {/* Key area — leads the panel on a key-area (bar) layer, since that's
-            the whole point of the layer; tucked into Advanced otherwise. */}
-        {isBar && (
-          <Field label="Key area" tooltip={KEY_AREA_TIP}>
-            <input
-              className={inputClass}
-              value={span.keyArea ?? ''}
-              placeholder={KEY_AREA_PLACEHOLDER}
-              onChange={(e) => update({ keyArea: toAccidentals(e.target.value) || null })}
-            />
-          </Field>
+        {/* Time range (editable), duration and bars */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <TimeInput value={span.startTime} onCommit={commitStart} title="Start time" />
+          <span className="text-muted-foreground">→</span>
+          <TimeInput value={span.endTime} onCommit={commitEnd} title="End time" />
+          <span className="text-xs text-muted-foreground">
+            {formatTime(duration)}
+            {firstBar !== null && lastBar !== null && ` · bar${firstBar === lastBar ? ` ${firstBar}` : `s ${firstBar}–${lastBar}`}`}
+          </span>
+        </div>
+
+        {/* The three tabs as one segmented control, so they read as the way
+            into the rest of the span's fields. */}
+        <div className="mt-1 flex gap-1 rounded-lg bg-muted p-1" role="tablist" aria-label="Span fields">
+          {INSPECTOR_TABS.map(([id, name]) => (
+            <button
+              key={id}
+              role="tab"
+              aria-selected={tab === id}
+              onClick={() => setTab(id)}
+              className={`flex-auto whitespace-nowrap rounded-md px-2 py-1.5 text-[13px] font-medium transition-colors ${
+                tab === id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:bg-card/60 hover:text-foreground'
+              }`}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-3 py-3" role="tabpanel">
+        {tab === 'describe' && (
+          <>
+            {/* Key area leads on a key-area (bar) level, the point of the level. */}
+            {isBar && (
+              <Field label="Key area" tooltip={KEY_AREA_TIP}>
+                <input
+                  className={inputClass}
+                  value={span.keyArea ?? ''}
+                  placeholder={KEY_AREA_PLACEHOLDER}
+                  onChange={(e) => update({ keyArea: toAccidentals(e.target.value) || null })}
+                />
+              </Field>
+            )}
+
+            <Field label="Annotation" tooltip="Shown inside the shape on the diagram." symbols>
+              <textarea
+                className={`${inputClass} resize-y`}
+                rows={2}
+                value={span.annotation ?? ''}
+                onChange={(e) => update({ annotation: e.target.value || null })}
+              />
+            </Field>
+
+            {/* Written analysis: prose about this span, shown above the diagram
+                while it plays. Stored in the document's commentary layer, not on
+                the span, so it can outlive the span (see widgets/written-analysis). */}
+            <Field
+              label="Commentary"
+              symbols
+              tooltip="Shows above the diagram while this span plays. Link to a span or point marker with [[its-slug]]; **bold** and *italic* work."
+            >
+              <textarea
+                className={`${inputClass} resize-y`}
+                rows={6}
+                value={commentary}
+                placeholder="Write about this passage."
+                onChange={(e) => setSpanCommentary(span.id, e.target.value)}
+              />
+            </Field>
+
+            <Field label="Lyrics">
+              <textarea
+                className={`${inputClass} resize-y`}
+                rows={2}
+                value={span.lyrics ?? ''}
+                onChange={(e) => update({ lyrics: e.target.value || null })}
+              />
+            </Field>
+          </>
         )}
 
-        {/* Slug (read-only, click to copy). Once saved it no longer follows
-            the label (lib/slug.ts), so a rename offers an explicit regenerate. */}
-        <Field
-          label="Slug"
-          tooltip="The name commentary links ([[its-slug]]) and embeds use for this span. It stays the same after the file is saved, so renaming the span doesn't break links to it."
-        >
-          <button
-            className={`${inputClass} flex items-center justify-between text-left`}
-            title="Click to copy"
-            onClick={() => span.slug && copy(span.slug)}
-            disabled={!span.slug}
-          >
-            <span className={span.slug ? 'text-foreground' : 'text-muted-foreground'}>
-              {span.slug ?? '—'}
-            </span>
-            {span.slug && <span className="text-[10px] text-muted-foreground">copy</span>}
-          </button>
-          {slugStale && (
-            <button
-              className="mt-1 text-[10px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-              onClick={() => regenerateSlug(span.id)}
-            >
-              Update slug to match the label
-            </button>
-          )}
-        </Field>
-
-        {/* Type */}
-        <Field label="Type">
-          <select
-            className={inputClass}
-            value={span.type ?? ''}
-            onChange={(e) => update({ type: e.target.value || null })}
-          >
-            <option value="">None</option>
-            {spanTypes.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.label}
-              </option>
-            ))}
-            {/* Preserve a value not present in the vocab list */}
-            {span.type && !spanTypes.some((t) => t.id === span.type) && (
-              <option value={span.type}>{span.type}</option>
-            )}
-          </select>
-        </Field>
-
-        {/* Annotation */}
-        <Field label="Annotation" tooltip="Shown inside the shape on the diagram." symbols>
-          <textarea
-            className={`${inputClass} resize-y`}
-            rows={2}
-            value={span.annotation ?? ''}
-            onChange={(e) => update({ annotation: e.target.value || null })}
-          />
-        </Field>
-
-        {/* Confidence */}
-        <Field label="Confidence">
-          <Segmented
-            options={CONFIDENCE_OPTS}
-            value={span.confidence ?? 'definite'}
-            onChange={(v) => update({ confidence: v })}
-          />
-        </Field>
-
-        {/* Ends — boundary type and cap per side. On a key-area bar the caps
-            mean nothing, so they join the shape fields behind the disclosure. */}
-        <SpanEnds span={span} update={update} showCaps={!isBar || shapeFieldsExpanded} />
-
-        {/* Shape — visual caps + stroke (the analyst's drawing choice, decoupled
-            from the boundary-type data above). Meaningless on a flat key-area
-            bar, so tucked under "more fields" there — never removed, just
-            de-emphasized (docs/decisions.md "Key-Area Bar Layers"). */}
-        {isBar ? (
-          <div className="mb-3">
-            <button
-              onClick={() => setShapeFieldsExpanded((v) => !v)}
-              className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
-            >
-              {shapeFieldsExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-              More fields (shape)
-            </button>
-            {shapeFieldsExpanded && (
-              <div className="mt-2">
-                <ShapeFields layer={layer} span={span} update={update} />
+        {tab === 'shape' && (
+          <>
+            {/* Each end its own shape (a flat key-area bar has none). */}
+            {!isBar && (
+              <div className="mb-3 flex flex-col gap-2">
+                <CapRow side="start" value={span.startCap ?? capFromBoundaryType(span.startBoundaryType)} onChange={(c) => update({ startCap: c })} />
+                <CapRow side="end" value={span.endCap ?? capFromBoundaryType(span.endBoundaryType)} onChange={(c) => update({ endCap: c })} />
+                <button
+                  className="self-start text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                  onClick={() => update({ endCap: span.startCap ?? capFromBoundaryType(span.startBoundaryType) })}
+                >
+                  Same at both ends
+                </button>
               </div>
             )}
-          </div>
-        ) : (
-          <ShapeFields layer={layer} span={span} update={update} />
+            {!isBar && <OverlapFields layer={layer} span={span} />}
+            {!isBar && (
+              <Field label="Line">
+                <Segmented options={LINESTYLE_OPTS} value={span.lineStyle ?? 'solid'} onChange={(v) => update({ lineStyle: v })} />
+              </Field>
+            )}
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Field label="Fill">
+                  <ColorPicker value={span.fillColor} fallback={layer.fillColorDefault} onChange={(c) => update({ fillColor: c })} />
+                </Field>
+              </div>
+              <div className="flex-1">
+                <Field label="Stroke">
+                  <ColorPicker value={span.strokeColor} fallback={layer.strokeColorDefault} onChange={(c) => update({ strokeColor: c })} />
+                </Field>
+              </div>
+            </div>
+            {usedFills.length > 0 && (
+              <div className="mb-3 flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">In this layer</span>
+                {usedFills.map((c) => (
+                  <button
+                    key={c}
+                    aria-label={`Fill ${c}`}
+                    title={c}
+                    onClick={() => update({ fillColor: c })}
+                    className="h-5 w-5 rounded border border-border"
+                    style={{ background: c }}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
 
-        {/* Notes */}
-        <Field label="Notes" tooltip="For you; not shown on the diagram." symbols>
-          <textarea
-            className={`${inputClass} resize-y`}
-            rows={2}
-            value={span.notes ?? ''}
-            onChange={(e) => update({ notes: e.target.value || null })}
-          />
-        </Field>
+        {tab === 'more' && (
+          <>
+            {/* Short label — shown in place of the full label when the diagram is
+                too zoomed out to fit it; never abbreviated further by the app. */}
+            <Field label="Short label" tooltip="Shown when the full label doesn't fit." symbols>
+              <input
+                className={inputClass}
+                value={span.shortLabel ?? ''}
+                placeholder="e.g. V1"
+                onChange={(e) => update({ shortLabel: e.target.value || null })}
+              />
+            </Field>
 
-        {/* Written analysis: prose about this span, shown above the diagram
-            while it plays. Stored in the document's commentary layer, not on
-            the span, so it can outlive the span (see widgets/written-analysis). */}
-        <Field
-          label="Commentary"
-          symbols
-          tooltip="Shows above the diagram while this span plays. Link to a span or point marker with [[its-slug]]; **bold** and *italic* work."
+            {/* Slug (read-only, click to copy). Once saved it no longer follows
+                the label (lib/slug.ts), so a rename offers an explicit regenerate. */}
+            <Field
+              label="Slug"
+              tooltip="The name commentary links ([[its-slug]]) and embeds use for this span. It stays the same after the file is saved, so renaming the span doesn't break links to it."
+            >
+              <button
+                className={`${inputClass} flex items-center justify-between text-left`}
+                title="Click to copy"
+                onClick={() => span.slug && copy(span.slug)}
+                disabled={!span.slug}
+              >
+                <span className={span.slug ? 'text-foreground' : 'text-muted-foreground'}>{span.slug ?? '—'}</span>
+                {span.slug && <span className="text-[11px] text-muted-foreground">copy</span>}
+              </button>
+              {slugStale && (
+                <button
+                  className="mt-1 text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                  onClick={() => regenerateSlug(span.id)}
+                >
+                  Update slug to match the label
+                </button>
+              )}
+            </Field>
+
+            {/* Boundary types: the analytical claim about each end (choosing one
+                also resets that end's shape to match). */}
+            <SpanEnds span={span} update={update} showCaps={false} />
+
+            {!isBar && (
+              <Field label="Key area" tooltip={KEY_AREA_TIP}>
+                <input
+                  className={inputClass}
+                  value={span.keyArea ?? ''}
+                  placeholder={KEY_AREA_PLACEHOLDER}
+                  onChange={(e) => update({ keyArea: toAccidentals(e.target.value) || null })}
+                />
+              </Field>
+            )}
+
+            <Field label="Notes" tooltip="For you; not shown on the diagram." symbols>
+              <textarea
+                className={`${inputClass} resize-y`}
+                rows={2}
+                value={span.notes ?? ''}
+                onChange={(e) => update({ notes: e.target.value || null })}
+              />
+            </Field>
+
+            {/* Rarely needed, so near the bottom. */}
+            <Field label="Confidence" tooltip={CONFIDENCE_TIP}>
+              <Segmented options={CONFIDENCE_OPTS} value={span.confidence ?? 'definite'} onChange={(v) => update({ confidence: v })} />
+            </Field>
+
+            <Field label="Parent">
+              <div className={`${inputClass} text-muted-foreground`}>{span.parentId ?? 'none'}</div>
+            </Field>
+
+            <Field label="ID">
+              <button
+                className={`${inputClass} flex items-center justify-between text-left`}
+                title="Click to copy"
+                onClick={() => copy(span.id)}
+              >
+                <span className="truncate text-muted-foreground">{span.id}</span>
+                <span className="ml-1 shrink-0 text-[11px] text-muted-foreground">copy</span>
+              </button>
+            </Field>
+          </>
+        )}
+      </div>
+
+      {/* Actions, always in reach */}
+      <div className="flex gap-1.5 border-t px-3 py-2" style={{ borderColor: 'var(--hairline)' }}>
+        <button
+          onClick={handleSplit}
+          disabled={!canSplit}
+          title={canSplit ? 'Split at playhead' : 'Move the playhead inside this span to split'}
+          className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
         >
-          <textarea
-            className={`${inputClass} resize-y`}
-            rows={5}
-            value={commentary}
-            placeholder="Write about this passage."
-            onChange={(e) => setSpanCommentary(span.id, e.target.value)}
-          />
-        </Field>
-
-        {/* Lyrics */}
-        <Field label="Lyrics">
-          <textarea
-            className={`${inputClass} resize-y`}
-            rows={2}
-            value={span.lyrics ?? ''}
-            onChange={(e) => update({ lyrics: e.target.value || null })}
-          />
-        </Field>
-
-        {/* Advanced */}
-        <div className="mt-4 mb-2 border-t pt-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground" style={{ borderColor: 'var(--hairline)' }}>
-          Advanced
-        </div>
-
-        {/* Colors */}
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <Field label="Fill">
-              <ColorPicker
-                value={span.fillColor}
-                fallback={layer.fillColorDefault}
-                onChange={(c) => update({ fillColor: c })}
-              />
-            </Field>
-          </div>
-          <div className="flex-1">
-            <Field label="Stroke">
-              <ColorPicker
-                value={span.strokeColor}
-                fallback={layer.strokeColorDefault}
-                onChange={(c) => update({ strokeColor: c })}
-              />
-            </Field>
-          </div>
-        </div>
-
-        {/* Key area — secondary here since this layer isn't shape-dedicated to
-            it; leads the panel instead on a key-area (bar) layer, above. */}
-        {!isBar && (
-          <Field label="Key area" tooltip={KEY_AREA_TIP}>
-            <input
-              className={inputClass}
-              value={span.keyArea ?? ''}
-              placeholder={KEY_AREA_PLACEHOLDER}
-              onChange={(e) => update({ keyArea: toAccidentals(e.target.value) || null })}
-            />
-          </Field>
-        )}
-
-        {/* Parent (read-only in v1) */}
-        <Field label="Parent">
-          <div className={`${inputClass} text-muted-foreground`}>
-            {span.parentId ?? 'none'}
-          </div>
-        </Field>
-
-        {/* ID (read-only, copy) */}
-        <Field label="ID">
-          <button
-            className={`${inputClass} flex items-center justify-between text-left`}
-            title="Click to copy"
-            onClick={() => copy(span.id)}
-          >
-            <span className="truncate text-muted-foreground">{span.id}</span>
-            <span className="ml-1 shrink-0 text-[10px] text-muted-foreground">copy</span>
-          </button>
-        </Field>
-
-        {/* Merge with neighbor (Merge UX §3.4) */}
-        <div className="mt-4 flex gap-2 border-t pt-3" style={{ borderColor: 'var(--hairline)' }}>
-          <button
-            onClick={() => prevId && performMerge([prevId, span.id])}
-            disabled={!prevId}
-            title={prevId ? 'Merge with previous span' : 'No previous span in this layer'}
-            className="flex-1 rounded border border-border px-2 py-1 text-[11px] text-foreground hover:bg-accent disabled:opacity-40"
-          >
-            Merge ←
-          </button>
-          <button
-            onClick={() => nextId && performMerge([span.id, nextId])}
-            disabled={!nextId}
-            title={nextId ? 'Merge with next span' : 'No next span in this layer'}
-            className="flex-1 rounded border border-border px-2 py-1 text-[11px] text-foreground hover:bg-accent disabled:opacity-40"
-          >
-            → Merge
-          </button>
-        </div>
-
-        {/* Actions */}
-        <div className="mt-2 flex gap-2">
-          <button
-            onClick={handleSplit}
-            disabled={!canSplit}
-            title={canSplit ? 'Split at playhead' : 'Move the playhead inside this span to split'}
-            className="flex-1 rounded border border-border px-2 py-1 text-[11px] text-foreground hover:bg-accent disabled:opacity-40"
-          >
-            Split
-          </button>
-          <button
-            onClick={handleDelete}
-            className="flex-1 rounded px-2 py-1 text-[11px] font-medium text-destructive hover:bg-destructive/10"
-          >
-            Delete
-          </button>
-        </div>
+          Split
+        </button>
+        <button
+          onClick={() => prevId && performMerge([prevId, span.id])}
+          disabled={!prevId}
+          title={prevId ? 'Merge with previous span' : 'No previous span in this layer'}
+          className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
+        >
+          Merge ←
+        </button>
+        <button
+          onClick={() => nextId && performMerge([span.id, nextId])}
+          disabled={!nextId}
+          title={nextId ? 'Merge with next span' : 'No next span in this layer'}
+          className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
+        >
+          → Merge
+        </button>
+        <button
+          onClick={handleDelete}
+          className="ml-auto rounded px-2 py-1 text-xs font-medium text-destructive hover:bg-destructive/10"
+        >
+          Delete
+        </button>
       </div>
     </div>
   )
@@ -686,7 +764,6 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
 
   const spans = entries.map((e) => e.span)
   const ids = spans.map((s) => s.id)
-  const spanTypes = doc?.vocabulary.spanTypes ?? []
 
   // Apply a patch to every selected span (one undo step).
   const setAll = (patch: Partial<Omit<Span, 'id'>>) => updateSpans(ids, patch)
@@ -733,7 +810,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
           {eligibility.ok ? `Merge ${spans.length} spans` : 'Merge'}
         </button>
         {!eligibility.ok && (
-          <p className="-mt-3 mb-4 text-[10px] text-muted-foreground">{mergeReason}</p>
+          <p className="-mt-3 mb-4 text-[11px] text-muted-foreground">{mergeReason}</p>
         )}
 
         <Field
@@ -750,7 +827,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
           />
         </Field>
 
-        <div className="mb-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        <div className="mb-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
           Apply to all selected
         </div>
 
@@ -764,20 +841,20 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
           />
         </Field>
 
-        {/* Type */}
+        {/* Type — each span's label follows it unless the analyst wrote their own. */}
         <Field label="Type">
-          <select
-            className={inputClass}
-            value={type === MIXED ? '' : type}
-            onChange={(e) => setAll({ type: e.target.value || null })}
-          >
-            <option value="">{type === MIXED ? 'Mixed' : 'None'}</option>
-            {spanTypes.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.label}
-              </option>
-            ))}
-          </select>
+          <TypePicker
+            kind="span"
+            layerId={entries.every((e) => e.layer.id === entries[0].layer.id) ? entries[0].layer.id : undefined}
+            value={type === MIXED ? null : type || null}
+            mixed={type === MIXED}
+            onPick={(id, term) => {
+              const custom = useDocumentStore.getState().document?.vocabulary.spanTypes ?? []
+              const following = spans.filter((s) => labelFollowsType(s.label, s.type, custom)).map((s) => s.id)
+              setAll({ type: id })
+              if (term && following.length) setSpanLabels(following, term.label)
+            }}
+          />
         </Field>
 
         {/* Annotation */}
@@ -848,7 +925,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
         </Field>
 
         {/* Colors */}
-        <div className="mt-4 mb-2 border-t pt-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground" style={{ borderColor: 'var(--hairline)' }}>
+        <div className="mt-4 mb-2 border-t pt-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground" style={{ borderColor: 'var(--hairline)' }}>
           Advanced
         </div>
         <div className="flex gap-2">

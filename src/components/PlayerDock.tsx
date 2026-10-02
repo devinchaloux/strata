@@ -7,6 +7,9 @@ import { useAudioPlayer } from '@/hooks/useAudioPlayer'
 import { extractVideoId, formatClock, isInputFocused } from '@/lib/youtube'
 import { pickAudioFile } from '@/lib/fileIO'
 import { setPlayerElement } from '@/lib/playerClearance'
+import { snapToActiveGrid } from '@/store/snap'
+import { fitTaps } from '@/lib/beatGrid'
+import { newGestureKey, withHistoryGroup } from '@/store/history'
 import { SeekBar } from './SeekBar'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import type { PlaybackRate } from '@/store/uiStore'
@@ -115,6 +118,9 @@ const VIDEO_MINI_WIDTH = Math.round((VIDEO_MIN * 16) / 9)
  */
 const VIDEO_DOCKED_W = 480
 const VIDEO_DOCKED_H = 270
+// The reading view's video: wide enough to watch, leaving half the column for
+// the commentary beside it. Exported so the commentary can make room for it.
+export const READING_VIDEO_W = 'min(640px, 46%)'
 
 /**
  * The bottom dock: transport bar plus the collapsible video panel. Source-
@@ -147,6 +153,7 @@ export function PlayerDock() {
     playerError,
     videoMini,
     toggleVideoMini,
+    readingView,
     audioFile,
     setAudioFile,
     setLinkSourceOpen,
@@ -218,17 +225,19 @@ export function PlayerDock() {
   }
 
   // Place a point marker at the current playhead — document-level, so unlike
-  // Spacebar (which needs an active layer) this needs no layer context.
+  // a boundary (B, which needs an active layer) this needs no layer context.
   function placeMarkerAtPlayhead() {
     const id = crypto.randomUUID()
-    addPointMarker({ id, timestamp: useUIStore.getState().currentTime })
+    addPointMarker({ id, timestamp: snapToActiveGrid(engineRef.current.now()) })
     selectPointMarker(id)
   }
 
   // Seek requests from outside the transport (commentary links).
   const seekRequest = useUIStore((s) => s.seekRequest)
   useEffect(() => {
-    if (seekRequest && useUIStore.getState().playerStatus === 'ready') engineRef.current.seek(seekRequest.time)
+    if (!seekRequest || useUIStore.getState().playerStatus !== 'ready') return
+    engineRef.current.seek(seekRequest.time)
+    if (seekRequest.play && useUIStore.getState().playbackState !== 'playing') engineRef.current.play()
   }, [seekRequest])
 
   // ── Duration adoption ──────────────────────────────────────────────────────
@@ -244,7 +253,7 @@ export function PlayerDock() {
   }, [duration, updateMeta])
 
   // ── Keyboard shortcuts (engine-agnostic) ──────────────────────────────────
-  // K play/pause · J back 10s · L forward 10s · Home rewind. Modifier check
+  // K play/pause (as Space) · J back 10s · L forward 10s · Home rewind. Modifier check
   // matters: Ctrl+J is merge — without the guard both actions would fire.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -281,13 +290,15 @@ export function PlayerDock() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  // Spacebar (Phase 0.4 §8): while playing, place a boundary at the playhead on
-  // the active layer; while paused, start playback. Live state is read via
-  // getState() so the listener stays bound once. Text fields keep native space;
+  // Space plays and pauses; B places a boundary at the playhead on the active
+  // layer. (Space did both until 2026-10-01: boundary while playing, play while
+  // paused. Devin kept reaching for it to pause.) Live state is read via
+  // getState() so the listeners stay bound once. Text fields keep native space;
   // for buttons we preventDefault so a focused transport button isn't re-fired.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.code !== 'Space') return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
       const el = e.target as HTMLElement | null
       const tag = el?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable) {
@@ -295,32 +306,88 @@ export function PlayerDock() {
       }
       e.preventDefault()
       const ui = useUIStore.getState()
-      if (ui.playbackState === 'playing') {
-        if (ui.activeLayerId) {
-          useDocumentStore.getState().placeBoundary(ui.activeLayerId, ui.currentTime)
-        }
-      } else {
-        engineRef.current.play()
-      }
+      if (ui.playerStatus !== 'ready') return
+      if (ui.playbackState === 'playing') engineRef.current.pause()
+      else engineRef.current.play()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'b' && e.key !== 'B') return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (isInputFocused()) return
+      const ui = useUIStore.getState()
+      if (ui.playerStatus !== 'ready' || !ui.activeLayerId || ui.readingView) return
+      e.preventDefault()
+      const t = snapToActiveGrid(engineRef.current.now())
+      // Shift+B ends the span under the playhead there instead of splitting it.
+      if (e.shiftKey) useDocumentStore.getState().endSpanAt(ui.activeLayerId, t)
+      else useDocumentStore.getState().placeBoundary(ui.activeLayerId, t)
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
   // M — place a point marker at the current playhead (document-level, so no
-  // active-layer requirement, unlike Spacebar). Works during playback or paused.
+  // active-layer requirement, unlike B). Works during playback or paused.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key !== 'm' && e.key !== 'M') return
       if (e.metaKey || e.ctrlKey || e.altKey) return
       if (isInputFocused()) return
-      if (useUIStore.getState().playerStatus !== 'ready') return
+      if (useUIStore.getState().playerStatus !== 'ready' || useUIStore.getState().readingView) return
       e.preventDefault()
       placeMarkerAtPlayhead()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Beat grid by ear (lib/beatGrid.ts), all on one key. T is tap-along: tap on
+  // each beat while it plays, starting on a downbeat; from the fourth tap the
+  // grid runs from the first tap at the tapped tempo, and each further tap
+  // refines it. A new run after a free passage picks the grid up again; a run
+  // within an existing segment marks a tempo change from there. Shift+T stops
+  // the grid at the playhead: free from here. Taps are read in media time, so
+  // they stay right at slower playback, and one run is one undo step.
+  useEffect(() => {
+    let taps: number[] = []
+    let lastTapWall = 0
+    let tapGesture = ''
+    let tapSegment: string | null = null
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 't' && e.key !== 'T') return
+      if (e.metaKey || e.ctrlKey || e.altKey || isInputFocused()) return
+      const ui = useUIStore.getState()
+      const store = useDocumentStore.getState()
+      if (!store.document || ui.playerStatus !== 'ready' || ui.readingView) return
+      e.preventDefault()
+      if (e.shiftKey) {
+        store.endGridAt(engineRef.current.now())
+        return
+      }
+      if (ui.playbackState !== 'playing') return
+      const wall = performance.now()
+      if (wall - lastTapWall > 2000) {
+        taps = []
+        tapGesture = newGestureKey('tap-along')
+        tapSegment = null
+      }
+      lastTapWall = wall
+      taps.push(engineRef.current.now())
+      const fit = fitTaps(taps)
+      if (fit) {
+        withHistoryGroup(tapGesture, () => {
+          tapSegment = store.layGridFromTaps(fit.start, fit.bpm, tapSegment)
+        })
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
   // "Locate" flow: a local-source document was opened but the browser can't
@@ -356,7 +423,7 @@ export function PlayerDock() {
         <TransportButton
           onClick={handlePlayPause}
           disabled={!isReady}
-          title={isLoading ? 'Loading…' : isPlaying ? 'Pause (K)' : 'Play (K)'}
+          title={isLoading ? 'Loading…' : isPlaying ? 'Pause (Space)' : 'Play (Space)'}
         >
           {isBuffering || isLoading ? (
             <SpinnerIcon />
@@ -366,6 +433,11 @@ export function PlayerDock() {
             <PlayIcon />
           )}
         </TransportButton>
+        {/* The key, written out: the shortcut is the quickest way to pause, so
+            it shouldn't live only in a tooltip. */}
+        <kbd className="-ml-1 shrink-0 rounded border border-border px-1 text-xs leading-4 text-muted-foreground" aria-hidden>
+          Space
+        </kbd>
 
         {/* Seek bar */}
         <SeekBar
@@ -405,8 +477,8 @@ export function PlayerDock() {
             that create them belong there too rather than in the player chrome.
             The M shortcut still works globally — this handler stays, only its
             button moved. Phase 0.4 §8's requirement that the current meaning of
-            Space always be visible is still met, by the Boundary button's live
-            Space chip. */}
+            Space always be visible is now met by the key label beside Play, and
+            B by the Boundary button's chip. */}
 
         {/* Playback error — bad video ID, unsupported audio file, etc. */}
         {playerStatus === 'error' && (
@@ -420,7 +492,7 @@ export function PlayerDock() {
         )}
 
         {/* ── Source linking affordances ── */}
-        {doc && !isLinked && (
+        {doc && !isLinked && !readingView && (
           <button
             onClick={() => setLinkSourceOpen(true)}
             className="ml-auto shrink-0 rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground
@@ -443,7 +515,7 @@ export function PlayerDock() {
           </button>
         )}
 
-        {doc && isLinked && (
+        {doc && isLinked && !readingView && (
           <TransportButton
             onClick={() => setLinkSourceOpen(true)}
             title="Change source…"
@@ -454,7 +526,7 @@ export function PlayerDock() {
 
         {/* Scroll to the docked video and back. It can't be hidden (YouTube's
             rules), so this is how it gets out of the way. */}
-        {videoId && !videoMini && (
+        {videoId && !videoMini && !readingView && (
           <Tooltip>
             <TooltipTrigger asChild>
               <button
@@ -476,7 +548,7 @@ export function PlayerDock() {
 
         {/* Video placement — docked below, or a mini player in the corner.
             There is deliberately no "hide": see VIDEO_MIN below. */}
-        {videoId && (
+        {videoId && !readingView && (
           <TransportButton
             onClick={toggleVideoMini}
             title={videoMini ? 'Dock the video below the play bar' : 'Shrink the video to a corner'}
@@ -504,14 +576,19 @@ export function PlayerDock() {
       {videoId && (
         <div
           className={
-            videoMini
-              ? 'absolute right-3 top-3 z-[60] overflow-hidden rounded-md border border-border shadow-lg'
-              : 'relative z-[60] m-3 overflow-hidden rounded-md border border-border'
+            readingView
+              ? 'absolute left-4 top-4 z-[60] overflow-hidden rounded-lg border border-border'
+              : videoMini
+                ? 'absolute right-3 top-3 z-[60] overflow-hidden rounded-md border border-border shadow-lg'
+                : 'relative z-[60] m-3 overflow-hidden rounded-md border border-border'
           }
           style={{
-            ...(videoMini
-              ? { width: VIDEO_MINI_WIDTH, height: VIDEO_MIN }
-              : { width: `min(${VIDEO_DOCKED_W}px, calc(100% - 24px))`, minWidth: VIDEO_MIN, height: VIDEO_DOCKED_H }),
+            // Reading: large, top left, beside the commentary (READING_VIDEO_W).
+            ...(readingView
+              ? { width: READING_VIDEO_W, aspectRatio: '16 / 9', minWidth: VIDEO_MIN, minHeight: VIDEO_MIN }
+              : videoMini
+                ? { width: VIDEO_MINI_WIDTH, height: VIDEO_MIN }
+                : { width: `min(${VIDEO_DOCKED_W}px, calc(100% - 24px))`, minWidth: VIDEO_MIN, height: VIDEO_DOCKED_H }),
             pointerEvents: 'auto',
           }}
           ref={registerVideo}

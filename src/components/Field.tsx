@@ -24,7 +24,7 @@ import { PALETTE_SYMBOLS, insertAt } from '@/lib/musicSymbols'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 
 export const inputClass =
-  'w-full rounded border border-border bg-card px-2 py-1 text-xs text-foreground ' +
+  'w-full rounded border border-border bg-card px-2 py-1 text-[13px] text-foreground ' +
   'focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground'
 
 export function Field({
@@ -42,10 +42,21 @@ export function Field({
 }) {
   const box = React.useRef<HTMLDivElement>(null)
   const [paletteOpen, setPaletteOpen] = React.useState(false)
+  const labelId = React.useId()
+  // Name the control by its visible label, so a screen reader announces
+  // "Label, edit text" rather than an unnamed field. A control that already
+  // carries its own name keeps it.
+  const control =
+    React.isValidElement<Record<string, unknown>>(children) &&
+    typeof children.type === 'string' &&
+    !children.props['aria-label'] &&
+    !children.props['aria-labelledby']
+      ? React.cloneElement(children, { 'aria-labelledby': labelId })
+      : children
   return (
-    <div className="mb-3" ref={box}>
+    <div className="group mb-3" ref={box}>
       <div className="mb-1 flex items-center gap-1">
-        <label className="block text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        <label id={labelId} className="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
           {label}
         </label>
         {tooltip && (
@@ -54,7 +65,7 @@ export function Field({
               <button
                 type="button"
                 aria-label={`About ${label}`}
-                className="inline-flex rounded text-muted-foreground/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="inline-flex rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <Info className="h-3 w-3" aria-hidden />
               </button>
@@ -65,21 +76,30 @@ export function Field({
         {symbols && (
           <button
             type="button"
-            aria-label={`Symbols for ${label}`}
-            aria-expanded={paletteOpen}
+            aria-label={`Insert a symbol into ${label}`}
             title="Insert a symbol"
+            aria-expanded={paletteOpen}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setPaletteOpen((o) => !o)}
             className={
-              'ml-auto rounded px-1 text-[11px] leading-none hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ' +
-              (paletteOpen ? 'text-foreground' : 'text-muted-foreground/70')
+              'ml-auto rounded px-1 text-xs leading-4 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ' +
+              (paletteOpen ? 'bg-accent text-foreground' : 'text-muted-foreground')
             }
           >
-            ⇒
+            {/* Compact until the field is in use, so a column of fields doesn't
+                repeat the words; spelled out then, and the tooltip-free label
+                says what it does. */}
+            {paletteOpen ? (
+              'Close symbols'
+            ) : (
+              <>
+                <span className="hidden group-focus-within:inline">Insert symbol </span>♭♯
+              </>
+            )}
           </button>
         )}
       </div>
-      {children}
+      {control}
       {symbols && paletteOpen && (
         <div className="mt-1 flex flex-wrap gap-0.5" role="toolbar" aria-label="Symbols">
           {PALETTE_SYMBOLS.map((sym) => (
@@ -97,7 +117,7 @@ export function Field({
           ))}
         </div>
       )}
-      {helper && <p className="mt-0.5 text-[10px] text-muted-foreground">{helper}</p>}
+      {helper && <p className="mt-0.5 text-[11px] text-muted-foreground">{helper}</p>}
     </div>
   )
 }

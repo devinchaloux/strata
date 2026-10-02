@@ -2,6 +2,11 @@ import { create } from 'zustand'
 import type { YTPlayerState } from '@/lib/youtube'
 import type { Span } from '@/types/strata'
 import type { MergeConflict } from '@/lib/mergeSpans'
+import type { SnapMode } from '@/lib/beatGrid'
+
+export type InspectorTab = 'describe' | 'shape' | 'more'
+/** What the quick-entry bar on the diagram sets, or off. */
+export type QuickEntry = 'off' | 'type' | 'shape' | 'fill'
 
 // Re-export so consumers don't need a separate import
 export type { YTPlayerState }
@@ -108,10 +113,33 @@ export interface UIState {
   // The export dialog (SVG / PNG of the form diagram).
   exportOpen: boolean
 
+  // Snapping to the beat grid: the analyst's own default, off until they
+  // choose otherwise, then remembered in this browser across files and visits.
+  // A working preference, not part of the analysis, so never in the file
+  // (docs/decisions.md, "Snapping Remembered as a Preference").
+  snapMode: SnapMode
+  /** Vocabulary packs the analyst has switched on in the type picker (lib/vocabulary.ts). */
+  enabledPacks: string[]
+  /** The Libraries dialog (packs on or off, import, share). */
+  librariesOpen: boolean
+  /** Bumped to ask the Inspector's span Type picker to open (the "/" key). */
+  typePickerRequest: number
+  /** The span Inspector's open tab, kept as the selection moves. */
+  inspectorTab: InspectorTab
+  /** The quick-entry bar's mode, remembered in the browser. */
+  quickEntry: QuickEntry
+  setQuickEntry: (mode: QuickEntry) => void
+  /** Reading view: the analysis laid out for reading, with editing off. */
+  readingView: boolean
+  /** What the reading view shows (view state; the file's own visibility is untouched). */
+  readingShow: { commentary: boolean; diagram: boolean }
+  // Lyrics in the commentary stack: also the analyst's remembered preference.
+  showLyrics: boolean
+
   // A request for the player to jump to a time, from outside the transport
   // (e.g. a commentary link). PlayerDock owns the engine and carries it out;
   // `n` makes two requests for the same time distinct.
-  seekRequest: { time: number; n: number } | null
+  seekRequest: { time: number; n: number; play?: boolean } | null
 
   // Actions — playback
   setCurrentTime: (time: number) => void
@@ -153,12 +181,54 @@ export interface UIState {
   showAppMessage: (title: string, lines: string[]) => void
   dismissAppMessage: () => void
   setExportOpen: (open: boolean) => void
-  requestSeek: (time: number) => void
+  setSnapMode: (mode: SnapMode) => void
+  setPackEnabled: (id: string, on: boolean) => void
+  setLibrariesOpen: (open: boolean) => void
+  requestTypePicker: () => void
+  setInspectorTab: (tab: InspectorTab) => void
+  setReadingView: (on: boolean) => void
+  setReadingShow: (part: 'commentary' | 'diagram', on: boolean) => void
+  /** `remember: false` changes this visit only (a shared analysis hides lyrics without touching the analyst's preference). */
+  setShowLyrics: (show: boolean, remember?: boolean) => void
+  /** The address a shared analysis was opened from (?src=), or null. */
+  sharedFrom: string | null
+  setSharedFrom: (url: string | null) => void
+  shareOpen: boolean
+  setShareOpen: (open: boolean) => void
+  requestSeek: (time: number, play?: boolean) => void
 }
 
 // ---------------------------------------------------------------------------
 // Store
 // ---------------------------------------------------------------------------
+
+const SNAP_KEY = 'strata:snapMode'
+const LYRICS_KEY = 'strata:showLyrics'
+const PACKS_KEY = 'strata:packs'
+const QUICK_KEY = 'strata:quickEntry'
+
+// Preferences live in this browser's storage; a blocked store (a private
+// window) just means the default each visit.
+function readPreference(key: string): string | null {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+function writePreference(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    // The choice lasts this visit only.
+  }
+}
+
+/** The analyst's remembered snap choice; Off for a first visit or anything unreadable. */
+function readSnapPreference(): SnapMode {
+  const v = readPreference(SNAP_KEY)
+  return v === 'beat' || v === 'bar' ? v : 'off'
+}
 
 const useUIStore = create<UIState>()((set) => ({
   currentTime: 0,
@@ -190,6 +260,19 @@ const useUIStore = create<UIState>()((set) => ({
   documentSettingsOpen: false,
   appMessage: null,
   exportOpen: false,
+  snapMode: readSnapPreference(),
+  showLyrics: readPreference(LYRICS_KEY) === 'on',
+  enabledPacks: (readPreference(PACKS_KEY) ?? '').split(',').filter(Boolean),
+  librariesOpen: false,
+  typePickerRequest: 0,
+  inspectorTab: 'describe',
+  quickEntry: (['off', 'type', 'shape', 'fill'] as const).find((m) => m === readPreference(QUICK_KEY)) ?? 'type',
+  setQuickEntry: (mode) => {
+    writePreference(QUICK_KEY, mode)
+    set({ quickEntry: mode })
+  },
+  readingView: false,
+  readingShow: { commentary: true, diagram: true },
   seekRequest: null,
 
   setCurrentTime: (time) => set({ currentTime: time }),
@@ -239,7 +322,30 @@ const useUIStore = create<UIState>()((set) => ({
   showAppMessage: (title, lines) => set({ appMessage: { title, lines } }),
   dismissAppMessage: () => set({ appMessage: null }),
   setExportOpen: (open) => set({ exportOpen: open }),
-  requestSeek: (time) => set((s) => ({ seekRequest: { time, n: (s.seekRequest?.n ?? 0) + 1 } })),
+  setShowLyrics: (show, remember = true) => {
+    if (remember) writePreference(LYRICS_KEY, show ? 'on' : 'off')
+    set({ showLyrics: show })
+  },
+  sharedFrom: null,
+  setSharedFrom: (url) => set({ sharedFrom: url }),
+  shareOpen: false,
+  setShareOpen: (open) => set({ shareOpen: open }),
+  setSnapMode: (mode) => {
+    writePreference(SNAP_KEY, mode)
+    set({ snapMode: mode })
+  },
+  setPackEnabled: (id, on) =>
+    set((s) => {
+      const enabledPacks = on ? [...new Set([...s.enabledPacks, id])] : s.enabledPacks.filter((p) => p !== id)
+      writePreference(PACKS_KEY, enabledPacks.join(','))
+      return { enabledPacks }
+    }),
+  setLibrariesOpen: (open) => set({ librariesOpen: open }),
+  requestTypePicker: () => set((s) => ({ typePickerRequest: s.typePickerRequest + 1 })),
+  setInspectorTab: (tab) => set({ inspectorTab: tab }),
+  setReadingView: (on) => set({ readingView: on, selectedSpanIds: [], selectionAnchorId: null, selectedPointMarkerId: null }),
+  setReadingShow: (part, on) => set((s) => ({ readingShow: { ...s.readingShow, [part]: on } })),
+  requestSeek: (time, play) => set((s) => ({ seekRequest: { time, n: (s.seekRequest?.n ?? 0) + 1, play } })),
 }))
 
 export { useUIStore }

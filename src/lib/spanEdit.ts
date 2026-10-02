@@ -2,7 +2,7 @@
  * Pure span-editing logic — no React, no store. Unit-tested in isolation.
  *
  * These functions take the current spans array and return a new one (or null
- * for a no-op). The document store wraps them; the spacebar handler and the
+ * for a no-op). The document store wraps them; the boundary-key (B) handler and the
  * metadata panel's Split action both call through the store.
  */
 
@@ -20,7 +20,7 @@ export const MIN_SPAN_WIDTH = 0.25
 export const MIN_BOUNDARY_DRAG_PX = 8
 
 /**
- * Place a boundary at `time` on a layer's spans (the spacebar / Split gesture,
+ * Place a boundary at `time` on a layer's spans (the B / Split gesture,
  * Phase 0.4 §8). Returns the new spans array, or null if nothing should happen.
  *
  * - Inside a span: split it into [start, time] and [time, end]. The new cut is
@@ -29,9 +29,12 @@ export const MIN_BOUNDARY_DRAG_PX = 8
  *   (type, label, colors, line style, confidence).
  * - Inside a gap: fill the gap with two bare spans, [gapStart, time] and
  *   [time, gapEnd]. An empty layer is simply one gap covering the whole track,
- *   so this is the same rule the first spacebar press has always followed.
+ *   so this is the same rule the first boundary press has always followed.
  *   Gaps are an analyst's choice (Devin, 2026-09-27), made by deleting spans;
  *   this is how one gets filled again.
+ *
+ * - With `fillGaps` false (Layer.fillGaps), a boundary in a gap starts one span
+ *   there, [time, gapEnd], and leaves the stretch before it empty.
  *
  * No-ops (return null): `time` sits exactly on a boundary, or the cut would
  * leave either side narrower than MIN_SPAN_WIDTH.
@@ -41,9 +44,10 @@ export function placeBoundaryInSpans(
   time: number,
   duration: number,
   mkId: () => string,
+  fillGaps = true,
 ): Span[] | null {
   const i = spans.findIndex((s) => time > s.startTime && time < s.endTime)
-  if (i === -1) return fillGap(spans, time, duration, mkId)
+  if (i === -1) return fillGap(spans, time, duration, mkId, fillGaps)
 
   const orig = spans[i]
   if (time - orig.startTime < MIN_SPAN_WIDTH || orig.endTime - time < MIN_SPAN_WIDTH) {
@@ -79,10 +83,16 @@ export function gapAt(spans: Span[], time: number, duration: number): [number, n
   return [start, end]
 }
 
-function fillGap(spans: Span[], time: number, duration: number, mkId: () => string): Span[] | null {
+function fillGap(spans: Span[], time: number, duration: number, mkId: () => string, both: boolean): Span[] | null {
   const gap = gapAt(spans, time, duration)
   if (!gap) return null
   const [start, end] = gap
+  // A layer that doesn't fill gaps (Layer.fillGaps false) starts a span here
+  // and leaves the stretch before it empty.
+  if (!both) {
+    if (end - time < MIN_SPAN_WIDTH) return null
+    return [...spans, { id: mkId(), startTime: time, endTime: end }].sort((a, b) => a.startTime - b.startTime)
+  }
   if (time - start < MIN_SPAN_WIDTH || end - time < MIN_SPAN_WIDTH) return null
   return [
     ...spans,
@@ -152,4 +162,44 @@ export function setSpanEdge(
     if (touching && s.id === touching.id) return { ...s, startTime: t }
     return s
   })
+}
+
+/**
+ * End the span at `time` there, leaving the rest of it empty (Shift+B): the
+ * counterpart of starting a span in a gap. Returns null outside a span, or
+ * when either part would be narrower than MIN_SPAN_WIDTH.
+ */
+export function endSpanAtTime(spans: Span[], time: number): Span[] | null {
+  const i = spans.findIndex((s) => time > s.startTime && time < s.endTime)
+  if (i === -1) return null
+  const s = spans[i]
+  if (time - s.startTime < MIN_SPAN_WIDTH || s.endTime - time < MIN_SPAN_WIDTH) return null
+  return spans.map((x, j) => (j === i ? { ...x, endTime: time, endCap: x.endCap === 'elision' ? undefined : x.endCap, endOnTop: undefined } : x))
+}
+
+/**
+ * Move every boundary in a layer to the grid (`snap`, e.g. to the nearest bar).
+ * A boundary two spans share moves once, for both. A boundary whose snapped
+ * time would collide with or pass its neighbour stays put, as does one in a
+ * free stretch (where `snap` returns the time unchanged). Returns the new
+ * spans and how many boundaries moved.
+ */
+export function snapSpansToGrid(spans: Span[], snap: (t: number) => number): { spans: Span[]; moved: number } {
+  const times = [...new Set(spans.flatMap((s) => [s.startTime, s.endTime]))].sort((a, b) => a - b)
+  const to = new Map<number, number>()
+  let prev = -Infinity
+  let moved = 0
+  for (let k = 0; k < times.length; k++) {
+    const t = times[k]
+    const next = k + 1 < times.length ? times[k + 1] : Infinity
+    let s = snap(t)
+    if (s - prev < MIN_SPAN_WIDTH || next - s < MIN_SPAN_WIDTH || Math.abs(s - t) < 1e-6) s = t
+    else moved++
+    to.set(t, s)
+    prev = s
+  }
+  return {
+    spans: spans.map((x) => ({ ...x, startTime: to.get(x.startTime) ?? x.startTime, endTime: to.get(x.endTime) ?? x.endTime })),
+    moved,
+  }
 }

@@ -50,7 +50,7 @@ function Segmented<T extends string>({
           <button
             key={o.value}
             onClick={() => onChange(o.value)}
-            className="flex-1 rounded px-1.5 py-0.5 text-[11px] transition-colors"
+            className="flex-1 rounded px-1.5 py-0.5 text-xs transition-colors"
             style={{
               backgroundColor: active ? 'hsl(var(--primary))' : 'transparent',
               color: active ? 'hsl(var(--primary-foreground))' : 'hsl(var(--muted-foreground))',
@@ -127,7 +127,7 @@ function ModePicker({
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className="text-[10px] text-muted-foreground underline-offset-2 hover:underline"
+          className="text-[11px] text-muted-foreground underline-offset-2 hover:underline"
         >
           More modes…
         </button>
@@ -340,7 +340,7 @@ export function DocumentSettingsDialog({
             </Field>
           </div>
 
-          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-foreground">Home key</p>
+          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-foreground">Home key</p>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Tonic">
               <input
@@ -425,7 +425,7 @@ export function DocumentSettingsDialog({
 
           {/* Read-only identity footer */}
           {showMore && (
-          <div className="mt-4 border-t border-border pt-3 text-[10px] leading-relaxed text-muted-foreground">
+          <div className="mt-4 border-t border-border pt-3 text-[11px] leading-relaxed text-muted-foreground">
             <p>Duration: {formatClock(doc.duration)}</p>
             <p>
               Created {new Date(doc.createdAt).toLocaleString()} · Updated{' '}

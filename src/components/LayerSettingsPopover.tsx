@@ -1,7 +1,9 @@
 /**
  * LayerSettingsPopover — the `⋯` layer settings menu in the expanded track header.
  *
- * Controls: rename, description, fill/stroke default colors, lock, and delete.
+ * Controls: rename, description, library, fill/stroke default colors, size,
+ * key-area shape, whether B fills empty stretches, fit to the grid, lock, and
+ * delete.
  *
  * Hierarchical enforcement is deliberately NOT here: it was redefined as a
  * cross-layer nesting constraint scoped to the form-diagram widget (not per-layer),
@@ -15,6 +17,7 @@
  * throw.
  */
 
+import { useState } from 'react'
 import { Lock, Trash2 } from 'lucide-react'
 import { MoreHorizontal } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
@@ -26,6 +29,7 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { ColorPicker } from '@/components/ui/color-picker'
 import { cn } from '@/lib/utils'
+import { LIBRARIES } from '@/lib/vocabulary'
 import type { Layer } from '@/types/strata'
 
 // Factory defaults — used as the fallback preview in the reset button.
@@ -40,10 +44,18 @@ export function LayerSettingsPopover({
   onRequestDelete: () => void
 }) {
   const updateLayer = useDocumentStore((s) => s.updateLayer)
+  const snapLayerToGrid = useDocumentStore((s) => s.snapLayerToGrid)
+  const hasGrid = useDocumentStore((s) => (s.document?.beatGrid?.length ?? 0) > 0)
+  const [fitResult, setFitResult] = useState<string | null>(null)
+
+  function fit(unit: 'bar' | 'beat') {
+    const moved = snapLayerToGrid(layer.id, unit)
+    setFitResult(moved ? `Moved ${moved} boundar${moved === 1 ? 'y' : 'ies'}. Undo puts them back.` : 'Every boundary is already on the grid, or has no room to move.')
+  }
 
   const labelStyle = { color: 'var(--ink-muted)' }
   const fieldClass =
-    'w-full rounded border px-2 py-1 text-[12px] outline-none focus:ring-1 focus:ring-ring'
+    'w-full rounded border px-2 py-1 text-[13px] outline-none focus:ring-1 focus:ring-ring'
   const fieldStyle = { borderColor: 'var(--hairline)', color: 'var(--ink-primary)' }
 
   return (
@@ -51,7 +63,7 @@ export function LayerSettingsPopover({
       <PopoverTrigger asChild>
         <button
           className="shrink-0 rounded p-0.5 hover:bg-accent"
-          style={{ color: 'var(--ink-faint)' }}
+          style={{ color: 'var(--ink-muted)' }}
           title="Layer settings"
           aria-label="Layer settings"
         >
@@ -63,7 +75,7 @@ export function LayerSettingsPopover({
         <div className="space-y-3">
           {/* Rename */}
           <div className="space-y-1">
-            <label className="block text-[11px] font-medium" style={labelStyle}>
+            <label className="block text-xs font-medium" style={labelStyle}>
               Label
             </label>
             <input
@@ -76,7 +88,7 @@ export function LayerSettingsPopover({
 
           {/* Description */}
           <div className="space-y-1">
-            <label className="block text-[11px] font-medium" style={labelStyle}>
+            <label className="block text-xs font-medium" style={labelStyle}>
               Description
             </label>
             <textarea
@@ -91,13 +103,34 @@ export function LayerSettingsPopover({
             />
           </div>
 
+          {/* Where the Type list and quick entry draw this layer's types from. */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium" style={labelStyle} htmlFor={`library-${layer.id}`}>
+              Library
+            </label>
+            <select
+              id={`library-${layer.id}`}
+              value={layer.library ?? ''}
+              onChange={(e) => updateLayer(layer.id, { library: e.target.value || null })}
+              className={fieldClass}
+              style={fieldStyle}
+            >
+              <option value="">Guess from its types</option>
+              {LIBRARIES.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="h-px" style={{ background: 'var(--hairline)' }} />
 
           {/* Default colors */}
           <div className="space-y-2">
-            <p className="text-[11px] font-medium" style={labelStyle}>Default colors</p>
+            <p className="text-xs font-medium" style={labelStyle}>Default colors</p>
             <div className="flex items-center gap-2">
-              <span className="w-12 shrink-0 text-[11px]" style={labelStyle}>Fill</span>
+              <span className="w-12 shrink-0 text-xs" style={labelStyle}>Fill</span>
               <ColorPicker
                 value={layer.fillColorDefault}
                 fallback={FILL_DEFAULT}
@@ -108,7 +141,7 @@ export function LayerSettingsPopover({
               />
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-12 shrink-0 text-[11px]" style={labelStyle}>Stroke</span>
+              <span className="w-12 shrink-0 text-xs" style={labelStyle}>Stroke</span>
               <ColorPicker
                 value={layer.strokeColorDefault}
                 fallback={STROKE_DEFAULT}
@@ -124,7 +157,7 @@ export function LayerSettingsPopover({
 
           {/* Text size — the layer-level fontScale; uniform within a layer. */}
           <div className="flex items-center justify-between">
-            <span className="text-[12px]" style={{ color: 'var(--ink-primary)' }}>
+            <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
               Text size
             </span>
             <div className="flex overflow-hidden rounded border" style={{ borderColor: 'var(--hairline)' }} role="radiogroup" aria-label="Text size">
@@ -137,7 +170,7 @@ export function LayerSettingsPopover({
                     aria-checked={on}
                     aria-label={{ sm: 'Small', md: 'Medium', lg: 'Large' }[size]}
                     onClick={() => updateLayer(layer.id, { fontScale: size })}
-                    className={cn('px-2 py-0.5 text-[11px]', on ? 'bg-accent font-medium' : 'hover:bg-accent/60')}
+                    className={cn('px-2 py-0.5 text-xs', on ? 'bg-accent font-medium' : 'hover:bg-accent/60')}
                     style={{ color: on ? 'var(--ink-primary)' : 'var(--ink-muted)' }}
                   >
                     {{ sm: 'S', md: 'M', lg: 'L' }[size]}
@@ -154,10 +187,10 @@ export function LayerSettingsPopover({
               visual: same Span data model and interactions either way. */}
           <label className="flex cursor-pointer items-center justify-between">
             <span className="flex flex-col gap-0.5">
-              <span className="text-[12px]" style={{ color: 'var(--ink-primary)' }}>
+              <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
                 Key-area layer (thin bars)
               </span>
-              <span className="text-[10px]" style={{ color: 'var(--ink-muted)' }}>
+              <span className="text-[11px]" style={{ color: 'var(--ink-muted)' }}>
                 Thin bars instead of brackets, for key areas rather than sections.
               </span>
             </span>
@@ -170,9 +203,55 @@ export function LayerSettingsPopover({
 
           <div className="h-px" style={{ background: 'var(--hairline)' }} />
 
+          {/* B in an empty stretch: fill back to the previous boundary too, or
+              only start a span (docs/decisions.md, "B in an Empty Stretch"). */}
+          <label className="flex cursor-pointer items-center justify-between gap-3">
+            <span className="flex flex-col gap-0.5">
+              <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
+                B fills empty space on both sides
+              </span>
+              <span className="text-[11px]" style={{ color: 'var(--ink-muted)' }}>
+                Off: a boundary in an empty stretch only starts a span. Shift+B ends one.
+              </span>
+            </span>
+            <Switch
+              checked={layer.fillGaps !== false}
+              onCheckedChange={(v) => updateLayer(layer.id, { fillGaps: v ? undefined : false })}
+              aria-label="B fills empty space on both sides"
+            />
+          </label>
+
+          {/* Fit to grid — retroactive snapping, one undo step. */}
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
+                Fit boundaries to the grid
+              </span>
+              <span className="flex gap-1">
+                {(['bar', 'beat'] as const).map((unit) => (
+                  <button
+                    key={unit}
+                    type="button"
+                    disabled={!hasGrid}
+                    onClick={() => fit(unit)}
+                    className="rounded border px-2 py-0.5 text-xs hover:bg-accent disabled:opacity-50"
+                    style={{ borderColor: 'var(--hairline)', color: 'var(--ink-primary)' }}
+                  >
+                    {unit === 'bar' ? 'Bars' : 'Beats'}
+                  </button>
+                ))}
+              </span>
+            </div>
+            <span className="text-[11px]" role="status" style={{ color: 'var(--ink-muted)' }}>
+              {!hasGrid ? 'Set up a beat grid first.' : fitResult ?? 'Moves each boundary to the nearest bar or beat.'}
+            </span>
+          </div>
+
+          <div className="h-px" style={{ background: 'var(--hairline)' }} />
+
           {/* Lock */}
           <label className="flex cursor-pointer items-center justify-between">
-            <span className="flex items-center gap-1.5 text-[12px]" style={{ color: 'var(--ink-primary)' }}>
+            <span className="flex items-center gap-1.5 text-[13px]" style={{ color: 'var(--ink-primary)' }}>
               <Lock size={13} style={{ color: 'var(--ink-muted)' }} />
               Lock layer
             </span>
@@ -188,7 +267,7 @@ export function LayerSettingsPopover({
           {/* Delete — confirmation dialog is owned by LayerHeaders (see header). */}
           <button
             onClick={onRequestDelete}
-            className="flex w-full items-center gap-1.5 rounded px-2 py-1 text-[12px] hover:bg-accent"
+            className="flex w-full items-center gap-1.5 rounded px-2 py-1 text-[13px] hover:bg-accent"
             style={{ color: 'hsl(var(--destructive))' }}
           >
             <Trash2 size={13} />

@@ -19,12 +19,8 @@ import { parseTimecode } from '@/lib/timecode'
 import type { ConfidenceLevel, PointMarker } from '@/types/strata'
 import { Field, inputClass } from '@/components/Field'
 import { toAccidentals } from '@/lib/musicSymbols'
-import {
-  BUILT_IN_POINT_MARKER_TYPE_GROUPS,
-  findPointMarkerType,
-  formatMarkerCaption,
-  pickerLabel,
-} from '@/lib/pointMarkerTypes'
+import { TypePicker } from '@/components/TypePicker'
+import { formatMarkerCaption } from '@/lib/pointMarkerTypes'
 
 
 function Segmented<T extends string>({
@@ -44,7 +40,7 @@ function Segmented<T extends string>({
           <button
             key={o.value}
             onClick={() => onChange(o.value)}
-            className="flex-1 rounded px-1.5 py-0.5 text-[11px] transition-colors"
+            className="flex-1 rounded px-1.5 py-0.5 text-xs transition-colors"
             style={{
               backgroundColor: active ? 'hsl(var(--primary))' : 'transparent',
               color: active ? 'hsl(var(--primary-foreground))' : 'hsl(var(--muted-foreground))',
@@ -192,37 +188,7 @@ export function PointMarkerPanel() {
       case 'type':
         return (
           <Field key="type" label="Type">
-            <select
-              className={inputClass}
-              value={marker!.type ?? ''}
-              onChange={(e) => update({ type: e.target.value || null })}
-            >
-              <option value="">None</option>
-              {BUILT_IN_POINT_MARKER_TYPE_GROUPS.map((g) => (
-                <optgroup key={g.label} label={g.label}>
-                  {g.terms.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {pickerLabel(t)}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-              {markerTypes.length > 0 && (
-                <optgroup label="This document">
-                  {markerTypes.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {pickerLabel(t)}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-              {/* Escape hatch: a type from a pack or a future build that this
-                  version doesn't know about still shows, rather than silently
-                  resetting the marker's data to none. */}
-              {marker!.type && !findPointMarkerType(marker!.type, markerTypes) && (
-                <option value={marker!.type}>{marker!.type}</option>
-              )}
-            </select>
+            <TypePicker kind="point-marker" value={marker!.type} onPick={(id) => update({ type: id })} />
           </Field>
         )
       case 'harmonicContext':
@@ -320,7 +286,7 @@ export function PointMarkerPanel() {
             disabled={!marker.slug}
           >
             <span className={marker.slug ? 'text-foreground' : 'text-muted-foreground'}>{marker.slug ?? '—'}</span>
-            {marker.slug && <span className="text-[10px] text-muted-foreground">copy</span>}
+            {marker.slug && <span className="text-[11px] text-muted-foreground">copy</span>}
           </button>
         </Field>
 
@@ -345,12 +311,12 @@ export function PointMarkerPanel() {
         {/* Live preview of the diagram caption */}
         {caption && (
           <div className="mb-3 rounded border border-border bg-muted/30 px-2 py-1.5">
-            <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
               On the diagram
             </div>
             <div className="mt-0.5 text-xs font-medium text-foreground">{caption}</div>
             {!captionsVisible && (
-              <div className="mt-1 text-[10px] text-muted-foreground">
+              <div className="mt-1 text-[11px] text-muted-foreground">
                 Captions are turned off for this document, so this is recorded but not drawn.
               </div>
             )}
@@ -373,7 +339,7 @@ export function PointMarkerPanel() {
           <div className="mb-3">
             <button
               onClick={() => setMoreExpanded((v) => !v)}
-              className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
+              className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
             >
               {moreExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
               More fields
@@ -390,7 +356,7 @@ export function PointMarkerPanel() {
             onClick={() => copy(marker.id)}
           >
             <span className="truncate text-muted-foreground">{marker.id}</span>
-            <span className="ml-1 shrink-0 text-[10px] text-muted-foreground">copy</span>
+            <span className="ml-1 shrink-0 text-[11px] text-muted-foreground">copy</span>
           </button>
         </Field>
 
@@ -398,7 +364,7 @@ export function PointMarkerPanel() {
         <div className="mt-2">
           <button
             onClick={handleDelete}
-            className="w-full rounded px-2 py-1 text-[11px] font-medium text-destructive hover:bg-destructive/10"
+            className="w-full rounded px-2 py-1 text-xs font-medium text-destructive hover:bg-destructive/10"
           >
             Delete
           </button>

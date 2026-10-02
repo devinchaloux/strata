@@ -41,7 +41,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useDocumentStore } from '@/store/documentStore'
-import { useUIStore } from '@/store/uiStore'
+import { useUIStore, type QuickEntry } from '@/store/uiStore'
 import { useTimeline } from '@/hooks/useTimeline'
 import { computeFitZoom } from '@/lib/timeline'
 import { TimelineAxis } from './TimelineAxis'
@@ -49,6 +49,7 @@ import { FormLayers } from './FormLayers'
 import { LayerSettingsPopover } from './LayerSettingsPopover'
 import { AddLayerPopover } from './AddLayerPopover'
 import { DiagramControlBar } from './DiagramControlBar'
+import { GridPopover } from './GridPopover'
 import { CommentaryPanel } from '@/widgets/written-analysis/CommentaryPanel'
 import { formSpans, analysisLayers } from '@/lib/layers'
 import {
@@ -98,6 +99,7 @@ function SortableLayerHeaderRow({
 }) {
   const setActiveLayer = useUIStore((s) => s.setActiveLayer)
   const updateLayer = useDocumentStore((s) => s.updateLayer)
+  const reading = useUIStore((s) => s.readingView)
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: layer.id })
@@ -144,6 +146,18 @@ function SortableLayerHeaderRow({
     backgroundColor: active ? 'hsl(var(--primary) / 0.07)' : undefined,
   }
 
+  // Reading: just the level's name.
+  if (reading)
+    return (
+      <div ref={setNodeRef} style={{ ...style, backgroundColor: undefined }} className="flex items-center px-2">
+        {!collapsed && (
+          <span className="truncate text-xs" style={{ color: 'var(--ink-primary)' }}>
+            {layer.label}
+          </span>
+        )}
+      </div>
+    )
+
   return (
     <div
       ref={setNodeRef}
@@ -153,7 +167,7 @@ function SortableLayerHeaderRow({
       onMouseLeave={collapsed ? disarmHover : undefined}
       className={`flex items-center ${collapsed ? 'cursor-pointer justify-center' : 'gap-1 pl-1 pr-1.5'}`}
     >
-      {/* Active-layer accent bar (load-bearing per 0.4 §2 — spacebar target) */}
+      {/* Active-layer accent bar (load-bearing per 0.4 §2 — boundary-key (B) target) */}
       {active && (
         <span
           aria-hidden
@@ -165,7 +179,7 @@ function SortableLayerHeaderRow({
       {/* Hover-reveal label tooltip (collapsed rail only) */}
       {collapsed && hoverLabel && (
         <span
-          className="pointer-events-none absolute left-full top-1/2 z-50 ml-1.5 -translate-y-1/2 whitespace-nowrap rounded px-2 py-1 text-[11px] text-white shadow-md"
+          className="pointer-events-none absolute left-full top-1/2 z-50 ml-1.5 -translate-y-1/2 whitespace-nowrap rounded px-2 py-1 text-xs text-white shadow-md"
           style={{ backgroundColor: 'var(--ink-primary)' }}
           role="tooltip"
         >
@@ -193,7 +207,7 @@ function SortableLayerHeaderRow({
             {...attributes}
             {...listeners}
             className="shrink-0 touch-none cursor-grab active:cursor-grabbing hover:opacity-100"
-            style={{ color: 'var(--ink-faint)', opacity: 0.6 }}
+            style={{ color: 'var(--ink-muted)' }}
             title="Drag to reorder"
             aria-label="Drag to reorder layer"
           >
@@ -225,12 +239,12 @@ function SortableLayerHeaderRow({
                 }
               }}
               onClick={(e) => e.stopPropagation()}
-              className="min-w-0 flex-1 rounded border bg-white px-1 text-[11px] outline-none"
+              className="min-w-0 flex-1 rounded border bg-white px-1 text-xs outline-none"
               style={{ borderColor: 'hsl(var(--primary))', color: 'var(--ink-primary)' }}
             />
           ) : (
             <button
-              className="min-w-0 flex-1 truncate text-left text-[11px]"
+              className="min-w-0 flex-1 truncate text-left text-xs"
               style={{ color: 'var(--ink-primary)', fontWeight: active ? 500 : 400 }}
               title={`${layer.label}. Click to make active; double-click to rename.`}
               onClick={() => setActiveLayer(layer.id)}
@@ -454,8 +468,8 @@ function WidgetTopBar({
         onClick={onToggleCollapsed}
         className="rounded p-0.5 hover:bg-accent"
         style={{ color: 'var(--ink-muted)' }}
-        title={collapsed ? 'Expand layer panel' : 'Collapse layer panel'}
-        aria-label={collapsed ? 'Expand layer panel' : 'Collapse layer panel'}
+        title={collapsed ? 'Expand layer names' : 'Collapse layer names'}
+        aria-label={collapsed ? 'Expand layer names' : 'Collapse layer names'}
       >
         {collapsed ? <ChevronsRight size={15} /> : <ChevronsLeft size={15} />}
       </button>
@@ -464,17 +478,19 @@ function WidgetTopBar({
 
       <span aria-hidden style={{ width: 1, height: 12, background: 'var(--hairline)', margin: '0 4px' }} />
       <DiagramControlBar />
+      <GridPopover />
+      <QuickEntrySwitch />
 
       {hidden.length > 0 && (
         <div className="flex items-center gap-1 overflow-hidden">
-          <span className="text-[10px]" style={{ color: 'var(--ink-muted)' }}>
+          <span className="text-[11px]" style={{ color: 'var(--ink-muted)' }}>
             Hidden:
           </span>
           {hidden.map((l) => (
             <button
               key={l.id}
               onClick={() => updateLayer(l.id, { visibility: true })}
-              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] hover:bg-accent"
+              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] hover:bg-accent"
               style={{ color: 'var(--ink-muted)' }}
               title={`Show ${l.label}`}
             >
@@ -492,6 +508,39 @@ function WidgetTopBar({
   )
 }
 
+/**
+ * What the quick-entry bar sets for the selected spans (QuickEntryBar.tsx):
+ * types, shapes, fills, or nothing. Remembered in the browser.
+ */
+function QuickEntrySwitch() {
+  const mode = useUIStore((s) => s.quickEntry)
+  const setMode = useUIStore((s) => s.setQuickEntry)
+  const opts: [QuickEntry, string][] = [
+    ['off', 'Off'],
+    ['type', 'Type'],
+    ['shape', 'Shape'],
+    ['fill', 'Fill'],
+  ]
+  return (
+    <div className="ml-2 flex items-center gap-1" title="A bar of choices on number keys appears for the selected spans">
+      <span className="text-[11px] text-muted-foreground">Quick entry</span>
+      <div className="flex overflow-hidden rounded border border-border" role="radiogroup" aria-label="Quick entry">
+        {opts.map(([m, label]) => (
+          <button
+            key={m}
+            role="radio"
+            aria-checked={mode === m}
+            onClick={() => setMode(m)}
+            className={`px-1.5 py-0.5 text-[11px] ${mode === m ? 'bg-accent font-medium text-foreground' : 'text-muted-foreground hover:bg-accent/60'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // FormDiagram
 // ---------------------------------------------------------------------------
@@ -503,6 +552,8 @@ export function FormDiagram() {
   // Timeline state lives here so the zoom controls can render in the widget top
   // bar while the ruler (TimelineAxis) renders below. One shared instance.
   const timeline = useTimeline()
+  const reading = useUIStore((s) => s.readingView)
+  const showDiagram = useUIStore((s) => !s.readingView || s.readingShow.diagram)
   if (!doc) return null
 
   const fitZoom = computeFitZoom(timeline.duration, timeline.viewportWidth)
@@ -547,7 +598,7 @@ export function FormDiagram() {
       {/* The open area above the widget card (flex-1, so it shrinks as a tall
           layer stack claims the room). The written-analysis widget reads here;
           with no commentary yet it shows a one-line hint instead. */}
-      <div className="relative flex flex-1 min-h-0 items-center justify-center overflow-y-auto">
+      <div className={`relative flex min-h-0 flex-1 overflow-y-auto ${reading ? 'items-start justify-start' : 'items-center justify-center'}`}>
         {/* The written-analysis widget reads here: the commentary for what's
             playing (see widgets/written-analysis/CommentaryPanel). */}
         <CommentaryPanel />
@@ -558,17 +609,23 @@ export function FormDiagram() {
           timeline below. The border overlay (absolute, pointer-events-none, z-10)
           paints above the absolutely-positioned FormLayers SVG so all four edges
           are visible — an inset outline would be covered by the SVG on bottom/right. */}
+      {/* Reading can hide the diagram; it stays mounted (hidden) so the
+          timeline keeps its measurements. */}
+      <div className={showDiagram ? 'contents' : 'hidden'}>
       <div
         data-keeps-selection
         className="relative shrink-0 overflow-hidden rounded-md bg-[var(--canvas)]"
         style={{ marginBottom: 4 }}
       >
-        <WidgetTopBar
-          collapsed={collapsed}
-          onToggleCollapsed={toggleCollapsed}
-          hidden={hidden}
-          zoom={zoomProps}
-        />
+        {/* Editing controls are off while reading. */}
+        {!reading && (
+          <WidgetTopBar
+            collapsed={collapsed}
+            onToggleCollapsed={toggleCollapsed}
+            hidden={hidden}
+            zoom={zoomProps}
+          />
+        )}
         <div className="flex w-full" style={{ height: stackH }}>
           <LayerHeaders layers={visible} collapsed={collapsed} />
           <FormLayers layers={visible} />
@@ -595,8 +652,10 @@ export function FormDiagram() {
             viewportWidth={timeline.viewportWidth}
             duration={timeline.duration}
             setScrollOffset={timeline.setScrollOffset}
+            grid={doc.beatGrid}
           />
         </div>
+      </div>
       </div>
     </div>
   )

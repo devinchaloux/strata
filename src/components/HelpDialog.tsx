@@ -1,5 +1,5 @@
 /**
- * HelpDialog — how Strata works in six steps, and every keyboard shortcut.
+ * HelpDialog — how Strata works in eight steps, and every keyboard shortcut.
  *
  * Opened from the toolbar's ? button, the empty state, or the ? key. The
  * shortcut list is written out by hand: when a shortcut changes in App or
@@ -17,28 +17,35 @@ const MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator
 
 const STEPS: [string, string][] = [
   ['Start', 'New analysis, then link a YouTube video or a local audio file. The video sits below the diagram; the Video button scrolls to it.'],
-  ['Mark', 'Play, and press Space at each boundary you hear. M places a point marker, such as a cadence.'],
-  ['Describe', 'Click a span to label it and fill in its details in the Inspector. Drag a boundary to adjust it.'],
-  ['Layer', 'Add a layer (+ in the layer panel) for another level of form, or another framework.'],
+  ['Mark', 'Play (Space), and press B at each boundary you hear. M places a point marker, such as a cadence.'],
+  ['Describe', 'Click a span to choose its Type (search, or type a letter such as B′) and fill in its details in the Inspector. Drag a boundary to adjust it.'],
+  ['Grid', 'Optional: tap T along with the beat, or set a tempo in the Grid menu, to number bars and snap to beats.'],
+  ['Layers', 'Add a layer (+ above the layer names) for another level of form, or another framework.'],
   ['Write', 'A selected span’s Commentary box holds prose that appears while that passage plays.'],
   ['Keep', 'Save a .strata file. Export makes a figure (SVG or PNG) or a commentary page (HTML).'],
+  ['Read', 'Reading view lays the analysis out to read or teach from: the video, the commentary in reading size, and the diagram, with editing off. Share… (in the toolbar or the reading view) makes a link to a copy you’ve put online: Dropbox, OneDrive, GitHub or your own site. Esc goes back.'],
 ]
 
 const KEYS: [string, [string, string][]][] = [
   [
     'Playback',
     [
-      ['Space', 'Play; while playing, place a boundary on the active layer'],
-      ['K', 'Play or pause'],
+      ['Space or K', 'Play or pause'],
+      ['B', 'Place a boundary on the active layer at the playhead'],
+      ['Shift+B', 'End the span under the playhead there'],
       ['J / L', 'Back / forward 10 seconds'],
       ['Home', 'Back to the start'],
       ['M', 'Place a point marker at the playhead'],
+      ['T', 'Tap along on the beat to lay the grid'],
+      ['Shift+T', 'Stop the grid here (free passage)'],
     ],
   ],
   [
     'Selecting',
     [
-      ['Click', 'Select a span'],
+      ['Click', 'Select a span; paused, also move the playhead to it'],
+      ['Double-click', 'Play from a span or marker'],
+      ['Click the ruler', 'Move the playhead there'],
       [`${MOD}-click`, 'Add or remove a span'],
       ['Shift-click', 'Select a run of spans'],
       ['Drag', 'On empty space: select every span the box touches'],
@@ -46,7 +53,10 @@ const KEYS: [string, [string, string][]][] = [
       ['↑ ↓', 'Span in the layer above / below'],
       ['Shift+← →', 'Extend the selection'],
       ['Enter', 'Edit the selected span’s label'],
+      ['1–9', 'Quick entry: a type, shape or fill for the selected spans (choose which above the diagram)'],
+      ['/', 'Choose from every type, with search'],
       ['Esc', 'Clear the selection'],
+      ['Delete', 'Remove the selected spans or marker'],
     ],
   ],
   [
@@ -101,7 +111,7 @@ export function HelpDialog({ open, onOpenChange }: { open: boolean; onOpenChange
                 {rows.map(([key, what]) => (
                   <div key={key} className="flex items-baseline gap-3">
                     <dt className="w-28 shrink-0">
-                      <kbd className="rounded border border-border bg-secondary px-1.5 py-0.5 font-sans text-[11px] text-foreground">
+                      <kbd className="rounded border border-border bg-secondary px-1.5 py-0.5 font-sans text-xs text-foreground">
                         {key}
                       </kbd>
                     </dt>

@@ -1,0 +1,45 @@
+name: Vocabulary suggestion
+description: Suggest a change to a built-in type, a new type, or a new library.
+title: "[Vocabulary] "
+labels: ["vocabulary"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Strata's built-in types are grouped into libraries (General, Pop/Rock, EDM, Common practice, Jazz …) and optional packs (Caplin, Sonata Theory …). Suggestions are read by the maintainer, who decides what the built-in vocabulary holds.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What would you like to suggest?
+      options:
+        - Change a type (its name, label or definition)
+        - Add a type
+        - Remove a type
+        - A new library or pack
+        - What a type "counts as" in a search
+        - Something else
+    validations:
+      required: true
+  - type: input
+    id: library
+    attributes:
+      label: Library or pack
+      placeholder: e.g. Caplin formal functions
+  - type: input
+    id: terms
+    attributes:
+      label: Type(s)
+      description: The id or name of each type this concerns, if any.
+      placeholder: e.g. caplin-transition
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Your suggestion
+      description: What should change, and why.
+    validations:
+      required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: Sources
+      description: Where the term is defined or used (books, articles, common practice). Optional, but it helps.

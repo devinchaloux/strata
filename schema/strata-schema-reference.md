@@ -78,10 +78,30 @@ These fields appear at the root of every `.strata` file.
 | Field | Type | Required | What it means |
 |---|---|---|---|
 | `notes` | text or null | No | Document-level free text for the analyst. Methodological notes, analytical caveats, summary of findings. Not the same as the Written Analysis widget — this is a simple overview field, not timestamped prose. |
-| `bpm` | decimal number or null | No | Beats per minute of the track. Used by the BPM grid utility to generate bar-level time points in the shared pool so span boundaries can snap to beats and bars. Null if not applicable or not set. For variable-tempo tracks, set the dominant BPM and adjust individual time points manually. |
-| `timeSignature` | object or null | No | Time signature, used together with `bpm` to generate the BPM grid. Contains `numerator` (beats per measure, e.g. 4) and `denominator` (note value per beat, e.g. 4 for a quarter note). Null if not set. |
+| `bpm` | decimal number or null | No | Beats per minute of the track: the tempo a new beat-grid segment starts with. Null if not applicable or not set. |
+| `timeSignature` | object or null | No | Time signature: the meter a new beat-grid segment starts with. Contains `numerator` (beats per measure, e.g. 4) and `denominator` (note value per beat, e.g. 4 for a quarter note). Null if not set. |
+| `beatGrid` | list of Grid Segments | No | Bars and beats, laid down by the analyst — see [Beat Grid](#beat-grid) below. Omit when there is no grid. |
 | `homeKey` | object or null | No | The document's tonic and mode — see [Home Key](#home-key) below. Null if not set. |
 | `showCadenceCaptions` | true/false | No | Whether cadence-related point marker detail (type abbreviation, harmonic context) renders on the diagram. Point markers aren't owned by any layer, so this is a document-wide switch rather than a per-layer one. Omit for `true` (shown) — the default. |
+
+### Beat Grid
+
+The grid is laid down by ear in **segments**. Each starts on a downbeat and
+keeps one tempo and meter until its own `end`, the next segment, or the end of
+the track. The time between segments has no grid: a freeform breakdown, a
+rubato passage. Beats and bar lines are computed from the segments; they are
+never stored. A new segment picks the grid up after a free passage, and also
+marks a tempo or meter change, or a renumbering.
+
+| Field | Type | Required | What it means |
+|---|---|---|---|
+| `id` | text | Yes | Identifier. |
+| `start` | decimal number | Yes | Recording time of the segment's first downbeat, seconds. |
+| `end` | decimal number or null | No | Where the grid stops and a free stretch begins. Omit to run on to the next segment or the end of the track. |
+| `bpm` | decimal number | Yes | Tempo in beats per minute. |
+| `beatsPerBar` | whole number | Yes | Beats in a bar (the time signature's numerator). |
+| `beatUnit` | whole number | No | The note value of a beat (the denominator). Display only. Omit for 4. |
+| `firstBar` | whole number or null | No | The bar number at `start`. Omit to continue counting from the previous segment, across any free stretch between them; set it to renumber (for example after a hypermetric reinterpretation). |
 
 ### Home Key
 
@@ -120,12 +140,14 @@ The `source` field describes where the audio comes from and how to align it with
 
 The `vocabulary` field stores custom type terms defined specifically for this document. All spans and point markers have a `type` field that draws from a controlled vocabulary — these custom terms extend the global built-in list.
 
+The built-in list ships with the app, not in the file, organised into **libraries**: General, Pop/Rock, Song form, EDM, Common practice, Jazz and Form letters, plus optional packs such as Caplin formal functions and Sonata Theory. A library only groups terms for the picker; a term has one id whichever library it was picked from, so a file never records the library. Form letters (`a-section`, `a-prime`, `b-double-prime` …) are made on demand and stored here as custom terms.
+
 The vocabulary is split into three lists:
 
 | Field | What it contains | v1 UI? |
 |---|---|---|
-| `spanTypes` | Custom terms for span types (e.g. a custom section type used in this corpus) | Planned for v2 |
-| `pointMarkerTypes` | Custom terms for point marker types (e.g. `medial-caesura`, `EEC`, `energy-peak`) | Yes — v1 |
+| `spanTypes` | Custom terms for span types: letters made in the picker, and types the analyst adds by name | Yes |
+| `pointMarkerTypes` | Custom terms for point marker types (e.g. `energy-peak`) | Yes |
 | `modes` | Custom mode terms beyond the built-in major/minor/church-mode starter list (e.g. Renaissance 8-mode or 12-mode systems) | Yes — a minimal picker; same mechanism as the other two lists |
 
 ### Vocabulary Term
@@ -138,9 +160,26 @@ Each term in either list has these fields:
 | `label` | text | Yes | Human-readable display name shown in the type picker and UI. |
 | `description` | text | No | Explanation of what this term means. Shown as a tooltip when the analyst is choosing a type. |
 | `color` | hex color or null | No | Optional default color for spans or markers of this type. |
+| `kind` | text | No | `span`, `point-marker` or `mode`: which list the term belongs in when a pack is imported. |
+| `source` | text | No | Which pack the term came from, e.g. `My Pack v1.0.0`. Absent for terms made in this file. |
+| `broader` | list of term IDs | No | The more general terms this one counts as in a query. A `caplin-transition` with `broader: ["transition"]` is found by a search for all transitions, alongside Sonata Theory's `hd-tr-zone`. The built-in terms carry their own links in the app. |
 
 > **Example:** A Hepokoski/Darcy analyst would define `{ "id": "medial-caesura", "label": "Medial Caesura", "description": "The HC that divides the exposition..." }` in `pointMarkerTypes`. Every point marker in this document typed `medial-caesura` draws from this definition — including its display name and tooltip.
 
+
+### Vocabulary packs
+
+A vocabulary pack is a separate `.vocab.json` file (schema: `strata-vocab.schema.json`) for sharing types between analyses and analysts. It is not part of a `.strata` file: importing a pack copies its terms into the file's `vocabulary`, each with `source` set to `"{name} v{version}"`, so the analysis still opens without the pack.
+
+| Field | Type | Required | What it means |
+|---|---|---|---|
+| `strataVocabPack` | the number 1 | No | Marks the file as a Strata pack. Written on export. |
+| `name` | text | Yes | The pack's name, shown as a group in the Type picker. |
+| `version` | text | No | The pack's version, e.g. `1.0.0`. |
+| `author`, `description` | text | No | Who made it and what it covers. |
+| `terms` | list | Yes | Vocabulary terms as above, each with a `kind` (`span`, `point-marker` or `mode`). |
+
+On import, a term whose id the app already ships, or that the file already defines, is left out and named, so an id never changes meaning inside a file. Importing the same pack again (any version) replaces its earlier terms. Exporting ("Save your types as a pack" in the Libraries dialog, opened from the Type picker) writes the file's own types, leaving out letters (made on demand) and terms from other packs.
 ---
 
 ## 4. Shared Time Points
@@ -177,6 +216,8 @@ Every layer, regardless of type, has these fields:
 | `fillColorDefault` / `strokeColorDefault` | hex color | Yes | Fallback fill and outline for spans in this layer that have no individual override. Required on every layer; a written-analysis layer carries them but doesn't draw with them. |
 | `displayOrder` | whole number | Yes | Rendering order. Lower numbers render first (at the bottom of the stack). |
 | `spanShape` | `bracket` or `bar` | No | Visual style for this layer's spans. Omit or `bracket` = today's rendering (the analytical bracket/arc shapes). `bar` draws thin flat rects instead — intended for key-area layers (spans carrying a `keyArea` caption), though the field itself is generic. A setting buried in layer settings, not offered when first creating a layer. Purely visual: the same span data model and interactions (placement, drag, merge) work identically either way. |
+| `library` | text or null | No | The vocabulary library this layer draws its types from (`pop-rock`, `caplin`, `letters` …). The type picker and quick entry lead with its types. A working preference only: any type can still be used. Omit to let the app guess from the types already in the layer. |
+| `fillGaps` | true/false | No | How a boundary placed in an empty stretch behaves: `true` (the default when absent) fills the stretch with a span on each side; `false` starts a span at the boundary and leaves the stretch before it empty, for a layer that begins partway through. Shift+B ends a span at the playhead either way. |
 | `fontScale` | `sm`, `md` or `lg` | No | Text size for this layer's labels and annotations: `sm` (label 9.5px, annotation 8.5px), `md` (11 / 9), `lg` (13 / 11). Omit for `md`. Uniform within a layer; there is no per-span font size. Purely visual. |
 | `data` | object | Yes | The layer's actual analytical data. Its structure depends on the `type` field — see below. |
 
@@ -228,7 +269,7 @@ A **span** is a time range that represents a formal section: a verse, a drop, a 
 |---|---|---|---|
 | `id` | UUID | Yes | Auto-generated unique identifier. **Never changes, never shown to the user.** Used internally for merge tracking, inter-widget links, and the embeddable viewer. |
 | `label` | text or null | No | Free text display name set by the analyst — what they call this section. Optional: null for unlabeled spans (e.g. bar-level hypermeter spans where the `type` field carries all the analytical meaning). Empty string is valid for a newly placed span awaiting a label. Examples: `Drop 1`, `THE DROP`, `Exposition`. |
-| `shortLabel` | text or null | No | Optional analyst-authored abbreviation of `label` — e.g. `Verse 1` → `V1`, `Breakdown` → `Br`. Shown above the shape in place of the full label when the full label doesn't fit at the current zoom; never truncated further itself. There is no algorithmic abbreviation of above-shape labels — if neither `label` nor `shortLabel` fits, nothing renders (a small marker indicates a hidden label is present). |
+| `shortLabel` | text or null | No | Optional analyst-authored abbreviation of `label` — e.g. `Verse 1` → `V1`, `Breakdown` → `Br`. Shown above the shape in place of the full label when the full label doesn't fit at the current zoom; never truncated further itself. There is no algorithmic abbreviation of above-shape labels — if neither `label` nor `shortLabel` fits, nothing renders there; the editor shows the label when the span is hovered or selected. |
 | `slug` | text or null | No | Generated from the label — e.g. `Drop 1` becomes `drop-1`, `A′` becomes `a-prime`. The reference key the embeddable viewer uses (`focus="drop-1"`) and commentary links (`[[drop-1]]`) use. **Unique across the document**: a repeat gets a suffix (`verse`, `verse-2`, …) in time order. **Stable once saved**: until the file is saved the slug follows label edits; after that, renaming the span leaves the slug unchanged so links to it keep working, and the analyst can regenerate it on purpose. Null when no label is set. |
 | `startTime` | decimal number | Yes | Start of the span in recording time, seconds. |
 | `endTime` | decimal number | Yes | End of the span in recording time, seconds. Must be greater than `startTime`. |
@@ -304,11 +345,13 @@ Point markers serve two distinct purposes that share a single data structure:
 
 Three confidence levels are used on both spans and point markers. **All three are optional — omitting the field implies `definite`.**
 
-| Value | What it means | Rendered as |
-|---|---|---|
-| `definite` | The analyst is confident in this boundary or event identification. Default — no need to set this explicitly. | Solid border / solid line |
-| `approximate` | The boundary is in roughly the right place but interpretively fuzzy — the analyst knows something is here but the exact location is uncertain. | Dashed border / dashed line |
-| `speculative` | The analyst placed this as a hypothesis that may be revised. | Dashed + reduced opacity |
+| Value | What it means |
+|---|---|
+| `definite` | The analyst is confident in this boundary or event identification. Default — no need to set this explicitly. |
+| `approximate` | The boundary is in roughly the right place but interpretively fuzzy — the analyst knows something is here but the exact location is uncertain. |
+| `speculative` | The analyst placed this as a hypothesis that may be revised. |
+
+The app does not draw confidence: it is recorded for queries. An analyst who wants it visible sets the span's line to dashed (`lineStyle`), a separate, purely visual choice.
 
 Confidence is an analytical claim, not a quality flag. A speculative span is not a mistake — it is an honest record of interpretive uncertainty.
 

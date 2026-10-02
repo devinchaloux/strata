@@ -60,6 +60,21 @@ export interface DerivativeReference {
 // Time Signature
 // ---------------------------------------------------------------------------
 
+/**
+ * One stretch of the beat grid: starts on a downbeat and keeps one tempo and
+ * meter until `end`, the next segment, or the end of the track. The time
+ * between segments has no grid.
+ */
+export interface GridSegment {
+  id: string
+  start: number              // Recording time of the first downbeat, seconds
+  end?: number | null        // Where the grid stops (a free stretch follows). Absent/null = runs on
+  bpm: number
+  beatsPerBar: number        // Beats in a bar (the time signature's numerator)
+  beatUnit?: number          // Note value of a beat (the denominator); display only. Omit for 4
+  firstBar?: number | null   // Bar number at `start`. Absent/null = continue from the previous segment
+}
+
 export interface TimeSignature {
   numerator: number   // Beats per measure
   denominator: number // Note value per beat as power of 2 (e.g. 4 = quarter note)
@@ -94,6 +109,8 @@ export interface VocabTerm {
   kind?: 'span' | 'point-marker' | 'mode'
   /** Pack provenance string, e.g. "My Pack v1.0.0". Set on import; absent for built-ins. */
   source?: string
+  /** Ids of more general terms this one counts as in a query (SKOS "broader"). See lib/vocabulary.ts. */
+  broader?: string[]
 }
 
 export interface Vocabulary {
@@ -299,9 +316,22 @@ export interface LayerBase {
    * intended for key-area layers (Span.keyArea captions), but the field is
    * generic, not key-area-specific. A layer setting, buried in Layer Settings,
    * not surfaced in the main "add layer" flow. Purely visual — no data-model
-   * implication; the same Span/spacebar/drag/merge interactions apply either way.
+   * implication; the same Span/boundary-key/drag/merge interactions apply either way.
    */
   spanShape?: 'bracket' | 'bar'
+  /**
+   * The vocabulary library this layer draws its types from (lib/vocabulary.ts
+   * library id, or 'letters'). The Type picker and quick entry lead with it;
+   * it never restricts which types the layer may use. Absent = guessed from
+   * the types already in the layer.
+   */
+  library?: string | null
+  /**
+   * Whether a boundary placed in an empty stretch fills it on both sides
+   * (the default, absent = true) or starts a span there and leaves the
+   * stretch before it empty (false), for a layer that begins mid-track.
+   */
+  fillGaps?: boolean
   /**
    * Text size for this layer's labels and annotations: sm (9.5 / 8.5 px),
    * md (11 / 9, the default when absent) or lg (13 / 11). Uniform within a
@@ -340,8 +370,10 @@ export interface StrataDocument {
   derivativeOf?: DerivativeReference | null
 
   notes?: string | null
-  bpm?: number | null
-  timeSignature?: TimeSignature | null
+  bpm?: number | null                  // Default tempo for a new beat-grid segment
+  timeSignature?: TimeSignature | null // Default meter for a new beat-grid segment
+  /** Bars and beats, laid down by ear in segments; gaps are freeform (lib/beatGrid.ts). */
+  beatGrid?: GridSegment[]
   homeKey?: HomeKey | null
 
   source: SourceReference

@@ -116,6 +116,10 @@ export function useAudioPlayer(file: File | null, sourceOffset: number) {
     audio.addEventListener('pause', () => setPlaybackState('paused'))
     audio.addEventListener('ended', () => setPlaybackState('ended'))
     audio.addEventListener('waiting', () => setPlaybackState('buffering'))
+    // 'playing' fires when playback resumes after a stall (a seek, a slow
+    // disk). Without it a seek left the state on "buffering" while the audio
+    // played on, and Space and tap-along, which need "playing", did nothing.
+    audio.addEventListener('playing', () => setPlaybackState('playing'))
     audio.addEventListener('error', () => {
       if (audioRef.current !== audio) return
       setPlayerStatus('error', `Could not play "${file.name}" — unsupported or corrupt audio file.`)
@@ -170,5 +174,11 @@ export function useAudioPlayer(file: File | null, sourceOffset: number) {
     [storeSetRate],
   )
 
-  return { play, pause, seek, setRate }
+  // The exact recording time now (see useYouTubePlayer's now()).
+  const now = useCallback((): number => {
+    const audio = audioRef.current
+    return audio ? Math.max(0, audio.currentTime - offsetRef.current) : useUIStore.getState().currentTime
+  }, [])
+
+  return { play, pause, seek, setRate, now }
 }

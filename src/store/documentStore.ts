@@ -1,8 +1,11 @@
 import { create } from 'zustand'
 import { temporal } from 'zundo'
-import type { StrataDocument, Layer, LayerBase, Span, PointMarker, SharedTimePoint } from '@/types/strata'
+import type { StrataDocument, Layer, LayerBase, Span, PointMarker, SharedTimePoint, GridSegment, VocabTerm } from '@/types/strata'
+import { formSpans } from '@/lib/layers'
+import { sortedSegments, segmentAt, segmentEnd, extendBack, snapToGrid } from '@/lib/beatGrid'
 import type { FormDiagramData } from '@/types/strata'
-import { placeBoundaryInSpans, setSpanEdge, findOverlaps, MIN_SPAN_WIDTH } from '@/lib/spanEdit'
+import { mergeVocabPack, type MergeResult, type VocabPack } from '@/lib/vocabPack'
+import { placeBoundaryInSpans, setSpanEdge, findOverlaps, endSpanAtTime, snapSpansToGrid, MIN_SPAN_WIDTH } from '@/lib/spanEdit'
 import { groupingHandleSet, breakHistoryGroup } from '@/store/history'
 import { slugify, uniqueSlug, slugsInUse, allSpans, resolveSlugCollisions } from '@/lib/slug'
 import {
@@ -89,10 +92,15 @@ interface DocumentState {
   setCommentaryText: (blockId: string, text: string) => void
   removeSpan: (layerId: string, spanId: string) => void
   mergeSpans: (layerId: string, spanIds: string[], result: Span) => void
-  // Spacebar / Split: place a boundary at `time`, splitting the containing span
+  // B (boundary) / Split: place a boundary at `time`, splitting the containing span
   // (or filling the gap it falls in — an empty layer is one gap). No-op if the
   // cut isn't valid.
   placeBoundary: (layerId: string, time: number) => void
+  // Shift+B: the span under `time` ends there, leaving the rest empty.
+  endSpanAt: (layerId: string, time: number) => void
+  // Move every boundary in a layer to the nearest bar or beat. One undo step;
+  // returns how many boundaries moved.
+  snapLayerToGrid: (layerId: string, unit: 'bar' | 'beat') => number
   // Numeric time entry: move one edge of a span. A touching neighbour's edge
   // moves with it; otherwise the edge stops at the gap's far side.
   setSpanEdge: (layerId: string, spanId: string, edge: 'start' | 'end', time: number) => void
@@ -111,7 +119,23 @@ interface DocumentState {
   // Point marker actions
   addPointMarker: (marker: PointMarker) => void
   updatePointMarker: (id: string, patch: Partial<Omit<PointMarker, 'id'>>) => void
+  /** Add a term to the file's own vocabulary, unless one with its id is already there. */
+  addVocabTerm: (list: 'spanTypes' | 'pointMarkerTypes', term: VocabTerm) => void
+  /** Merge a vocabulary pack's terms into the file (lib/vocabPack.ts). One undo step. */
+  importVocabPack: (pack: VocabPack) => MergeResult | null
   removePointMarker: (id: string) => void
+
+  // Beat grid (lib/beatGrid.ts). startGridAt begins a segment on the downbeat
+  // at `time`; one already running there simply ends at it, so the same action
+  // picks the grid up after a free stretch, changes tempo, or renumbers.
+  startGridAt: (time: number) => void
+  // The segment running at `time` stops there; a free stretch follows.
+  endGridAt: (time: number) => void
+  updateGridSegment: (id: string, patch: Partial<Omit<GridSegment, 'id'>>) => void
+  // Tap-along: lay (or, with `id`, refine) a segment from a run of taps whose
+  // first fell on a downbeat. Returns the segment's id for the next tap.
+  layGridFromTaps: (start: number, bpm: number, id?: string | null) => string | null
+  removeGridSegment: (id: string) => void
 
   // Shared time point pool
   // Replaces all pool entries contributed by layerId with the given points.
@@ -443,11 +467,14 @@ const useDocumentStore = create<DocumentState>()(
         const layers = mapLayer(doc.layers, layerId, (l) => {
           if (l.type !== 'form-diagram') return l
           const data = l.data as FormDiagramData
+          // Layer.fillGaps false: a boundary in an empty stretch starts a span
+          // that runs to the next boundary only, not back to the previous one.
           const next = placeBoundaryInSpans(
             data.spans,
             time,
             doc.duration,
             () => crypto.randomUUID(),
+            l.fillGaps !== false,
           )
           if (!next) return l
           changed = true
@@ -457,6 +484,37 @@ const useDocumentStore = create<DocumentState>()(
         // A split copies the label (and so the slug) into the new right half;
         // the original span keeps its slug and the new half gets the next free one.
         set({ document: resolveSlugCollisions(doc, { ...doc, layers, updatedAt: now() }) })
+      },
+
+      endSpanAt: (layerId, time) => {
+        const doc = get().document
+        if (!doc) return
+        let changed = false
+        const layers = mapLayer(doc.layers, layerId, (l) => {
+          if (l.type !== 'form-diagram') return l
+          const data = l.data as FormDiagramData
+          const next = endSpanAtTime(data.spans, time)
+          if (!next) return l
+          changed = true
+          return { ...l, data: { ...data, spans: next } }
+        })
+        if (changed) set({ document: { ...doc, layers, updatedAt: now() } })
+      },
+
+      snapLayerToGrid: (layerId, unit) => {
+        const doc = get().document
+        if (!doc) return 0
+        const segs = sortedSegments(doc.beatGrid)
+        let moved = 0
+        const layers = mapLayer(doc.layers, layerId, (l) => {
+          if (l.type !== 'form-diagram') return l
+          const data = l.data as FormDiagramData
+          const r = snapSpansToGrid(data.spans, (t) => snapToGrid(t, segs, doc.duration, unit))
+          moved = r.moved
+          return moved ? { ...l, data: { ...data, spans: r.spans } } : l
+        })
+        if (moved) set({ document: { ...doc, layers, updatedAt: now() } })
+        return moved
       },
 
       setSpanEdge: (layerId, spanId, edge, time) => {
@@ -519,6 +577,27 @@ const useDocumentStore = create<DocumentState>()(
         })
       },
 
+      addVocabTerm: (list, term) => {
+        const doc = get().document
+        if (!doc || doc.vocabulary[list].some((t) => t.id === term.id)) return
+        set({
+          document: {
+            ...doc,
+            vocabulary: { ...doc.vocabulary, [list]: [...doc.vocabulary[list], term] },
+            updatedAt: now(),
+          },
+        })
+      },
+
+      importVocabPack: (pack) => {
+        const doc = get().document
+        if (!doc) return null
+        const result = mergeVocabPack(doc.vocabulary, pack)
+        if (result.added || result.updated)
+          set({ document: { ...doc, vocabulary: result.vocabulary, updatedAt: now() } })
+        return result
+      },
+
       updatePointMarker: (id, patch) => {
         const doc = get().document
         if (!doc) return
@@ -536,6 +615,114 @@ const useDocumentStore = create<DocumentState>()(
             updatedAt: now(),
           },
         })
+      },
+
+      startGridAt: (time) => {
+        const doc = get().document
+        if (!doc) return
+        const segs = sortedSegments(doc.beatGrid)
+        if (segs.some((g) => Math.abs(g.start - time) < 0.05)) return
+        const running = segmentAt(segs, time, doc.duration)?.seg
+        // Carry the tempo and meter on from the segment running here, else the
+        // last one before; the document's tempo and meter are the first default.
+        const before = [...segs].reverse().find((g) => g.start < time)
+        const model = running ?? before
+        const seg: GridSegment = {
+          id: crypto.randomUUID(),
+          start: time,
+          bpm: model?.bpm ?? doc.bpm ?? 120,
+          beatsPerBar: model?.beatsPerBar ?? doc.timeSignature?.numerator ?? 4,
+          ...(model?.beatUnit ?? doc.timeSignature?.denominator ? { beatUnit: model?.beatUnit ?? doc.timeSignature?.denominator } : {}),
+          // A split segment's own stopping point now belongs to the new one.
+          ...(running?.end != null && running.end > time ? { end: running.end } : {}),
+        }
+        set({ document: { ...doc, beatGrid: sortedSegments([...segs, seg]), updatedAt: now() } })
+      },
+
+      endGridAt: (time) => {
+        const doc = get().document
+        if (!doc) return
+        const segs = sortedSegments(doc.beatGrid)
+        const hit = segmentAt(segs, time, doc.duration)
+        if (!hit || time <= hit.seg.start) return
+        set({
+          document: {
+            ...doc,
+            beatGrid: segs.map((g) => (g.id === hit.seg.id ? { ...g, end: time } : g)),
+            updatedAt: now(),
+          },
+        })
+      },
+
+      layGridFromTaps: (tappedStart, bpm, id) => {
+        const doc = get().document
+        if (!doc) return null
+        const segs = sortedSegments(doc.beatGrid)
+        const own = segs.find((g) => g.id === id)
+        const others = segs.filter((g) => g.id !== id)
+        // Reach back to where the music plausibly starts: the latest section
+        // boundary before the taps, or the end of the grid before them, or the
+        // track's start. Taps inside a running segment mark a tempo change
+        // there instead, so they don't reach back.
+        const inRunning = segmentAt(others, tappedStart, doc.duration)
+        const beatsPerBar = (own ?? inRunning?.seg ?? others.find((g) => g.start < tappedStart))?.beatsPerBar
+          ?? doc.timeSignature?.numerator ?? 4
+        let start = tappedStart
+        if (!inRunning) {
+          const gridFloor = Math.max(0, ...others.map((_, i) => segmentEnd(others, i, doc.duration)).filter((e) => e <= tappedStart))
+          const boundaryFloor = Math.max(
+            0,
+            ...doc.layers.flatMap(formSpans).flatMap((s) => [s.startTime, s.endTime]).filter((t) => t <= tappedStart + 0.05),
+          )
+          start = extendBack(tappedStart, (beatsPerBar * 60) / bpm, Math.max(gridFloor, boundaryFloor))
+        }
+        // The same run refines its own segment; a run that begins on a segment's
+        // first downbeat (within half a beat) refines that one instead of
+        // stacking a second segment on top of it.
+        const existing =
+          segs.find((g) => g.id === id) ?? segs.find((g) => Math.abs(g.start - start) < 30 / bpm)
+        if (existing) {
+          set({
+            document: {
+              ...doc,
+              beatGrid: sortedSegments(segs.map((g) => (g.id === existing.id ? { ...g, start, bpm } : g))),
+              updatedAt: now(),
+            },
+          })
+          return existing.id
+        }
+        const running = segmentAt(segs, start, doc.duration)?.seg
+        const before = [...segs].reverse().find((g) => g.start < start)
+        const model = running ?? before
+        const beatUnit = model?.beatUnit ?? doc.timeSignature?.denominator
+        const seg: GridSegment = {
+          id: crypto.randomUUID(),
+          start,
+          bpm,
+          beatsPerBar: model?.beatsPerBar ?? doc.timeSignature?.numerator ?? 4,
+          ...(beatUnit ? { beatUnit } : {}),
+          ...(running?.end != null && running.end > start ? { end: running.end } : {}),
+        }
+        set({ document: { ...doc, beatGrid: sortedSegments([...segs, seg]), updatedAt: now() } })
+        return seg.id
+      },
+
+      updateGridSegment: (id, patch) => {
+        const doc = get().document
+        if (!doc?.beatGrid) return
+        set({
+          document: {
+            ...doc,
+            beatGrid: sortedSegments(doc.beatGrid.map((g) => (g.id === id ? { ...g, ...patch } : g))),
+            updatedAt: now(),
+          },
+        })
+      },
+
+      removeGridSegment: (id) => {
+        const doc = get().document
+        if (!doc?.beatGrid) return
+        set({ document: { ...doc, beatGrid: doc.beatGrid.filter((g) => g.id !== id), updatedAt: now() } })
       },
 
       removePointMarker: (id) => {

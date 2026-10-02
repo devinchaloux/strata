@@ -17,14 +17,18 @@ import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
 import { computePps, totalContentWidth, snapTime } from '@/lib/timeline'
-import { stackHeight, shapeTopY, layerBodyHeight, layerIndexAtY } from '@/lib/formShape'
+import { stackHeight, shapeTopY, layerBodyHeight, layerIndexAtY, layerFonts, estimateTextWidth, layerLabelLayout, LABEL_RISE } from '@/lib/formShape'
 import { layoutMarkerBand, BAND_TOP_GAP, BAND_ROW_HEIGHT, GLYPH_HALF, type MarkerPlacement } from '@/lib/markerBand'
 import { MIN_SPAN_WIDTH, MIN_BOUNDARY_DRAG_PX } from '@/lib/spanEdit'
 import { newGestureKey, withHistoryGroup } from '@/store/history'
+import { gridLines, sortedSegments, barLength, beatLength } from '@/lib/beatGrid'
+import { spanTypeName } from '@/lib/vocabulary'
+import { QuickEntryBar } from './QuickEntryBar'
+import { snapToActiveGrid } from '@/store/snap'
 import { Playhead } from './Playhead'
 import { FormDiagramFigure, type SpanDecoration } from '@/widgets/form-diagram/figure'
 import { EDITOR_THEME } from '@/widgets/form-diagram/theme'
-import type { Layer, Span, FormDiagramData, PointMarker, VocabTerm } from '@/types/strata'
+import type { Layer, Span, FormDiagramData, PointMarker, VocabTerm, GridSegment } from '@/types/strata'
 import {
   ContextMenu,
   ContextMenuTrigger,
@@ -117,7 +121,7 @@ function SpanMenuItems({ span, layer }: { span: Span; layer: Layer }) {
         <span className="flex flex-col">
           Split at playhead
           {/* A greyed-out item should say why. */}
-          {!canSplit && <span className="text-[10px]">Move the playhead into this span first.</span>}
+          {!canSplit && <span className="text-[11px]">Move the playhead into this span first.</span>}
         </span>
       </ContextMenuItem>
       <ContextMenuSeparator />
@@ -171,6 +175,46 @@ const SelectionHighlight: SpanDecoration = ({ span, width, height }) => {
   )
 }
 
+/**
+ * The label of a hovered or selected span that has no room to show it,
+ * drawn over everything on a small card so it can be read where it belongs.
+ * Replaces the old "label hidden here" dot (docs/decisions.md, "Hidden Labels
+ * Show on Hover and Selection").
+ */
+function HiddenLabelPeek({ layers, pps, totalWidth }: { layers: Layer[]; pps: number; totalWidth: number }) {
+  const hovered = useUIStore((s) => s.hoveredSpanId)
+  const selected = useUIStore((s) => s.selectedSpanIds)
+  const ids = new Set(selected.length <= 3 ? [...selected] : [])
+  if (hovered) ids.add(hovered)
+  if (!ids.size) return null
+  const peeks: JSX.Element[] = []
+  layers.forEach((layer, i) => {
+    if (!layer.visibility) return
+    const spans = (layer.data as FormDiagramData).spans.filter((s) => ids.has(s.id))
+    if (!spans.length) return
+    const layout = layerLabelLayout(layer, pps, totalWidth)
+    const font = layerFonts(layer).label
+    for (const span of spans) {
+      if (!layout?.get(span.id)?.hidden) continue
+      const text = (layer.spanShape === 'bar' ? span.keyArea || span.label : span.label) ?? ''
+      const w = estimateTextWidth(text, font) + 10
+      const h = font + 6
+      const mid = ((span.startTime + span.endTime) / 2) * pps
+      const x = Math.max(0, Math.min(mid - w / 2, totalWidth - w))
+      const y = shapeTopY(layers, i) - LABEL_RISE - h + 3
+      peeks.push(
+        <g key={span.id} pointerEvents="none">
+          <rect x={x} y={y} width={w} height={h} rx={3} fill="hsl(var(--card))" stroke={SELECT_BLUE} strokeWidth={1} />
+          <text x={x + w / 2} y={y + h / 2 + font * 0.35} textAnchor="middle" fontSize={font} fontWeight={500} fill="var(--ink-primary)">
+            {text}
+          </text>
+        </g>,
+      )
+    }
+  })
+  return <>{peeks}</>
+}
+
 // ---------------------------------------------------------------------------
 // Interaction layer — invisible targets laid over the figure
 // ---------------------------------------------------------------------------
@@ -203,6 +247,7 @@ function SpanHitTarget({
   const toggleSpan = useUIStore((s) => s.toggleSpan)
   const setSelection = useUIStore((s) => s.setSelection)
   const hoverSpan = useUIStore((s) => s.hoverSpan)
+  const spanTypes = useDocumentStore((s) => s.document?.vocabulary.spanTypes ?? EMPTY_TERMS)
 
   // Modifier-aware selection (Merge UX §1): plain click single-selects;
   // ctrl/cmd-click toggles; shift-click selects the range from the anchor.
@@ -226,6 +271,10 @@ function SpanHitTarget({
       toggleSpan(span.id)
     } else {
       selectSpan(span.id)
+      // Paused, a click also moves the playhead to the span, so pressing play
+      // starts there. While playing it only selects: a click to edit shouldn't
+      // pull the analyst out of what they're hearing.
+      if (useUIStore.getState().playbackState !== 'playing') useUIStore.getState().requestSeek(span.startTime)
     }
   }
 
@@ -233,7 +282,7 @@ function SpanHitTarget({
   const width = (span.endTime - span.startTime) * pps
   if (width <= 0) return null
   const displayLabel = layer.spanShape === 'bar' ? span.keyArea || span.label : span.label
-  const titleText = [displayLabel, span.type].filter(Boolean).join(' · ')
+  const titleText = [displayLabel, spanTypeName(span.type, spanTypes)].filter(Boolean).join(' · ')
 
   return (
     <rect
@@ -247,6 +296,8 @@ function SpanHitTarget({
       onMouseEnter={() => hoverSpan(span.id)}
       onMouseLeave={() => hoverSpan(null)}
       onClick={handleClick}
+      // Double-click plays from the span's start.
+      onDoubleClick={() => useUIStore.getState().requestSeek(span.startTime, true)}
     >
       {titleText && <title>{titleText}</title>}
     </rect>
@@ -275,6 +326,8 @@ const LayerInteraction = memo(function LayerInteraction({
   // it opens. A menu per span meant hundreds of menu components re-rendering on
   // every edit of a large analysis.
   const [menuSpanId, setMenuSpanId] = useState<string | null>(null)
+  // Reading view: spans still select and seek, but nothing edits.
+  const reading = useUIStore((s) => s.readingView)
   if (!layer.visibility) return null
   const spans = (layer.data as FormDiagramData).spans
   const bodyHeight = layerBodyHeight(layer)
@@ -287,6 +340,15 @@ const LayerInteraction = memo(function LayerInteraction({
     setMenuSpanId(id)
     if (id && !useUIStore.getState().selectedSpanIds.includes(id)) useUIStore.getState().selectSpan(id)
   }
+
+  if (reading)
+    return (
+      <g transform={`translate(0, ${topY})`}>
+        {spans.map((span) => (
+          <SpanHitTarget key={span.id} span={span} layer={layer} pps={pps} dragCommittedRef={dragCommittedRef} />
+        ))}
+      </g>
+    )
 
   return (
     <g transform={`translate(0, ${topY})`}>
@@ -322,6 +384,47 @@ const LayerInteraction = memo(function LayerInteraction({
   )
 })
 
+/**
+ * The beat grid behind the diagram: bar lines, and beat lines once they're far
+ * enough apart to read. Zoomed out, bar lines thin to every 2nd, 4th… bar. Free
+ * stretches between grid segments get no lines at all.
+ */
+const BeatGridLines = memo(function BeatGridLines({
+  grid,
+  duration,
+  pps,
+  height,
+}: {
+  grid: GridSegment[] | undefined
+  duration: number
+  pps: number
+  height: number
+}) {
+  const segs = sortedSegments(grid)
+  if (!segs.length || pps <= 0) return null
+  const minBar = Math.min(...segs.map(barLength)) * pps
+  const minBeat = Math.min(...segs.map(beatLength)) * pps
+  const showBeats = minBeat >= 6
+  let every = 1
+  while (minBar * every < 8) every *= 2
+  const lines = gridLines(segs, duration, 0, duration)
+  return (
+    <g aria-hidden pointerEvents="none">
+      {lines.map((l) =>
+        l.bar !== null ? (
+          (l.bar - 1) % every === 0 && (
+            <line key={l.time} x1={l.time * pps} x2={l.time * pps} y1={0} y2={height} stroke="var(--ruler)" strokeOpacity={0.45} />
+          )
+        ) : (
+          showBeats && (
+            <line key={l.time} x1={l.time * pps} x2={l.time * pps} y1={0} y2={height} stroke="var(--hairline)" strokeOpacity={0.6} />
+          )
+        ),
+      )}
+    </g>
+  )
+})
+
 /** A marker's target: covers its glyph and caption, for select and drag. */
 function MarkerHitTarget({
   placement,
@@ -344,6 +447,7 @@ function MarkerHitTarget({
       fill="transparent"
       style={{ cursor: 'ew-resize' }}
       onPointerDown={onPointerDown}
+      onDoubleClick={() => useUIStore.getState().requestSeek(marker.timestamp, true)}
       // The container's click clears the selection, and a marker click bubbles
       // to it; stopping it here keeps the selection the pointerup just made.
       onClick={(e) => e.stopPropagation()}
@@ -383,6 +487,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   const viewportWidth = useUIStore((s) => s.viewportWidth)
   const clearSelection = useUIStore((s) => s.clearSelection)
   const setSelection = useUIStore((s) => s.setSelection)
+  const reading = useUIStore((s) => s.readingView)
   const setAdjacentBoundary = useDocumentStore((s) => s.setAdjacentBoundary)
   const duration = useDocumentStore((s) => s.document?.duration ?? 0)
 
@@ -449,7 +554,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
       const gesture = newGestureKey('boundary-drag')
       const onMove = (ev: PointerEvent) =>
         withHistoryGroup(gesture, () =>
-          setAdjacentBoundary(layerId, leftId, rightId, clientXToTime(ev.clientX), minWidth),
+          setAdjacentBoundary(layerId, leftId, rightId, snapToActiveGrid(clientXToTime(ev.clientX)), minWidth),
         )
       const onUp = () => {
         window.removeEventListener('pointermove', onMove)
@@ -565,13 +670,20 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
         if (!dragged) return
         const t = clampToTrack(clientXToTime(ev.clientX))
         withHistoryGroup(gesture, () =>
-          updatePointMarker(marker.id, { timestamp: snapTime(t, candidates, pps) }),
+          updatePointMarker(marker.id, {
+            // The beat grid wins when snapping is on and the time is inside it;
+            // otherwise markers snap to nearby boundaries and markers as before.
+            timestamp: snapToActiveGrid(t) !== t ? snapToActiveGrid(t) : snapTime(t, candidates, pps),
+          }),
         )
       }
       const onUp = () => {
         window.removeEventListener('pointermove', onMove)
         window.removeEventListener('pointerup', onUp)
-        if (!dragged) selectPointMarker(marker.id)
+        if (!dragged) {
+          selectPointMarker(marker.id)
+          if (useUIStore.getState().playbackState !== 'playing') useUIStore.getState().requestSeek(marker.timestamp)
+        }
       }
       window.addEventListener('pointermove', onMove)
       window.addEventListener('pointerup', onUp)
@@ -616,6 +728,9 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
         }}
       >
 
+        {/* The beat grid, behind everything (editor only for now). */}
+        <BeatGridLines grid={doc?.beatGrid} duration={duration} pps={pps} height={svgHeight} />
+
         {/* The drawing itself: the same pure figure that export uses. */}
         {pps > 0 && (
           <FormDiagramFigure
@@ -643,6 +758,8 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
             />
           ))}
 
+        {pps > 0 && <HiddenLabelPeek layers={layers} pps={pps} totalWidth={totalWidth} />}
+
         {/* Marker band: empty band clears the selection; markers select and drag. */}
         {pps > 0 && (
           <g>
@@ -658,7 +775,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
               onClick={handleBandClick}
             />
             {bandLayout.placements.map((p) => (
-              <MarkerHitTarget key={p.marker.id} placement={p} bandTop={stackH} onPointerDown={beginMarkerDrag(p.marker)} />
+              <MarkerHitTarget key={p.marker.id} placement={p} bandTop={stackH} onPointerDown={reading ? () => undefined : beginMarkerDrag(p.marker)} />
             ))}
           </g>
         )}
@@ -682,6 +799,9 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
 
       {/* Playback cursor — mirrors the ruler cursor so the two read as one line */}
       <Playhead height={svgHeight} opacity={0.5} />
+
+      {/* Quick entry for the selection, on number keys (QuickEntryBar.tsx); not while reading. */}
+      {!reading && <QuickEntryBar containerRef={containerRef} layers={layers} pps={pps} scrollOffset={scrollOffset} />}
     </div>
   )
 }

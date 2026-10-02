@@ -73,6 +73,10 @@ describe('documents the app writes', () => {
     })
     store().updateMeta({ homeKey: { tonic: 'B♭', mode: 'major' } })
     store().updateLayer(layer.id, { fontScale: 'lg' })
+    store().startGridAt(4)
+    store().endGridAt(60)
+    store().startGridAt(90)
+    store().updateGridSegment(store().document!.beatGrid![1].id, { firstBar: 1, beatUnit: 8 })
 
     expectValid(doc())
   })

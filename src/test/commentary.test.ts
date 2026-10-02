@@ -14,6 +14,8 @@ import {
   commentaryToMarkdown,
   markerBySlug,
   blockForRange,
+  stackAt,
+  passagesAt,
 } from '@/widgets/written-analysis/commentary'
 import { makeDoc, makeLayer, makeSpan } from './fixtures'
 
@@ -132,6 +134,32 @@ describe('commentary on a stretch of time', () => {
     expect(analysisLayers(doc())[0].data.blocks).toHaveLength(1)
     store().setCommentaryText(block.id, '')
     expect(analysisLayers(doc())[0].data.blocks).toHaveLength(0)
+  })
+})
+
+describe('the stack at a moment', () => {
+  it('lists the span sounding in each visible layer, top layer first, with its commentary', () => {
+    const d = makeDoc([
+      makeLayer('Phrases', [makeSpan('p1', 0, 15), makeSpan('p2', 15, 30)]),
+      makeLayer('Rotations', [makeSpan('r1', 0, 60, { label: 'Rotation 1' })]),
+    ])
+    d.layers[0].displayOrder = 0
+    d.layers[1].displayOrder = 5
+    store().loadDocument(d)
+    store().setSpanCommentary('r1', 'The first rotation.')
+    store().setRangeCommentary(10, 20, 'Across the seam.')
+    const rows = stackAt(doc(), 17)
+    expect(rows.map((r) => r.span.id)).toEqual(['r1', 'p2'])
+    expect(rows[0].block?.text).toBe('The first rotation.')
+    expect(passagesAt(doc(), 17).map((b) => b.text)).toEqual(['Across the seam.'])
+    expect(passagesAt(doc(), 25)).toEqual([])
+  })
+
+  it('skips hidden layers', () => {
+    const d = makeDoc([makeLayer('A', [makeSpan('a', 0, 10)]), makeLayer('B', [makeSpan('b', 0, 10)])])
+    d.layers[1].visibility = false
+    store().loadDocument(d)
+    expect(stackAt(doc(), 5).map((r) => r.span.id)).toEqual(['a'])
   })
 })
 

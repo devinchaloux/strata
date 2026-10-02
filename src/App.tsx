@@ -10,6 +10,11 @@ import { MergeConflictDialog } from '@/components/MergeConflictDialog'
 import { DocumentSettingsDialog } from '@/components/DocumentSettingsDialog'
 import { LinkSourceDialog } from '@/components/LinkSourceDialog'
 import { ExportDialog } from '@/components/ExportDialog'
+import { LibrariesDialog } from '@/components/LibrariesDialog'
+import { reportIssueUrl } from '@/lib/issues'
+import { ReadingHeader } from '@/components/ReadingHeader'
+import { ShareDialog } from '@/components/ShareDialog'
+import { fetchSharedAnalysis, srcParam } from '@/lib/shareLink'
 import { HelpDialog } from '@/components/HelpDialog'
 import {
   AlertDialog,
@@ -29,6 +34,7 @@ import aliveRaw from '../schema/alive.strata?raw'
 import { readStrataFile } from '@/lib/fileIO'
 import { spanNeighbour, firstSpan, spanRange } from '@/lib/spanNav'
 import { formSpans } from '@/lib/layers'
+import { newGestureKey, withHistoryGroup } from '@/store/history'
 import { computePps, totalContentWidth, clampScrollOffset } from '@/lib/timeline'
 
 // ---------------------------------------------------------------------------
@@ -324,6 +330,9 @@ export default function App() {
   const setExportOpen = useUIStore((s) => s.setExportOpen)
   const setActiveLayer = useUIStore((s) => s.setActiveLayer)
   const clearSelection = useUIStore((s) => s.clearSelection)
+  const readingView = useUIStore((s) => s.readingView)
+  const sharedFrom = useUIStore((s) => s.sharedFrom)
+  const setReadingView = useUIStore((s) => s.setReadingView)
   const selectedSpanCount = useUIStore((s) => s.selectedSpanIds.length)
   const selectedMarkerId = useUIStore((s) => s.selectedPointMarkerId)
   const selectPointMarker = useUIStore((s) => s.selectPointMarker)
@@ -382,7 +391,7 @@ export default function App() {
     useDocumentStore.temporal.getState().clear()
   }, [loadDocument])
 
-  // Space places boundaries in the active layer, so there must always be one
+  // B places boundaries in the active layer, so there must always be one
   // when the document has a form layer: after New, Open, Demo, or deleting the
   // active layer, the top form layer takes over.
   const layers = useDocumentStore((s) => s.document?.layers)
@@ -433,6 +442,28 @@ export default function App() {
     return () => window.removeEventListener('pointerdown', onPointerDown)
   }, [clearSelection])
 
+  // A shared link (?src=…) opens that analysis in the reading view, with
+  // lyrics off for this visit unless the reader turns them on
+  // (docs/decisions.md, "Sharing by Link").
+  useEffect(() => {
+    const src = srcParam(window.location.href)
+    if (!src) return
+    const ui = useUIStore.getState()
+    ui.setSharedFrom(src)
+    fetchSharedAnalysis(src)
+      .then((result) => {
+        loadDocument(result.doc)
+        useDocumentStore.temporal.getState().clear()
+        ui.setShowLyrics(false, false)
+        ui.setReadingView(true)
+        if (result.notices.length) ui.showAppMessage('Opened with warnings', result.notices)
+      })
+      .catch((err: unknown) => {
+        ui.setSharedFrom(null)
+        ui.showAppMessage('Couldn’t open the shared analysis', [err instanceof Error ? err.message : String(err), src])
+      })
+  }, [loadDocument])
+
   // Keyboard shortcuts
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -444,6 +475,7 @@ export default function App() {
         const inField =
           tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable
         if (!inField) {
+          if (useUIStore.getState().readingView) useUIStore.getState().setReadingView(false)
           clearSelection()
           selectPointMarker(null)
           return
@@ -463,10 +495,41 @@ export default function App() {
         }
       }
 
-      if (navigateSpans(e)) return
+      const reading = useUIStore.getState().readingView
+      if (!reading && navigateSpans(e)) return
+
+      // Delete / Backspace — remove the selected spans (or the selected
+      // marker), one undo step, from anywhere but a text field.
+      if ((e.key === 'Delete' || e.key === 'Backspace') && !reading && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const el = e.target as HTMLElement | null
+        const tag = el?.tagName
+        const inField =
+          tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable
+        if (inField) return
+        const ui = useUIStore.getState()
+        const store = useDocumentStore.getState()
+        const doc = store.document
+        if (!doc) return
+        if (ui.selectedSpanIds.length) {
+          e.preventDefault()
+          const ids = new Set(ui.selectedSpanIds)
+          withHistoryGroup(newGestureKey('delete-spans'), () => {
+            for (const l of doc.layers)
+              for (const s of formSpans(l)) if (ids.has(s.id)) useDocumentStore.getState().removeSpan(l.id, s.id)
+          })
+          clearSelection()
+        } else if (ui.selectedPointMarkerId) {
+          e.preventDefault()
+          store.removePointMarker(ui.selectedPointMarkerId)
+          selectPointMarker(null)
+        }
+        return
+      }
 
       const mod = e.metaKey || e.ctrlKey
       if (!mod) return
+      // Reading never edits: no undo, redo or merge from the keyboard.
+      if (reading && /^[zZjJ]$/.test(e.key)) return
 
       // Undo / redo. Inside a text field, let the browser handle native text
       // undo instead of walking the document history.
@@ -519,12 +582,16 @@ export default function App() {
           <StrataMark />
           <span className="text-sm font-semibold tracking-tight text-foreground">Strata</span>
           <span
-            className="rounded border border-border px-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+            className="rounded border border-border px-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
             title="Strata is in beta. Save often, and keep a copy of files that matter."
           >
             Beta
           </span>
         </span>
+        {readingView ? (
+          <ReadingHeader />
+        ) : (
+          <>
 
         <div className="mx-1.5 h-4 w-px bg-border" />
 
@@ -576,6 +643,36 @@ export default function App() {
         <IconToolbarButton onClick={() => setHelpOpen(true)} title="How Strata works (?)">
           <CircleHelp size={14} />
         </IconToolbarButton>
+        <button
+          onClick={() => setReadingView(true)}
+          disabled={!doc}
+          title="Read the analysis: video, commentary and diagram, with editing off"
+          className="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-40
+            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+        >
+          Reading view
+        </button>
+        <button
+          onClick={() => useUIStore.getState().setShareOpen(true)}
+          disabled={!doc}
+          title="Make a link that opens this analysis in the reading view"
+          className="rounded-md px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-40
+            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+        >
+          Share…
+        </button>
+        {/* A link, not a button: it opens GitHub's issue form in a new tab,
+            prefilled with the version and browser (lib/issues.ts). */}
+        <a
+          href={reportIssueUrl()}
+          target="_blank"
+          rel="noreferrer"
+          title="Report a bug or suggest an improvement on GitHub"
+          className="rounded-md px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground
+            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+        >
+          Report an issue
+        </a>
 
         {isDirty && (
           <span
@@ -589,6 +686,8 @@ export default function App() {
             />
             Unsaved changes
           </span>
+        )}
+          </>
         )}
       </header>
 
@@ -610,7 +709,7 @@ export default function App() {
           <PlayerDock />
         </div>
 
-        {doc && (
+        {doc && !readingView && (
           // Pinned beside the work area while the page scrolls.
           <div className="sticky flex self-start" style={{ top: HEADER_H, height: `calc(100vh - ${HEADER_H}px)` }}>
             <Inspector
@@ -637,10 +736,12 @@ export default function App() {
 
       {/* Export — the form diagram as an SVG or PNG figure */}
       <ExportDialog />
+      <LibrariesDialog />
+      <ShareDialog />
       <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} />
 
       {/* Crash recovery modal */}
-      {pendingRecovery && (
+      {pendingRecovery && !sharedFrom && (
         <RecoveryModal
           savedAt={pendingRecovery.savedAt}
           onRestore={restoreRecovery}

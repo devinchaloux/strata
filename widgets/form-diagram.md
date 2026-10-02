@@ -1,4 +1,5 @@
 # Form Diagram Widget
+
 *Widget type: `"form-diagram"` | v1.0 | June 2026*
 
 The form diagram is the v1 widget and the proof of concept for the Strata widget system. It is the data spine of the analysis: the layer all other widgets reference for span boundaries and section identity.
@@ -100,7 +101,7 @@ exporter.formats = [
 ]
 ```
 
-**SVG export:** The form diagram renders as SVG in the DOM. Export serializes the current SVG subtree, applies a `viewBox` scoped to the `[startTime, endTime]` window (converting to pixel coordinates at the current zoom), and strips editing-only elements (drag handles, selection rings). No external library required.
+**SVG export:** Export renders the same pure figure the editor draws (`figure.tsx`), with the print theme, for a chosen `[startTime, endTime]` range at a chosen width (`exportSvg.tsx`); editing-only elements are never part of that figure. The export dialog chooses the layers, starting from the visible ones but independent of them. Each chosen layer is cut to the range first: a layer with no span in it is left out, and a span crossing an edge is trimmed there with its cut end drawn square and running off the edge, so its label sits at the centre of the part that shows. No external library required.
 
 **PDF export:** Uses `pdf-lib`. SVG content is placed into a PDF page sized to the exported time range. The page width is proportional to the time range; the height is the rendered layer panel height. Filename: `{document.title} — Form Diagram.pdf`.
 
@@ -142,7 +143,7 @@ overlap inside one layer; that design is retired and was never built.*
 
 A layer's spans lie end to end, with gaps allowed. Overlap between analytical
 frameworks is expressed by putting them on separate layers, which is what the
-multi-layer model is for. Every editing gesture keeps a layer tiled — spacebar
+multi-layer model is for. Every editing gesture keeps a layer tiled — B
 splits a span or fills a gap, a boundary drag moves a shared edge with a
 hard-stop, numeric time entry moves a shared edge or stops at a gap — and the
 document store refuses any write that would create an overlap. A file that
@@ -200,7 +201,9 @@ Full design rationale in `docs/decisions.md`. This section is the implementation
 
 | Gesture | Behavior |
 |---|---|
-| **Spacebar** | Place a boundary at `currentTime` — split the span containing `currentTime`, or mark a boundary in empty layer space |
+| **B** | Place a boundary at `currentTime` — split the span containing `currentTime`, or mark a boundary in empty layer space. (Space until 2026-10-01; Space now plays and pauses.) |
+| **Shift+B** | End the span containing `currentTime` there, leaving the rest of it empty. |
+| **Delete / Backspace** | Remove the selected spans (or the selected point marker), one undo step; not while typing in a field. |
 | **Arrow keys** | Nudge the selected boundary ±1 frame (~0.033s); `Shift` = ±10 frames |
 | **Drag boundary handle** | Move boundary; hard-stops at adjacent span boundaries; minimum span width enforced |
 | **Click span** | Select span; open metadata panel (per Phase 0.4 spec) |
@@ -208,11 +211,13 @@ Full design rationale in `docs/decisions.md`. This section is the implementation
 
 Whole-span dragging is not implemented. Span movement is always via boundary adjustment.
 
-### 5.2 Boundary Placement (Spacebar Logic)
+### 5.2 Boundary Placement (B)
 
 1. Determine the span (if any) that contains `currentTime`: `span.startTime ≤ currentTime ≤ span.endTime`
 2. If a containing span exists: split it into `[span.startTime, currentTime]` and `[currentTime, span.endTime]`. The first child inherits the original span's `label`, `type`, and metadata; the second child is created blank.
-3. If no span contains `currentTime`: behavior is specified in Phase 0.4 (open question: does it extend the previous span's end, or create a new isolated span?).
+3. If no span contains `currentTime`, it falls in an empty stretch (an empty layer is one). By default the stretch fills on both sides: one span from the previous boundary (or 0) to `currentTime`, one from `currentTime` to the next boundary (or the end). With the layer's `fillGaps` set to `false` ("B fills empty space on both sides" off, in layer settings), only the second is made, so a first boundary starts a span rather than closing one. docs/decisions.md, "B in an Empty Stretch".
+
+Shift+B ends the span containing `currentTime` there. Layer settings also offer **Fit boundaries to the grid** (Bars or Beats): every boundary moves to its nearest bar or beat in one undo step, a boundary two spans share moving once, and one that would collapse a span or sits in a free stretch staying put.
 
 Placed boundaries are immediately contributed to the shared time point pool via the next `contributeTimePoints` call.
 
@@ -239,7 +244,6 @@ These are confirmed design decisions awaiting their dedicated spec sessions:
 
 - Span metadata panel: sidebar vs. inline, trigger (click vs. double-click)
 - Context menu: exact actions on right-click
-- Spacebar behavior when `currentTime` is in empty layer space
 - Layer panel placement and controls
 - Merge conflict dialog design and multi-select interaction model
 

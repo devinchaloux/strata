@@ -91,6 +91,8 @@ a new entry is added noting the reversal and why.
 
 **Decision:** Layer visibility is view-state; export respects current visibility.
 **Rationale:** Cleaner abstraction than a separate layer-selection step at export time. The visibility toggle has value in-app independent of export — hide one layer, keep another, export what's visible.
+*Superseded 2026-10-02: the export dialog now chooses its own layers. See
+"Export: Choose Layers, Cut Spans at the Range".*
 
 ---
 
@@ -227,6 +229,7 @@ a new entry is added noting the reversal and why.
 
 **Decision:** The built-in vocabulary type picker groups terms by analytical tradition: General, Pop/Rock, EDM, Common Practice, Jazz, Form Letters. A document-level tradition preference controls which group expands by default.
 **Rationale:** A flat list of 45+ terms is overwhelming when an analyst needs only 8. Grouping by tradition makes the picker navigable and surfaces the most relevant terms first. The tradition preference is set at document creation and can be changed in document settings; it affects the picker's default state only, never restricts which terms are available.
+*Status, 2026-10-01:* built as libraries (see "Vocabulary Libraries"). There is no document-level tradition preference yet: every library starts collapsed under the file's own types, and search reaches all of them.
 
 ---
 
@@ -252,6 +255,7 @@ a new entry is added noting the reversal and why.
 
 **Decision:** The built-in vocabulary starter set ships with 45 terms: 32 span types across General, EDM, Common Practice, and Jazz traditions; 13 point marker types across General, Cadences, and H&D groups. Full list in `_private/build-plan.md` under "v1 Scope."
 **Rationale:** 45 terms is enough to cover immediate use cases across EDM, common-practice, and jazz scholarship without overwhelming the picker. Terms missing from the starter set are addressed via the "Add custom type" flow (v1) or vocabulary pack import (v1). The list will expand through stress-testing on real analyses; it is not intended to be comprehensive at launch.
+*Status, 2026-10-01:* superseded by the proposed lists in "Vocabulary Libraries" (about 200 terms in built-in libraries and packs), pending Devin's review.
 
 ---
 
@@ -805,6 +809,7 @@ a new entry is added noting the reversal and why.
 
 **Decision:** Spacebar while playing places a span boundary at `currentTime` on the active layer, without pausing playback. Spacebar while paused starts playback. Both behaviors coexist on the same key without a mode switch. A small persistent context indicator in the transport bar shows the current Spacebar action.
 **Rationale:** Spacebar-to-place (while playing, without pausing) is the correct capture gesture for live annotation: the analyst listens through the track and taps when a new section begins. Audio Timeliner's two-step workflow (Spacebar to mark → then draw bubble) was explicitly rejected by Devin. BriFormer improved this with direct placement; Strata improves further with no separate placement step. The dual behavior (place while playing, start-play while paused) requires UI acknowledgment: the context indicator ensures analysts always know what Space will do.
+*Reversed 2026-10-01:* Space plays and pauses; B places a boundary. See "Space Plays, B Marks a Boundary".
 
 ---
 
@@ -2360,6 +2365,7 @@ persistent `Space: boundary / Space: play` indicator is removed from the
 transport bar.
 
 **Rationale:** Space is context-dependent: it places a boundary while playing
+*Superseded 2026-10-01:* the Boundary chip always reads B, and Space is labelled beside Play.
 and starts playback while paused (Phase 0.4 §8). An earlier draft of this
 decision excluded Space from the bar entirely, on the grounds that a fixed
 label would be wrong half the time and the transport already carried a live
@@ -3080,3 +3086,591 @@ zero for PNG export); no API newer than Safari 15.4 or Firefox 95 is used; the
 dialog-dimming hole uses unprefixed `clip-path: polygon(evenodd, …)`, which
 both support. Still to test by hand in both: playback, the video below the
 fold, drag, and PNG export.
+
+---
+
+## Beat Grid (2026-09-29)
+
+**Decision:** The beat grid is a list of segments on the document
+(`beatGrid`). A segment starts on a downbeat and keeps one tempo and meter
+until its own end, the next segment, or the end of the track; the time between
+segments has no grid. Beats and bar lines are computed (`lib/beatGrid.ts`),
+never stored. The analyst lays it down by ear while listening: G on a downbeat
+starts a segment there (which also picks the grid up after a free passage, or
+marks a tempo change or renumbering), Shift+G stops the one running, and T
+tapped on each beat sets its tempo from a least-squares fit of the last eight
+taps, measured in media time so it holds at slower playback speeds. The Grid
+popover in the diagram's top bar lists the segments for editing.
+**Rationale:** Devin's demo has a clean grid that falls apart in an unquantized
+breakdown and returns after it, and classical tempo is rarely constant, so one
+BPM for a whole piece can't work. YouTube gives no access to the audio, so
+nothing can be detected from a waveform; laying the grid by ear matches how an
+analyst hears it anyway. Storing segments instead of thousands of time points
+keeps the file small and makes a correction a single edit.
+**Supersedes:** the earlier plan for a "BPM grid utility" that wrote bar-level
+time points into `sharedTimePoints` with `sourceLayerId: null` (entries above).
+The `bpm` and `timeSignature` fields remain, as the defaults for a new segment.
+
+**Decision:** Bar numbers continue across a free stretch; a segment's
+`firstBar` overrides the count where the analyst wants (Devin, 2026-09-29). A
+cut-short last bar counts, unless it is under a tenth of a bar.
+
+**Decision:** Snapping to the grid is off by default, with Off / Beats / Bars
+in the Grid popover; it is view state, not saved. When on, placements (Space,
+M, the Boundary and Marker buttons) and drags inside a segment pull to the
+nearest beat or bar, as in a DAW; free stretches don't snap.
+**Rationale:** Devin: on by default would fight classical music, whose tempo
+is not consistent. Tying snapping to a chosen vocabulary package was
+considered and rejected, because choosing terminology is a different act from
+wanting a grid.
+
+**Decision:** Grid lines draw behind the diagram (bar lines, and beat lines
+once they are at least 6 px apart), and the ruler gains a bar-number strip
+where each segment shows as a band, so a free stretch reads as a gap. Both are
+editor-only for now; exporting the grid is a later question.
+
+---
+
+## Snapping Remembered as a Preference (2026-09-29)
+
+**Decision (amends "Beat Grid"):** The snap choice (Off / Beats / Bars) is the
+analyst's own default: Off on a first visit, then whatever they last chose,
+remembered in this browser for every file. It is still never written into the
+`.strata` file.
+**Rationale:** Devin: an app default rather than a per-visit setting. Analysts
+of metrically regular music would otherwise switch snapping on in every
+session; analysts of rubato music keep it off once and never think about it.
+It is a way of working, not part of the analysis, so a collaborator opening
+the same file keeps their own. It is per browser because Strata has no
+accounts.
+
+---
+
+## The Commentary Stack (2026-10-01)
+
+**Decision (replaces the one-block reading view):** The reading panel shows a
+moment as a stack: in each visible layer from the top down, the span sounding
+then, with its label, annotation and commentary, indented one step per level;
+commentary on a stretch of time covering the moment comes first. Paused with
+spans selected, the moment is where the selection begins. A remembered
+Lyrics on/off toggle adds each span's lyrics.
+**Rationale:** Devin wants the full context of a moment: a phrase's
+annotation, the section's above it, the rotation's above that, all at once.
+Showing one block at a time hid exactly the nesting a layered analysis
+records. The selection's start (not its middle) is the moment because that is
+where the selected passage begins: a rotation reads with what opens it.
+
+---
+
+## Getting Around the Timeline (2026-10-01)
+
+**Decision:** Clicking the ruler moves the playhead there; double-clicking a
+span or a marker plays from it.
+**Rationale:** The only way to move playback was the video's own controls or
+the seek bar, which Devin found annoying when moving between sections.
+
+**Decision:** Space, M and tap-along read the player's exact time at the key
+press, not the last frame's (up to ~16 ms old), and the local-audio player
+listens for the media `playing` event.
+**Rationale:** Marking and tapping by ear need the moment of the key press.
+Without `playing`, a seek left local audio reporting "buffering" while it
+played on, so Space and tap-along silently did nothing after any jump.
+
+---
+
+## Beat Grid Input: Tap Along (2026-10-01)
+
+**Decision (amends "Beat Grid"):** The grid is laid with one key. T is
+tap-along: tap on each beat while it plays, starting on a downbeat; from the
+fourth tap the grid runs from the first tap at the tapped tempo, both fitted
+by least squares over the whole run, and each further tap refines it (one
+undo step per run). A run where the beat returns after a free passage picks
+the grid up; a run inside an existing segment starts a new one there (a tempo
+change); a run beginning on a segment's first downbeat refines that segment.
+Shift+T stops the grid at the playhead. G and Shift+G are gone.
+**Rationale:** Devin found G confusing: he expected a tap-to-metronome
+feature, and G started a "new grid layer" instead. Tapping along is the
+gesture musicians already know, and fitting the start as well as the tempo
+means a slightly early or late first tap doesn't shift the whole grid.
+
+---
+
+## Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)
+
+**Decision:** Tapped tempo rounds to a whole BPM, and the grid's start is
+refitted to that tempo; a fractional tempo is typed in the Grid popover.
+**Rationale:** Devin tapped Krewella's "Alive" (128 BPM) and got 128.4 and
+128.6. Produced music is almost always at a whole BPM, so the rounded value
+is the likeliest one. Rounding only lands right once the estimate is within
+half a BPM, and every further tap in a run refines it, so tapping a few bars
+longer settles it. No genre-based preference (such as even tempos) is applied.
+
+**Decision:** A tapped grid reaches back by whole bars to where the music
+plausibly starts: the latest section boundary before the taps, the end of the
+grid before them, or the track's start, whichever is latest (a boundary
+placed by ear may be up to a tenth of a bar late). Taps inside a running
+segment still mark a tempo change there. The segment's start is editable in
+the Grid popover.
+**Rationale:** Devin: "if you play and then you start tapping on the 2nd bar
+because you need a minute to adjust, it starts at that measure. I don't like
+that." Using section boundaries as the floor keeps a breakdown marked as free
+from being filled in again.
+
+**Decision:** Paused, a single click on a span (or marker) also moves the
+playhead to it; while playing, a click only selects. Double-click still plays
+from it.
+**Rationale:** Devin expected a click to bring the playhead to a section.
+While listening, a click to edit shouldn't jump playback.
+
+**Decision:** Play/pause is the one filled, larger control in the play bar.
+**Rationale:** Devin couldn't readily see how to pause, partly because Space
+places a boundary during playback rather than pausing.
+
+---
+
+## Vocabulary Libraries (2026-10-01)
+
+**Decision:** The built-in vocabulary ships in code (`src/lib/vocabulary.ts`)
+as terms grouped into libraries. Built-in libraries: General, Pop/Rock, Song
+form, EDM, Common practice, Jazz, Form letters. Packs, switched on in the
+picker and remembered in the browser: Caplin formal functions, Sonata Theory,
+Schmalfeldt, Schenkerian, Pop/Rock extended, SRDC phrase functions, Rock
+harmony, Hip-hop, Peres sonic functions, Trance, EDM-pop, DJ set, Production
+mechanisms, Jazz: arranging & feel, Jazz: interaction & events. The terms are
+the drafted proposals, built in so they can be tried while Devin reviews them;
+any can still be renamed, redefined or dropped.
+**Rationale:** Devin: "I don't necessarily want to have all this surfaced to
+pick from", but the corpus needs consistent ids. A library only groups terms
+for the picker; a term has one id and one definition wherever it is listed
+(`breakdown` is in EDM and Pop/Rock), so a query never depends on which
+library the analyst picked from, and a file never records the library.
+Built-in terms aren't copied into files, as with the point-marker types and
+modes before them; ids are what files store.
+
+**Decision:** The Type picker shows a working set: the types this file already
+uses (its letters as a row of chips), the letter maker, then each library as a
+collapsed group. Typing searches every library, packs included whether or not
+they are on, plus the file's own terms; a typed letter ("B′") offers that
+letter; any other text can become a type of this file's own. Picking a type
+for an unlabeled span also gives it the type's label. The point-marker Type
+field uses the same picker.
+**Rationale:** The old select listed only the file's own types, so the demo's
+A, B, C′, F′ read as a list of examples with primes on some and not others.
+Letters are made, not listed (as decided in Phase 0.6), so A, A′ and
+A″ always share one id scheme (`a-section`, `a-prime`, `a-double-prime`).
+Search across everything means a pack never hides a term, only declutters.
+
+**Decision:** `VocabTerm` gains an optional `broader: string[]`: the more
+general terms a term counts as in a query, as SKOS's `broader`. Built-in terms
+carry theirs in code; a file's own terms can carry them in the file.
+`typesUnder('transition')` returns `transition`, `caplin-transition` and
+`hd-tr-zone`, so "all transitions" finds every framework's.
+**Rationale:** Devin asked how someone who marks a Caplin transition could
+later ask for all transitions. Keeping framework terms separate preserves what
+each theory means; `broader` lets a query roll them up without merging them.
+The links shipped (Caplin's and Sonata Theory's themes and transition to the
+neutral terms, Osborn's riser to buildup, Covach's verse–chorus and AABA
+subtypes, among others) are proposals: whether two terms are the same
+concept is Devin's call, and the closing-section terms are left unlinked
+because their definitions differ.
+
+---
+
+## Space Plays, B Marks a Boundary (2026-10-01)
+
+**Decision:** Space plays and pauses (as K does). B places a boundary on the
+active layer at the playhead, playing or paused. The key is written beside
+the Play button ("Space") and on the Boundary button ("B"). The play button
+goes back to the plain transport style.
+**Rationale:** Reverses the Phase 0.4 choice that Space place a boundary while
+playing and start playback while paused. Devin kept reaching for Space to
+pause and placing a boundary instead: "I'm getting tripped up on space bar
+being the boundary and to start the play." Space as play/pause matches every
+other player. He asked for the *key* that pauses to be visible, not a bigger
+button, so the label carries it.
+
+**Decision:** The Type picker opens beside the Inspector and never runs taller
+than the screen; its list scrolls inside it. "[none]" sits alone at the top,
+in brackets, so clearing a type doesn't read as a term. The current type is
+marked. The fixed A–H letter buttons are gone: the file's letters are chips,
+a dashed chip offers the next letter after the highest one used, and any
+letter A–Z with up to three primes is typed in the search box ("K", "B'").
+**Rationale:** Opening below the field, the picker ran off the bottom of the
+screen when a library was expanded. Phrase analysis can use many letters, and
+eight buttons with a prime toggle capped the obvious path at H while taking
+room; typing reaches all of them in two keystrokes.
+
+**Decision:** Accessibility pass on text size and contrast. No interface text
+is below 11px: the 9–10px labels, chips and hints are now 11px, 11px text is
+12px, Inspector inputs are 13px, the commentary reading text 14px, and the
+ruler's time and bar numbers are 10.5 and 10px. Two icon buttons drawn in the
+faint ink (layer settings, drag handle) now use the muted ink, which meets
+the 3:1 contrast for controls. The symbol-palette toggle reads "♭♯", spelled
+out as "Insert symbol" while its field is in use.
+**Rationale:** Devin found the text too small in places. The muted text color
+(#64748b on white, 4.8:1) already passes AA; the faint one (#94a3b8, 2.6:1)
+did not. The diagram's own text keeps its sizes, since they drive the
+figure's layout and export; each layer's text size setting enlarges it. The
+⇒ glyph on the palette toggle read as an arrow, not as "insert a symbol".
+
+**Decision:** The Grid popover can lay a grid by hand: "Start at 0:00" or
+"Start at playhead", then the tempo, meter and first bar are typed in the
+segment table.
+**Rationale:** Devin asked for a start-at-the-beginning option and a manual
+route; tapping isn't always practical (a known tempo, or no time to tap).
+
+---
+
+## A Span's Label Follows Its Type (2026-10-01)
+
+**Decision:** Picking a type replaces the span's label when the label is empty
+or is still the label (or full name) of the type it had. A label the analyst
+wrote is never replaced. The rule is `labelFollowsType` in
+`src/lib/vocabulary.ts`; with several spans selected it applies to each.
+**Rationale:** Devin found it annoying that changing Chorus to Verse left the
+label reading "Chorus", and saw that always replacing it would be annoying the
+other way. A label that came from the type carries no analyst intent, so it
+can follow; one the analyst typed ("Verse 1", "THE DROP") does, so it stays.
+
+---
+
+## Vocabulary Packs (2026-10-01)
+
+**Decision:** Pack import and export are built, in the `.vocab.json` format
+the June build plan sketched, now with a JSON Schema
+(`schema/strata-vocab.schema.json`) and an optional `strataVocabPack: 1`
+marker. Importing copies the terms into the file with `source`
+"{name} v{version}"; a term whose id is built in or already defined in the
+file is left out and named; re-importing the same pack replaces its terms.
+Imported terms appear as their own collapsed group in the Type picker.
+Exporting writes the file's own types, without letters or other packs' terms.
+Both live in the Libraries dialog ("More libraries…" at the foot of the Type
+picker); see "The Libraries Dialog".
+**Rationale:** Pack import was a v1 commitment (Phase 0.6) so the tool is not
+a dead end for traditions the built-ins miss. Copying keeps the `.strata`
+file self-contained. Refusing a clashing id keeps one id meaning one thing
+inside a file, which corpus queries rely on. The criteria for promoting a pack
+term to a built-in remain the maintainer's to write.
+
+---
+
+## Beta Launch Pass (2026-10-01)
+
+**Decision:** Before the beta: the README lists what works now (B for
+boundaries, the vocabulary and packs, the beat grid, the commentary stack,
+local audio) and gains a five-step getting started; the in-app guide gains the
+Type and Grid steps; every Inspector and dialog field is named for screen
+readers by its visible label (`Field` links them); the YouTube link field has
+a name of its own. Empty and error states were walked through: a first visit,
+an unreadable file, a malformed YouTube link and a corrupt audio file each say
+what went wrong in plain words.
+**Rationale:** Devin asked for a beta launch pass. Fields named only by
+placement were read by screen readers as unnamed edit boxes.
+
+---
+
+## The Libraries Dialog (2026-10-01)
+
+**Decision:** Packs are switched on and off in a Libraries dialog, opened by
+"More libraries…" at the foot of the Type picker, not in the picker itself.
+Each pack is one row: a switch, its name, how many types it has, what it is
+for, and its first few types by name, with the rest a click away. Below,
+"Packs from a file" lists imported packs and holds Import, and Save your
+types as a pack (shown only when the analysis has types of its own). The
+import result is a line in the dialog, not a separate message.
+**Rationale:** Devin found the packs panel in the picker too busy and unclear
+about what turning a pack on adds. Twelve checkboxes, truncated descriptions
+and two file buttons crowded a menu meant for choosing a type. Showing the
+count and real type names answers "what does this add" before switching it on.
+
+---
+
+## Paused Clicks Stay Paused; Open Caps Fill and Join; Issue Links (2026-10-01)
+
+**Decision:** A seek made while YouTube is not playing keeps it paused: the
+player is paused after the seek, and if YouTube starts it anyway the state
+handler pauses it again. Only play (Space, K, the button) or a double-click
+starts playback.
+**Rationale:** Devin: a click on a span started playback. YouTube's player
+begins a video that hasn't yet played (unstarted or cued) when it is seeked,
+so the click-to-move-the-playhead added the same day was starting playback.
+
+**Decision:** A span with an open cap fills down to the baseline on the open
+side (a closed fill path drawn under the open outline). Where two spans meet
+and both caps at that boundary are open, both draw to the boundary itself, so
+their tops and fills join into one; this is the one exception to drawing spans
+as separate islands.
+**Rationale:** The outline is an open path, and SVG closes an open path's fill
+with a straight line back to its start, which cut diagonally from the top's
+end to the opposite corner. Devin: two open spans "should draw across the gap
+and connect".
+
+**Decision:** "Report an issue" in the toolbar opens a GitHub issue form
+(`.github/ISSUE_TEMPLATE/report.yml`) prefilled with the app version and the
+browser. The Libraries dialog links to a vocabulary suggestion form
+(`vocabulary.yml`), prefilled with the library when opened from one; the
+dialog's full type lists are now one column.
+**Rationale:** Devin asked for both. Issue forms keep reports structured, and
+prefilling saves the reporter looking up what the maintainer needs first.
+
+---
+
+## The Type Picker Follows the Layer (2026-10-01)
+
+**Decision:** Opened from a span, the Type picker leads with "In this layer":
+the types the span's layer already uses, in the order they first sound
+(Intro, Verse, Prechorus, Chorus …), then "Elsewhere in this file" in the same
+order, then "Suggested from <library>": the unused types of the library the
+layer seems to be drawing on (the one holding most of its types; the smaller
+library on a tie; packs count whether or not they are on), eight at a time
+with a link to the whole library. The next-letter chip shows only on a layer
+that already uses letters. Point markers, which have no layer, use the file.
+**Rationale:** Devin chose first-appearance order over A–Z ("a — order by
+first appearance") and asked that a layer working in one library surface it,
+or recommend from it. The guess is drawn from what the analyst has already
+picked, so it never presumes a framework the layer hasn't used, and search
+still reaches everything.
+
+---
+
+## Lyrics Stay in the File; Shared Views Leave Them Out by Default (2026-10-01)
+
+**Decision:** A `.strata` file keeps its lyrics; nothing strips them on save or
+download. When an analysis is shared publicly (a hosted reading view or link,
+once those exist), lyrics are off by default, with a short note on why and a
+switch to include them. Today's exports (figure, commentary page) contain no
+lyrics, so nothing changes yet.
+**Rationale:** Lyrics are someone else's copyrighted text, but an analysis
+quoting them is arguably transformative, and analysts will want them in their
+own files. Devin: "stripping them out when people will want them in the file is
+a bit hostile." The decision to publish them belongs at the moment of public
+sharing, so that is where the default and the warning sit.
+
+## Sound Layers Come From a Shared List (2026-10-01)
+
+**Decision:** The planned instrumentation/texture widget names each row from a
+controlled list (drums, bass, lead, vocal …) with custom additions, like span
+types, so rows compare across files. The list itself is a content decision
+still to be proposed and reviewed; the widget's name is still open.
+**Rationale:** Devin agreed that sound layers should be corpus-comparable in
+the same way as span types.
+
+---
+
+## Quick Type (2026-10-01)
+
+**Decision:** With spans selected in one level, a bar floats just above the
+diagram, in line with the selection, offering types on number keys: on a
+lettered level its letters and the next one (up to nine); otherwise six, the
+level's own types in order of first appearance, then the unused types of the
+library it draws on. 1–9 picks; "/" or More… opens the Inspector's full Type
+list with search. A pick types every selected span in one undo step, and labels
+follow the type as in the Inspector. The bar sits above the diagram rather than
+over the levels so it never hides brackets or labels.
+**Rationale:** Devin liked the sketch ("Love the quick type idea"): labelling a
+piece one span at a time through the Inspector is the slowest part of a first
+pass, and the level's likely types are known from what it already uses.
+
+---
+
+## Levels, Not Layers, in the Interface (2026-10-01)
+
+**Decision:** The form diagram's rows are called **levels** in the interface
+(Add a level, Hide level, Level settings, "In this level"). The file format
+keeps `layers`, and so do the code and the specs, so no file changes.
+**Rationale:** "Layers" is the broadest name for the planned instrumentation
+*Reversed 2026-10-02:* Devin prefers to keep "layers" for the form diagram and will name the texture widget something else. The interface says "layer" again.
+and texture widget, which Devin wants to call Layers. The form diagram's rows
+are levels of form (large-scale form, sections, phrases), so the rename fits
+them and frees the word. Agreed by Devin.
+
+---
+
+## The Span Inspector: a Header and Three Tabs (2026-10-01)
+
+**Decision:** The single-span Inspector keeps a fixed header (where the span
+is, with previous/next; the label as a large field; the Type; start, end,
+length and bars when a grid covers it) above three tabs: **Describe**
+(annotation, commentary, lyrics; key area first on a key-area level),
+**Shape** (each end's shape as five pictures, elided either way; line; fill
+and stroke; fills already used in the level), and **More** (short label, slug,
+confidence, boundary types, key area, notes, parent, id). Split, Merge and
+Delete sit in a footer that never scrolls away. The chosen tab is kept as the
+selection moves. The multi-span panel is unchanged.
+**Rationale:** Devin preferred the first Inspector sketch to the three
+alternatives and asked for "some tabs within it ... to make it a simpler menu".
+The boundary type (an analytical claim) stays in More, apart from the drawn
+shape, as before; choosing a boundary type still resets that end's shape.
+
+---
+
+## The Reading View (2026-10-01)
+
+**Decision:** "Reading view" in the toolbar lays the analysis out for reading:
+the video large at top left, the commentary stack beside it in reading size,
+the diagram below, and the play bar. The header shows the piece and Show chips
+(Commentary, Form diagram, Lyrics), which change only this view, never the
+file's own visibility. Editing is off: no Inspector, quick-type bar, level
+controls, drags, right-click menu, B, M, T, undo or merge; clicking a span
+still moves playback there. Edit or Esc returns. The same workspace is
+restyled rather than replaced, so the YouTube player is never moved in the
+page (which would reload it).
+**Rationale:** Devin: "LOVE LOVE LOVE the reading view idea". It is the view
+for teaching and for sharing, and the shareable link (next) opens in it.
+
+---
+
+## Sharing by Link (2026-10-01)
+
+**Decision:** An analysis is shared as a link that carries the address of its
+`.strata` file: `?src=<address>`. The analyst puts the saved file anywhere a
+browser may read it (their own site, a GitHub repository or Gist; GitHub page
+links are read as their raw file), pastes its address in Share… (reading
+view), and copies the link. Opening the link fetches the file and shows it in
+the reading view, with lyrics off for that visit (the reader can turn them on;
+their own lyrics preference is not changed). "Edit a copy" leaves the reading
+view; saving makes the reader's own file. The Share dialog notes when an
+analysis has lyrics and offers a copy without them. Only http and https
+addresses are followed.
+**Rationale:** Devin's option 2 of the sharing options: links and embeds with
+no Strata server to run, store or moderate. It applies the lyrics policy:
+files keep lyrics, public views leave them out by default. A file host that
+forbids other sites from reading files (no CORS) can't be used; the error
+says so.
+
+---
+
+## Quick Entry (2026-10-02)
+
+**Decision:** The quick-type bar becomes quick entry, with a switch in the
+diagram's top bar: **Off, Type, Shape, Fill** (remembered in the browser).
+Type offers the layer's own types, then its library's in the library's order;
+a layer's library can be chosen on the bar or in Layer settings and is saved
+as the new optional `Layer.library` (absent: guessed from the layer's types).
+Other layers' types are left to the full Type list. In Type mode the bar
+does not appear once every selected span has a type. Shape offers each end's
+shape and the line; Fill offers the layer default and eight colours. The bar
+stays inside the window, and its clicks no longer reach the diagram.
+**Rationale:** Devin: the bar ran off screen at the left; More… closed it (its
+click bubbled through the React portal to the diagram, which cleared the
+selection); "How do I choose what kind of quick type options there are? This
+initial list is not very helpful" (it mixed in other layers' types); it should
+not appear on a span that already has a type; and quick entry for shapes and
+colours would help on a first pass. `Layer.library` is a working preference,
+not a constraint: any type can still be picked.
+
+---
+
+## Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)
+
+**Decision:** The Inspector's tabs are a segmented control (Describe, Shape &
+color, More) rather than underlined text, and the middle tab names colour as
+well as shape. The elided end's picture draws its neighbour's bracket too, so
+the overlap shows. Confidence moves to the foot of More, with a tooltip saying
+what it records (certainty about where the boundaries fall) and that it is not
+drawn; the schema reference, which claimed confidence was drawn dashed or
+faded, is corrected to match.
+**Rationale:** Devin couldn't find the shape and colour pickers ("It feels very
+hidden now. Make the tabs jump out"); the elided picture looked the same as
+rounded; and "it's necessary to define what 'confidence' means ... I don't
+suspect many people will use it."
+Devin, later the same day: confidence is not to be drawn, and whether the
+field earns its place at all is open (he leans towards cutting it).
+
+---
+
+## Menus Keep Clear of the Player (2026-10-02)
+
+**Decision:** Every popover (Type list, Grid, layer settings, colour pickers
+and the rest) measures itself when it opens and, if it would cross the
+YouTube player, shifts by the smallest move left, right, up or down that
+clears it and still fits the window (`nudgeClear` in lib/playerClearance.ts,
+applied with the CSS `translate` property so Radix's own placement and
+animation are untouched). Dialogs already keep clear by the same rule.
+**Rationale:** The player must sit above everything (YouTube allows nothing in
+front of it), so a menu opening over it was hidden behind it: Devin hit this
+with the Grid menu. Moving the menu, not the player, keeps the rule without
+hiding anything.
+
+## B in an Empty Stretch; Shift+B; Fit to the Grid (2026-10-02)
+
+**Decision:** B in an empty stretch still fills it on both sides by default,
+but each layer can turn that off (`Layer.fillGaps: false`, "B fills empty
+space on both sides" in layer settings): then a boundary there starts a span
+that runs to the next boundary, and nothing is made behind it. Shift+B ends
+the span under the playhead there, leaving the rest empty. Layer settings
+also gain **Fit boundaries to the grid** (Bars or Beats), which moves every
+boundary in the layer to its nearest bar or beat in one undo step and says how
+many moved; a boundary that would collapse a span, or that sits in a free
+stretch of the grid, stays where it is. Delete or Backspace removes the
+selected spans (or marker) when no text field has the keyboard.
+**Rationale:** Devin's first boundary in a new layer made a span from 0 he
+didn't want: an introduction is often left out of the analysis, or a layer
+covers only part of the piece. Keeping fill-both as the default keeps the
+tiling habit for whole-piece layers; the switch is per layer because the
+choice belongs to what the layer covers. Fit to the grid lets boundaries
+placed by ear before the grid existed join it afterwards, rather than being
+redone. The timeline scrollbar's grab area also grew to its full 16px track
+height, with the visible thumb unchanged inside it.
+
+## Hidden Labels Show on Hover and Selection (2026-10-02)
+
+**Decision:** When neither a span's label nor its short label fits above it,
+nothing is drawn there: the small dot that used to mark a hidden label is
+gone. In the editor, hovering over the span or selecting it shows the full
+label above it on a small outlined card, drawn over everything else. The native
+tooltip and the Inspector still carry it too.
+**Rationale:** Devin found the dots unclear: a row of them over short spans read
+as notation rather than as "a label lives here". Showing the label where it
+belongs, at the moment the analyst points at the span, answers the question the
+dot only raised. Exports leave hidden labels out; a wider export fits more.
+
+## Inside Text Keeps Clear of Rounded and Angled Ends (2026-10-02)
+
+**Decision:** Text drawn inside a span (an inside label or annotation) is
+padded on each side by how far that end's cap cuts in at the height of the
+text (`capInsetAt` and `insideTextBox` in lib/formShape.ts): a rounded
+corner's arc or an angled end's diagonal. Square and open ends need nothing
+extra. Inside placement stays available, for graphic exports.
+**Rationale:** Inside annotations ran into rounded and angled ends, because the
+padding assumed square ones. Measuring the cap where the text actually sits
+keeps the text as wide as it can be.
+
+## Export: Choose Layers, Cut Spans at the Range (2026-10-02)
+
+**Decision:** The export dialog has its own layer checkboxes, starting from
+the visible layers each time it opens, so a layer can be left out of a figure
+without hiding it in the editor (and a hidden one put in). Each chosen layer is
+cut to the range before it is drawn: a layer with no span in the range is left
+out instead of leaving an empty row, and a span crossing either edge is trimmed
+there, its cut end drawn square and running a few pixels past the edge so the
+line reads as continuing, with its label centred on the part that shows.
+Dialogs that keep clear of the video now also follow it for their first frames
+and on scroll, and choose the free area by their own size, so a wide dialog
+such as Export no longer lands in a narrow strip beside the player.
+**Rationale:** Devin's selected-range export showed an empty row and lost the
+label of Rotation 1, which ran past the range: labels were laid out on the
+whole track and then clipped. Cutting first means everything is laid out for
+the figure actually drawn. Layer choice moved into the dialog because what goes
+in a figure is a separate decision from what is useful on screen while editing.
+
+## Share From the Toolbar; Dropbox and OneDrive Links (2026-10-02)
+
+**Decision:** Share… sits in the editing toolbar as well as the reading view.
+The Share dialog takes the share link a file service gives, and Strata reads
+it as the file: a GitHub page link as its raw file, a Dropbox link from
+Dropbox's direct-download host (`dl.dropboxusercontent.com`, which lets other
+sites read files), and a OneDrive link through OneDrive's sharing API. The
+shared link keeps the address the analyst pasted; the conversion happens when
+the file is fetched, so a better route later improves old links too. Google
+Drive links are recognised and declined with a plain message naming the
+services that work. The dialog notes what each service needs ("Anyone with
+the link").
+**Rationale:** Devin asked for Share outside the reading view and for Google
+Drive and OneDrive links, since that is where scholars keep files. Neither
+Drive's nor OneDrive's ordinary download address lets another site read the
+file, which a link-only design with no Strata server needs. Dropbox and
+OneDrive have routes that allow it. Drive's only route is Google's Drive API
+with an API key; Devin chose not to set one up, since hosting may be
+rethought as a whole. OneDrive work and school accounts can block anonymous
+reading, and the error says what to check.

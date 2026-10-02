@@ -60,7 +60,7 @@ function Segmented<T extends string>({
           <button
             key={o.value}
             onClick={() => onChange(o.value)}
-            className="flex-1 rounded px-1.5 py-0.5 text-[11px] transition-colors"
+            className="flex-1 rounded px-1.5 py-0.5 text-xs transition-colors"
             style={{
               backgroundColor: active ? 'hsl(var(--primary))' : 'transparent',
               color: active ? 'hsl(var(--primary-foreground))' : 'hsl(var(--muted-foreground))',
@@ -186,6 +186,7 @@ export function SourceLinkForm({
       {mode === 'youtube' ? (
         <div>
           <input
+            aria-label="YouTube URL or video ID"
             className={inputClass}
             placeholder="Paste a YouTube URL or video ID…"
             value={urlText}
@@ -194,7 +195,7 @@ export function SourceLinkForm({
             autoFocus={autoFocus}
           />
           <p
-            className="mt-1 flex min-h-[1rem] items-center gap-1 text-[10px]"
+            className="mt-1 flex min-h-[1rem] items-center gap-1 text-[11px]"
             aria-live="polite"
           >
             {parsedId && (
@@ -239,7 +240,7 @@ export function SourceLinkForm({
                   : 'No file chosen')}
             </span>
           </div>
-          <p className="mt-1.5 text-[10px] text-muted-foreground">
+          <p className="mt-1.5 text-[11px] text-muted-foreground">
             The file stays on your computer. The analysis keeps only its name, so
             you'll be asked to find it again next time.
           </p>
