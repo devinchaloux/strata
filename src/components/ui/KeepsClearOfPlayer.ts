@@ -28,7 +28,12 @@ function place() {
     return
   }
   const player = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }
-  const region = freeRegion(viewport, player)
+  // The open dialog's own size (the topmost one), so a wide one is placed
+  // where it fits. offsetWidth/Height ignore the transform that centres it.
+  const dialogs = document.querySelectorAll<HTMLElement>('[role="dialog"], [role="alertdialog"]')
+  const dialog = dialogs[dialogs.length - 1]
+  const need = dialog ? { w: dialog.offsetWidth, h: dialog.offsetHeight } : undefined
+  const region = freeRegion(viewport, player, need)
   root.setProperty('--modal-hole', overlayWithHole(viewport, player))
   root.setProperty('--modal-x', `${region.x + region.w / 2}px`)
   root.setProperty('--modal-y', `${region.y + region.h / 2}px`)
@@ -39,9 +44,20 @@ export function KeepsClearOfPlayer() {
   useEffect(() => {
     open++
     place()
+    // The player can still be moving when a modal opens (a layout change in
+    // the same click, the mini video easing into place), so keep measuring
+    // for the first frames as popovers do, and again on resize or scroll.
+    let frames = 20
+    let raf = requestAnimationFrame(function again() {
+      place()
+      if (--frames > 0) raf = requestAnimationFrame(again)
+    })
     window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
     return () => {
+      cancelAnimationFrame(raf)
       window.removeEventListener('resize', place)
+      window.removeEventListener('scroll', place, true)
       if (--open === 0) VARS.forEach((v) => document.documentElement.style.removeProperty(v))
     }
   }, [])

@@ -70,12 +70,16 @@ export function ExportDialog() {
   const [includeMarkers, setIncludeMarkers] = useState(true)
   const [includeAxis, setIncludeAxis] = useState(true)
   const [svg, setSvg] = useState('')
+  // Which layers go in the figure: chosen here, apart from what the editor
+  // shows. Starts from the visible ones each time the dialog opens.
+  const [layerIds, setLayerIds] = useState<string[]>([])
 
   // Each time the dialog opens, start from the selection if there is one.
   useEffect(() => {
     if (!open || !doc) return
     setMode(selRange ? 'selection' : 'all')
     setCustom(selRange ?? [0, doc.duration])
+    setLayerIds(exportLayers(doc).map((l) => l.id))
     // Only on open: later selection changes shouldn't reset a range being edited.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
@@ -92,7 +96,7 @@ export function ExportDialog() {
   useEffect(() => {
     if (!open || !doc || !range || range[1] <= range[0]) return
     let cancelled = false
-    exportFormDiagramSvg(doc, { start: range[0], end: range[1], width, includeMarkers, includeAxis })
+    exportFormDiagramSvg(doc, { start: range[0], end: range[1], width, includeMarkers, includeAxis, layerIds })
       .then((s) => !cancelled && setSvg(s))
       .catch((e: unknown) => {
         if (cancelled) return
@@ -104,10 +108,11 @@ export function ExportDialog() {
     }
     // range is derived from the values listed here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, doc, mode, custom[0], custom[1], selRange?.[0], selRange?.[1], width, includeMarkers, includeAxis])
+  }, [open, doc, mode, custom[0], custom[1], selRange?.[0], selRange?.[1], width, includeMarkers, includeAxis, layerIds])
 
   if (!doc) return null
-  const noLayers = exportLayers(doc).length === 0
+  const allLayers = exportLayers(doc, doc.layers.map((l) => l.id))
+  const noLayers = layerIds.length === 0
   const hasCommentary = allBlocks(doc).length > 0
   const base = fileBaseName(doc)
 
@@ -138,7 +143,7 @@ export function ExportDialog() {
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Export the form diagram</DialogTitle>
-          <DialogDescription>Hidden layers are left out. Hide a layer to keep it out of the figure.</DialogDescription>
+          <DialogDescription>Choose the layers and the stretch of the track to draw.</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
@@ -154,6 +159,20 @@ export function ExportDialog() {
                 <TimeInput value={custom[1]} title="End" onCommit={(t) => setCustom([custom[0], Math.min(doc.duration, t)])} />
               </span>
             )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2" role="group" aria-label="Layers">
+            <span className="text-xs font-medium text-foreground">Layers</span>
+            {allLayers.map((l) => (
+              <label key={l.id} className="flex items-center gap-1.5 text-xs">
+                <input
+                  type="checkbox"
+                  checked={layerIds.includes(l.id)}
+                  onChange={(e) => setLayerIds(e.target.checked ? [...layerIds, l.id] : layerIds.filter((id) => id !== l.id))}
+                />
+                {l.label || 'Untitled layer'}
+              </label>
+            ))}
           </div>
 
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
@@ -183,7 +202,7 @@ export function ExportDialog() {
 
           <div className="max-h-[50vh] overflow-auto rounded border border-border bg-white p-2">
             {noLayers ? (
-              <p className="p-6 text-center text-xs text-muted-foreground">Every layer is hidden, so there's nothing to export.</p>
+              <p className="p-6 text-center text-xs text-muted-foreground">Choose at least one layer to export.</p>
             ) : (
               // The exported SVG itself, scaled to fit: the preview is the file.
               <div className="[&>svg]:h-auto [&>svg]:max-w-full" dangerouslySetInnerHTML={{ __html: svg }} />

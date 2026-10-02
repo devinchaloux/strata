@@ -91,6 +91,8 @@ a new entry is added noting the reversal and why.
 
 **Decision:** Layer visibility is view-state; export respects current visibility.
 **Rationale:** Cleaner abstraction than a separate layer-selection step at export time. The visibility toggle has value in-app independent of export — hide one layer, keep another, export what's visible.
+*Superseded 2026-10-02: the export dialog now chooses its own layers. See
+"Export: Choose Layers, Cut Spans at the Range".*
 
 ---
 
@@ -3608,3 +3610,44 @@ choice belongs to what the layer covers. Fit to the grid lets boundaries
 placed by ear before the grid existed join it afterwards, rather than being
 redone. The timeline scrollbar's grab area also grew to its full 16px track
 height, with the visible thumb unchanged inside it.
+
+## Hidden Labels Show on Hover and Selection (2026-10-02)
+
+**Decision:** When neither a span's label nor its short label fits above it,
+nothing is drawn there: the small dot that used to mark a hidden label is
+gone. In the editor, hovering over the span or selecting it shows the full
+label above it on a small outlined card, drawn over everything else. The native
+tooltip and the Inspector still carry it too.
+**Rationale:** Devin found the dots unclear: a row of them over short spans read
+as notation rather than as "a label lives here". Showing the label where it
+belongs, at the moment the analyst points at the span, answers the question the
+dot only raised. Exports leave hidden labels out; a wider export fits more.
+
+## Inside Text Keeps Clear of Rounded and Angled Ends (2026-10-02)
+
+**Decision:** Text drawn inside a span (an inside label or annotation) is
+padded on each side by how far that end's cap cuts in at the height of the
+text (`capInsetAt` and `insideTextBox` in lib/formShape.ts): a rounded
+corner's arc or an angled end's diagonal. Square and open ends need nothing
+extra. Inside placement stays available, for graphic exports.
+**Rationale:** Inside annotations ran into rounded and angled ends, because the
+padding assumed square ones. Measuring the cap where the text actually sits
+keeps the text as wide as it can be.
+
+## Export: Choose Layers, Cut Spans at the Range (2026-10-02)
+
+**Decision:** The export dialog has its own layer checkboxes, starting from
+the visible layers each time it opens, so a layer can be left out of a figure
+without hiding it in the editor (and a hidden one put in). Each chosen layer is
+cut to the range before it is drawn: a layer with no span in the range is left
+out instead of leaving an empty row, and a span crossing either edge is trimmed
+there, its cut end drawn square and running a few pixels past the edge so the
+line reads as continuing, with its label centred on the part that shows.
+Dialogs that keep clear of the video now also follow it for their first frames
+and on scroll, and choose the free area by their own size, so a wide dialog
+such as Export no longer lands in a narrow strip beside the player.
+**Rationale:** Devin's selected-range export showed an empty row and lost the
+label of Rotation 1, which ran past the range: labels were laid out on the
+whole track and then clipped. Cutting first means everything is laid out for
+the figure actually drawn. Layer choice moved into the dialog because what goes
+in a figure is a separate decision from what is useful on screen while editing.

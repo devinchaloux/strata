@@ -20,11 +20,12 @@ import {
   lineStyleDash,
   textOnFill,
   truncateToWidth,
-  layoutLayerLabels,
+  layerLabelLayout,
   spanDrawOrder,
   textX,
+  insideTextBox,
+  insideTextX,
   ANCHOR,
-  TEXT_PAD,
   layerFonts,
   LABEL_RISE,
   STROKE_WIDTH,
@@ -111,27 +112,27 @@ function SpanFigure({
   const aboveLabelY = -LABEL_RISE
   const aboveAnnotY = -LABEL_RISE - fonts.label
 
-  // Inside text must fit the body (ellipsis); above text may overhang (haloed).
-  const innerMax = width - 2 * TEXT_PAD
+  // Inside text must fit the body (ellipsis), clear of rounded or angled ends,
+  // measured at the text's top; above text may overhang (haloed).
+  const labelBox = insideTextBox(width, isBar ? 'square' : startCap, isBar ? 'square' : endCap, insideLabelY - fonts.label * 0.8, bodyHeight)
+  const annotBox = insideTextBox(width, isBar ? 'square' : startCap, isBar ? 'square' : endCap, insideAnnotY - fonts.annotation * 0.8, bodyHeight)
   const labelAbove = labelPosition !== 'inside'
   const annotationAbove = annotationPosition === 'above'
   const displayLabel = isBar ? span.keyArea || span.label : span.label
   const labelText = labelAbove
     ? (labelLayout?.text ?? '')
     : displayLabel
-      ? truncateToWidth(displayLabel, fonts.label, innerMax)
+      ? truncateToWidth(displayLabel, fonts.label, labelBox.right - labelBox.left)
       : ''
   const annotationText = span.annotation
     ? annotationAbove
       ? span.annotation
-      : truncateToWidth(span.annotation, fonts.annotation, innerMax)
+      : truncateToWidth(span.annotation, fonts.annotation, annotBox.right - annotBox.left)
     : ''
 
   const effLabelJust = labelAbove ? (labelLayout?.justification ?? labelJust) : labelJust
-  const labelLocalX = textX(0, width, effLabelJust)
-  const annotationLocalX = textX(0, width, annotationJust)
-  // The hidden-label dot is a point, so it never re-anchors at the timeline ends.
-  const dotLocalX = textX(0, width, labelJust)
+  const labelLocalX = labelAbove ? textX(0, width, effLabelJust) : insideTextX(labelBox, effLabelJust)
+  const annotationLocalX = annotationAbove ? textX(0, width, annotationJust) : insideTextX(annotBox, annotationJust)
   const textHalo = halo(theme)
 
   return (
@@ -182,11 +183,8 @@ function SpanFigure({
         </text>
       )}
 
-      {/* A label exists but neither it nor shortLabel fits: a quiet dot reads as
-          "something's here" rather than as a rendering gap. */}
-      {labelAbove && labelLayout?.hidden && (
-        <circle cx={dotLocalX} cy={aboveLabelY - fonts.label * 0.32} r={1.5} fill={theme.inkFaint} {...textHalo} />
-      )}
+      {/* A label with no room is left out rather than marked: in the editor it
+          shows on hover or selection (FormLayers' HiddenLabelPeek). */}
 
       {annotationText && (
         <text
@@ -206,24 +204,6 @@ function SpanFigure({
 }
 
 // ── One layer ───────────────────────────────────────────────────────────────
-
-/** Neighbour-aware above-label layout for a layer (one pass, so labels share room). */
-function layerLabelLayout(layer: Layer, pps: number, totalWidth: number) {
-  if ((layer.rendering?.labelPosition ?? 'above') === 'inside') return null
-  const isBar = layer.spanShape === 'bar'
-  return layoutLayerLabels(
-    (layer.data as FormDiagramData).spans.map((s) => ({
-      id: s.id,
-      x: s.startTime * pps,
-      width: (s.endTime - s.startTime) * pps,
-      label: (isBar ? s.keyArea || s.label : s.label) ?? '',
-      shortLabel: isBar ? null : s.shortLabel,
-    })),
-    layerFonts(layer).label,
-    totalWidth,
-    (layer.rendering?.labelJustification ?? 'center') as Justification,
-  )
-}
 
 /**
  * One layer's spans at its row. Memoized: when only the playhead, scroll or

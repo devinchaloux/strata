@@ -2,6 +2,8 @@ import { makeSpan } from './fixtures'
 import { describe, it, expect } from 'vitest'
 import {
   estimateTextWidth,
+  insideTextBox,
+  capInsetAt,
   spanDrawOrder,
   truncateToWidth,
   buildShapePath,
@@ -424,5 +426,19 @@ describe('open caps', () => {
     expect(joins.get('b')).toEqual({ start: true, end: false }) // c's start isn't open
     // A joined side draws to the boundary, not the island inset.
     expect(buildShapePath({ width: 100, startCap: 'open', endCap: 'open', inset: 1.5, joinStart: true }).startsWith('M 0 0')).toBe(true)
+  })
+})
+
+describe('insideTextBox', () => {
+  it('widens the padding where a rounded or angled cap cuts in near the top', () => {
+    const square = insideTextBox(200, 'square', 'square', 4)
+    const rounded = insideTextBox(200, 'rounded', 'angled', 4)
+    expect(rounded.left).toBeGreaterThan(square.left)
+    expect(rounded.right).toBeLessThan(square.right)
+  })
+
+  it('needs no extra room below a rounded corner', () => {
+    expect(capInsetAt('rounded', 200, 25)).toBe(0)
+    expect(capInsetAt('angled', 200, 28)).toBe(0)
   })
 })

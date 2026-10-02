@@ -25,9 +25,11 @@ const USEFUL_H = 560
 
 /**
  * The free area around the player where a dialog fits best: above, below, left
- * or right of it, whichever gives a dialog the most usable room.
+ * or right of it, whichever gives a dialog the most usable room. With the
+ * dialog's own size (`need`), room past that size doesn't count, so a wide
+ * dialog goes where it fits rather than into a tall, narrow strip.
  */
-export function freeRegion(viewport: { w: number; h: number }, player: Rect): Rect {
+export function freeRegion(viewport: { w: number; h: number }, player: Rect, need?: { w: number; h: number }): Rect {
   const top = Math.max(0, player.y - CLEARANCE)
   const bottom = Math.min(viewport.h, player.y + player.h + CLEARANCE)
   const left = Math.max(0, player.x - CLEARANCE)
@@ -38,7 +40,9 @@ export function freeRegion(viewport: { w: number; h: number }, player: Rect): Re
     { x: 0, y: 0, w: left, h: viewport.h },
     { x: right, y: 0, w: viewport.w - right, h: viewport.h },
   ]
-  const room = (r: Rect) => Math.min(r.w, USEFUL_W) * Math.min(r.h, USEFUL_H)
+  const useW = need?.w || USEFUL_W
+  const useH = need?.h || USEFUL_H
+  const room = (r: Rect) => Math.min(r.w, useW) * Math.min(r.h, useH)
   return candidates.reduce((best, r) => (room(r) > room(best) ? r : best))
 }
 

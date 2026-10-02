@@ -37,7 +37,7 @@
  * colored fill reads as a solid block. One path, two idioms, no special-casing.
  */
 
-import type { BoundaryType, CapStyle, LineStyle, Layer, Span } from '@/types/strata'
+import type { BoundaryType, CapStyle, LineStyle, Layer, Span, FormDiagramData } from '@/types/strata'
 
 // ---------------------------------------------------------------------------
 // Metrics (starting values; tweakable once seen on real data)
@@ -399,6 +399,47 @@ export function textX(spanX: number, width: number, just: Justification): number
 }
 
 /**
+ * How far in from the span's edge a cap's outline reaches at depth `y` below
+ * the top: a rounded corner's arc, or an angled cap's diagonal. Square and
+ * open caps rise straight, so 0. Elided ends draw a rounded corner.
+ */
+export function capInsetAt(cap: CapStyle, width: number, y: number, height = SHAPE_HEIGHT): number {
+  const span = Math.max(0, width - 2 * ISLAND_INSET)
+  if (cap === 'rounded' || cap === 'elision') {
+    const r = Math.min(CORNER_RADIUS, span * CORNER_MAX_RATIO, height)
+    if (y >= r) return 0
+    const dy = r - Math.max(0, y)
+    return r - Math.sqrt(r * r - dy * dy)
+  }
+  if (cap === 'angled') return Math.min(ANGLE_INSET, span / 2) * Math.max(0, 1 - y / height)
+  return 0
+}
+
+/**
+ * The room for text inside a span whose top sits `yTop` below the shape's top:
+ * the padding on each side widens where a cap's corner cuts in, so inside text
+ * never runs into a rounded or angled end.
+ */
+export function insideTextBox(
+  width: number,
+  startCap: CapStyle,
+  endCap: CapStyle,
+  yTop: number,
+  height = SHAPE_HEIGHT,
+): { left: number; right: number } {
+  return {
+    left: ISLAND_INSET + TEXT_PAD + capInsetAt(startCap, width, yTop, height),
+    right: width - ISLAND_INSET - TEXT_PAD - capInsetAt(endCap, width, yTop, height),
+  }
+}
+
+/** textX within an inside box (insideTextBox) rather than the whole span. */
+export function insideTextX(box: { left: number; right: number }, just: Justification): number {
+  if (just === 'center') return (box.left + box.right) / 2
+  return just === 'right' ? box.right : box.left
+}
+
+/**
  * Re-anchor an above-label so it never bleeds past a timeline edge. A centered
  * label on the first/last span overhangs into the header column (left) or off the
  * track end (right); re-anchoring it to that edge keeps the whole label readable
@@ -606,4 +647,22 @@ export function spanDrawOrder<T extends Pick<Span, 'startTime' | 'endTime' | 'en
     }
   })
   return out
+}
+
+/** Neighbour-aware above-label layout for a layer (one pass, so labels share room). */
+export function layerLabelLayout(layer: Layer, pps: number, totalWidth: number) {
+  if ((layer.rendering?.labelPosition ?? 'above') === 'inside') return null
+  const isBar = layer.spanShape === 'bar'
+  return layoutLayerLabels(
+    (layer.data as FormDiagramData).spans.map((s) => ({
+      id: s.id,
+      x: s.startTime * pps,
+      width: (s.endTime - s.startTime) * pps,
+      label: (isBar ? s.keyArea || s.label : s.label) ?? '',
+      shortLabel: isBar ? null : s.shortLabel,
+    })),
+    layerFonts(layer).label,
+    totalWidth,
+    (layer.rendering?.labelJustification ?? 'center') as Justification,
+  )
 }

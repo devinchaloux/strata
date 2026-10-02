@@ -17,7 +17,7 @@ import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
 import { computePps, totalContentWidth, snapTime } from '@/lib/timeline'
-import { stackHeight, shapeTopY, layerBodyHeight, layerIndexAtY } from '@/lib/formShape'
+import { stackHeight, shapeTopY, layerBodyHeight, layerIndexAtY, layerFonts, estimateTextWidth, layerLabelLayout, LABEL_RISE } from '@/lib/formShape'
 import { layoutMarkerBand, BAND_TOP_GAP, BAND_ROW_HEIGHT, GLYPH_HALF, type MarkerPlacement } from '@/lib/markerBand'
 import { MIN_SPAN_WIDTH, MIN_BOUNDARY_DRAG_PX } from '@/lib/spanEdit'
 import { newGestureKey, withHistoryGroup } from '@/store/history'
@@ -173,6 +173,46 @@ const SelectionHighlight: SpanDecoration = ({ span, width, height }) => {
       strokeWidth={isSelected ? 1.5 : 0}
     />
   )
+}
+
+/**
+ * The label of a hovered or selected span that has no room to show it,
+ * drawn over everything on a small card so it can be read where it belongs.
+ * Replaces the old "label hidden here" dot (docs/decisions.md, "Hidden Labels
+ * Show on Hover and Selection").
+ */
+function HiddenLabelPeek({ layers, pps, totalWidth }: { layers: Layer[]; pps: number; totalWidth: number }) {
+  const hovered = useUIStore((s) => s.hoveredSpanId)
+  const selected = useUIStore((s) => s.selectedSpanIds)
+  const ids = new Set(selected.length <= 3 ? [...selected] : [])
+  if (hovered) ids.add(hovered)
+  if (!ids.size) return null
+  const peeks: JSX.Element[] = []
+  layers.forEach((layer, i) => {
+    if (!layer.visibility) return
+    const spans = (layer.data as FormDiagramData).spans.filter((s) => ids.has(s.id))
+    if (!spans.length) return
+    const layout = layerLabelLayout(layer, pps, totalWidth)
+    const font = layerFonts(layer).label
+    for (const span of spans) {
+      if (!layout?.get(span.id)?.hidden) continue
+      const text = (layer.spanShape === 'bar' ? span.keyArea || span.label : span.label) ?? ''
+      const w = estimateTextWidth(text, font) + 10
+      const h = font + 6
+      const mid = ((span.startTime + span.endTime) / 2) * pps
+      const x = Math.max(0, Math.min(mid - w / 2, totalWidth - w))
+      const y = shapeTopY(layers, i) - LABEL_RISE - h + 3
+      peeks.push(
+        <g key={span.id} pointerEvents="none">
+          <rect x={x} y={y} width={w} height={h} rx={3} fill="hsl(var(--card))" stroke={SELECT_BLUE} strokeWidth={1} />
+          <text x={x + w / 2} y={y + h / 2 + font * 0.35} textAnchor="middle" fontSize={font} fontWeight={500} fill="var(--ink-primary)">
+            {text}
+          </text>
+        </g>,
+      )
+    }
+  })
+  return <>{peeks}</>
 }
 
 // ---------------------------------------------------------------------------
@@ -717,6 +757,8 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
               dragCommittedRef={dragCommittedRef}
             />
           ))}
+
+        {pps > 0 && <HiddenLabelPeek layers={layers} pps={pps} totalWidth={totalWidth} />}
 
         {/* Marker band: empty band clears the selection; markers select and drag. */}
         {pps > 0 && (

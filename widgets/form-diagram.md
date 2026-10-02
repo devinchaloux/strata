@@ -101,7 +101,7 @@ exporter.formats = [
 ]
 ```
 
-**SVG export:** The form diagram renders as SVG in the DOM. Export serializes the current SVG subtree, applies a `viewBox` scoped to the `[startTime, endTime]` window (converting to pixel coordinates at the current zoom), and strips editing-only elements (drag handles, selection rings). No external library required.
+**SVG export:** Export renders the same pure figure the editor draws (`figure.tsx`), with the print theme, for a chosen `[startTime, endTime]` range at a chosen width (`exportSvg.tsx`); editing-only elements are never part of that figure. The export dialog chooses the layers, starting from the visible ones but independent of them. Each chosen layer is cut to the range first: a layer with no span in it is left out, and a span crossing an edge is trimmed there with its cut end drawn square and running off the edge, so its label sits at the centre of the part that shows. No external library required.
 
 **PDF export:** Uses `pdf-lib`. SVG content is placed into a PDF page sized to the exported time range. The page width is proportional to the time range; the height is the rendered layer panel height. Filename: `{document.title} — Form Diagram.pdf`.
 
