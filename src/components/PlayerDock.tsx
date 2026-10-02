@@ -322,7 +322,10 @@ export function PlayerDock() {
       const ui = useUIStore.getState()
       if (ui.playerStatus !== 'ready' || !ui.activeLayerId || ui.readingView) return
       e.preventDefault()
-      useDocumentStore.getState().placeBoundary(ui.activeLayerId, snapToActiveGrid(engineRef.current.now()))
+      const t = snapToActiveGrid(engineRef.current.now())
+      // Shift+B ends the span under the playhead there instead of splitting it.
+      if (e.shiftKey) useDocumentStore.getState().endSpanAt(ui.activeLayerId, t)
+      else useDocumentStore.getState().placeBoundary(ui.activeLayerId, t)
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)

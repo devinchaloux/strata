@@ -3588,3 +3588,23 @@ front of it), so a menu opening over it was hidden behind it: Devin hit this
 with the Grid menu. Moving the menu, not the player, keeps the rule without
 hiding anything.
 
+## B in an Empty Stretch; Shift+B; Fit to the Grid (2026-10-02)
+
+**Decision:** B in an empty stretch still fills it on both sides by default,
+but each layer can turn that off (`Layer.fillGaps: false`, "B fills empty
+space on both sides" in layer settings): then a boundary there starts a span
+that runs to the next boundary, and nothing is made behind it. Shift+B ends
+the span under the playhead there, leaving the rest empty. Layer settings
+also gain **Fit boundaries to the grid** (Bars or Beats), which moves every
+boundary in the layer to its nearest bar or beat in one undo step and says how
+many moved; a boundary that would collapse a span, or that sits in a free
+stretch of the grid, stays where it is. Delete or Backspace removes the
+selected spans (or marker) when no text field has the keyboard.
+**Rationale:** Devin's first boundary in a new layer made a span from 0 he
+didn't want: an introduction is often left out of the analysis, or a layer
+covers only part of the piece. Keeping fill-both as the default keeps the
+tiling habit for whole-piece layers; the switch is per layer because the
+choice belongs to what the layer covers. Fit to the grid lets boundaries
+placed by ear before the grid existed join it afterwards, rather than being
+redone. The timeline scrollbar's grab area also grew to its full 16px track
+height, with the visible thumb unchanged inside it.

@@ -14,8 +14,8 @@
 import { useRef } from 'react'
 import { scrollbarMetrics, scrollOffsetFromThumbX } from '@/lib/timeline'
 
-const SCROLLBAR_HEIGHT = 12 // px — track height (gutter)
-const THUMB_HEIGHT = 6 // px
+const SCROLLBAR_HEIGHT = 16 // px — track height (gutter)
+const THUMB_HEIGHT = 8 // px, the visible bar; the whole track height grabs it
 
 export function TimelineScrollbar({
   totalWidth,
@@ -79,6 +79,7 @@ export function TimelineScrollbar({
         cursor: 'pointer',
       }}
     >
+      {/* The grab area is the full track height; the visible bar sits inside. */}
       <div
         onPointerDown={onThumbPointerDown}
         role="scrollbar"
@@ -88,20 +89,19 @@ export function TimelineScrollbar({
         aria-valuemax={Math.round(maxScroll)}
         aria-valuenow={Math.round(scrollOffset)}
         tabIndex={0}
-        style={{
-          position: 'absolute',
-          top: (SCROLLBAR_HEIGHT - THUMB_HEIGHT) / 2,
-          left: thumbX,
-          width: thumbWidth,
-          height: THUMB_HEIGHT,
-          borderRadius: THUMB_HEIGHT / 2,
-          backgroundColor: 'hsl(var(--muted-foreground))',
-          opacity: 0.4,
-          cursor: 'grab',
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.6')}
-        onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.4')}
-      />
+        className="group"
+        style={{ position: 'absolute', top: 0, left: thumbX, width: thumbWidth, height: SCROLLBAR_HEIGHT, cursor: 'grab' }}
+      >
+        <div
+          className="opacity-40 transition-opacity group-hover:opacity-70"
+          style={{
+            marginTop: (SCROLLBAR_HEIGHT - THUMB_HEIGHT) / 2,
+            height: THUMB_HEIGHT,
+            borderRadius: THUMB_HEIGHT / 2,
+            backgroundColor: 'hsl(var(--muted-foreground))',
+          }}
+        />
+      </div>
     </div>
   )
 }

@@ -32,6 +32,7 @@ const KEYS: [string, [string, string][]][] = [
     [
       ['Space or K', 'Play or pause'],
       ['B', 'Place a boundary on the active layer at the playhead'],
+      ['Shift+B', 'End the span under the playhead there'],
       ['J / L', 'Back / forward 10 seconds'],
       ['Home', 'Back to the start'],
       ['M', 'Place a point marker at the playhead'],
@@ -55,6 +56,7 @@ const KEYS: [string, [string, string][]][] = [
       ['1–9', 'Quick entry: a type, shape or fill for the selected spans (choose which above the diagram)'],
       ['/', 'Choose from every type, with search'],
       ['Esc', 'Clear the selection'],
+      ['Delete', 'Remove the selected spans or marker'],
     ],
   ],
   [

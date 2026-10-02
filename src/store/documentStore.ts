@@ -2,10 +2,10 @@ import { create } from 'zustand'
 import { temporal } from 'zundo'
 import type { StrataDocument, Layer, LayerBase, Span, PointMarker, SharedTimePoint, GridSegment, VocabTerm } from '@/types/strata'
 import { formSpans } from '@/lib/layers'
-import { sortedSegments, segmentAt, segmentEnd, extendBack } from '@/lib/beatGrid'
+import { sortedSegments, segmentAt, segmentEnd, extendBack, snapToGrid } from '@/lib/beatGrid'
 import type { FormDiagramData } from '@/types/strata'
 import { mergeVocabPack, type MergeResult, type VocabPack } from '@/lib/vocabPack'
-import { placeBoundaryInSpans, setSpanEdge, findOverlaps, MIN_SPAN_WIDTH } from '@/lib/spanEdit'
+import { placeBoundaryInSpans, setSpanEdge, findOverlaps, endSpanAtTime, snapSpansToGrid, MIN_SPAN_WIDTH } from '@/lib/spanEdit'
 import { groupingHandleSet, breakHistoryGroup } from '@/store/history'
 import { slugify, uniqueSlug, slugsInUse, allSpans, resolveSlugCollisions } from '@/lib/slug'
 import {
@@ -96,6 +96,11 @@ interface DocumentState {
   // (or filling the gap it falls in — an empty layer is one gap). No-op if the
   // cut isn't valid.
   placeBoundary: (layerId: string, time: number) => void
+  // Shift+B: the span under `time` ends there, leaving the rest empty.
+  endSpanAt: (layerId: string, time: number) => void
+  // Move every boundary in a layer to the nearest bar or beat. One undo step;
+  // returns how many boundaries moved.
+  snapLayerToGrid: (layerId: string, unit: 'bar' | 'beat') => number
   // Numeric time entry: move one edge of a span. A touching neighbour's edge
   // moves with it; otherwise the edge stops at the gap's far side.
   setSpanEdge: (layerId: string, spanId: string, edge: 'start' | 'end', time: number) => void
@@ -462,11 +467,14 @@ const useDocumentStore = create<DocumentState>()(
         const layers = mapLayer(doc.layers, layerId, (l) => {
           if (l.type !== 'form-diagram') return l
           const data = l.data as FormDiagramData
+          // Layer.fillGaps false: a boundary in an empty stretch starts a span
+          // that runs to the next boundary only, not back to the previous one.
           const next = placeBoundaryInSpans(
             data.spans,
             time,
             doc.duration,
             () => crypto.randomUUID(),
+            l.fillGaps !== false,
           )
           if (!next) return l
           changed = true
@@ -476,6 +484,37 @@ const useDocumentStore = create<DocumentState>()(
         // A split copies the label (and so the slug) into the new right half;
         // the original span keeps its slug and the new half gets the next free one.
         set({ document: resolveSlugCollisions(doc, { ...doc, layers, updatedAt: now() }) })
+      },
+
+      endSpanAt: (layerId, time) => {
+        const doc = get().document
+        if (!doc) return
+        let changed = false
+        const layers = mapLayer(doc.layers, layerId, (l) => {
+          if (l.type !== 'form-diagram') return l
+          const data = l.data as FormDiagramData
+          const next = endSpanAtTime(data.spans, time)
+          if (!next) return l
+          changed = true
+          return { ...l, data: { ...data, spans: next } }
+        })
+        if (changed) set({ document: { ...doc, layers, updatedAt: now() } })
+      },
+
+      snapLayerToGrid: (layerId, unit) => {
+        const doc = get().document
+        if (!doc) return 0
+        const segs = sortedSegments(doc.beatGrid)
+        let moved = 0
+        const layers = mapLayer(doc.layers, layerId, (l) => {
+          if (l.type !== 'form-diagram') return l
+          const data = l.data as FormDiagramData
+          const r = snapSpansToGrid(data.spans, (t) => snapToGrid(t, segs, doc.duration, unit))
+          moved = r.moved
+          return moved ? { ...l, data: { ...data, spans: r.spans } } : l
+        })
+        if (moved) set({ document: { ...doc, layers, updatedAt: now() } })
+        return moved
       },
 
       setSpanEdge: (layerId, spanId, edge, time) => {

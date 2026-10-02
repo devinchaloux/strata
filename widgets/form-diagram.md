@@ -202,6 +202,8 @@ Full design rationale in `docs/decisions.md`. This section is the implementation
 | Gesture | Behavior |
 |---|---|
 | **B** | Place a boundary at `currentTime` — split the span containing `currentTime`, or mark a boundary in empty layer space. (Space until 2026-10-01; Space now plays and pauses.) |
+| **Shift+B** | End the span containing `currentTime` there, leaving the rest of it empty. |
+| **Delete / Backspace** | Remove the selected spans (or the selected point marker), one undo step; not while typing in a field. |
 | **Arrow keys** | Nudge the selected boundary ±1 frame (~0.033s); `Shift` = ±10 frames |
 | **Drag boundary handle** | Move boundary; hard-stops at adjacent span boundaries; minimum span width enforced |
 | **Click span** | Select span; open metadata panel (per Phase 0.4 spec) |
@@ -213,7 +215,9 @@ Whole-span dragging is not implemented. Span movement is always via boundary adj
 
 1. Determine the span (if any) that contains `currentTime`: `span.startTime ≤ currentTime ≤ span.endTime`
 2. If a containing span exists: split it into `[span.startTime, currentTime]` and `[currentTime, span.endTime]`. The first child inherits the original span's `label`, `type`, and metadata; the second child is created blank.
-3. If no span contains `currentTime`: behavior is specified in Phase 0.4 (open question: does it extend the previous span's end, or create a new isolated span?).
+3. If no span contains `currentTime`, it falls in an empty stretch (an empty layer is one). By default the stretch fills on both sides: one span from the previous boundary (or 0) to `currentTime`, one from `currentTime` to the next boundary (or the end). With the layer's `fillGaps` set to `false` ("B fills empty space on both sides" off, in layer settings), only the second is made, so a first boundary starts a span rather than closing one. docs/decisions.md, "B in an Empty Stretch".
+
+Shift+B ends the span containing `currentTime` there. Layer settings also offer **Fit boundaries to the grid** (Bars or Beats): every boundary moves to its nearest bar or beat in one undo step, a boundary two spans share moving once, and one that would collapse a span or sits in a free stretch staying put.
 
 Placed boundaries are immediately contributed to the shared time point pool via the next `contributeTimePoints` call.
 
@@ -240,7 +244,6 @@ These are confirmed design decisions awaiting their dedicated spec sessions:
 
 - Span metadata panel: sidebar vs. inline, trigger (click vs. double-click)
 - Context menu: exact actions on right-click
-- Boundary (B) behavior when `currentTime` is in empty layer space
 - Layer panel placement and controls
 - Merge conflict dialog design and multi-select interaction model
 

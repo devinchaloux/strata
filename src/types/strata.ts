@@ -327,6 +327,12 @@ export interface LayerBase {
    */
   library?: string | null
   /**
+   * Whether a boundary placed in an empty stretch fills it on both sides
+   * (the default, absent = true) or starts a span there and leaves the
+   * stretch before it empty (false), for a layer that begins mid-track.
+   */
+  fillGaps?: boolean
+  /**
    * Text size for this layer's labels and annotations: sm (9.5 / 8.5 px),
    * md (11 / 9, the default when absent) or lg (13 / 11). Uniform within a
    * layer; there is no per-span font size.

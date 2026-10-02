@@ -34,6 +34,7 @@ import aliveRaw from '../schema/alive.strata?raw'
 import { readStrataFile } from '@/lib/fileIO'
 import { spanNeighbour, firstSpan, spanRange } from '@/lib/spanNav'
 import { formSpans } from '@/lib/layers'
+import { newGestureKey, withHistoryGroup } from '@/store/history'
 import { computePps, totalContentWidth, clampScrollOffset } from '@/lib/timeline'
 
 // ---------------------------------------------------------------------------
@@ -496,6 +497,34 @@ export default function App() {
 
       const reading = useUIStore.getState().readingView
       if (!reading && navigateSpans(e)) return
+
+      // Delete / Backspace — remove the selected spans (or the selected
+      // marker), one undo step, from anywhere but a text field.
+      if ((e.key === 'Delete' || e.key === 'Backspace') && !reading && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const el = e.target as HTMLElement | null
+        const tag = el?.tagName
+        const inField =
+          tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable
+        if (inField) return
+        const ui = useUIStore.getState()
+        const store = useDocumentStore.getState()
+        const doc = store.document
+        if (!doc) return
+        if (ui.selectedSpanIds.length) {
+          e.preventDefault()
+          const ids = new Set(ui.selectedSpanIds)
+          withHistoryGroup(newGestureKey('delete-spans'), () => {
+            for (const l of doc.layers)
+              for (const s of formSpans(l)) if (ids.has(s.id)) useDocumentStore.getState().removeSpan(l.id, s.id)
+          })
+          clearSelection()
+        } else if (ui.selectedPointMarkerId) {
+          e.preventDefault()
+          store.removePointMarker(ui.selectedPointMarkerId)
+          selectPointMarker(null)
+        }
+        return
+      }
 
       const mod = e.metaKey || e.ctrlKey
       if (!mod) return
