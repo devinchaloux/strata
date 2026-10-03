@@ -361,6 +361,7 @@ a new entry is added noting the reversal and why.
 ---
 
 **Decision:** The embeddable viewer is file-referenced, not inline-JSON. The `.strata` file is co-located with content and imported at build time.
+*Superseded 2026-10-03 by "Embedding an Analysis": the embed is the app itself in an iframe, reading the file at view time.*
 **Rationale:** Three options were considered: inline JSON in MDX (ugly, diffs badly), runtime URL fetch (adds network dependency), and co-located file imported at build time (Astro-idiomatic, enables static generation, clean git history). The third is correct for a scholarly writing workflow. Also means updating an analysis updates all embeds referencing it automatically on next build — no per-embed maintenance.
 
 ---
@@ -3764,3 +3765,33 @@ lines. The point-marker note now says why a caption isn't drawn ("Hidden:
 cadence marker captions are off in Document settings").
 **Rationale:** The style in "How the App's Text Reads" stands; these are its
 first corrections from Devin.
+
+---
+
+## Embedding an Analysis (2026-10-03)
+
+**Decision:** A page embeds an analysis by putting Strata in an iframe at
+`/?embed&src=<file URL>`, optionally with `focus=<span slug or m:ss-m:ss>` and
+`layers=<label>,<label>`, and `bare` for a page that frames the embed with
+its own title. Embed mode is read-only: the video, the diagram and
+the play bar, with the title and an "Open in Strata" link above, and no
+toolbar, Inspector or commentary panel. A focus zooms to the span with a
+margin, dims the rest and loops it while playing; moving the playhead well
+away releases the loop. The page drives the embed with window messages
+(`strata:cue` with a focus, `strata:play`, `strata:pause`), and the embed
+reports `strata:ready`, `strata:height`, `strata:playing` and
+`strata:error`. On narrow screens the video sits above the diagram, the layer
+names fold to a rail, a whole track opens at the 100% scale and scrolls
+(following the playhead; a swipe holds that for four seconds); wider, the
+video sits beside the diagram at YouTube's minimum height. The example
+*Alive* now has its slugs saved in the file, since an embed points at them.
+**Rationale:** This replaces the earlier plan of a viewer component imported
+into the host site at build time ("Embeddable Viewer" above). That plan needed
+the editor's render path split out first, and tied every host site's build to
+Strata's code. An iframe needs neither, and a fix to Strata reaches every
+embed at once. The old objection, a network fetch at view time, carries
+little weight when the embed needs YouTube anyway. The costs are weight (each
+embed loads the app) and look (Strata is light-only); a host page answers the
+first by loading one player per page, on demand, and pointing at its parts
+with cues. Slug-based focus, the margin around a focus and looping all carry
+over from the earlier design.

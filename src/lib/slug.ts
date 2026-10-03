@@ -1,7 +1,7 @@
 /**
  * Slugs — the stable, human-readable reference key for a span.
  *
- * An embed names a span by slug (`<StrataEmbed focus="drop-1">`), so a slug
+ * An embed names a span by slug (`?embed&focus=drop-1`, lib/embed.ts), so a slug
  * has two jobs the label doesn't: it must be UNIQUE across the document (an
  * embed has no layer to disambiguate with) and STABLE once something could be
  * pointing at it.

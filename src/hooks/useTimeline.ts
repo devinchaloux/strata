@@ -9,6 +9,7 @@ import {
   clampZoom,
   minZoom,
   ABS_MAX_ZOOM,
+  BASE_PPS,
   wheelPixels,
 } from '@/lib/timeline'
 
@@ -91,6 +92,26 @@ export function useTimeline() {
   }, [viewportWidth, duration, setZoom, setScrollOffset])
 
   // ---------------------------------------------------------------------------
+  // A requested view (embed focus, cues): fit [start, end], or the standard
+  // 100% scale from start when end is null. Declared after the fit effects so
+  // that, when both run in one commit (the first measurement), this one wins.
+  // ---------------------------------------------------------------------------
+  const viewRequest = useUIStore((s) => s.viewRequest)
+  const appliedView = useRef(0)
+  useEffect(() => {
+    if (!viewRequest || appliedView.current === viewRequest.n) return
+    if (duration <= 0 || viewportWidth <= 0) return
+    appliedView.current = viewRequest.n
+    fitModeRef.current = false
+    const { start, end } = viewRequest
+    const newZoom =
+      end == null ? clampZoom(1, duration, viewportWidth) : clampZoom(viewportWidth / ((end - start) * BASE_PPS), duration, viewportWidth)
+    const newPps = computePps(newZoom)
+    setZoom(newZoom)
+    setScrollOffset(clampScrollOffset(start * newPps, totalContentWidth(duration, newZoom), viewportWidth))
+  }, [viewRequest, duration, viewportWidth, setZoom, setScrollOffset])
+
+  // ---------------------------------------------------------------------------
   // DAW cursor following — only fires during active playback.
   //
   // Off-screen left: snap to 20% (handles backward seek while playing).
@@ -104,6 +125,8 @@ export function useTimeline() {
     () =>
       useUIStore.subscribe((state, prev) => {
         if (state.currentTime === prev.currentTime || state.playbackState !== 'playing') return
+        // The reader panned by hand a moment ago (embed on a phone): leave the view alone.
+        if (Date.now() < state.followHoldUntil) return
         const { pps, viewportWidth, totalWidth, scrollOffset } = snap.current
         if (pps <= 0 || viewportWidth <= 0) return
         const t = state.currentTime
