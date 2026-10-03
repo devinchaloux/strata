@@ -180,14 +180,15 @@ export function EmbedApp({ params }: { params: EmbedParams }) {
   const fullView = shareUrl(params.src, window.location.origin + '/')
   return (
     <div ref={rootRef} className="embed-grid bg-background text-foreground">
-      <div className="embed-head flex items-baseline gap-1.5 px-3 py-1.5 text-xs">
-        {doc ? (
-          <>
-            <span className="truncate font-medium">{doc.title}</span>
-            {doc.artist.length > 0 && <span className="truncate text-muted-foreground">{doc.artist.join(', ')}</span>}
-          </>
-        ) : (
-          <span className="text-muted-foreground">Loading…</span>
+      {!params.bare && (
+        <div className="embed-head flex items-baseline gap-1.5 px-3 py-1.5 text-xs">
+          {doc ? (
+            <>
+              <span className="truncate font-medium">{doc.title}</span>
+              {doc.artist.length > 0 && <span className="truncate text-muted-foreground">{doc.artist.join(', ')}</span>}
+            </>
+          ) : (
+            <span className="text-muted-foreground">Loading…</span>
         )}
         <a
           href={fullView}
@@ -198,6 +199,7 @@ export function EmbedApp({ params }: { params: EmbedParams }) {
           Open in Strata ↗
         </a>
       </div>
+      )}
       <div
         className="embed-diagram flex min-w-0 flex-col"
         style={{ touchAction: 'pan-y' }}

@@ -2,7 +2,9 @@
  * Embed mode: Strata inside another page's iframe, read-only, showing one
  * analysis or a part of it. The page addresses it with
  *
- *   /?embed&src=<file URL>[&focus=<span slug | m:ss-m:ss>][&layers=<label>,<label>]
+ *   /?embed&src=<file URL>[&focus=<span slug | m:ss-m:ss>][&layers=<label>,<label>][&bare]
+ *
+ * `bare` drops the title line, for a page that frames the embed with its own.
  *
  * and drives it with window messages (EmbedMessage below). docs/decisions.md,
  * "Embedding an Analysis".
@@ -15,6 +17,7 @@ export interface EmbedParams {
   src: string
   focus: string | null
   layers: string[] | null
+  bare: boolean
 }
 
 /** The embed's settings, or null when the page isn't an embed. */
@@ -33,6 +36,7 @@ export function parseEmbedParams(pageUrl: string): EmbedParams | null {
           .map((l) => l.trim())
           .filter(Boolean)
       : null,
+    bare: params.has('bare'),
   }
 }
 

@@ -16,7 +16,8 @@ const doc = () => {
 describe('parseEmbedParams', () => {
   it('reads the file, focus and layers', () => {
     const p = parseEmbedParams('https://s.example/?embed&src=https%3A%2F%2Fx.example%2Fa.strata&focus=drop-1&layers=Sections,%20Phrases')
-    expect(p).toEqual({ src: 'https://x.example/a.strata', focus: 'drop-1', layers: ['Sections', 'Phrases'] })
+    expect(p).toEqual({ src: 'https://x.example/a.strata', focus: 'drop-1', layers: ['Sections', 'Phrases'], bare: false })
+    expect(parseEmbedParams('https://s.example/?embed&bare&src=https%3A%2F%2Fx.example%2Fa.strata')?.bare).toBe(true)
   })
 
   it('is null without embed, or without a usable file', () => {

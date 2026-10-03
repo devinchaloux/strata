@@ -3772,7 +3772,8 @@ first corrections from Devin.
 
 **Decision:** A page embeds an analysis by putting Strata in an iframe at
 `/?embed&src=<file URL>`, optionally with `focus=<span slug or m:ss-m:ss>` and
-`layers=<label>,<label>`. Embed mode is read-only: the video, the diagram and
+`layers=<label>,<label>`, and `bare` for a page that frames the embed with
+its own title. Embed mode is read-only: the video, the diagram and
 the play bar, with the title and an "Open in Strata" link above, and no
 toolbar, Inspector or commentary panel. A focus zooms to the span with a
 margin, dims the rest and loops it while playing; moving the playhead well
