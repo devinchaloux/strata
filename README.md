@@ -65,6 +65,10 @@ Press **?** in the app for a short guide and every keyboard shortcut.
   focus on one span:
   `https://strata.devinchaloux.com/?embed&src=<file address>&focus=<slug>`.
   See [`docs/decisions.md`](docs/decisions.md), "Embedding an Analysis".
+- **Start from a link.** Another tool can open a new analysis with its setup
+  filled in: `https://strata.devinchaloux.com/?new&title=…&artist=…&video=…&bpm=…`.
+  See [`docs/decisions.md`](docs/decisions.md), "Starting an Analysis from a
+  Link".
 - **Export.** The diagram as an SVG or PNG figure; the commentary as one HTML
   page or Markdown.
 

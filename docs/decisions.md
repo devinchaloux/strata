@@ -36,7 +36,7 @@ By area, in the order the entries were made:
 
 **The player and the source:** [Player Chrome (Phase 0.3)](#player-chrome-phase-03) · [Source Linking (2026-07-02)](#source-linking-2026-07-02) · [Video Curtain Covers Every Dialog (2026-09-27)](#video-curtain-covers-every-dialog-2026-09-27) · [Dialogs Stay Clear of the Player (2026-09-27)](#dialogs-stay-clear-of-the-player-2026-09-27) · [Video Below the Fold (2026-09-27)](#video-below-the-fold-2026-09-27) · [Menus Keep Clear of the Player (2026-10-02)](#menus-keep-clear-of-the-player-2026-10-02)
 
-**Reading, sharing, embedding and export:** [Sharing](#sharing) · [Embeddable Viewer](#embeddable-viewer) · [Export (2026-09-27)](#export-2026-09-27) · [The Reading View (2026-10-01)](#the-reading-view-2026-10-01) · [Sharing by Link (2026-10-01)](#sharing-by-link-2026-10-01) · [Export: Choose Layers, Cut Spans at the Range (2026-10-02)](#export-choose-layers-cut-spans-at-the-range-2026-10-02) · [Share From the Toolbar; Dropbox and OneDrive Links (2026-10-02)](#share-from-the-toolbar-dropbox-and-onedrive-links-2026-10-02) · [Example Analyses (2026-10-02)](#example-analyses-2026-10-02) · [Embedding an Analysis (2026-10-03)](#embedding-an-analysis-2026-10-03)
+**Reading, sharing, embedding and export:** [Sharing](#sharing) · [Embeddable Viewer](#embeddable-viewer) · [Export (2026-09-27)](#export-2026-09-27) · [The Reading View (2026-10-01)](#the-reading-view-2026-10-01) · [Sharing by Link (2026-10-01)](#sharing-by-link-2026-10-01) · [Export: Choose Layers, Cut Spans at the Range (2026-10-02)](#export-choose-layers-cut-spans-at-the-range-2026-10-02) · [Share From the Toolbar; Dropbox and OneDrive Links (2026-10-02)](#share-from-the-toolbar-dropbox-and-onedrive-links-2026-10-02) · [Example Analyses (2026-10-02)](#example-analyses-2026-10-02) · [Embedding an Analysis (2026-10-03)](#embedding-an-analysis-2026-10-03) · [Starting an Analysis from a Link (2026-10-03)](#starting-an-analysis-from-a-link-2026-10-03)
 
 **The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03)
 
@@ -3830,3 +3830,29 @@ embed loads the app) and look (Strata is light-only); a host page answers the
 first by loading one player per page, on demand, and pointing at its parts
 with cues. Slug-based focus, the margin around a focus and looping all carry
 over from the earlier design.
+
+## Starting an Analysis from a Link (2026-10-03)
+
+**Decision.** An address with `?new` starts a new analysis with its setup
+filled in, then opens the New analysis dialog to check it:
+
+```
+https://strata.devinchaloux.com/?new&title=Alive&artist=Krewella&video=<YouTube link>&bpm=128&key=A&mode=minor
+```
+
+`artist` may repeat, in order. `key` is the tonic as written (`F#` becomes
+`F♯`); `mode` is one of Strata's built-in modes (`major`, `minor`, `dorian` …).
+Every field is optional, and one that doesn't read (a video address that isn't
+YouTube, a tempo of 0) is left out rather than refusing the link. The address
+loses its parameters once read, so reloading doesn't start a second analysis.
+
+**Why.** A catalogue that already knows a recording (its title, artists,
+video and tempo) shouldn't make the analyst type them again. The first is the
+maintainer's own catalogue, whose track pages offer "New analysis".
+Nothing leaves the browser: the link fills in a document that exists only
+until the analyst saves it, as with any new analysis.
+
+**The tonic is passed as written, never respelled.** Whether a key is F♯ or G♭
+is the analyst's call, so a tool that knows only a pitch class should leave the
+tonic out and let the analyst choose in the dialog.
+
