@@ -3757,8 +3757,8 @@ still flags lyrics in this repository's own files, such as the examples.
 ## Copy Pass, Second Round (2026-10-03)
 
 **Decision:** Devin's answers to the first copy pass are applied: most edits
-kept; three restored to the earlier wording (an absent event, the merge
-dialog, one tooltip replaced by his "For reading or presenting"); his own
+kept; two restored to the earlier wording (an absent event, the merge
+dialog); the Reading view button's tooltip removed, since its label says it; his own
 wording used where he gave it, including the confidence, In key and beta
 lines. The point-marker note now says why a caption isn't drawn ("Hidden:
 cadence marker captions are off in Document settings").

@@ -677,7 +677,6 @@ export default function App() {
         <button
           onClick={() => setReadingView(true)}
           disabled={!doc}
-          title="For reading or presenting, with editing off"
           className="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-40
             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
         >
