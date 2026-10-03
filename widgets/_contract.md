@@ -1,6 +1,14 @@
 # Strata — Widget Contract Specification
 *Phase 0.2 | v1.0 | June 2026*
 
+> **Status (2026-10-03):** this is the design, not yet the code. The types are
+> defined in `src/types/strata.ts`, but the app doesn't load widgets through a
+> registry: the form diagram and the written analysis are built directly, and
+> the port to `src/types/widget.ts` described below hasn't happened. The
+> "embeddable viewer" below was replaced by the app's embed mode
+> (`docs/decisions.md`, "Embedding an Analysis"). The render / edit boundary
+> still holds in the code: see "Render / Edit Split".
+
 This document is the formal specification for the Strata widget contract — the interface every widget type must implement to participate in the editor, the embeddable viewer, and the export system.
 
 The TypeScript interfaces defined here are the source of truth until Phase 1.2, when they are ported to `src/types/widget.ts`. When the contract changes, both files update together. Data model changes to the file format follow the versioning policy in `src/lib/migrations.ts`.

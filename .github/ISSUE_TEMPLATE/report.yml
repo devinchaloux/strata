@@ -28,8 +28,12 @@ body:
   - type: input
     id: version
     attributes:
-      label: Strata version
+      label: When it happened
+      description: Optional. The date is enough; it tells us which version of Strata you had.
+      placeholder: e.g. 3 October 2026
   - type: input
     id: browser
     attributes:
       label: Browser
+      description: Optional, but it often matters (saving works differently in Chrome and Edge).
+      placeholder: e.g. Chrome 129 on macOS

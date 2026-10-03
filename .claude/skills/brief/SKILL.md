@@ -7,8 +7,8 @@ You are starting a new work session on the Strata project. Follow these steps ex
 ## Step 1 — Find the private notes
 
 The handoff, build plan, backlog and specs live in the private `research` repo
-under `strata/`, checked out as a sibling of this repo (see "Private Notes" in
-`CLAUDE.md`). Locate it and bring it up to date in one Bash call:
+under `strata/`, checked out as a sibling of this repo (see "Private notes" in
+the maintainer instructions that `CLAUDE.md` imports). Locate it and bring it up to date in one Bash call:
 
 ```bash
 STRATA_ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
@@ -33,8 +33,13 @@ Read these files in order:
 
 1. `$NOTES/handoff.md` — primary session brief
 2. `$NOTES/build-plan.md` — current phase breakdown and tech stack
-3. `docs/decisions.md` — architectural decisions log
-4. `docs/vision.md` — full project vision
+3. `docs/decisions.md` — its header and "Find a decision" index, then the last
+   ten entries (the newest are at the bottom). Read further entries when the
+   proposed scope touches their area. The whole log runs to thousands of lines;
+   reading it all every session costs more than it tells you.
+
+Read `docs/vision.md` only when the session touches the project's direction:
+it is the original statement of intent and rarely changes.
 
 Then use Glob to check for any other files in `$NOTES` (`*.md`) and read any you haven't already read.
 
@@ -43,9 +48,7 @@ before 2026-09-27, and the filenames are unchanged.
 
 ## Step 3 — Check git state
 
-Run these commands in order:
-
-Run all three in a single Bash call:
+Run them in a single Bash call:
 
 ```
 git fetch origin && git status && git log origin/main..HEAD --oneline && echo "---recent---" && git log --oneline -5
@@ -114,4 +117,4 @@ given and don't cut another. Confirm it starts from current `main` with
 
 This step exists because a session committed directly to the shared branch on 2026-06-30 — the brief confirmed scope but the branch was never cut. The branch cut is the first action of every work session, not an afterthought.
 
-Branches are cut from `main`. There is no `dev` branch — it was retired in September 2026; see the Git section of `CLAUDE.md` for why.
+Branches are cut from `main`. There is no `dev` branch: it was retired in September 2026 because it drifted silently behind `main`, and CI on every pull request replaced it.

@@ -4,7 +4,7 @@
 *Project Vision & Architectural Guiding Document*
 *Working Title — v0.5 Draft — June 2026*
 
-> This is a living document. It is updated after each major ideation session as design decisions accumulate. No code has been written yet.
+> **Status (2026-10-03):** this vision was written in May–June 2026, before the code, and is kept as the statement of intent. For what Strata does today, see the README, `schema/` and `widgets/`. Where this document and `docs/decisions.md` disagree, the decisions log is binding.
 
 ---
 
