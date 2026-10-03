@@ -196,7 +196,7 @@ export function PointMarkerPanel() {
           <Field
             key="harmonicContext"
             label="In key"
-            tooltip="A Roman numeral relative to the home key, written with the type: V plus PAC reads V:PAC."
+            tooltip="Ex. V:PAC; written as the Roman numeral relative to the home key with cadence type."
           >
             <input
               className={inputClass}
@@ -211,7 +211,7 @@ export function PointMarkerPanel() {
           <Field
             key="absent"
             label="Absent"
-            tooltip="Expected here but doesn’t happen. Its caption is struck through."
+            tooltip="The event was expected at this point but does not occur. Its caption is drawn struck through."
           >
             <Segmented
               options={[
@@ -317,7 +317,7 @@ export function PointMarkerPanel() {
             <div className="mt-0.5 text-xs font-medium text-foreground">{caption}</div>
             {!captionsVisible && (
               <div className="mt-1 text-[11px] text-muted-foreground">
-                Captions are off for this document, so this isn’t drawn.
+                Hidden: cadence marker captions are off in Document settings.
               </div>
             )}
           </div>

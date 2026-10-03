@@ -142,7 +142,7 @@ function EmptyState({
           Start an analysis
         </h1>
         <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-          Link a YouTube video or audio file and build layered form diagrams on its timeline.
+          Link a YouTube video or audio file and build layered analytical diagrams on its timeline.
         </p>
         <div className="mt-5 flex items-center gap-2">
           <button
@@ -393,8 +393,7 @@ export default function App() {
     setSettingsOpen(true)
   }, [newFile, setSettingsOpen])
 
-  // A shared link (?src=…) opens that analysis in the reading view, with
-  // lyrics off for this visit unless the reader turns them on
+  // A shared link (?src=…) opens that analysis in the reading view
   // (docs/decisions.md, "Sharing by Link"). The examples open the same way.
   const openShared = useCallback(
     (src: string) => {
@@ -404,7 +403,6 @@ export default function App() {
         .then((result) => {
           loadDocument(result.doc)
           useDocumentStore.temporal.getState().clear()
-          ui.setShowLyrics(false, false)
           ui.setReadingView(true)
           if (result.notices.length) ui.showAppMessage('Opened with warnings', result.notices)
         })
@@ -616,7 +614,7 @@ export default function App() {
           <span className="text-sm font-semibold tracking-tight text-foreground">Strata</span>
           <span
             className="rounded border border-border px-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-            title="Strata is in beta, so save often."
+            title="Strata is in beta. It is recommended to save often."
           >
             Beta
           </span>
@@ -679,7 +677,7 @@ export default function App() {
         <button
           onClick={() => setReadingView(true)}
           disabled={!doc}
-          title="Read the analysis without editing"
+          title="For reading or presenting, with editing off"
           className="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-40
             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
         >

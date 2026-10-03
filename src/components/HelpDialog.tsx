@@ -16,7 +16,7 @@ import {
 const MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘' : 'Ctrl'
 
 const STEPS: [string, string][] = [
-  ['Start', 'Click New analysis and link a YouTube video or audio file. The video plays below the diagram.'],
+  ['Start', 'Click New analysis and link a YouTube video or audio file. By default, the video plays below the diagram.'],
   ['Mark', 'Play (Space), and press B at each boundary you hear. M places a point marker, such as a cadence.'],
   ['Describe', 'Click a span to set its type and details in the Inspector. Drag a boundary to move it.'],
   ['Grid', 'Optional: tap T on the beat, or set a tempo in the Grid menu, to number bars and snap to beats.'],
@@ -87,7 +87,7 @@ export function HelpDialog({ open, onOpenChange }: { open: boolean; onOpenChange
         <DialogHeader>
           <DialogTitle>How Strata works</DialogTitle>
           <DialogDescription>
-            Strata is in beta, so save often.
+            Strata is in beta. It is recommended to save often.
           </DialogDescription>
         </DialogHeader>
 

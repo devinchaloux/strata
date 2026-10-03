@@ -303,7 +303,7 @@ export function LinkSourceDialog() {
             {isLinked ? 'Change source' : 'Link a source'}
           </DialogTitle>
           <DialogDescription>
-            The video or audio this analysis plays against. Changing it never changes the analysis.
+            The video or audio this analysis plays against. Swapping the source never affects the data.
           </DialogDescription>
         </DialogHeader>
         <SourceLinkForm autoFocus onDone={() => setOpen(false)} />

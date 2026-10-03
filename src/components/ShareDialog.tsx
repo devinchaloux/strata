@@ -3,18 +3,14 @@
  *
  * Strata stores nothing on a server, so the analyst puts the .strata file
  * online first (their site, GitHub, Dropbox or OneDrive) and pastes its address or share link here; the link carries that
- * address (lib/shareLink.ts). Opened from the toolbar or the reading view. Lyrics are
- * someone else's text: readers see them only if they turn them on, and the
- * analyst can download a copy without them to share instead.
+ * address (lib/shareLink.ts). Opened from the toolbar or the reading view.
  */
 import { useState } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { inputClass } from '@/components/Field'
-import { downloadBlob, fileBaseName } from '@/lib/fileIO'
-import { fileHost, hasLyrics, hostSupported, shareUrl, withoutLyrics, type FileHost } from '@/lib/shareLink'
-import { version as APP_VERSION } from '../../package.json'
+import { fileHost, hostSupported, shareUrl, type FileHost } from '@/lib/shareLink'
 
 // What the dialog says about a recognised share link, under the address.
 const HOST_NOTE: Record<FileHost, string> = {
@@ -39,7 +35,6 @@ export function ShareDialog() {
   // A link Strata can't open (Google Drive) isn't offered.
   const valid = /^https?:\/\/\S+$/.test(fileUrl) && hostSupported(host)
   const link = valid ? shareUrl(fileUrl, window.location.href) : ''
-  const lyrics = hasLyrics(doc)
   const note = hostSupported(host)
     ? HOST_NOTE[host]
     : 'Google Drive doesn’t let other sites read its files, so Strata can’t open Drive links. Dropbox, OneDrive and GitHub work.'
@@ -48,11 +43,6 @@ export function ShareDialog() {
     navigator.clipboard?.writeText(link)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
-  }
-
-  function downloadWithoutLyrics() {
-    const copyDoc = { ...withoutLyrics(doc!), strataVersion: APP_VERSION }
-    downloadBlob(new Blob([JSON.stringify(copyDoc, null, 2)], { type: 'application/octet-stream' }), `${fileBaseName(doc!)}.strata`)
   }
 
   return (
@@ -97,18 +87,6 @@ export function ShareDialog() {
           </div>
         </div>
 
-        {lyrics && (
-          <div className="rounded-md border border-border bg-muted/50 p-3 text-xs leading-relaxed text-foreground">
-            This analysis includes lyrics, which are someone else’s text. Readers see them only if they turn them on. To leave them out entirely, share a copy without them.
-            <button
-              type="button"
-              onClick={downloadWithoutLyrics}
-              className="mt-2 block rounded border border-border bg-card px-2.5 py-1 text-xs hover:bg-accent"
-            >
-              Download a copy without lyrics
-            </button>
-          </div>
-        )}
       </DialogContent>
     </Dialog>
   )

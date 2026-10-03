@@ -48,7 +48,7 @@ export function ReadingHeader() {
         <span className="mr-1 text-xs text-muted-foreground">Show</span>
         {hasCommentary && <Chip on={show.commentary} label="Commentary" onClick={() => setShow('commentary', !show.commentary)} />}
         <Chip on={show.diagram} label="Form diagram" onClick={() => setShow('diagram', !show.diagram)} />
-        {hasLyrics && <Chip on={showLyrics} label="Lyrics" onClick={() => setShowLyrics(!showLyrics, !sharedFrom)} />}
+        {hasLyrics && <Chip on={showLyrics} label="Lyrics" onClick={() => setShowLyrics(!showLyrics)} />}
       </div>
       <button
         type="button"

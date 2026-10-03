@@ -6,10 +6,8 @@
  * the link fetches the file and shows it in the reading view. No Strata server
  * stores anything. docs/decisions.md, "Sharing by Link".
  */
-import type { StrataDocument } from '@/types/strata'
 import { readStrataFile } from '@/lib/fileIO'
 import type { LoadResult } from '@/lib/documentLoad'
-import { formSpans } from '@/lib/layers'
 
 /** The link that opens `fileUrl` in Strata's reading view. */
 export function shareUrl(fileUrl: string, base: string): string {
@@ -127,19 +125,4 @@ export async function fetchSharedAnalysis(url: string): Promise<LoadResult> {
     )
   }
   return readStrataFile(await res.text())
-}
-
-/** Whether any span carries lyrics. */
-export function hasLyrics(doc: StrataDocument): boolean {
-  return doc.layers.some((l) => formSpans(l).some((s) => s.lyrics))
-}
-
-/** A copy with every span's lyrics removed, for sharing without them. */
-export function withoutLyrics(doc: StrataDocument): StrataDocument {
-  return {
-    ...doc,
-    layers: doc.layers.map((l) =>
-      l.type === 'form-diagram' ? { ...l, data: { ...l.data, spans: formSpans(l).map((s) => ({ ...s, lyrics: null })) } } : l,
-    ),
-  }
 }

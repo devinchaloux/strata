@@ -100,7 +100,7 @@ function findSpans(layers: Layer[], spanIds: string[]): SpanEntry[] {
 
 // What Confidence records (schema/strata-schema-reference.md, §8).
 const CONFIDENCE_TIP =
-  'How sure you are of this span’s boundaries. Definite is the default. Approx.: something changes here, but the exact point is fuzzy. Spec.: a hypothesis you may revise. Recorded for queries; the drawing doesn’t change.'
+  'How sure you are of this span’s boundaries. Definite is the default. Approx.: something changes here, but the exact point is fuzzy. Spec.: a hypothesis you may revise. (Recorded for queries only.)'
 
 const CONFIDENCE_OPTS: { value: ConfidenceLevel; label: string }[] = [
   { value: 'definite', label: 'Definite' },
@@ -637,7 +637,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
                 the label (lib/slug.ts), so a rename offers an explicit regenerate. */}
             <Field
               label="Slug"
-              tooltip="Links to this span use it ([[its-slug]]). It’s fixed once the file is saved, so renaming the span won’t break links."
+              tooltip="Link to this span from commentary with [[its-slug]]. It’s fixed once the file is saved."
             >
               <button
                 className={`${inputClass} flex items-center justify-between text-left`}

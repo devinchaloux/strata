@@ -108,7 +108,7 @@ export function MergeConflictDialog() {
         <DialogHeader>
           <DialogTitle>Merge {sourceIds.length} spans</DialogTitle>
           <DialogDescription>
-            These spans differ in some fields. Choose what the merged span keeps.
+            Some fields have competing values. Choose what to use in the merged span.
           </DialogDescription>
         </DialogHeader>
 
