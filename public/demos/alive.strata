@@ -207,7 +207,8 @@
             "endTime": 37.5,
             "label": "A",
             "type": "a-section",
-            "fillColor": "#94a3b8"
+            "fillColor": "#94a3b8",
+            "slug": "a"
           },
           {
             "id": "c45ae118-45f4-4878-933c-3fcb268a3d77",
@@ -215,7 +216,8 @@
             "endTime": 45,
             "label": "A",
             "type": "a-section",
-            "fillColor": "#94a3b8"
+            "fillColor": "#94a3b8",
+            "slug": "a-2"
           },
           {
             "id": "13492259-d2d8-49bc-b080-603c18aedbf7",
@@ -223,7 +225,8 @@
             "endTime": 52.5,
             "label": "B",
             "type": "b-section",
-            "fillColor": "#22c55e"
+            "fillColor": "#22c55e",
+            "slug": "b"
           },
           {
             "id": "ce3108ab-96b5-4191-97ab-9b7c5fef78e9",
@@ -231,7 +234,8 @@
             "endTime": 60,
             "label": "B",
             "type": "b-section",
-            "fillColor": "#22c55e"
+            "fillColor": "#22c55e",
+            "slug": "b-2"
           },
           {
             "id": "7ea7fba1-7b7e-4a64-8834-5d4dc999199b",
@@ -240,7 +244,8 @@
             "label": "C",
             "type": "c-section",
             "fillColor": "#0e7490",
-            "annotation": "bass layer enters"
+            "annotation": "bass layer enters",
+            "slug": "c"
           },
           {
             "id": "dbcb2fd5-6911-490c-8bb8-6c026c6e153b",
@@ -248,7 +253,8 @@
             "endTime": 75,
             "label": "C'",
             "type": "c-prime",
-            "fillColor": "#06b6d4"
+            "fillColor": "#06b6d4",
+            "slug": "c-prime"
           },
           {
             "id": "219ad25a-adef-4d87-a6fd-91b3f15014ea",
@@ -256,7 +262,8 @@
             "endTime": 82.5,
             "label": "D",
             "type": "d-section",
-            "fillColor": "#3b82f6"
+            "fillColor": "#3b82f6",
+            "slug": "d"
           },
           {
             "id": "83dbaf67-d8d5-458b-9355-829cf7d6f9b0",
@@ -264,13 +271,15 @@
             "endTime": 90,
             "label": "D",
             "type": "d-section",
-            "fillColor": "#3b82f6"
+            "fillColor": "#3b82f6",
+            "slug": "d-2"
           },
           {
             "id": "2d00accd-ee93-4919-b027-63104c00b163",
             "startTime": 90,
             "endTime": 97.5,
-            "label": "Build"
+            "label": "Build",
+            "slug": "build"
           },
           {
             "id": "4c0b5a9d-9b2a-4b05-a73a-95f074b2203a",
@@ -278,7 +287,8 @@
             "endTime": 105,
             "label": "Build",
             "annotation": "+drums",
-            "endBoundaryType": "gradual"
+            "endBoundaryType": "gradual",
+            "slug": "build-2"
           },
           {
             "id": "db9f2815-7aff-45b4-89c5-44463c95d75f",
@@ -287,7 +297,8 @@
             "label": "D",
             "type": "d-section",
             "fillColor": "#3b82f6",
-            "startBoundaryType": "gradual"
+            "startBoundaryType": "gradual",
+            "slug": "d-3"
           },
           {
             "id": "0b2508cf-bee4-4039-beaa-c1bb31a23f63",
@@ -295,7 +306,8 @@
             "endTime": 120,
             "label": "D",
             "type": "d-section",
-            "fillColor": "#3b82f6"
+            "fillColor": "#3b82f6",
+            "slug": "d-4"
           },
           {
             "id": "a09914f7-80d2-4be0-8630-28ca9367cb89",
@@ -303,7 +315,8 @@
             "endTime": 127.5,
             "label": "D",
             "type": "d-section",
-            "fillColor": "#3b82f6"
+            "fillColor": "#3b82f6",
+            "slug": "d-5"
           },
           {
             "id": "750b82a8-3e2d-4155-819a-6dcebcb48c57",
@@ -311,14 +324,16 @@
             "endTime": 135,
             "label": "D",
             "type": "d-section",
-            "fillColor": "#3b82f6"
+            "fillColor": "#3b82f6",
+            "slug": "d-6"
           },
           {
             "id": "e84a609b-7d0b-42cf-bc59-9ad0d8f349b1",
             "startTime": 135,
             "endTime": 138.75,
             "label": "Break",
-            "annotation": "silence"
+            "annotation": "silence",
+            "slug": "break"
           },
           {
             "id": "3d85d74d-b240-40af-bc0c-b411a6b512e7",
@@ -327,7 +342,8 @@
             "label": "E",
             "type": "e-section",
             "fillColor": "#8b5cf6",
-            "confidence": "approximate"
+            "confidence": "approximate",
+            "slug": "e"
           },
           {
             "id": "4ff58603-068b-4091-a9d0-a07c7452db3b",
@@ -336,7 +352,8 @@
             "label": "E",
             "type": "e-section",
             "fillColor": "#8b5cf6",
-            "confidence": "approximate"
+            "confidence": "approximate",
+            "slug": "e-2"
           },
           {
             "id": "f5b6bfe1-55c4-4411-b7a2-8c9eb8988cb3",
@@ -345,7 +362,8 @@
             "label": "F",
             "type": "f-section",
             "fillColor": "#c2410c",
-            "confidence": "approximate"
+            "confidence": "approximate",
+            "slug": "f"
           },
           {
             "id": "d15282ed-f0c8-49bb-a926-1f1f38ce8c4b",
@@ -354,7 +372,8 @@
             "label": "F'",
             "type": "f-prime",
             "fillColor": "#f97316",
-            "confidence": "approximate"
+            "confidence": "approximate",
+            "slug": "f-prime"
           },
           {
             "id": "cf2264fe-c9b8-4cb8-ae3b-56ec03caf7c4",
@@ -363,7 +382,8 @@
             "label": "D",
             "type": "d-section",
             "fillColor": "#3b82f6",
-            "confidence": "approximate"
+            "confidence": "approximate",
+            "slug": "d-7"
           },
           {
             "id": "5bdb8b21-dcb7-4d6a-8358-0b1707589521",
@@ -372,7 +392,8 @@
             "label": "D",
             "type": "d-section",
             "fillColor": "#3b82f6",
-            "confidence": "approximate"
+            "confidence": "approximate",
+            "slug": "d-8"
           },
           {
             "id": "6a59c077-80c8-48e4-a643-36bcdb57f441",
@@ -382,7 +403,8 @@
             "type": "d-section",
             "fillColor": "#3b82f6",
             "startBoundaryType": "gradual",
-            "confidence": "approximate"
+            "confidence": "approximate",
+            "slug": "d-9"
           },
           {
             "id": "2e1134ac-e322-44f7-ad15-ed051c329e4a",
@@ -391,7 +413,8 @@
             "label": "D",
             "type": "d-section",
             "fillColor": "#3b82f6",
-            "confidence": "approximate"
+            "confidence": "approximate",
+            "slug": "d-10"
           },
           {
             "id": "aba86df8-c727-4830-a66d-f8f3e28aae78",
@@ -400,7 +423,8 @@
             "label": "D",
             "type": "d-section",
             "fillColor": "#3b82f6",
-            "confidence": "approximate"
+            "confidence": "approximate",
+            "slug": "d-11"
           },
           {
             "id": "384f2f83-ea9d-40a0-b09f-b96db2a9851c",
@@ -409,14 +433,16 @@
             "label": "D",
             "type": "d-section",
             "fillColor": "#3b82f6",
-            "confidence": "approximate"
+            "confidence": "approximate",
+            "slug": "d-12"
           },
           {
             "id": "4d41af10-1eb5-406f-a3e0-325c67a275d9",
             "startTime": 213.75,
             "endTime": 221.25,
             "label": "Build",
-            "confidence": "approximate"
+            "confidence": "approximate",
+            "slug": "build-3"
           },
           {
             "id": "f8944138-d674-406a-aa18-2cbb9101c14c",
@@ -424,7 +450,8 @@
             "endTime": 228.75,
             "label": "Build",
             "endBoundaryType": "gradual",
-            "confidence": "approximate"
+            "confidence": "approximate",
+            "slug": "build-4"
           },
           {
             "id": "02c4894e-778d-4913-a9ee-da65d54db04b",
@@ -434,7 +461,8 @@
             "type": "d-section",
             "fillColor": "#3b82f6",
             "startBoundaryType": "gradual",
-            "confidence": "approximate"
+            "confidence": "approximate",
+            "slug": "d-13"
           },
           {
             "id": "2ad18afb-4d70-4d46-8043-225714614bc8",
@@ -443,7 +471,8 @@
             "label": "D",
             "type": "d-section",
             "fillColor": "#3b82f6",
-            "confidence": "approximate"
+            "confidence": "approximate",
+            "slug": "d-14"
           },
           {
             "id": "cac2fb19-386b-411e-b98f-87cb22fe7b5b",
@@ -452,7 +481,8 @@
             "label": "D",
             "type": "d-section",
             "fillColor": "#3b82f6",
-            "confidence": "approximate"
+            "confidence": "approximate",
+            "slug": "d-15"
           },
           {
             "id": "453c3570-75ad-4044-ad90-971b34406f7c",
@@ -461,7 +491,8 @@
             "label": "D",
             "type": "d-section",
             "fillColor": "#3b82f6",
-            "confidence": "approximate"
+            "confidence": "approximate",
+            "slug": "d-16"
           }
         ]
       }
@@ -484,14 +515,16 @@
             "startTime": 45,
             "endTime": 75,
             "label": "Verse 1",
-            "type": "verse"
+            "type": "verse",
+            "slug": "verse-1"
           },
           {
             "id": "d277f5ed-a962-4056-a155-20ecb36ad636",
             "startTime": 75,
             "endTime": 90,
             "label": "Chorus",
-            "type": "chorus"
+            "type": "chorus",
+            "slug": "chorus"
           },
           {
             "id": "5b274471-9705-4b26-b7bb-6241d42e3eb7",
@@ -499,7 +532,8 @@
             "endTime": 105,
             "label": "Buildup",
             "type": "buildup",
-            "endBoundaryType": "gradual"
+            "endBoundaryType": "gradual",
+            "slug": "buildup"
           },
           {
             "id": "abe1deb9-5d1d-4f5e-9a6c-6556ca2c2939",
@@ -508,7 +542,8 @@
             "label": "Drop",
             "type": "drop",
             "annotation": "Dance chorus",
-            "startBoundaryType": "gradual"
+            "startBoundaryType": "gradual",
+            "slug": "drop"
           },
           {
             "id": "f7aa0c0d-1f55-4534-a98c-5ff430e11194",
@@ -516,7 +551,8 @@
             "endTime": 138.75,
             "label": "Break",
             "type": null,
-            "annotation": "silence / unquantized"
+            "annotation": "silence / unquantized",
+            "slug": "break-2"
           },
           {
             "id": "6cc11813-9b03-4db2-8af7-93c5f23ba5ea",
@@ -524,7 +560,8 @@
             "endTime": 168.75,
             "label": "Verse 2",
             "type": "verse",
-            "confidence": "approximate"
+            "confidence": "approximate",
+            "slug": "verse-2"
           },
           {
             "id": "13d1d028-dbce-4dff-8109-5e7e4472aceb",
@@ -532,7 +569,8 @@
             "endTime": 183.75,
             "label": "Chorus",
             "type": "chorus",
-            "confidence": "approximate"
+            "confidence": "approximate",
+            "slug": "chorus-2"
           },
           {
             "id": "eb72d227-bdf7-4c9d-8805-f757b62099f1",
@@ -541,7 +579,8 @@
             "label": "Drop",
             "type": "drop",
             "startBoundaryType": "gradual",
-            "confidence": "approximate"
+            "confidence": "approximate",
+            "slug": "drop-2"
           },
           {
             "id": "f018af27-4723-4bd6-a3f3-1fb81f4a1ca6",
@@ -549,7 +588,8 @@
             "endTime": 213.75,
             "label": "Chorus",
             "type": "chorus",
-            "confidence": "approximate"
+            "confidence": "approximate",
+            "slug": "chorus-3"
           },
           {
             "id": "3954a03c-c6c3-4b6f-8ebe-98e8deb0b0fd",
@@ -558,7 +598,8 @@
             "label": "Buildup",
             "type": "buildup",
             "endBoundaryType": "gradual",
-            "confidence": "approximate"
+            "confidence": "approximate",
+            "slug": "buildup-2"
           },
           {
             "id": "974ab99e-8bd9-4aca-9d5c-a0d4011f7ad3",
@@ -567,7 +608,8 @@
             "label": "Drop",
             "type": "drop",
             "startBoundaryType": "gradual",
-            "confidence": "approximate"
+            "confidence": "approximate",
+            "slug": "drop-3"
           }
         ]
       }
@@ -590,21 +632,24 @@
             "startTime": 0,
             "endTime": 30,
             "label": "Beat-match intro",
-            "type": "beat-match-intro"
+            "type": "beat-match-intro",
+            "slug": "beat-match-intro"
           },
           {
             "id": "dec5db99-b957-4672-a737-8c31fd26e4f1",
             "startTime": 30,
             "endTime": 45,
             "label": "Intro",
-            "type": "intro"
+            "type": "intro",
+            "slug": "intro"
           },
           {
             "id": "1f6199aa-94b2-4930-9640-761472f4a9a4",
             "startTime": 45,
             "endTime": 135,
             "label": "Rotation 1",
-            "type": "rotation"
+            "type": "rotation",
+            "slug": "rotation-1"
           },
           {
             "id": "fa2141a1-e1d2-4a94-b103-4cb65d7562a1",
@@ -612,7 +657,8 @@
             "endTime": 198.75,
             "label": "Rotation 2",
             "type": "rotation",
-            "confidence": "approximate"
+            "confidence": "approximate",
+            "slug": "rotation-2"
           },
           {
             "id": "e523021a-4aff-4a97-8129-45f8041ac15f",
@@ -620,7 +666,8 @@
             "endTime": 258.75,
             "label": "Rotation 3",
             "type": "rotation",
-            "confidence": "approximate"
+            "confidence": "approximate",
+            "slug": "rotation-3"
           },
           {
             "id": "79ce5dc9-1d49-4125-bef0-2dc983708e51",
@@ -628,7 +675,8 @@
             "endTime": 290,
             "label": "Beat-match outro",
             "type": "beat-match-outro",
-            "confidence": "approximate"
+            "confidence": "approximate",
+            "slug": "beat-match-outro"
           }
         ]
       }
@@ -642,7 +690,8 @@
       "type": null,
       "notes": "Silence break ~2:15-2:18.75. The 128-BPM grid anchored at 0:00 stops aligning after this; bar grid re-anchors at ~2:18.75. Post-break timestamps are approximate.",
       "flagged": true,
-      "confidence": "approximate"
+      "confidence": "approximate",
+      "slug": "grid-falls-off-unquantized-break"
     }
   ]
 }

@@ -57,3 +57,25 @@
     font-feature-settings: 'cv05' 1; /* lowercase l with tail — cleaner numerals/labels */
   }
 }
+
+/* ── Embed mode (src/embed/EmbedApp.tsx) ─────────────────────────────────────
+   One grid holds the embed's own parts and PlayerDock's two (transport bar,
+   video), which place themselves by class. Narrow: video over diagram over
+   play bar. Wide: the video beside the diagram, at YouTube's minimum height,
+   so a docked embed stays short. */
+.embed-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'head' 'video' 'diagram' 'transport';
+}
+.embed-head { grid-area: head; }
+.embed-video { grid-area: video; width: 100%; aspect-ratio: 16 / 9; }
+.embed-diagram { grid-area: diagram; padding-top: 4px; }
+.embed-transport { grid-area: transport; }
+@media (min-width: 640px) {
+  .embed-grid {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: 'head head' 'video diagram' 'video transport';
+  }
+  .embed-video { width: 356px; height: 200px; aspect-ratio: auto; align-self: start; }
+}

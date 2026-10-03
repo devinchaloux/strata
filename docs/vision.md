@@ -546,6 +546,8 @@ Producing a single document from multiple widgets (e.g., form diagram SVG with w
 
 ## 8. The Embeddable Viewer
 
+> **2026-10-03:** the embed is now Strata itself in an iframe (`/?embed&src=…&focus=…`), not a component imported at build time. `docs/decisions.md`, "Embedding an Analysis", has the current design; this section is the original plan.
+
 ### 8.1 Concept
 
 The embeddable viewer is a read-only render of a `.strata` file, designed for embedding in web-based scholarly writing — specifically in Astro/Keystatic content. It is not a separate product; it is the render path of the widget system, instantiated without the editing layer.

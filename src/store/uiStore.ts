@@ -192,6 +192,23 @@ export interface UIState {
   /** The address a shared analysis was opened from (?src=), or null. */
   sharedFrom: string | null
   setSharedFrom: (url: string | null) => void
+
+  // ── Embed mode (lib/embed.ts) ──
+  /** Strata is running inside another page's iframe. */
+  embed: boolean
+  setEmbed: (on: boolean) => void
+  /** A request to show a stretch of time: fit [start, end], or 100% from start when end is null. useTimeline carries it out. */
+  viewRequest: { start: number; end: number | null; n: number } | null
+  requestView: (start: number, end?: number | null) => void
+  /** The focused stretch: the rest of the diagram is dimmed and playback loops here. */
+  focusRange: { start: number; end: number } | null
+  setFocusRange: (range: { start: number; end: number } | null) => void
+  /** Until this time (ms), playback doesn't scroll the timeline: the reader has panned it by hand. */
+  followHoldUntil: number
+  holdFollow: (ms: number) => void
+  /** A request to play or pause, from outside the transport (an embed's page). PlayerDock carries it out. */
+  playRequest: { play: boolean; n: number } | null
+  requestPlay: (play: boolean) => void
   shareOpen: boolean
   setShareOpen: (open: boolean) => void
   requestSeek: (time: number, play?: boolean) => void
@@ -327,6 +344,16 @@ const useUIStore = create<UIState>()((set) => ({
   },
   sharedFrom: null,
   setSharedFrom: (url) => set({ sharedFrom: url }),
+  embed: false,
+  setEmbed: (on) => set({ embed: on }),
+  viewRequest: null,
+  requestView: (start, end = null) => set((s) => ({ viewRequest: { start, end, n: (s.viewRequest?.n ?? 0) + 1 } })),
+  focusRange: null,
+  setFocusRange: (range) => set({ focusRange: range }),
+  followHoldUntil: 0,
+  holdFollow: (ms) => set({ followHoldUntil: Date.now() + ms }),
+  playRequest: null,
+  requestPlay: (play) => set((s) => ({ playRequest: { play, n: (s.playRequest?.n ?? 0) + 1 } })),
   shareOpen: false,
   setShareOpen: (open) => set({ shareOpen: open }),
   setSnapMode: (mode) => {

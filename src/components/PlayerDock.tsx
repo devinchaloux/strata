@@ -154,6 +154,7 @@ export function PlayerDock() {
     videoMini,
     toggleVideoMini,
     readingView,
+    embed,
     audioFile,
     setAudioFile,
     setLinkSourceOpen,
@@ -239,6 +240,14 @@ export function PlayerDock() {
     engineRef.current.seek(seekRequest.time)
     if (seekRequest.play && useUIStore.getState().playbackState !== 'playing') engineRef.current.play()
   }, [seekRequest])
+
+  // Play or pause requests from outside the transport (an embed's page).
+  const playRequest = useUIStore((s) => s.playRequest)
+  useEffect(() => {
+    if (!playRequest || useUIStore.getState().playerStatus !== 'ready') return
+    if (playRequest.play) engineRef.current.play()
+    else engineRef.current.pause()
+  }, [playRequest])
 
   // ── Duration adoption ──────────────────────────────────────────────────────
   // Runs outside undo history (temporal pause): adopting the media's duration
@@ -407,7 +416,7 @@ export function PlayerDock() {
     <>
       {/* ── Transport bar — always visible; sits above the video panel at the
           bottom of the shell (Phase 0.7 §2 — transport above video). ── */}
-      <div className="flex h-12 shrink-0 items-center gap-2 border-t border-border bg-card px-3">
+      <div className={`${embed ? 'embed-transport ' : ''}flex h-12 shrink-0 items-center gap-2 border-t border-border bg-card px-3`}>
         {/* Rewind */}
         <TransportButton
           onClick={() => seek(0)}
@@ -435,9 +444,12 @@ export function PlayerDock() {
         </TransportButton>
         {/* The key, written out: the shortcut is the quickest way to pause, so
             it shouldn't live only in a tooltip. */}
-        <kbd className="-ml-1 shrink-0 rounded border border-border px-1 text-xs leading-4 text-muted-foreground" aria-hidden>
-          Space
-        </kbd>
+        {/* Not in an embed: a reader there clicks, and a phone has no Space. */}
+        {!embed && (
+          <kbd className="-ml-1 shrink-0 rounded border border-border px-1 text-xs leading-4 text-muted-foreground" aria-hidden>
+            Space
+          </kbd>
+        )}
 
         {/* Seek bar */}
         <SeekBar
@@ -576,7 +588,9 @@ export function PlayerDock() {
       {videoId && (
         <div
           className={
-            readingView
+            embed
+              ? 'embed-video relative z-[60] overflow-hidden bg-black'
+              : readingView
               ? 'absolute left-4 top-4 z-[60] overflow-hidden rounded-lg border border-border'
               : videoMini
                 ? 'absolute right-3 top-3 z-[60] overflow-hidden rounded-md border border-border shadow-lg'
@@ -584,7 +598,10 @@ export function PlayerDock() {
           }
           style={{
             // Reading: large, top left, beside the commentary (READING_VIDEO_W).
-            ...(readingView
+            // Embed: sized by the embed layout's CSS (index.css), never under VIDEO_MIN.
+            ...(embed
+              ? { minWidth: VIDEO_MIN, minHeight: VIDEO_MIN }
+              : readingView
               ? { width: READING_VIDEO_W, aspectRatio: '16 / 9', minWidth: VIDEO_MIN, minHeight: VIDEO_MIN }
               : videoMini
                 ? { width: VIDEO_MINI_WIDTH, height: VIDEO_MIN }

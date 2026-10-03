@@ -149,6 +149,25 @@ function SpanMenuItems({ span, layer }: { span: Span; layer: Layer }) {
 }
 
 // ---------------------------------------------------------------------------
+// Focus dimming — an embed pointed at one span or stretch (lib/embed.ts)
+// ---------------------------------------------------------------------------
+
+function FocusDim({ pps, width, height }: { pps: number; width: number; height: number }) {
+  const focus = useUIStore((s) => s.focusRange)
+  if (!focus || pps <= 0) return null
+  const x1 = focus.start * pps
+  const x2 = focus.end * pps
+  // As a style, not attributes: CSS variables are only reliable in styles.
+  const veil = { style: { fill: 'var(--canvas)', fillOpacity: 0.6 }, pointerEvents: 'none' as const }
+  return (
+    <g aria-hidden>
+      {x1 > 0 && <rect x={0} y={0} width={x1} height={height} {...veil} />}
+      {x2 < width && <rect x={x2} y={0} width={width - x2} height={height} {...veil} />}
+    </g>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Selection highlight — drawn inside each span by the figure
 // ---------------------------------------------------------------------------
 
@@ -795,6 +814,9 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
             pointerEvents="none"
           />
         )}
+
+        {/* An embed's focus: everything outside it is dimmed. */}
+        <FocusDim pps={pps} width={svgWidth} height={svgHeight} />
       </svg>
 
       {/* Playback cursor — mirrors the ruler cursor so the two read as one line */}
