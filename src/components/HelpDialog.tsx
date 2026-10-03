@@ -16,14 +16,14 @@ import {
 const MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘' : 'Ctrl'
 
 const STEPS: [string, string][] = [
-  ['Start', 'New analysis, then link a YouTube video or a local audio file. The video sits below the diagram; the Video button scrolls to it.'],
+  ['Start', 'Click New analysis and link a YouTube video or audio file. By default, the video plays below the diagram.'],
   ['Mark', 'Play (Space), and press B at each boundary you hear. M places a point marker, such as a cadence.'],
-  ['Describe', 'Click a span to choose its Type (search, or type a letter such as B′) and fill in its details in the Inspector. Drag a boundary to adjust it.'],
-  ['Grid', 'Optional: tap T along with the beat, or set a tempo in the Grid menu, to number bars and snap to beats.'],
+  ['Describe', 'Click a span to set its type and details in the Inspector. Drag a boundary to move it.'],
+  ['Grid', 'Optional: tap T on the beat, or set a tempo in the Grid menu, to number bars and snap to beats.'],
   ['Layers', 'Add a layer (+ above the layer names) for another level of form, or another framework.'],
-  ['Write', 'A selected span’s Commentary box holds prose that appears while that passage plays.'],
+  ['Write', 'Write in a span’s Commentary box. It appears while that passage plays.'],
   ['Keep', 'Save a .strata file. Export makes a figure (SVG or PNG) or a commentary page (HTML).'],
-  ['Read', 'Reading view lays the analysis out to read or teach from: the video, the commentary in reading size, and the diagram, with editing off. Share… (in the toolbar or the reading view) makes a link to a copy you’ve put online: Dropbox, OneDrive, GitHub or your own site. Esc goes back.'],
+  ['Read', 'Reading view shows the video, commentary and diagram for reading or teaching, with editing off. Share… makes a link to a copy you’ve put online (Dropbox, OneDrive, GitHub or your own site). Esc goes back.'],
 ]
 
 const KEYS: [string, [string, string][]][] = [
@@ -43,17 +43,17 @@ const KEYS: [string, [string, string][]][] = [
   [
     'Selecting',
     [
-      ['Click', 'Select a span; paused, also move the playhead to it'],
+      ['Click', 'Select a span (when paused, the playhead moves to it)'],
       ['Double-click', 'Play from a span or marker'],
       ['Click the ruler', 'Move the playhead there'],
       [`${MOD}-click`, 'Add or remove a span'],
       ['Shift-click', 'Select a run of spans'],
-      ['Drag', 'On empty space: select every span the box touches'],
+      ['Drag', 'From empty space: select every span in the box'],
       ['← →', 'Previous / next span'],
       ['↑ ↓', 'Span in the layer above / below'],
       ['Shift+← →', 'Extend the selection'],
       ['Enter', 'Edit the selected span’s label'],
-      ['1–9', 'Quick entry: a type, shape or fill for the selected spans (choose which above the diagram)'],
+      ['1–9', 'Quick entry: set a type, shape or fill'],
       ['/', 'Choose from every type, with search'],
       ['Esc', 'Clear the selection'],
       ['Delete', 'Remove the selected spans or marker'],
@@ -87,7 +87,7 @@ export function HelpDialog({ open, onOpenChange }: { open: boolean; onOpenChange
         <DialogHeader>
           <DialogTitle>How Strata works</DialogTitle>
           <DialogDescription>
-            Strata is in beta. Save often, and keep a copy of files that matter.
+            Strata is in beta. It is recommended to save often.
           </DialogDescription>
         </DialogHeader>
 

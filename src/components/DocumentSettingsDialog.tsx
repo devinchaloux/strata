@@ -397,7 +397,7 @@ export function DocumentSettingsDialog({
 
           <Field
             label="Sync offset (seconds)"
-            tooltip="How far into the video the recording starts. Set it when the video opens with something before the music."
+            tooltip="Where the music starts in the video, if not at 0:00."
           >
             <input
               className={inputClass}

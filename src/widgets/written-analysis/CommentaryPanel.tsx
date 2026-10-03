@@ -192,11 +192,11 @@ function Hint({ children }: { children: React.ReactNode }) {
 /** What a new analysis needs next, in the order the work goes. */
 function nextStep(doc: StrataDocument): string | null {
   const linked = !!doc.source.url || (doc.source.type === 'local' && !!doc.source.filename)
-  if (!linked) return 'Link a video or audio file to start: use Link video or audio in the play bar.'
+  if (!linked) return 'Start by linking a video or audio file in the play bar.'
   if (!doc.layers.some((l) => formSpans(l).length > 0))
     return 'Press Space to play, and B at each boundary you hear. M places a point marker.'
   if (!allBlocks(doc).length)
-    return 'Click a span to describe it. What you write in its Commentary box shows here while that passage plays.'
+    return 'Click a span to describe it. Its commentary shows here while that passage plays.'
   return null
 }
 

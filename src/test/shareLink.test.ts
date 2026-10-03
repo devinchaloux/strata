@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { fileHost, hasLyrics, rawFileUrl, shareUrl, srcParam, withoutLyrics } from '@/lib/shareLink'
-import { formSpans } from '@/lib/layers'
-import { makeDoc, makeLayer, makeSpan } from './fixtures'
+import { fileHost, rawFileUrl, shareUrl, srcParam } from '@/lib/shareLink'
 
 describe('share links', () => {
   it('carry the file address and read it back', () => {
@@ -42,12 +40,4 @@ describe('share links', () => {
     expect(rawFileUrl(link)).toBeNull()
   })
 
-  it('can leave lyrics out of a copy', () => {
-    const doc = makeDoc([makeLayer('L', [makeSpan('a', 0, 10, { lyrics: 'words' }), makeSpan('b', 10, 20)])])
-    expect(hasLyrics(doc)).toBe(true)
-    const copy = withoutLyrics(doc)
-    expect(hasLyrics(copy)).toBe(false)
-    expect(formSpans(copy.layers[0]).map((s) => s.id)).toEqual(['a', 'b'])
-    expect(hasLyrics(doc)).toBe(true) // the original is untouched
-  })
 })

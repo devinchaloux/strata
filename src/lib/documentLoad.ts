@@ -50,7 +50,7 @@ export function readDocument(raw: unknown): LoadResult {
     !Array.isArray(raw.layers)
   ) {
     throw new DocumentError(
-      'This file is missing required fields (strataVersion, fileFormatVersion, title, layers), so it is probably not a Strata analysis.',
+      'This doesn’t look like a Strata analysis: it’s missing required fields (strataVersion, fileFormatVersion, title, layers).',
     )
   }
 

@@ -3445,6 +3445,7 @@ quoting them is arguably transformative, and analysts will want them in their
 own files. Devin: "stripping them out when people will want them in the file is
 a bit hostile." The decision to publish them belongs at the moment of public
 sharing, so that is where the default and the warning sit.
+*Superseded 2026-10-03 by "Shared Links Treat Lyrics Like Any Other View".*
 
 ## Sound Layers Come From a Shared List (2026-10-01)
 
@@ -3538,6 +3539,8 @@ files keep lyrics, public views leave them out by default. A file host that
 forbids other sites from reading files (no CORS) can't be used; the error
 says so.
 
+*Lyrics in shared links: superseded 2026-10-03, see "Shared Links Treat
+Lyrics Like Any Other View".*
 ---
 
 ## Quick Entry (2026-10-02)
@@ -3717,3 +3720,47 @@ protection, which keeps old files available, is a paid-plan feature; a message
 is enough for the one place that needs it. A release can be undone with
 Vercel's Instant Rollback. The lasting risk is files saved by older versions,
 which format versioning handles, not open tabs.
+
+---
+
+## How the App's Text Reads (2026-10-03)
+
+**Decision:** The app's text is written like friendly technical
+documentation: say what a control does or what to do next, in as few words as
+that takes. One idea per sentence. No explaining how the code works ("span
+timestamps always store recording time"), no reassurance the reader didn't ask
+for, and no restating what the screen already shows. Help and tooltips name
+the action ("Get a link to this analysis"), not the mechanism. A first pass
+applied this across the help, dialogs, tooltips and messages.
+**Rationale:** Devin found much of the text over-explained. Short text is
+read; long text is skipped, and the one useful detail goes with it. Wording
+that explains an analytical concept (confidence, absent events, keys of
+point markers) was tightened without changing what it says; its meaning stays
+Devin's call.
+
+---
+
+## Shared Links Treat Lyrics Like Any Other View (2026-10-03)
+
+**Decision:** A shared link no longer hides lyrics for the visit: the Lyrics
+switch follows the reader's own remembered choice, as everywhere else. The
+Share dialog's lyrics note and its "Download a copy without lyrics" button are
+gone. Files still keep their lyrics, and nothing else about the field changes.
+**Rationale:** Devin judged the restriction more complex than it is worth
+today. Strata hosts nothing: a shared file lives wherever the analyst put it,
+so publishing it is the analyst's act. The question returns if Strata ever
+hosts analyses, together with terms saying who owns them. The publish check
+still flags lyrics in this repository's own files, such as the examples.
+
+---
+
+## Copy Pass, Second Round (2026-10-03)
+
+**Decision:** Devin's answers to the first copy pass are applied: most edits
+kept; two restored to the earlier wording (an absent event, the merge
+dialog); the Reading view button's tooltip removed, since its label says it; his own
+wording used where he gave it, including the confidence, In key and beta
+lines. The point-marker note now says why a caption isn't drawn ("Hidden:
+cadence marker captions are off in Document settings").
+**Rationale:** The style in "How the App's Text Reads" stands; these are its
+first corrections from Devin.

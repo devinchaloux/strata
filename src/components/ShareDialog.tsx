@@ -3,22 +3,18 @@
  *
  * Strata stores nothing on a server, so the analyst puts the .strata file
  * online first (their site, GitHub, Dropbox or OneDrive) and pastes its address or share link here; the link carries that
- * address (lib/shareLink.ts). Opened from the toolbar or the reading view. Lyrics are
- * someone else's text: readers see them only if they turn them on, and the
- * analyst can download a copy without them to share instead.
+ * address (lib/shareLink.ts). Opened from the toolbar or the reading view.
  */
 import { useState } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { inputClass } from '@/components/Field'
-import { downloadBlob, fileBaseName } from '@/lib/fileIO'
-import { fileHost, hasLyrics, hostSupported, shareUrl, withoutLyrics, type FileHost } from '@/lib/shareLink'
-import { version as APP_VERSION } from '../../package.json'
+import { fileHost, hostSupported, shareUrl, type FileHost } from '@/lib/shareLink'
 
 // What the dialog says about a recognised share link, under the address.
 const HOST_NOTE: Record<FileHost, string> = {
-  github: 'GitHub: the page link works; Strata reads the raw file.',
+  github: 'GitHub: paste the file’s page link.',
   dropbox: 'Dropbox: works with a share link.',
   onedrive: 'OneDrive: share it with “Anyone with the link”. Work and school accounts may not allow it.',
   gdrive: '',
@@ -39,7 +35,6 @@ export function ShareDialog() {
   // A link Strata can't open (Google Drive) isn't offered.
   const valid = /^https?:\/\/\S+$/.test(fileUrl) && hostSupported(host)
   const link = valid ? shareUrl(fileUrl, window.location.href) : ''
-  const lyrics = hasLyrics(doc)
   const note = hostSupported(host)
     ? HOST_NOTE[host]
     : 'Google Drive doesn’t let other sites read its files, so Strata can’t open Drive links. Dropbox, OneDrive and GitHub work.'
@@ -48,11 +43,6 @@ export function ShareDialog() {
     navigator.clipboard?.writeText(link)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
-  }
-
-  function downloadWithoutLyrics() {
-    const copyDoc = { ...withoutLyrics(doc!), strataVersion: APP_VERSION }
-    downloadBlob(new Blob([JSON.stringify(copyDoc, null, 2)], { type: 'application/octet-stream' }), `${fileBaseName(doc!)}.strata`)
   }
 
   return (
@@ -67,8 +57,7 @@ export function ShareDialog() {
         <DialogHeader>
           <DialogTitle>Share as a link</DialogTitle>
           <DialogDescription>
-            Save the .strata file somewhere online that you can share: Dropbox, OneDrive, a GitHub repository or Gist, or
-            your own site. Paste its share link here. The link below opens it in Strata’s reading view.
+            Put the .strata file online (Dropbox, OneDrive, GitHub or your own site) and paste its share link here. The link below opens it in Strata’s reading view.
           </DialogDescription>
         </DialogHeader>
 
@@ -98,19 +87,6 @@ export function ShareDialog() {
           </div>
         </div>
 
-        {lyrics && (
-          <div className="rounded-md border border-border bg-muted/50 p-3 text-xs leading-relaxed text-foreground">
-            This analysis includes lyrics, which are someone else’s text. Readers of a shared link see them only if they
-            turn them on. To leave them out of the file entirely, share a copy without them.
-            <button
-              type="button"
-              onClick={downloadWithoutLyrics}
-              className="mt-2 block rounded border border-border bg-card px-2.5 py-1 text-xs hover:bg-accent"
-            >
-              Download a copy without lyrics
-            </button>
-          </div>
-        )}
       </DialogContent>
     </Dialog>
   )

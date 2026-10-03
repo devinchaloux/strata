@@ -322,9 +322,7 @@ function LayerHeaders({ layers, collapsed }: { layers: Layer[]; collapsed: boole
           <AlertDialogHeader>
             <AlertDialogTitle>Delete “{pendingDelete?.label}”?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes the layer and its {pendingSpanCount}{' '}
-              {pendingSpanCount === 1 ? 'span' : 'spans'} from the analysis. You can
-              undo this with Ctrl/Cmd+Z.
+              This deletes the layer and its {pendingSpanCount}{' '} {pendingSpanCount === 1 ? 'span' : 'spans'}. Undo with Ctrl/Cmd+Z.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -522,7 +520,7 @@ function QuickEntrySwitch() {
     ['fill', 'Fill'],
   ]
   return (
-    <div className="ml-2 flex items-center gap-1" title="A bar of choices on number keys appears for the selected spans">
+    <div className="ml-2 flex items-center gap-1" title="Set a type, shape or fill with the number keys">
       <span className="text-[11px] text-muted-foreground">Quick entry</span>
       <div className="flex overflow-hidden rounded border border-border" role="radiogroup" aria-label="Quick entry">
         {opts.map(([m, label]) => (

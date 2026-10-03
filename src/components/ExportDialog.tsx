@@ -145,7 +145,7 @@ export function ExportDialog() {
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Export the form diagram</DialogTitle>
-          <DialogDescription>Choose the layers and the stretch of the track to draw.</DialogDescription>
+          <DialogDescription>Choose the layers and the time range.</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4">

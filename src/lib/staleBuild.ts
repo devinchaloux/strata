@@ -23,7 +23,7 @@ export function isStaleBuildError(err: unknown): boolean {
 export const STALE_BUILD_MESSAGE = {
   title: 'Strata has been updated',
   lines: [
-    'This tab is still running the earlier version, and part of it is no longer on the server.',
+    'This tab is running an older version.',
     'Save your analysis, then reload the page to use the current version.',
   ],
 }

@@ -241,8 +241,7 @@ export function SourceLinkForm({
             </span>
           </div>
           <p className="mt-1.5 text-[11px] text-muted-foreground">
-            The file stays on your computer. The analysis keeps only its name, so
-            you'll be asked to find it again next time.
+            The file stays on your computer, so you’ll be asked to find it again next time.
           </p>
         </div>
       )}
@@ -304,8 +303,7 @@ export function LinkSourceDialog() {
             {isLinked ? 'Change source' : 'Link a source'}
           </DialogTitle>
           <DialogDescription>
-            The video or audio file this analysis plays against. Span timestamps always
-            store recording time, so swapping the source never touches your analysis data.
+            The video or audio this analysis plays against. Swapping the source never affects the data.
           </DialogDescription>
         </DialogHeader>
         <SourceLinkForm autoFocus onDone={() => setOpen(false)} />
