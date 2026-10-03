@@ -10,6 +10,11 @@ The form diagram is the v1 widget and the proof of concept for the Strata widget
 
 **Design rationale:** `docs/decisions.md`, sections "Form Diagram Editor — Interaction Model" and "Merge".
 
+**Status (2026-10-03):** §2 onwards describes the widget as built. §1 describes
+it in terms of the widget contract (`widgets/_contract.md`), which is the
+design: the app doesn't load widgets through a registry yet, so these functions
+are the intended shape rather than code you'll find under these names.
+
 ---
 
 ## 1. Contract Implementation
@@ -94,16 +99,19 @@ Ticks outside the visible viewport (`x < 0` or `x > viewportWidth`) are not rend
 
 ## 3. Export Formats
 
-```typescript
-exporter.formats = [
-  { id: "svg",  label: "SVG Diagram",  mimeType: "image/svg+xml",  extension: "svg" },
-  { id: "pdf",  label: "PDF Document", mimeType: "application/pdf", extension: "pdf" },
-]
-```
+The Export dialog offers two formats for the form diagram, plus the commentary
+exports described in `widgets/written-analysis.md`:
 
-**SVG export:** Export renders the same pure figure the editor draws (`figure.tsx`), with the print theme, for a chosen `[startTime, endTime]` range at a chosen width (`exportSvg.tsx`); editing-only elements are never part of that figure. The export dialog chooses the layers, starting from the visible ones but independent of them. Each chosen layer is cut to the range first: a layer with no span in it is left out, and a span crossing an edge is trimmed there with its cut end drawn square and running off the edge, so its label sits at the centre of the part that shows. No external library required.
+| Format | How it's made |
+|---|---|
+| **SVG** | `src/widgets/form-diagram/exportSvg.tsx` renders the same pure figure the editor draws (`figure.tsx`), with the print theme, for a chosen `[startTime, endTime]` range at a chosen width. Editing-only elements are never part of that figure. |
+| **PNG** | The same SVG, drawn by the browser at twice the size. If the browser can't make the image, the dialog says so and the SVG download still works. |
 
-**PDF export:** Uses `pdf-lib`. SVG content is placed into a PDF page sized to the exported time range. The page width is proportional to the time range; the height is the rendered layer panel height. Filename: `{document.title} — Form Diagram.pdf`.
+The dialog chooses the layers, starting from the visible ones but independent
+of them. Each chosen layer is cut to the range first: a layer with no span in it
+is left out, and a span crossing an edge is trimmed there with its cut end drawn
+square and running off the edge, so its label sits at the centre of the part
+that shows. No external library is needed for either format.
 
 ---
 
@@ -204,10 +212,12 @@ Full design rationale in `docs/decisions.md`. This section is the implementation
 | **B** | Place a boundary at `currentTime` — split the span containing `currentTime`, or mark a boundary in empty layer space. (Space until 2026-10-01; Space now plays and pauses.) |
 | **Shift+B** | End the span containing `currentTime` there, leaving the rest of it empty. |
 | **Delete / Backspace** | Remove the selected spans (or the selected point marker), one undo step; not while typing in a field. |
-| **Arrow keys** | Nudge the selected boundary ±1 frame (~0.033s); `Shift` = ±10 frames |
+| **← / →** | Select the previous / next span in the layer; `Shift` extends the selection |
+| **↑ / ↓** | Select the span in the layer above / below |
 | **Drag boundary handle** | Move boundary; hard-stops at adjacent span boundaries; minimum span width enforced |
-| **Click span** | Select span; open metadata panel (per Phase 0.4 spec) |
-| **Right-click span** | Context menu (actions specified in Phase 0.4) |
+| **Click span** | Select it and open it in the Inspector; when paused, also move the playhead to its start |
+| **Double-click span** | Play from its start |
+| **Right-click span** | Menu: split at the playhead, merge with the previous or next span, delete |
 
 Whole-span dragging is not implemented. Span movement is always via boundary adjustment.
 
@@ -223,7 +233,7 @@ Placed boundaries are immediately contributed to the shared time point pool via 
 
 ### 5.3 Merge
 
-Merge is a v1 requirement. Two or more consecutive spans are selected (box-select or shift-click), then merged via an explicit action. Non-conflicting fields are resolved automatically; conflicting fields surface in a conflict-only dialog. Full merge UX is specified in Phase 0.5.
+Two or more consecutive spans are selected (box-select or shift-click), then merged via an explicit action (Ctrl/Cmd+J, or the right-click menu). Non-conflicting fields are resolved automatically; conflicting fields surface in a conflict-only dialog. The rules are in `docs/decisions.md`, "Merge UX (Phase 0.5)" and "Merge".
 
 Merged spans receive a new UUID. The source IDs are stored in `mergedFrom: string[]` (minimum 2 entries) on the result span.
 
@@ -235,16 +245,3 @@ Merged spans receive a new UUID. The source IDs are stored in `mergedFrom: strin
 Hierarchical enforcement is redefined as a **cross-layer nesting** constraint scoped to the **form-diagram widget type**: when enabled, a span must nest within the boundaries a coarser layer has established (each layer's boundary set must be a superset of the layer above it; bottom = finest, top = coarsest; coextensive spans allowed). It is therefore not a per-layer flag — the `FormDiagramData.hierarchicalEnforcement` field is unused pending relocation when the feature is built. The underlying data is unchanged either way — the schema always supports overlapping spans.
 
 Activation requires user confirmation (warning about what is being given up). The warning is presented by the editor shell, not by the widget. The constraint is intentionally strict and off by default — the default is the theoretical statement.
-
----
-
-## 6. Open Items (Phase 0.4 / 0.5)
-
-These are confirmed design decisions awaiting their dedicated spec sessions:
-
-- Span metadata panel: sidebar vs. inline, trigger (click vs. double-click)
-- Context menu: exact actions on right-click
-- Layer panel placement and controls
-- Merge conflict dialog design and multi-select interaction model
-
-*These items are tracked in `_private/handoff.md` and `docs/decisions.md`.*

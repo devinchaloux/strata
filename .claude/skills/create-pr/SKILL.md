@@ -1,34 +1,37 @@
 # /create-pr
 
-Creates a pull request from the current branch to main via `gh`.
+Opens a pull request from the current branch into `main`. Run it only when
+Devin asks for a pull request: he opens and merges his own, and `main` deploys
+publicly.
 
-## gh CLI location
+## Which tool
 
-`gh` is not on PATH. Use the full path:
-
-```
-/c/Program Files/GitHub CLI/gh.exe
-```
-
-In Bash: `"/c/Program Files/GitHub CLI/gh.exe"`
+- **On Devin's Windows machine:** `gh` is not on PATH. Use its full path,
+  `"/c/Program Files/GitHub CLI/gh.exe"`. Don't search for it.
+- **In a cloud session:** there is no `gh`. Use the GitHub tools the session
+  provides (`create_pull_request`), with the same title and body as below.
 
 ## Steps — run in this order, no detours
 
-1. Run one `git log` command to get commits on this branch vs `main`:
+1. Get the commits on this branch that `main` doesn't have:
    ```bash
-   git log main..HEAD --oneline
+   git log origin/main..HEAD --oneline
    ```
 
-2. Run one `git diff main...HEAD --stat` to get a summary of changed files.
+2. Get a summary of the changed files:
+   ```bash
+   git diff origin/main...HEAD --stat
+   ```
 
-3. Draft a PR title (under 70 chars) and body from what you see. No extra reads needed.
+3. Draft a title (under 70 characters) and a body from what you see. No extra
+   reads needed.
 
-4. Create the PR:
+4. Create the pull request, on Windows:
    ```bash
    "/c/Program Files/GitHub CLI/gh.exe" pr create \
      --base main \
      --title "..." \
-     --body "$(cat <<'EOF'
+     --body "$(cat <<'BODY'
    ## Summary
    - ...
 
@@ -36,15 +39,17 @@ In Bash: `"/c/Program Files/GitHub CLI/gh.exe"`
    - ...
 
    🤖 Generated with [Claude Code](https://claude.com/claude-code)
-   EOF
+   BODY
    )"
    ```
+   In a cloud session, pass the same title and body to the GitHub tool, with
+   `base` set to `main` and `head` set to the current branch.
 
-5. Output the PR URL.
+5. Output the pull request's URL.
 
 ## Rules
 
-- Do NOT search for `gh`, check PATH, or use PowerShell to find the binary. The path above is correct.
-- Do NOT check whether a PR already exists first — just create it. If one exists, `gh` will error and tell you.
-- Do NOT run `git status`, `git branch`, or any other git commands beyond steps 1–2.
-- Target branch is always `main` unless the user specifies otherwise.
+- Don't check whether a pull request already exists first; just create it. If
+  one exists, the tool says so.
+- Don't run any git commands beyond steps 1–2.
+- The base is always `main` unless Devin says otherwise.

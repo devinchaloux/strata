@@ -21,10 +21,11 @@ The core design bets:
 - **The file format is the invention.** The editor UI is downstream of getting
   the schema right.
 
-Read `docs/vision.md` for the vision and `docs/decisions.md` for the decisions
-log before changing anything architectural. The schema lives in `schema/`
-(`strata.schema.json`, with a plain-language guide in
-`schema/strata-schema-reference.md`); widget specs live in `widgets/`.
+Read `docs/decisions.md` before changing anything architectural: it is binding,
+and its "Find a decision" index leads to the area you're touching.
+`docs/vision.md` is the original statement of intent, written before the code.
+The schema lives in `schema/` (`strata.schema.json`, with a plain-language
+guide in `schema/strata-schema-reference.md`); widget specs live in `widgets/`.
 
 **Analytical concepts are the maintainer's call.** What a field means, which
 distinctions the format makes, and how notation is written are music-theory
@@ -38,6 +39,9 @@ decisions. Raise them; don't settle them in code.
   Tailwind and Radix (shadcn/ui) for UI. Vitest for tests.
 - `src/types/strata.ts` mirrors the JSON Schema. A format change updates both,
   plus the schema reference.
+- `src/main.tsx` starts the editor (`src/App.tsx`) or, for an address with
+  `?embed` and a file to show, the read-only embed (`src/embed/EmbedApp.tsx`, contract in
+  `src/lib/embed.ts`).
 - Every document enters the app through `src/lib/documentLoad.ts`, which
   validates and normalizes it.
 - Document edits go through actions in `src/store/documentStore.ts`. The store

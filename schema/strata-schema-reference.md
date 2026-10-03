@@ -30,7 +30,7 @@ A `.strata` file is organized into these main sections, in order:
 ├── Vocabulary             (custom type terms for this document)
 ├── Shared time points     (a shared pool of timestamps across all layers)
 ├── Layers                 (one or more analytical layers, each with spans)
-└── Point markers          (single-moment events: flagged observations, MC, EEC, etc.)
+└── Point markers          (`pointMarkers`: single-moment events — flagged observations, MC, EEC, etc.)
 ```
 
 ---
@@ -219,6 +219,8 @@ Every layer, regardless of type, has these fields:
 | `library` | text or null | No | The vocabulary library this layer draws its types from (`pop-rock`, `caplin`, `letters` …). The type picker and quick entry lead with its types. A working preference only: any type can still be used. Omit to let the app guess from the types already in the layer. |
 | `fillGaps` | true/false | No | How a boundary placed in an empty stretch behaves: `true` (the default when absent) fills the stretch with a span on each side; `false` starts a span at the boundary and leaves the stretch before it empty, for a layer that begins partway through. Shift+B ends a span at the playhead either way. |
 | `fontScale` | `sm`, `md` or `lg` | No | Text size for this layer's labels and annotations: `sm` (label 9.5px, annotation 8.5px), `md` (11 / 9), `lg` (13 / 11). Omit for `md`. Uniform within a layer; there is no per-span font size. Purely visual. |
+| `rendering` | object | No | Where this layer's span text sits. Four optional settings: `labelPosition` (`above` the shape, the default, or `inside` it), `labelJustification` (`left`, `center` (default) or `right`), `annotationPosition` (`inside`, the default, or `above`) and `annotationJustification` (`left` (default), `center` or `right`). Purely visual. The app draws these when a file sets them, but has no control for them yet. |
+| `position` | `above` or `below` | No | Where the layer sits relative to the timeline ruler. **Not used yet:** the app always draws layers above the ruler, whatever this says. |
 | `data` | object | Yes | The layer's actual analytical data. Its structure depends on the `type` field — see below. |
 
 ### Form Diagram Layer Data (`type = "form-diagram"`)
@@ -246,7 +248,7 @@ allowed.
 | Field | Type | Required | What it means |
 |---|---|---|---|
 | `id` | UUID | Yes | Auto-generated unique identifier. |
-| `anchor` | object | Yes | What the block is about: `{ "spanId": "<uuid>" }` for a span (in any form-diagram layer), or `{ "start": <seconds>, "end": <seconds> }` for a stretch of time. |
+| `anchor` | object | Yes | What the block is about: `{ "spanId": "<uuid>" }` for a span (in any form-diagram layer; `spanId` is the span's `id`), or `{ "start": <seconds>, "end": <seconds> }` for a stretch of time. |
 | `text` | text | Yes | The commentary. Blank lines separate paragraphs; `**bold**` and `*italic*` are emphasis; `[[slug]]` (or `[[slug\|shown text]]`) links to the span or point marker with that slug. Everything else is literal text. |
 
 > **Why anchors can be times:** commentary is never deleted by an edit
@@ -325,7 +327,7 @@ A **point marker** is a single timestamp in the recording — a moment rather th
 | `type` | vocabulary term ID or null | No | Corpus-queryable classification. Drawn from global built-in point marker types or this document's `vocabulary.pointMarkerTypes`. For theoretically precise events, this is the key field — not the label. Examples: `medial-caesura`, `EEC`, `energy-peak`. Null for untyped observations. |
 | `notes` | text or null | No | Longer freetext observation. Appropriate for analytical prose about a specific event. |
 | `flagged` | true/false | No | `true` = "come back to this." A simple bookmark for moments the analyst wants to revisit. Separate from `confidence` — flagged means *I want to return here*, not *I am uncertain about this*. Omit for false (default). |
-| `absent` | true/false | No | `true` = "this event was expected here and did not occur." Analytically significant in Hepokoski/Darcy and similar frameworks where a missing medial caesura or EEC has specific formal consequences. **No v1 UI** — the field is stored and preserved by the app but cannot be set from the interface in v1. Omit for false (default). |
+| `absent` | true/false | No | `true` = "this event was expected here and did not occur." Analytically significant in Hepokoski/Darcy and similar frameworks where a missing medial caesura or EEC has specific formal consequences. Set with the **Absent** switch in the point marker's panel; its caption is then drawn struck through. Omit for false (default). |
 | `harmonicContext` | text or null | No | Free text, conventionally a Roman numeral relative to the document's `homeKey` (e.g. `V` for a half cadence in the dominant). Rendered as its own text near the marker — never force-combined with `type` into a single string. Corpus-queryable independently of `type`. |
 | `confidence` | one of three values | No | `definite`, `approximate`, or `speculative`. Same meaning as on spans — the analyst's certainty about the identification and placement of this event. Omit for `definite` (default). |
 | `kind` | one of five values or absent | No | `cadence`, `key-change`, `tempo-change`, `flag`, or `other`. A **soft UI preset** only — it picks which fields the Inspector panel leads with, but never restricts what a marker can actually store; every field stays reachable. Omit to behave like `other` (today's full field set). |
@@ -417,5 +419,5 @@ These are the theoretical commitments that shaped the schema's structure.
 
 ---
 
-*Schema version 1 — June 2026*
-*Technical spec: `strata.schema.json` · TypeScript types: `src/types/strata.ts` · Example: `example.strata`*
+*File format version 1. Reference last checked against the schema 2026-10-03.*
+*Technical spec: `strata.schema.json` · TypeScript types: `src/types/strata.ts` · Examples: `example.strata` (here) and `public/demos/alive.strata`*
