@@ -3717,3 +3717,20 @@ protection, which keeps old files available, is a paid-plan feature; a message
 is enough for the one place that needs it. A release can be undone with
 Vercel's Instant Rollback. The lasting risk is files saved by older versions,
 which format versioning handles, not open tabs.
+
+---
+
+## How the App's Text Reads (2026-10-03)
+
+**Decision:** The app's text is written like friendly technical
+documentation: say what a control does or what to do next, in as few words as
+that takes. One idea per sentence. No explaining how the code works ("span
+timestamps always store recording time"), no reassurance the reader didn't ask
+for, and no restating what the screen already shows. Help and tooltips name
+the action ("Get a link to this analysis"), not the mechanism. A first pass
+applied this across the help, dialogs, tooltips and messages.
+**Rationale:** Devin found much of the text over-explained. Short text is
+read; long text is skipped, and the one useful detail goes with it. Wording
+that explains an analytical concept (confidence, absent events, keys of
+point markers) was tightened without changing what it says; its meaning stays
+Devin's call.

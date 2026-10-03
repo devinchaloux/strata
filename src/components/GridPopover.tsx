@@ -91,7 +91,7 @@ export function GridPopover() {
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[26rem] p-3 text-xs">
         <div className="flex items-center justify-between">
-          <span className="font-medium text-foreground" title="Your choice is remembered in this browser for every file.">
+          <span className="font-medium text-foreground" title="Applies to every file in this browser.">
             Snap to the grid
           </span>
           <div className="flex overflow-hidden rounded border border-border" role="radiogroup" aria-label="Snap to the grid">
@@ -111,10 +111,9 @@ export function GridPopover() {
 
         <p className="mt-3 leading-relaxed text-muted-foreground">
           While it plays, tap <kbd className="rounded border border-border px-1">T</kbd> on each beat, starting on a
-          downbeat. After four taps the grid appears at the tempo you tapped (to the nearest BPM; type a decimal
-          below if you need one), reaching back to the last section boundary before your taps. Press{' '}
-          <kbd className="rounded border border-border px-1">Shift+T</kbd> where it stops for a free passage, and tap
-          again where the beat comes back.
+          downbeat. After four taps the grid appears, reaching back to the last boundary before your taps. Press{' '}
+          <kbd className="rounded border border-border px-1">Shift+T</kbd> where the beat stops (a free passage), and
+          tap again where it comes back.
         </p>
 
         {/* By hand, for when tapping isn't practical: start a segment, then
@@ -139,7 +138,7 @@ export function GridPopover() {
             Stop at playhead
           </button>
         </div>
-        <p className="mt-1 text-muted-foreground">Then type the tempo, meter and first bar below; every value is editable.</p>
+        <p className="mt-1 text-muted-foreground">Then set the tempo, meter and first bar below.</p>
 
         {segs.length > 0 && (
           <table className="mt-3 w-full border-separate border-spacing-x-1 border-spacing-y-1">

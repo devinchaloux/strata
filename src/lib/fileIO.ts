@@ -33,7 +33,7 @@ export function readStrataFile(raw: string): LoadResult {
   try {
     parsed = JSON.parse(raw)
   } catch {
-    throw new DocumentError('This file is not valid JSON, so it is not a readable Strata analysis.')
+    throw new DocumentError('This file isn’t valid JSON, so Strata can’t read it.')
   }
   return readDocument(parsed)
 }

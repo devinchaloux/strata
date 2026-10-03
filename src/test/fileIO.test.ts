@@ -39,7 +39,7 @@ describe('parseStrataFile', () => {
   })
 
   it('throws on non-JSON input', () => {
-    expect(() => parseStrataFile('not json')).toThrow('not valid JSON')
+    expect(() => parseStrataFile('not json')).toThrow('isn’t valid JSON')
   })
 
   it('throws on a JSON array', () => {

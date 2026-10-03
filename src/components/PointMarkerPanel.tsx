@@ -196,7 +196,7 @@ export function PointMarkerPanel() {
           <Field
             key="harmonicContext"
             label="In key"
-            tooltip="The key this event lands in, as a Roman numeral relative to the home key. Written together with the type, so V plus PAC reads V:PAC."
+            tooltip="A Roman numeral relative to the home key, written with the type: V plus PAC reads V:PAC."
           >
             <input
               className={inputClass}
@@ -211,7 +211,7 @@ export function PointMarkerPanel() {
           <Field
             key="absent"
             label="Absent"
-            tooltip="The event was expected at this point but does not occur. Its caption is drawn struck through."
+            tooltip="Expected here but doesn’t happen. Its caption is struck through."
           >
             <Segmented
               options={[
@@ -277,7 +277,7 @@ export function PointMarkerPanel() {
         {/* Slug — read-only, click to copy: what commentary types to link here. */}
         <Field
           label="Slug"
-          tooltip="Link to this marker from commentary with [[its-slug]]. It stays the same after the file is saved."
+          tooltip="Link to this marker from commentary with [[its-slug]]. It’s fixed once the file is saved."
         >
           <button
             className={`${inputClass} flex items-center justify-between text-left`}
@@ -317,7 +317,7 @@ export function PointMarkerPanel() {
             <div className="mt-0.5 text-xs font-medium text-foreground">{caption}</div>
             {!captionsVisible && (
               <div className="mt-1 text-[11px] text-muted-foreground">
-                Captions are turned off for this document, so this is recorded but not drawn.
+                Captions are off for this document, so this isn’t drawn.
               </div>
             )}
           </div>

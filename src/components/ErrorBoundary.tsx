@@ -39,7 +39,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
           <h1 className="mb-2 text-sm font-semibold text-foreground">Strata stopped with an error</h1>
           <p className="mb-3 text-xs text-muted-foreground">
             {saved
-              ? 'Your analysis was saved for recovery the moment this happened. Reload the page and choose Restore to pick up where you left off.'
+              ? 'Your work was saved. Reload the page and choose Restore.'
               : 'Reload the page to start again.'}
           </p>
           <pre className="mb-4 max-h-32 overflow-auto rounded bg-muted p-2 text-xs text-muted-foreground">

@@ -18,7 +18,7 @@ import { version as APP_VERSION } from '../../package.json'
 
 // What the dialog says about a recognised share link, under the address.
 const HOST_NOTE: Record<FileHost, string> = {
-  github: 'GitHub: the page link works; Strata reads the raw file.',
+  github: 'GitHub: paste the file’s page link.',
   dropbox: 'Dropbox: works with a share link.',
   onedrive: 'OneDrive: share it with “Anyone with the link”. Work and school accounts may not allow it.',
   gdrive: '',
@@ -67,8 +67,7 @@ export function ShareDialog() {
         <DialogHeader>
           <DialogTitle>Share as a link</DialogTitle>
           <DialogDescription>
-            Save the .strata file somewhere online that you can share: Dropbox, OneDrive, a GitHub repository or Gist, or
-            your own site. Paste its share link here. The link below opens it in Strata’s reading view.
+            Put the .strata file online (Dropbox, OneDrive, GitHub or your own site) and paste its share link here. The link below opens it in Strata’s reading view.
           </DialogDescription>
         </DialogHeader>
 
@@ -100,8 +99,7 @@ export function ShareDialog() {
 
         {lyrics && (
           <div className="rounded-md border border-border bg-muted/50 p-3 text-xs leading-relaxed text-foreground">
-            This analysis includes lyrics, which are someone else’s text. Readers of a shared link see them only if they
-            turn them on. To leave them out of the file entirely, share a copy without them.
+            This analysis includes lyrics, which are someone else’s text. Readers see them only if they turn them on. To leave them out entirely, share a copy without them.
             <button
               type="button"
               onClick={downloadWithoutLyrics}

@@ -122,7 +122,7 @@ export async function fetchSharedAnalysis(url: string): Promise<LoadResult> {
   if (!res.ok) {
     throw new Error(
       res.status === 403 || res.status === 404 || res.status === 401
-        ? `The file could not be fetched (the server answered ${res.status}). Check it is shared publicly, with anyone who has the link.`
+        ? `The file could not be fetched (the server answered ${res.status}). Check that it’s shared with anyone who has the link.`
         : `The file could not be fetched (the server answered ${res.status}).`,
     )
   }

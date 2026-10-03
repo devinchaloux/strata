@@ -142,9 +142,7 @@ function EmptyState({
           Start an analysis
         </h1>
         <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-          Create a new analysis or open a <code className="text-[0.8em]">.strata</code> file, then
-          link a YouTube video or local audio file and build layered form diagrams on a
-          shared timeline.
+          Link a YouTube video or audio file and build layered form diagrams on its timeline.
         </p>
         <div className="mt-5 flex items-center gap-2">
           <button
@@ -214,9 +212,9 @@ function RecoveryModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
       <div className="w-full max-w-sm mx-4 rounded-lg border border-border bg-card p-6 shadow-2xl">
-        <h2 className="text-sm font-semibold text-foreground mb-1">Unsaved session found</h2>
+        <h2 className="text-sm font-semibold text-foreground mb-1">Restore unsaved work?</h2>
         <p className="text-xs text-muted-foreground mb-5">
-          An unsaved session from {date} was recovered. Would you like to restore it?
+          Strata kept a copy of your work from {date}.
         </p>
         <div className="flex justify-end gap-2">
           <button
@@ -618,7 +616,7 @@ export default function App() {
           <span className="text-sm font-semibold tracking-tight text-foreground">Strata</span>
           <span
             className="rounded border border-border px-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-            title="Strata is in beta. Save often, and keep a copy of files that matter."
+            title="Strata is in beta, so save often."
           >
             Beta
           </span>
@@ -681,7 +679,7 @@ export default function App() {
         <button
           onClick={() => setReadingView(true)}
           disabled={!doc}
-          title="Read the analysis: video, commentary and diagram, with editing off"
+          title="Read the analysis without editing"
           className="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-40
             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
         >
@@ -690,7 +688,7 @@ export default function App() {
         <button
           onClick={() => useUIStore.getState().setShareOpen(true)}
           disabled={!doc}
-          title="Make a link that opens this analysis in the reading view"
+          title="Get a link to this analysis"
           className="rounded-md px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-40
             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
         >

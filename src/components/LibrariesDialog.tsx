@@ -155,7 +155,7 @@ export function LibrariesDialog() {
               <button
                 type="button"
                 className="rounded border border-border px-2.5 py-1 text-xs hover:bg-accent"
-                title="Your own types in this analysis, without letters, as a .vocab.json file to share"
+                title="Save your own types (not letters) as a .vocab.json file to share"
                 onClick={() =>
                   downloadBlob(
                     new Blob([JSON.stringify(exportVocabPack(doc), null, 2)], { type: 'application/json' }),
