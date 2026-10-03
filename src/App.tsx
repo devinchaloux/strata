@@ -15,6 +15,8 @@ import { reportIssueUrl } from '@/lib/issues'
 import { ReadingHeader } from '@/components/ReadingHeader'
 import { ShareDialog } from '@/components/ShareDialog'
 import { fetchSharedAnalysis, srcParam } from '@/lib/shareLink'
+import { applyNewFromLink, parseNewParams } from '@/lib/newFromLink'
+import { createEmptyDocument } from '@/lib/fileIO'
 import { HelpDialog } from '@/components/HelpDialog'
 import {
   AlertDialog,
@@ -494,6 +496,19 @@ export default function App() {
     const src = srcParam(window.location.href)
     if (src) openShared(src)
   }, [openShared])
+
+  // Opening it with a new-analysis link (?new&title=…): a new document with
+  // what the link gives, and the setup dialog open to check it. The address
+  // loses its parameters, so a reload doesn't start a second one.
+  useEffect(() => {
+    const prefill = parseNewParams(window.location.href)
+    if (!prefill) return
+    loadDocument(applyNewFromLink(createEmptyDocument(), prefill))
+    useDocumentStore.temporal.getState().clear()
+    setSettingsIsNew(true)
+    setSettingsOpen(true)
+    window.history.replaceState(null, '', window.location.pathname)
+  }, [loadDocument, setSettingsOpen])
 
   // Keyboard shortcuts
   useEffect(() => {
