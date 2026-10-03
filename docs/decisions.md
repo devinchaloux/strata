@@ -3837,13 +3837,16 @@ over from the earlier design.
 filled in, then opens the New analysis dialog to check it:
 
 ```
-https://strata.devinchaloux.com/?new&title=Alive&artist=Krewella&video=<YouTube link>&bpm=128&key=A&mode=minor
+https://strata.devinchaloux.com/?new&title=Alive&artist=Krewella&video=<YouTube link>&bpm=128&key=A&mode=minor&author=<name>
 ```
 
 `artist` may repeat, in order. `key` is the tonic as written (`F#` becomes
 `F♯`); `mode` is one of Strata's built-in modes (`major`, `minor`, `dorian` …).
-Every field is optional, and one that doesn't read (a video address that isn't
-YouTube, a tempo of 0) is left out rather than refusing the link. The address
+`author` fills the analysis author. Every field is optional, and one that
+doesn't read (a video address that isn't YouTube, a tempo of 0) is left out
+rather than refusing the link. When the link fills in a tempo, key or author,
+the dialog opens with "More details" expanded, so what was filled in is seen
+before Start (added 2026-10-03, after the first link hid them). The address
 loses its parameters once read, so reloading doesn't start a second analysis.
 
 **Why.** A catalogue that already knows a recording (its title, artists,
