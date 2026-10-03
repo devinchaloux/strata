@@ -11,13 +11,14 @@ describe('parseNewParams', () => {
   })
 
   it('reads every field', () => {
-    const url = `${BASE}?new&title=Alive&artist=Krewella&video=${encodeURIComponent('https://youtu.be/hPpK_GkAK30?si=x')}&bpm=128&key=A&mode=minor`
+    const url = `${BASE}?new&title=Alive&artist=Krewella&video=${encodeURIComponent('https://youtu.be/hPpK_GkAK30?si=x')}&bpm=128&key=A&mode=minor&author=${encodeURIComponent('A. Analyst')}`
     expect(parseNewParams(url)).toEqual({
       title: 'Alive',
       artist: ['Krewella'],
       video: 'https://www.youtube.com/watch?v=hPpK_GkAK30',
       bpm: 128,
       homeKey: { tonic: 'A', mode: 'minor' },
+      author: 'A. Analyst',
     })
   })
 
@@ -41,6 +42,8 @@ describe('applyNewFromLink', () => {
     expect(doc.source).toMatchObject({ type: 'youtube', url: 'https://www.youtube.com/watch?v=hPpK_GkAK30', sourceOffset: 0 })
     expect(doc.bpm).toBe(128)
     expect(doc.homeKey).toBeUndefined()
+    expect(doc.analysisAuthor).toBeUndefined()
+    expect(applyNewFromLink(createEmptyDocument(), { artist: [], author: 'A. Analyst' }).analysisAuthor).toBe('A. Analyst')
     expect(doc.layers).toHaveLength(1)
   })
 })

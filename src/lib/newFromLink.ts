@@ -1,6 +1,6 @@
 /**
  * Starting a new analysis from a link: `?new&title=…&artist=…&video=…&bpm=…
- * &key=…&mode=…`. Another tool that already knows the track (a catalogue, a
+ * &key=…&mode=…&author=…`. Another tool that already knows the track (a catalogue, a
  * course page) can open Strata with the setup filled in; the analyst checks it
  * in the New analysis dialog, which opens as usual. Nothing is saved anywhere
  * until they save. docs/decisions.md, "Starting an Analysis from a Link".
@@ -20,6 +20,8 @@ export interface NewFromLink {
   video?: string
   bpm?: number
   homeKey?: HomeKey
+  /** The analysis author, for the document's credit. */
+  author?: string
 }
 
 /** What a `?new` address asks for, or null when it isn't one. */
@@ -47,6 +49,9 @@ export function parseNewParams(pageUrl: string): NewFromLink | null {
   const mode = BUILT_IN_MODES.some((m) => m.id === modeParam) ? modeParam : null
   if (tonic || mode) out.homeKey = { tonic: toAccidentals(tonic).slice(0, 12), mode }
 
+  const author = p.get('author')?.trim()
+  if (author) out.author = author.slice(0, 200)
+
   return out
 }
 
@@ -59,5 +64,6 @@ export function applyNewFromLink(doc: StrataDocument, n: NewFromLink): StrataDoc
     ...(n.video ? { source: { ...doc.source, type: 'youtube' as const, url: n.video } } : {}),
     ...(n.bpm !== undefined ? { bpm: n.bpm } : {}),
     ...(n.homeKey ? { homeKey: n.homeKey } : {}),
+    ...(n.author ? { analysisAuthor: n.author } : {}),
   }
 }

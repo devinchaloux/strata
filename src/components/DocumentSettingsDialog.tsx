@@ -167,10 +167,15 @@ export function DocumentSettingsDialog({
   const [tsDenText, setTsDenText] = useState('')
   const [offsetText, setOffsetText] = useState('')
   // A new analysis asks only for what starting needs (title, artist, source);
-  // everything else waits behind "More details". Settings show it all.
+  // everything else waits behind "More details". Settings show it all — and
+  // so does a new analysis whose details are already filled in (one started
+  // from a link, lib/newFromLink.ts), so what was filled in can be checked.
   const [showMore, setShowMore] = useState(!isNew)
   useEffect(() => {
-    if (open) setShowMore(!isNew)
+    if (!open) return
+    const d = useDocumentStore.getState().document
+    const filled = !!d && (d.bpm != null || !!d.homeKey || !!d.analysisAuthor)
+    setShowMore(!isNew || filled)
   }, [open, isNew])
 
   useEffect(() => {
