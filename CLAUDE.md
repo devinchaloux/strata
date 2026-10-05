@@ -119,4 +119,8 @@ Older docs mention a `dev` branch; it was retired in September 2026.
 
 ## Maintainer instructions
 
+These load from the maintainer's private notes, checked out beside this repo.
+In a cloud environment that holds only this repo the import below loads empty;
+the maintainer's `/brief` attaches the notes and reads it.
+
 @../research/strata/maintainer.md

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * Interaction test: a real boundary drag through FormLayers produces exactly one
  * undo step. The store-level history tests prove the grouping mechanism; this

@@ -1,0 +1,26 @@
+name: Weekly dependency audit
+
+# npm's audit used to run inside every CI install, where it was slow and nobody
+# read it. Here it runs once a week instead (Mondays, 09:17 UTC) and fails only
+# for what reaches users: a high or critical advisory in a production
+# dependency. A failed scheduled run emails the repo's owner. The full report,
+# dev tools included, is printed for reference and never fails the run.
+on:
+  schedule:
+    - cron: '17 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The audit reads package-lock.json against the registry's advisories;
+      # nothing needs installing.
+      - name: Production dependencies (fails on high or critical)
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Everything, dev tools included (report only)
+        if: always()
+        run: npm audit || true

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * The New analysis dialog keeps everything past title, artist and source behind
  * "More details" — unless a link has already filled some of it in, which the

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { formSpans } from '@/lib/layers'
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
