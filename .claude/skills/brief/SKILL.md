@@ -21,16 +21,11 @@ The first line resolves the repo root, so this works from a worktree or a cloud
 session as well as a plain checkout.
 
 - **`$NOTES` doesn't exist in a cloud session:** the environment holds only this
-  repo, which is the normal case. Attach `research` yourself: call `add_repo`
-  for `devinchaloux/research` with push access (the session commits the
-  handoff there), run the clone command it returns into `$RESEARCH`, and check
-  out a branch named like this repo's session branch (`claude/<slug>`), cut
-  from `main`. Don't call `register_repo_root`: that would load all of
-  research's instructions into every turn, and a Strata session reads only
-  `strata/`. Because `research` was absent when the session started, the
-  maintainer instructions imported at the foot of `CLAUDE.md` loaded empty:
-  read `$NOTES/maintainer.md` and `$RESEARCH/docs/documentation-standards.md`
-  now. Then rerun the block above.
+  repo, which is the normal case. Attach the notes repository yourself with
+  `add_repo`, clone it into `$RESEARCH`, and don't call `register_repo_root`.
+  The maintainer instructions imported at the foot of `CLAUDE.md` loaded empty
+  because the checkout was absent at the start: read them now, and follow
+  their "Private notes" section for the rest. Then rerun the block above.
 - **`$NOTES` doesn't exist anywhere else, or `add_repo` refuses:** stop and tell
   Devin. Don't start without the brief.
 - **The last command prints commits:** this checkout is behind on the notes. If
@@ -40,14 +35,13 @@ session as well as a plain checkout.
 
 ## Step 2 — Read the session context
 
-Read only these, in order. Reading every note and spec at the start cost about
-45,000 tokens a session before any work; the specs are opened when the
-confirmed scope reaches them.
+Read only these, in order. Reading every note and spec at the start was the
+largest cost of a session; the specs are opened when the confirmed scope
+reaches them.
 
 1. `$NOTES/handoff.md` — the current brief. It holds one session; earlier ones
-   are in `$NOTES/archive/handoffs.md`, which you open only when the brief
-   points there.
-2. `$NOTES/README.md` — the index of the notes: which file holds what.
+   stay out of the way until the brief points to them.
+2. Any note the brief names for the proposed scope, and nothing else yet.
 3. `$NOTES/build-plan.md` — its headings (`grep -n '^## ' "$NOTES/build-plan.md"`),
    then the section for the phase the handoff names.
 4. `docs/decisions.md` — its header and "Find a decision" index, then the last
