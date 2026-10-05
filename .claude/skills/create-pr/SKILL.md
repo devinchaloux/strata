@@ -1,8 +1,8 @@
 # /create-pr
 
-Opens a pull request from the current branch into `main`. Run it only when
-Devin asks for a pull request: he opens and merges his own, and `main` deploys
-publicly.
+Opens a pull request from the current branch into `main`. In the maintainer's
+sessions, run it when the work is done and nothing more is coming; the
+maintainer merges, and `main` deploys publicly.
 
 ## Which tool
 
