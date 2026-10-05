@@ -20,28 +20,42 @@ echo "notes: $NOTES" && ls "$NOTES" && git -C "$RESEARCH" fetch origin && git -C
 The first line resolves the repo root, so this works from a worktree or a cloud
 session as well as a plain checkout.
 
-- **`$NOTES` doesn't exist:** stop and tell Devin. `research` isn't checked out
-  beside this repo. Don't start without the brief.
+- **`$NOTES` doesn't exist in a cloud session:** the environment holds only this
+  repo, which is the normal case. Attach `research` yourself: call `add_repo`
+  for `devinchaloux/research` with push access (the session commits the
+  handoff there), run the clone command it returns into `$RESEARCH`, and check
+  out a branch named like this repo's session branch (`claude/<slug>`), cut
+  from `main`. Don't call `register_repo_root`: that would load all of
+  research's instructions into every turn, and a Strata session reads only
+  `strata/`. Because `research` was absent when the session started, the
+  maintainer instructions imported at the foot of `CLAUDE.md` loaded empty:
+  read `$NOTES/maintainer.md` and `$RESEARCH/docs/documentation-standards.md`
+  now. Then rerun the block above.
+- **`$NOTES` doesn't exist anywhere else, or `add_repo` refuses:** stop and tell
+  Devin. Don't start without the brief.
 - **The last command prints commits:** this checkout is behind on the notes. If
   `research` is on `main` with a clean tree, `git -C "$RESEARCH" pull --ff-only`.
   Otherwise don't touch its checkout. Read the current versions with
   `git -C "$RESEARCH" show origin/main:strata/<file>` and mention that you did.
 
-## Step 2 — Read all session context
+## Step 2 — Read the session context
 
-Read these files in order:
+Read only these, in order. Reading every note and spec at the start cost about
+45,000 tokens a session before any work; the specs are opened when the
+confirmed scope reaches them.
 
-1. `$NOTES/handoff.md` — primary session brief
-2. `$NOTES/build-plan.md` — current phase breakdown and tech stack
-3. `docs/decisions.md` — its header and "Find a decision" index, then the last
+1. `$NOTES/handoff.md` — the current brief. It holds one session; earlier ones
+   are in `$NOTES/archive/handoffs.md`, which you open only when the brief
+   points there.
+2. `$NOTES/README.md` — the index of the notes: which file holds what.
+3. `$NOTES/build-plan.md` — its headings (`grep -n '^## ' "$NOTES/build-plan.md"`),
+   then the section for the phase the handoff names.
+4. `docs/decisions.md` — its header and "Find a decision" index, then the last
    ten entries (the newest are at the bottom). Read further entries when the
-   proposed scope touches their area. The whole log runs to thousands of lines;
-   reading it all every session costs more than it tells you.
+   proposed scope touches their area.
 
 Read `docs/vision.md` only when the session touches the project's direction:
 it is the original statement of intent and rarely changes.
-
-Then use Glob to check for any other files in `$NOTES` (`*.md`) and read any you haven't already read.
 
 Older docs refer to these files as `_private/<file>`. That was their location
 before 2026-09-27, and the filenames are unchanged.
