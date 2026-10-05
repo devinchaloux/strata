@@ -40,7 +40,7 @@ By area, in the order the entries were made:
 
 **The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03)
 
-**Architecture, scope and process:** [Architecture](#architecture) · [Widgets](#widgets) · [Architecture](#architecture-1) · [Launch](#launch) · [Corpus Builder](#corpus-builder) · [v1 Feature Scope (Phase 0.6)](#v1-feature-scope-phase-06) · [Energy Contour Widget](#energy-contour-widget) · [EDM as Origin — Product Claim Reframe](#edm-as-origin--product-claim-reframe) · [Tech Stack](#tech-stack) · [v1 Scope](#v1-scope) · [Widget Contract (Phase 0.2)](#widget-contract-phase-02) · [Correctness Pass (post-Phase 2 polish)](#correctness-pass-post-phase-2-polish) · [Improvement Backlog Batch 1 (2026-07-03)](#improvement-backlog-batch-1-2026-07-03) · [Improvement Backlog Batch 2 (2026-07-03)](#improvement-backlog-batch-2-2026-07-03) · [Render / Edit Split (2026-09-27)](#render--edit-split-2026-09-27) · [Large-Analysis Performance (2026-09-27)](#large-analysis-performance-2026-09-27) · [Safari and Firefox Read-Through (2026-09-27)](#safari-and-firefox-read-through-2026-09-27) · [Beta Launch Pass (2026-10-01)](#beta-launch-pass-2026-10-01) · [Releases and Open Tabs (2026-10-02)](#releases-and-open-tabs-2026-10-02)
+**Architecture, scope and process:** [Architecture](#architecture) · [Widgets](#widgets) · [Architecture](#architecture-1) · [Launch](#launch) · [Corpus Builder](#corpus-builder) · [v1 Feature Scope (Phase 0.6)](#v1-feature-scope-phase-06) · [Energy Contour Widget](#energy-contour-widget) · [EDM as Origin — Product Claim Reframe](#edm-as-origin--product-claim-reframe) · [Tech Stack](#tech-stack) · [v1 Scope](#v1-scope) · [Widget Contract (Phase 0.2)](#widget-contract-phase-02) · [Correctness Pass (post-Phase 2 polish)](#correctness-pass-post-phase-2-polish) · [Improvement Backlog Batch 1 (2026-07-03)](#improvement-backlog-batch-1-2026-07-03) · [Improvement Backlog Batch 2 (2026-07-03)](#improvement-backlog-batch-2-2026-07-03) · [Render / Edit Split (2026-09-27)](#render--edit-split-2026-09-27) · [Large-Analysis Performance (2026-09-27)](#large-analysis-performance-2026-09-27) · [Safari and Firefox Read-Through (2026-09-27)](#safari-and-firefox-read-through-2026-09-27) · [Beta Launch Pass (2026-10-01)](#beta-launch-pass-2026-10-01) · [Releases and Open Tabs (2026-10-02)](#releases-and-open-tabs-2026-10-02) · [Faster Checks: Tests in Node, a Weekly Audit (2026-10-05)](#faster-checks-tests-in-node-a-weekly-audit-2026-10-05)
 
 ---
 
@@ -3859,3 +3859,27 @@ until the analyst saves it, as with any new analysis.
 is the analyst's call, so a tool that knows only a pitch class should leave the
 tonic out and let the analyst choose in the dialog.
 
+## Faster Checks: Tests in Node, a Weekly Audit (2026-10-05)
+
+**Decision.** Three changes to how the checks run; none changes what they
+check.
+
+- **Tests run in plain Node unless a file needs a browser.** Vitest's default
+  environment is now `node`. A test file that needs a DOM (component tests,
+  and the few logic tests that measure text or build SVG) says so on its first
+  line: `// @vitest-environment jsdom`. Starting jsdom cost about a second per
+  file, and most files are pure logic: the suite went from about 17s to 9s.
+- **CI's install skips npm's security audit**, which took about a minute of
+  every run while it worked through the dev tools' advisories. The audit runs
+  weekly instead (`.github/workflows/audit.yml`), and fails only for a high or
+  critical advisory in a dependency that reaches users; the full report,
+  dev tools included, is printed beside it.
+- **`schema.test.ts` is gone.** Its tests built an object and checked the
+  values just written into it, so they could not fail. The type check is
+  `tsc` in the build, and `schemaConformance.test.ts` checks real documents
+  against the JSON Schema.
+
+**Why.** A pull request waited on CI for nearly two minutes, most of it an
+audit nobody read on every run. CI still runs on every push and again on the
+pull request: the pull-request run is the required check, and it is the only
+run a pull request from a fork gets.

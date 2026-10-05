@@ -1,7 +1,9 @@
 name: CI
 
 # Runs on every branch push so a session gets early signal, and again on the PR
-# into main — the PR run is the gate that matters, since main is the trunk.
+# into main. The PR run is the gate: branch protection requires its `check`, and
+# it is the only run a pull request from a fork gets, since a fork's pushes
+# happen in the fork.
 on:
   push:
   pull_request:
@@ -29,8 +31,10 @@ jobs:
 
       # `npm ci` (not `install`) so the lockfile is authoritative and a run can
       # never silently pick up a newer transitive dependency than you tested with.
+      # `--no-audit`: npm's audit took a minute of every run here; it runs
+      # weekly in audit.yml instead, failing on what reaches users.
       - name: Install
-        run: npm ci
+        run: npm ci --no-audit --no-fund
 
       - name: Lint
         run: npm run lint

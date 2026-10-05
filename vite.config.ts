@@ -11,7 +11,10 @@ export default defineConfig({
   },
   test: {
     globals: true,
-    environment: 'jsdom',
+    // Plain Node by default: starting jsdom (a simulated browser) costs about a
+    // second per file, and most test files are pure logic. A file that needs a
+    // DOM says so on its first line:  // @vitest-environment jsdom
+    environment: 'node',
     setupFiles: ['./src/test/setup.ts'],
   },
 })
