@@ -37,7 +37,7 @@ const SOURCE_DIRS = ['src/', 'schema/', 'docs/', 'widgets/', 'public/', '.github
 const ROOT_FILES = new Set([
   'CLAUDE.md', 'README.md', 'LICENSE', 'CONTRIBUTING.md', 'CONTRIBUTING-VOCAB.md', '.gitignore',
   'package.json', 'package-lock.json', 'index.html', 'components.json', 'vite.config.ts',
-  'tsconfig.json', 'tsconfig.node.json', 'tailwind.config.js', 'postcss.config.js', '.eslintrc.cjs',
+  'tsconfig.json', 'tsconfig.node.json', 'tailwind.config.js', 'postcss.config.js', 'eslint.config.js',
 ])
 // Content, not code: publishing it is a licence and provenance decision.
 const CONTENT = /\.(strata|vocab\.json|png|jpe?g|gif|webp|svg|pdf|mp3|wav|m4a|ogg|flac|mp4|mov|csv|tsv|xlsx?|mei|musicxml|mxl|mid|midi)$/i
