@@ -70,7 +70,7 @@ function ToolbarButton({
       className={cn(
         `rounded-md px-2.5 py-1 text-xs font-medium transition-colors
         hover:bg-accent hover:text-accent-foreground
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background
+        focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background
         disabled:opacity-40 disabled:pointer-events-none`,
         muted ? 'text-muted-foreground' : 'text-foreground',
       )}
@@ -100,7 +100,7 @@ function IconToolbarButton({
       aria-label={title}
       className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors
         hover:bg-accent hover:text-accent-foreground
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background
+        focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background
         disabled:opacity-40 disabled:pointer-events-none"
     >
       {children}
@@ -151,7 +151,7 @@ function EmptyState({
             onClick={onNew}
             className="rounded-md bg-primary px-3.5 py-1.5 text-xs font-medium text-primary-foreground
               transition-colors hover:bg-primary/90
-              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             New analysis
           </button>
@@ -159,7 +159,7 @@ function EmptyState({
             onClick={onOpen}
             className="rounded-md border border-border px-3.5 py-1.5 text-xs font-medium text-foreground
               transition-colors hover:bg-accent
-              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             Open file…
           </button>
@@ -177,7 +177,7 @@ function EmptyState({
                   onExample(example)
                 }}
                 className="rounded text-xs text-foreground underline-offset-4 transition-colors hover:underline
-                  focus-visible:outline-none focus-visible:underline"
+                  focus-visible:outline-hidden focus-visible:underline"
               >
                 <span className="font-medium">{example.title}</span>
                 <span className="text-muted-foreground"> · {example.artist}</span>
@@ -188,7 +188,7 @@ function EmptyState({
         <button
           onClick={onHelp}
           className="mt-3 rounded text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline
-            focus-visible:outline-none focus-visible:underline"
+            focus-visible:outline-hidden focus-visible:underline"
         >
           How it works
         </button>
@@ -693,7 +693,7 @@ export default function App() {
           onClick={() => setReadingView(true)}
           disabled={!doc}
           className="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-40
-            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+            focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
         >
           Reading view
         </button>
@@ -702,7 +702,7 @@ export default function App() {
           disabled={!doc}
           title="Get a link to this analysis"
           className="rounded-md px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-40
-            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+            focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
         >
           Share…
         </button>
@@ -714,7 +714,7 @@ export default function App() {
           rel="noreferrer"
           title="Report a bug or suggest an improvement on GitHub"
           className="rounded-md px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground
-            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+            focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
         >
           Report an issue
         </a>

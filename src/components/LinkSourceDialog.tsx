@@ -41,7 +41,7 @@ import type { SourceType } from '@/types/strata'
 
 const inputClass =
   'w-full rounded border border-border bg-card px-2 py-1 text-xs text-foreground ' +
-  'focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground'
+  'focus:outline-hidden focus:ring-1 focus:ring-ring placeholder:text-muted-foreground'
 
 function Segmented<T extends string>({
   options,
@@ -195,7 +195,7 @@ export function SourceLinkForm({
             autoFocus={autoFocus}
           />
           <p
-            className="mt-1 flex min-h-[1rem] items-center gap-1 text-[11px]"
+            className="mt-1 flex min-h-4 items-center gap-1 text-[11px]"
             aria-live="polite"
           >
             {parsedId && (

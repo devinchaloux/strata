@@ -35,7 +35,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
     if (!error) return this.props.children
     return (
       <div className="flex h-screen items-center justify-center bg-background px-6">
-        <div className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-sm">
+        <div className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-xs">
           <h1 className="mb-2 text-sm font-semibold text-foreground">Strata stopped with an error</h1>
           <p className="mb-3 text-xs text-muted-foreground">
             {saved

@@ -134,7 +134,7 @@ function PassageBlock({ doc, block }: { doc: StrataDocument; block: AnalysisBloc
       {editing && !reading ? (
         <textarea
           autoFocus
-          className="w-full resize-y rounded border border-border bg-card px-2 py-1 text-[13px] leading-relaxed text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          className="w-full resize-y rounded border border-border bg-card px-2 py-1 text-[13px] leading-relaxed text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
           rows={5}
           value={block.text}
           aria-label="Commentary on this passage"
@@ -276,7 +276,7 @@ export function CommentaryPanel() {
     <>
       {controls}
       <div
-        className={`flex w-full flex-col gap-3 self-start px-4 py-4 ${reading ? 'max-w-[44rem] gap-4' : 'max-w-[42rem]'}`}
+        className={`flex w-full flex-col gap-3 self-start px-4 py-4 ${reading ? 'max-w-176 gap-4' : 'max-w-2xl'}`}
         style={readingStyle}
         aria-live="polite"
       >

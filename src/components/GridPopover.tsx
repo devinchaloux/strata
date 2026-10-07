@@ -23,7 +23,7 @@ const SNAP_OPTIONS: [SnapMode, string][] = [
   ['bar', 'Bars'],
 ]
 
-const cell = 'w-full rounded border border-border bg-card px-1 py-0.5 text-xs tabular-nums text-foreground focus:outline-none focus:ring-1 focus:ring-ring'
+const cell = 'w-full rounded border border-border bg-card px-1 py-0.5 text-xs tabular-nums text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring'
 
 /** A number field that commits on blur or Enter; blank commits null. */
 function NumberCell({
@@ -89,7 +89,7 @@ export function GridPopover() {
           )}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[26rem] p-3 text-xs">
+      <PopoverContent align="start" className="w-104 p-3 text-xs">
         <div className="flex items-center justify-between">
           <span className="font-medium text-foreground" title="Applies to every file in this browser.">
             Snap to the grid

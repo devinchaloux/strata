@@ -112,7 +112,7 @@ export function ColorPicker({ value, fallback, onChange, nullLabel }: ColorPicke
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <button
-          className="flex h-7 w-full items-center gap-1.5 rounded border px-2 text-xs hover:bg-accent focus:outline-none focus:ring-1 focus:ring-ring"
+          className="flex h-7 w-full items-center gap-1.5 rounded border px-2 text-xs hover:bg-accent focus:outline-hidden focus:ring-1 focus:ring-ring"
           style={{
             borderColor: 'hsl(var(--border))',
             borderStyle: inheriting ? 'dashed' : 'solid',
@@ -166,7 +166,7 @@ export function ColorPicker({ value, fallback, onChange, nullLabel }: ColorPicke
             #
           </span>
           <input
-            className="h-6 flex-1 rounded border px-1.5 font-mono text-xs outline-none focus:ring-1 focus:ring-ring"
+            className="h-6 flex-1 rounded border px-1.5 font-mono text-xs outline-hidden focus:ring-1 focus:ring-ring"
             style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--foreground))' }}
             placeholder="rrggbb"
             value={hexInput.replace(/^#/, '')}
@@ -235,7 +235,7 @@ function Swatch({
       aria-label={title}
       onClick={() => onPick(color)}
       className={cn(
-        'h-[18px] w-full rounded-sm transition-transform hover:scale-110 focus:outline-none focus:ring-1 focus:ring-ring',
+        'h-[18px] w-full rounded-sm transition-transform hover:scale-110 focus:outline-hidden focus:ring-1 focus:ring-ring',
         selected && 'ring-2 ring-offset-1 ring-ring',
       )}
       style={{ backgroundColor: color, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.12)' }}

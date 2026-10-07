@@ -239,7 +239,7 @@ function SortableLayerHeaderRow({
                 }
               }}
               onClick={(e) => e.stopPropagation()}
-              className="min-w-0 flex-1 rounded border bg-white px-1 text-xs outline-none"
+              className="min-w-0 flex-1 rounded border bg-white px-1 text-xs outline-hidden"
               style={{ borderColor: 'hsl(var(--primary))', color: 'var(--ink-primary)' }}
             />
           ) : (
@@ -612,7 +612,7 @@ export function FormDiagram() {
       <div className={showDiagram ? 'contents' : 'hidden'}>
       <div
         data-keeps-selection
-        className="relative shrink-0 overflow-hidden rounded-md bg-[var(--canvas)]"
+        className="relative shrink-0 overflow-hidden rounded-md bg-(--canvas)"
         style={{ marginBottom: 4 }}
       >
         {/* Editing controls are off while reading. */}
