@@ -25,7 +25,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip
 
 export const inputClass =
   'w-full rounded border border-border bg-card px-2 py-1 text-[13px] text-foreground ' +
-  'focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground'
+  'focus:outline-hidden focus:ring-1 focus:ring-ring placeholder:text-muted-foreground'
 
 export function Field({
   label,
@@ -65,7 +65,7 @@ export function Field({
               <button
                 type="button"
                 aria-label={`About ${label}`}
-                className="inline-flex rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="inline-flex rounded text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <Info className="h-3 w-3" aria-hidden />
               </button>
@@ -82,7 +82,7 @@ export function Field({
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setPaletteOpen((o) => !o)}
             className={
-              'ml-auto rounded px-1 text-xs leading-4 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ' +
+              'ml-auto rounded px-1 text-xs leading-4 hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring ' +
               (paletteOpen ? 'bg-accent text-foreground' : 'text-muted-foreground')
             }
           >

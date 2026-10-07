@@ -464,7 +464,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         <Field label="Label" symbols>
           <input
             data-inspector-label
-            className={`${inputClass} !text-lg font-semibold`}
+            className={`${inputClass} text-lg! font-semibold`}
             value={span.label ?? ''}
             placeholder="Unlabeled"
             onChange={(e) => setSpanLabels([span.id], e.target.value === '' ? null : e.target.value)}
@@ -508,7 +508,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
               aria-selected={tab === id}
               onClick={() => setTab(id)}
               className={`flex-auto whitespace-nowrap rounded-md px-2 py-1.5 text-[13px] font-medium transition-colors ${
-                tab === id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:bg-card/60 hover:text-foreground'
+                tab === id ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:bg-card/60 hover:text-foreground'
               }`}
             >
               {name}

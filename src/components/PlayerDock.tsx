@@ -88,7 +88,7 @@ function TransportButton({
       aria-label={title}
       className="p-1.5 rounded text-foreground
         hover:bg-accent hover:text-accent-foreground
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card
+        focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card
         disabled:opacity-40 disabled:pointer-events-none
         transition-colors"
     >
@@ -474,7 +474,7 @@ export function PlayerDock() {
           aria-label="Playback rate"
           className="h-7 rounded border border-border bg-card text-xs text-foreground px-1
             hover:bg-accent disabled:opacity-40 cursor-pointer transition-colors
-            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card"
+            focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card"
         >
           {RATES.map((r) => (
             <option key={r} value={String(r)}>
@@ -509,7 +509,7 @@ export function PlayerDock() {
             onClick={() => setLinkSourceOpen(true)}
             className="ml-auto shrink-0 rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground
               transition-colors hover:bg-primary/90
-              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card"
+              focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card"
           >
             Link video or audio…
           </button>
@@ -521,7 +521,7 @@ export function PlayerDock() {
             title={`Find ${source?.filename} on this computer to play it.`}
             className="ml-auto max-w-[16rem] shrink-0 truncate rounded-md border border-border px-3 py-1 text-xs font-medium text-foreground
               transition-colors hover:bg-accent
-              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card"
+              focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card"
           >
             Locate {source?.filename}…
           </button>
@@ -544,7 +544,7 @@ export function PlayerDock() {
               <button
                 onClick={toggleVideoView}
                 className="flex h-7 items-center gap-1.5 rounded-md border border-border px-2 text-xs font-medium text-foreground
-                  hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card"
+                  hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card"
               >
                 {videoInView ? <ArrowUp size={13} aria-hidden /> : <ArrowDown size={13} aria-hidden />}
                 {videoInView ? 'Back to diagram' : 'Video'}
@@ -581,7 +581,7 @@ export function PlayerDock() {
           play bar, which is the bottom of the first screen, so it starts out of
           view; as a mini player it floats in the left column's top-right
           corner, over the empty canvas above the bottom-anchored diagram.
-          Either way it stays at least VIDEO_MIN × VIDEO_MIN. Nothing may cover it (YouTube's rules): z-[60]
+          Either way it stays at least VIDEO_MIN × VIDEO_MIN. Nothing may cover it (YouTube's rules): z-60
           sits above every menu, popover and dialog (z-50), it registers itself
           so dialogs and their dimming keep clear (lib/playerClearance), and
           pointer-events stays on so it works while a dialog is open. */}
@@ -589,12 +589,12 @@ export function PlayerDock() {
         <div
           className={
             embed
-              ? 'embed-video relative z-[60] overflow-hidden bg-black'
+              ? 'embed-video relative z-60 overflow-hidden bg-black'
               : readingView
-              ? 'absolute left-4 top-4 z-[60] overflow-hidden rounded-lg border border-border'
+              ? 'absolute left-4 top-4 z-60 overflow-hidden rounded-lg border border-border'
               : videoMini
-                ? 'absolute right-3 top-3 z-[60] overflow-hidden rounded-md border border-border shadow-lg'
-                : 'relative z-[60] m-3 overflow-hidden rounded-md border border-border'
+                ? 'absolute right-3 top-3 z-60 overflow-hidden rounded-md border border-border shadow-lg'
+                : 'relative z-60 m-3 overflow-hidden rounded-md border border-border'
           }
           style={{
             // Reading: large, top left, beside the commentary (READING_VIDEO_W).

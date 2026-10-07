@@ -268,7 +268,7 @@ export function TypePicker({
         side="left"
         align="start"
         collisionPadding={12}
-        className="flex w-[26rem] flex-col p-0 text-xs"
+        className="flex w-104 flex-col p-0 text-xs"
         style={{ maxHeight: 'min(36rem, var(--radix-popover-content-available-height))' }}
         onKeyDown={onKeyDown}
       >

@@ -3888,8 +3888,7 @@ run a pull request from a fork gets.
 
 **Decision.** The test, build and lint tools move up to their current major
 versions: Vite 8, Vitest 5 and ESLint 10 (with typescript-eslint 8 and
-eslint-plugin-react-hooks 7). Tailwind stays on 3 for now; its move to 4
-changes how styles are configured and gets its own pull request.
+eslint-plugin-react-hooks 7) and Tailwind 4.
 
 - **ESLint's settings move to `eslint.config.js`**, the format ESLint 9 made
   the default and ESLint 10 requires. It checks the same files with the same
@@ -3906,8 +3905,25 @@ changes how styles are configured and gets its own pull request.
   it, and its server carried a critical advisory.
 - **`vite.config.ts` type-checks** again: it takes `defineConfig` from
   `vitest/config`, which knows about its `test` block.
+- **Tailwind's settings move into `src/index.css`** (`@theme`), the way
+  Tailwind 4 is configured; `tailwind.config.js` is gone. The move was made
+  with Tailwind's own upgrade tool, which also renamed the classes v4 renamed
+  (`outline-none` is `outline-hidden`, for example). Tailwind's PostCSS
+  plugin now ships as `@tailwindcss/postcss`, and `autoprefixer` is gone
+  because Tailwind 4 adds vendor prefixes itself. `tailwindcss-animate`
+  stays, loaded with `@plugin`.
+- **The interface looks as it did, with three small exceptions.** A
+  screenshot comparison of eleven views (the editor empty and with a
+  document, a selected span, each dialog, the layer menu, reading view, the
+  embed, a phone-width window) matched pixel for pixel, apart from these.
+  Compatibility rules in `index.css` keep Tailwind 3's border color, button
+  cursor and placeholder gray. What changed: native dropdowns lose the
+  browser's gray fill and now match the text fields, and `space-y-*` puts
+  its gap below each item instead of above, so "More modes…" in Document
+  settings sits a few pixels lower and the layer menu is a few pixels
+  shorter. Neither was worth CSS to undo.
 
 **Why.** The old majors carried every advisory in the weekly audit's dev-tools
 report. All of them were in tools that never reach the browser, but the
-report is only useful while it stays short enough to read. What's left after
-this change is Tailwind 3's, which the Tailwind 4 move clears.
+report is only useful while it stays short enough to read; after this
+change it is empty.

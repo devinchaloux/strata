@@ -55,7 +55,7 @@ export function LayerSettingsPopover({
 
   const labelStyle = { color: 'var(--ink-muted)' }
   const fieldClass =
-    'w-full rounded border px-2 py-1 text-[13px] outline-none focus:ring-1 focus:ring-ring'
+    'w-full rounded border px-2 py-1 text-[13px] outline-hidden focus:ring-1 focus:ring-ring'
   const fieldStyle = { borderColor: 'var(--hairline)', color: 'var(--ink-primary)' }
 
   return (

@@ -109,7 +109,7 @@ export function AddLayerPopover() {
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="e.g. Phrase rhythm"
-              className="w-full rounded border px-2 py-1 text-[13px] outline-none focus:ring-1 focus:ring-ring"
+              className="w-full rounded border px-2 py-1 text-[13px] outline-hidden focus:ring-1 focus:ring-ring"
               style={{ borderColor: 'var(--hairline)', color: 'var(--ink-primary)' }}
             />
           </div>
