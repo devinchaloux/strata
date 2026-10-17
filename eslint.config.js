@@ -19,8 +19,11 @@ export default [
     files: ['**/*.{ts,tsx}'],
     plugins: { 'react-hooks': reactHooks, 'react-refresh': reactRefresh },
     rules: {
-      'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'warn',
+      // The plugin's full recommended set (2026-10-16): the rules of hooks,
+      // complete effect dependencies, and the checks written for the React
+      // Compiler, such as no state set inside an effect and no ref read or
+      // written while rendering. docs/decisions.md, "React's Newer Checks On".
+      ...reactHooks.configs['recommended-latest'].rules,
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
   },

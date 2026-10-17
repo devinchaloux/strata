@@ -12,7 +12,7 @@
  *   Drag boundary handle → move the shared edge between two adjacent spans
  */
 
-import { memo, useCallback, useRef, useState } from 'react'
+import { memo, useCallback, useRef, useState, useLayoutEffect } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
@@ -560,7 +560,8 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   // Stable across renders (so memoized layer groups aren't invalidated by a new
   // function each time); reads the live zoom and scroll through a ref.
   const viewRef = useRef({ pps, clientXToTime })
-  viewRef.current = { pps, clientXToTime }
+  // Written once the render commits, not while it runs (react-hooks/refs).
+  useLayoutEffect(() => { viewRef.current = { pps, clientXToTime } })
   const beginBoundaryDrag: BoundaryDragStart = useCallback(
     (layerId, leftId, rightId) => (e) => {
       const { pps, clientXToTime } = viewRef.current

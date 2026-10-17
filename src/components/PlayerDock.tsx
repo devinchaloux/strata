@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from 'react'
+import { useRef, useEffect, useState, useCallback, useLayoutEffect } from 'react'
 import { Link2, CircleAlert, PictureInPicture2, PanelBottom, ArrowDown, ArrowUp } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
@@ -208,7 +208,8 @@ export function PlayerDock() {
   const audioEngine = useAudioPlayer(isLocal ? audioFile : null, sourceOffset)
   const engine = source?.type === 'local' ? audioEngine : ytEngine
   const engineRef = useRef(engine)
-  engineRef.current = engine
+  // Written once the render commits, not while it runs (react-hooks/refs).
+  useLayoutEffect(() => { engineRef.current = engine })
 
   const isReady = playerStatus === 'ready'
   const isPlaying = playbackState === 'playing'

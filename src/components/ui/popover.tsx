@@ -97,7 +97,8 @@ const PopoverContent = React.forwardRef<
   const clear = useClearOfPlayer()
   const { attach } = clear
   const forwarded = React.useRef(ref)
-  forwarded.current = ref
+  // Written once the render commits, not while it runs (react-hooks/refs).
+  React.useLayoutEffect(() => { forwarded.current = ref })
   const setRefs = React.useCallback(
     (node: HTMLDivElement | null) => {
       attach(node)

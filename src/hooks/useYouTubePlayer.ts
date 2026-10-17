@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useLayoutEffect } from 'react'
 import { useUIStore } from '@/store/uiStore'
 import { mapYTState, loadYTApi } from '@/lib/youtube'
 import type { PlaybackRate } from '@/store/uiStore'
@@ -43,7 +43,8 @@ export function useYouTubePlayer(
   const aliveRef = useRef(true)
   // Latest offset, readable from the rAF loop and commands without re-subscribing
   const offsetRef = useRef(sourceOffset)
-  offsetRef.current = sourceOffset
+  // Written once the render commits, not while it runs (react-hooks/refs).
+  useLayoutEffect(() => { offsetRef.current = sourceOffset })
 
   const {
     setCurrentTime,

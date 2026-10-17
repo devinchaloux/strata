@@ -71,7 +71,12 @@ function TimeInput({
   title: string
 }) {
   const [text, setText] = useState(() => formatTime(value))
-  useEffect(() => setText(formatTime(value)), [value])
+  // Re-synced when the value changes, during render, not in an effect (react-hooks/set-state-in-effect).
+  const [valueSeen, setValueSeen] = useState(value)
+  if (valueSeen !== value) {
+    setValueSeen(value)
+    setText(formatTime(value))
+  }
 
   function commit() {
     const parsed = parseTimecode(text)
@@ -147,7 +152,12 @@ export function PointMarkerPanel() {
   // before the early return below so hook order stays stable regardless of
   // whether a marker is currently selected (Rules of Hooks).
   const [moreExpanded, setMoreExpanded] = useState(false)
-  useEffect(() => setMoreExpanded(false), [marker?.id])
+  // Noticed during render, not in an effect (react-hooks/set-state-in-effect).
+  const [markerSeen, setMarkerSeen] = useState(marker?.id)
+  if (markerSeen !== marker?.id) {
+    setMarkerSeen(marker?.id)
+    setMoreExpanded(false)
+  }
 
   // Place-and-type: a marker arrives unlabeled, so put the caret in the label
   // field rather than making the analyst travel to the Inspector for every

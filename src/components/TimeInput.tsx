@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { formatTime } from '@/lib/youtube'
 import { parseTimecode } from '@/lib/timecode'
 
@@ -17,8 +17,13 @@ export function TimeInput({
   title: string
 }) {
   const [text, setText] = useState(() => formatTime(value))
-  // Re-sync when the underlying value changes (commit result, undo, reselect).
-  useEffect(() => setText(formatTime(value)), [value])
+  // Re-sync when the underlying value changes (commit result, undo, reselect),
+  // during render, not in an effect (react-hooks/set-state-in-effect).
+  const [valueSeen, setValueSeen] = useState(value)
+  if (valueSeen !== value) {
+    setValueSeen(value)
+    setText(formatTime(value))
+  }
 
   function commit() {
     const parsed = parseTimecode(text)

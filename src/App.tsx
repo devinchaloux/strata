@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useLayoutEffect } from 'react'
 import { useStore } from 'zustand'
 import { Undo2, Redo2, Settings, CircleHelp } from 'lucide-react'
 import { useFileIO } from '@/hooks/useFileIO'
@@ -356,9 +356,12 @@ export default function App() {
   // Held in uiStore rather than local state; App is its only user today.
   const settingsOpen = useUIStore((s) => s.documentSettingsOpen)
   const setSettingsOpen = useUIStore((s) => s.setDocumentSettingsOpen)
+  // A new-analysis link (?new&title=…), read once as the app starts.
+  const [linkPrefill] = useState(() => parseNewParams(window.location.href))
   // "New analysis" framing for the settings dialog — set when the dialog was
-  // opened by the New action, cleared when opened as plain settings.
-  const [settingsIsNew, setSettingsIsNew] = useState(false)
+  // opened by the New action or a new-analysis link, cleared when opened as
+  // plain settings.
+  const [settingsIsNew, setSettingsIsNew] = useState(linkPrefill != null)
 
   const [helpOpen, setHelpOpen] = useState(false)
 
@@ -371,9 +374,12 @@ export default function App() {
 
   // Auto-expand the Inspector whenever a selection is made, so clicking a span
   // always surfaces its details — matches the editor's pre-existing behavior.
-  useEffect(() => {
+  // Noticed during render, not in an effect (react-hooks/set-state-in-effect).
+  const [selectionSeen, setSelectionSeen] = useState(0)
+  if (selectionSeen !== selectedCount) {
+    setSelectionSeen(selectedCount)
     if (selectedCount > 0) setInspectorCollapsed(false)
-  }, [selectedCount])
+  }
 
   // Undo/redo availability, read reactively off zundo's temporal store.
   const canUndo = useStore(useDocumentStore.temporal, (s) => s.pastStates.length > 0)
@@ -383,7 +389,8 @@ export default function App() {
   // in a ref so the keydown effect can call the latest closure without re-subscribing.
   const { performMerge } = useMerge()
   const performMergeRef = useRef(performMerge)
-  performMergeRef.current = performMerge
+  // Written once the render commits, not while it runs (react-hooks/refs).
+  useLayoutEffect(() => { performMergeRef.current = performMerge })
 
   // New analysis = create the blank document AND open the setup modal (the
   // settings dialog in "new" framing) so naming the track and linking a video
@@ -501,14 +508,12 @@ export default function App() {
   // what the link gives, and the setup dialog open to check it. The address
   // loses its parameters, so a reload doesn't start a second one.
   useEffect(() => {
-    const prefill = parseNewParams(window.location.href)
-    if (!prefill) return
-    loadDocument(applyNewFromLink(createEmptyDocument(), prefill))
+    if (!linkPrefill) return
+    loadDocument(applyNewFromLink(createEmptyDocument(), linkPrefill))
     useDocumentStore.temporal.getState().clear()
-    setSettingsIsNew(true)
     setSettingsOpen(true)
     window.history.replaceState(null, '', window.location.pathname)
-  }, [loadDocument, setSettingsOpen])
+  }, [linkPrefill, loadDocument, setSettingsOpen])
 
   // Keyboard shortcuts
   useEffect(() => {

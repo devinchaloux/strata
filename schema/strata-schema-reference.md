@@ -116,7 +116,7 @@ marks a tempo or meter change, or a renumbering.
 
 | Field | Type | Required | What it means |
 |---|---|---|---|
-| `project` | text or null | No | A collection or corpus tag. Used by the Corpus Builder to group related files — e.g. `anthemics-edm-corpus`. |
+| `project` | text or null | No | A collection or corpus tag, for grouping related files in whatever tool gathers them — e.g. `anthemics-edm-corpus`. |
 | `analysisAuthor` | text or null | No | Who created this analysis. |
 
 ---

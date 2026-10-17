@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useLayoutEffect } from 'react'
 import { useUIStore } from '@/store/uiStore'
 import type { PlaybackRate } from '@/store/uiStore'
 
@@ -26,7 +26,8 @@ export function useAudioPlayer(file: File | null, sourceOffset: number) {
   const rafRef = useRef<number>(0)
   const aliveRef = useRef(true)
   const offsetRef = useRef(sourceOffset)
-  offsetRef.current = sourceOffset
+  // Written once the render commits, not while it runs (react-hooks/refs).
+  useLayoutEffect(() => { offsetRef.current = sourceOffset })
 
   const {
     setCurrentTime,

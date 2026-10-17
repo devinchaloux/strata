@@ -114,14 +114,17 @@ export function SourceLinkForm({
   // Re-seed local state from the document on mount and whenever the linked
   // source actually changes (including after this form's own link action —
   // the fields then reflect the new "currently linked" state).
+  // Noticed during render, not in an effect (react-hooks/set-state-in-effect).
   const sourceKey = source ? `${source.type}:${source.url ?? source.filename ?? ''}` : ''
-  useEffect(() => {
-    if (!doc) return
-    setMode(isLinked ? doc.source.type : 'youtube')
-    setUrlText(currentVideoId ? (doc.source.url ?? '') : '')
-    setPickedFile(null)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sourceKey])
+  const [sourceSeen, setSourceSeen] = useState('')
+  if (sourceSeen !== sourceKey) {
+    setSourceSeen(sourceKey)
+    if (doc) {
+      setMode(isLinked ? doc.source.type : 'youtube')
+      setUrlText(currentVideoId ? (doc.source.url ?? '') : '')
+      setPickedFile(null)
+    }
+  }
 
   const parsedId = parseYouTubeInput(urlText)
 
