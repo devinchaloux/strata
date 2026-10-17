@@ -76,14 +76,17 @@ export function ExportDialog() {
   const [layerIds, setLayerIds] = useState<string[]>([])
 
   // Each time the dialog opens, start from the selection if there is one.
-  useEffect(() => {
-    if (!open || !doc) return
-    setMode(selRange ? 'selection' : 'all')
-    setCustom(selRange ?? [0, doc.duration])
-    setLayerIds(exportLayers(doc).map((l) => l.id))
-    // Only on open: later selection changes shouldn't reset a range being edited.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
+  // Only on open: later selection changes shouldn't reset a range being edited.
+  // Noticed during render, not in an effect (react-hooks/set-state-in-effect).
+  const [openSeen, setOpenSeen] = useState(false)
+  if (openSeen !== open) {
+    setOpenSeen(open)
+    if (open && doc) {
+      setMode(selRange ? 'selection' : 'all')
+      setCustom(selRange ?? [0, doc.duration])
+      setLayerIds(exportLayers(doc).map((l) => l.id))
+    }
+  }
 
   const range: [number, number] | null = !doc
     ? null

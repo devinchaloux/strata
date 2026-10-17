@@ -8,7 +8,7 @@
  * the merge with the source spans untouched.
  */
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { finalizeMerge, NOTE_SEPARATOR, type ConflictField } from '@/lib/mergeSpans'
@@ -47,10 +47,12 @@ export function MergeConflictDialog() {
   // round-trips through a string radio value.
   const [choices, setChoices] = useState<Record<string, string>>({})
 
-  // Reset choices whenever a new merge opens.
-  useEffect(() => {
+  // Reset choices whenever a new merge opens, during render, not in an effect (react-hooks/set-state-in-effect).
+  const [mergeSeen, setMergeSeen] = useState(mergeDialog)
+  if (mergeSeen !== mergeDialog) {
+    setMergeSeen(mergeDialog)
     setChoices({})
-  }, [mergeDialog])
+  }
 
   if (!mergeDialog) return null
   const { layerId, sourceIds, draft, conflicts } = mergeDialog

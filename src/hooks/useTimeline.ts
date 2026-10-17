@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useLayoutEffect } from 'react'
 import { useUIStore } from '@/store/uiStore'
 import { useDocumentStore } from '@/store/documentStore'
 import {
@@ -36,7 +36,8 @@ export function useTimeline() {
   // without making them stale-closure-prone deps.
   // ---------------------------------------------------------------------------
   const snap = useRef({ zoom, scrollOffset, pps, viewportWidth, duration, totalWidth })
-  snap.current = { zoom, scrollOffset, pps, viewportWidth, duration, totalWidth }
+  // Written once the render commits, not while it runs (react-hooks/refs).
+  useLayoutEffect(() => { snap.current = { zoom, scrollOffset, pps, viewportWidth, duration, totalWidth } })
 
   // ---------------------------------------------------------------------------
   // ResizeObserver — keep viewportWidth in sync with the container element

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useLayoutEffect } from 'react'
 import { useDocumentStore, selectIsDirty } from '@/store/documentStore'
 import {
   openFile as _openFile,
@@ -39,16 +39,14 @@ export function useFileIO() {
 
   // Refs let the auto-save interval read current values without re-registering.
   const strataDocRef = useRef(strataDoc)
-  strataDocRef.current = strataDoc
+  // Written once the render commits, not while it runs (react-hooks/refs).
+  useLayoutEffect(() => { strataDocRef.current = strataDoc })
   const isDirtyRef = useRef(isDirty)
-  isDirtyRef.current = isDirty
+  useLayoutEffect(() => { isDirtyRef.current = isDirty })
 
-  // Crash recovery: check on mount, expose pending entry for the UI to render.
-  const [pendingRecovery, setPendingRecovery] = useState<RecoveryEntry | null>(null)
-  useEffect(() => {
-    const entry = loadRecovery()
-    if (entry) setPendingRecovery(entry)
-  }, [])
+  // Crash recovery: checked once, as the starting value, and exposed for the
+  // UI to render.
+  const [pendingRecovery, setPendingRecovery] = useState<RecoveryEntry | null>(() => loadRecovery())
 
   // Auto-save to localStorage every 30 s when dirty.
   useEffect(() => {

@@ -15,7 +15,7 @@
  * are shown in a quiet footer; they're derived, not edited here.
  */
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { formatClock } from '@/lib/youtube'
 import { BUILT_IN_MODES } from '@/lib/modes'
@@ -91,9 +91,12 @@ function ModePicker({
 
   // If the mode changes to something other than Major/Minor (e.g. undo, or a
   // freshly loaded document), auto-expand so it isn't hidden behind the link.
-  useEffect(() => {
+  // Noticed during render, not in an effect (react-hooks/set-state-in-effect).
+  const [valueSeen, setValueSeen] = useState(value)
+  if (valueSeen !== value) {
+    setValueSeen(value)
     if (value != null && !isMajorMinor) setExpanded(true)
-  }, [value, isMajorMinor])
+  }
 
   const allModes = [...BUILT_IN_MODES, ...customModes]
 
@@ -171,21 +174,27 @@ export function DocumentSettingsDialog({
   // so does a new analysis whose details are already filled in (one started
   // from a link, lib/newFromLink.ts), so what was filled in can be checked.
   const [showMore, setShowMore] = useState(!isNew)
-  useEffect(() => {
-    if (!open) return
-    const d = useDocumentStore.getState().document
-    const filled = !!d && (d.bpm != null || !!d.homeKey || !!d.analysisAuthor)
-    setShowMore(!isNew || filled)
-  }, [open, isNew])
+  // Both re-seeds below are noticed during render, not in an effect (react-hooks/set-state-in-effect).
+  const [framingSeen, setFramingSeen] = useState({ open: false, isNew })
+  if (framingSeen.open !== open || framingSeen.isNew !== isNew) {
+    setFramingSeen({ open, isNew })
+    if (open) {
+      const filled = !!doc && (doc.bpm != null || !!doc.homeKey || !!doc.analysisAuthor)
+      setShowMore(!isNew || filled)
+    }
+  }
 
-  useEffect(() => {
-    if (!open || !doc) return
-    setArtistText(doc.artist.join(', '))
-    setBpmText(doc.bpm != null ? String(doc.bpm) : '')
-    setTsNumText(doc.timeSignature ? String(doc.timeSignature.numerator) : '')
-    setTsDenText(doc.timeSignature ? String(doc.timeSignature.denominator) : '')
-    setOffsetText(String(doc.source.sourceOffset))
-  }, [open, doc])
+  const [mirrorsSeen, setMirrorsSeen] = useState<{ open: boolean; doc: typeof doc }>({ open: false, doc: null })
+  if (mirrorsSeen.open !== open || mirrorsSeen.doc !== doc) {
+    setMirrorsSeen({ open, doc })
+    if (open && doc) {
+      setArtistText(doc.artist.join(', '))
+      setBpmText(doc.bpm != null ? String(doc.bpm) : '')
+      setTsNumText(doc.timeSignature ? String(doc.timeSignature.numerator) : '')
+      setTsDenText(doc.timeSignature ? String(doc.timeSignature.denominator) : '')
+      setOffsetText(String(doc.source.sourceOffset))
+    }
+  }
 
   if (!doc) return null
 

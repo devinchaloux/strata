@@ -11,7 +11,7 @@
  * work through the list. lib/vocabulary.ts holds the terms; docs/decisions.md,
  * "Vocabulary Libraries", the reasons.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { inputClass } from '@/components/Field'
@@ -105,14 +105,19 @@ export function TypePicker({
   const [expanded, setExpanded] = useState<string[]>([])
   const [active, setActive] = useState(0)
   // The quick-type bar's "/" (and its More… button) open the span picker.
+  // The request is a counter that only goes up; a new value is a new request.
+  // Noticed during render, not in an effect (react-hooks/set-state-in-effect); starting from 0 keeps the old
+  // behaviour of honouring a request already made when the picker mounts.
   const typePickerRequest = useUIStore((s) => s.typePickerRequest)
-  useEffect(() => {
+  const [requestSeen, setRequestSeen] = useState({ request: 0, kind })
+  if (requestSeen.request !== typePickerRequest || requestSeen.kind !== kind) {
+    setRequestSeen({ request: typePickerRequest, kind })
     if (typePickerRequest && kind === 'span') {
       setQuery('')
       setActive(0)
       setOpen(true)
     }
-  }, [typePickerRequest, kind])
+  }
 
   const list = kind === 'span' ? 'spanTypes' : 'pointMarkerTypes'
   const custom = useMemo(() => doc?.vocabulary[list] ?? [], [doc, list])
