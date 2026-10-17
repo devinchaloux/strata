@@ -40,7 +40,7 @@ By area, in the order the entries were made:
 
 **The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03)
 
-**Architecture, scope and process:** [Architecture](#architecture) · [Widgets](#widgets) · [Architecture](#architecture-1) · [Launch](#launch) · [Corpus Builder](#corpus-builder) · [v1 Feature Scope (Phase 0.6)](#v1-feature-scope-phase-06) · [Energy Contour Widget](#energy-contour-widget) · [EDM as Origin — Product Claim Reframe](#edm-as-origin--product-claim-reframe) · [Tech Stack](#tech-stack) · [v1 Scope](#v1-scope) · [Widget Contract (Phase 0.2)](#widget-contract-phase-02) · [Correctness Pass (post-Phase 2 polish)](#correctness-pass-post-phase-2-polish) · [Improvement Backlog Batch 1 (2026-07-03)](#improvement-backlog-batch-1-2026-07-03) · [Improvement Backlog Batch 2 (2026-07-03)](#improvement-backlog-batch-2-2026-07-03) · [Render / Edit Split (2026-09-27)](#render--edit-split-2026-09-27) · [Large-Analysis Performance (2026-09-27)](#large-analysis-performance-2026-09-27) · [Safari and Firefox Read-Through (2026-09-27)](#safari-and-firefox-read-through-2026-09-27) · [Beta Launch Pass (2026-10-01)](#beta-launch-pass-2026-10-01) · [Releases and Open Tabs (2026-10-02)](#releases-and-open-tabs-2026-10-02) · [Faster Checks: Tests in Node, a Weekly Audit (2026-10-05)](#faster-checks-tests-in-node-a-weekly-audit-2026-10-05) · [Development Tools Upgraded (2026-10-07)](#development-tools-upgraded-2026-10-07) · [No Corpus Builder: Strata Stays a One-File Tool (2026-10-16)](#no-corpus-builder-strata-stays-a-one-file-tool-2026-10-16) · [React's Newer Checks On (2026-10-16)](#reacts-newer-checks-on-2026-10-16)
+**Architecture, scope and process:** [Architecture](#architecture) · [Widgets](#widgets) · [Architecture](#architecture-1) · [Launch](#launch) · [Corpus Builder](#corpus-builder) · [v1 Feature Scope (Phase 0.6)](#v1-feature-scope-phase-06) · [Energy Contour Widget](#energy-contour-widget) · [EDM as Origin — Product Claim Reframe](#edm-as-origin--product-claim-reframe) · [Tech Stack](#tech-stack) · [v1 Scope](#v1-scope) · [Widget Contract (Phase 0.2)](#widget-contract-phase-02) · [Correctness Pass (post-Phase 2 polish)](#correctness-pass-post-phase-2-polish) · [Improvement Backlog Batch 1 (2026-07-03)](#improvement-backlog-batch-1-2026-07-03) · [Improvement Backlog Batch 2 (2026-07-03)](#improvement-backlog-batch-2-2026-07-03) · [Render / Edit Split (2026-09-27)](#render--edit-split-2026-09-27) · [Large-Analysis Performance (2026-09-27)](#large-analysis-performance-2026-09-27) · [Safari and Firefox Read-Through (2026-09-27)](#safari-and-firefox-read-through-2026-09-27) · [Beta Launch Pass (2026-10-01)](#beta-launch-pass-2026-10-01) · [Releases and Open Tabs (2026-10-02)](#releases-and-open-tabs-2026-10-02) · [Faster Checks: Tests in Node, a Weekly Audit (2026-10-05)](#faster-checks-tests-in-node-a-weekly-audit-2026-10-05) · [Development Tools Upgraded (2026-10-07)](#development-tools-upgraded-2026-10-07) · [No Corpus Builder: Strata Stays a One-File Tool (2026-10-16)](#no-corpus-builder-strata-stays-a-one-file-tool-2026-10-16) · [React's Newer Checks On (2026-10-16)](#reacts-newer-checks-on-2026-10-16) · [The Corpus Builder Stays Planned (2026-10-17)](#the-corpus-builder-stays-planned-2026-10-17)
 
 ---
 
@@ -219,7 +219,7 @@ By area, in the order the entries were made:
 **Decision:** The Corpus Builder is a separate companion application, not a mode of the Analysis Tool.
 **Rationale:** Its scope — MEI support, Supabase backend, extensibility surface for external analysis tools — is architecturally distinct from the single-file Analysis Tool. A shared codebase is an open question, but the product boundary is clear.
 
-*Superseded 2026-10-16 by "No Corpus Builder: Strata Stays a One-File Tool".*
+*2026-10-16: marked superseded by "No Corpus Builder: Strata Stays a One-File Tool". That entry was withdrawn on 2026-10-17 ("The Corpus Builder Stays Planned"), so this one stands.*
 
 ---
 
@@ -227,7 +227,7 @@ By area, in the order the entries were made:
 **Rationale:** Scholars own their data. Technical collaborators can query the Supabase database directly. The extensibility surface is Supabase itself — external tools access it via API. No backend infrastructure cost for the tool's developer.
 **Counter-argument:** A local-only approach (SQLite, no accounts, no internet dependency) is more consistent with the Analysis Tool's no-backend philosophy and imposes zero onboarding friction. A local-first with optional sync model may be the right resolution. See vision.md Section 9.3 for full tradeoff analysis. **Resolve before Corpus Builder development begins.**
 
-*Superseded 2026-10-16 by "No Corpus Builder: Strata Stays a One-File Tool": no Corpus Builder will be built, so there is no backend to choose.*
+*2026-10-16: marked superseded by "No Corpus Builder: Strata Stays a One-File Tool". That entry was withdrawn on 2026-10-17, so this one stands, still provisional.*
 
 ---
 
@@ -3936,6 +3936,8 @@ change it is empty.
 
 ## No Corpus Builder: Strata Stays a One-File Tool (2026-10-16)
 
+*Withdrawn 2026-10-17 by "The Corpus Builder Stays Planned": a Corpus Builder is still wanted.*
+
 **Decision.** The Corpus Builder, the companion app planned in the early
 design sessions, won't be built. Strata stays what it is: a tool for
 analysing one recording at a time, with everything about that analysis in
@@ -3987,4 +3989,23 @@ are fixed in all 22 places, and lint now fails on a new one.
 React's concurrent rendering, where a render can be started and thrown away.
 Fixing the 22 places once, and keeping the checks on, stops new ones arriving
 unnoticed.
+
+---
+
+## The Corpus Builder Stays Planned (2026-10-17)
+
+**Decision.** "No Corpus Builder: Strata Stays a One-File Tool" (2026-10-16) is
+withdrawn. A Corpus Builder, a way to gather many `.strata` analyses and work
+with them as a corpus, is still wanted for Strata, later: in the maintainer's
+words, *"I do want a corpus builder with Strata eventually."*
+
+- **The earlier Corpus Builder entries stand** as they were recorded, the
+  backend choice still provisional and the shared-codebase question still
+  open.
+- **How it is built is open.** Whether it is a separate companion app, as first
+  planned, or part of Strata itself is to be worked out when it is taken up.
+- **Nothing in the format changes.** `work` and `project` remain the fields a
+  corpus groups files by.
+
+**Why.** The maintainer reconsidered the day after the shelving was recorded.
 
