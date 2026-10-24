@@ -88,6 +88,7 @@ function SpanMenuItems({ span, layer }: { span: Span; layer: Layer }) {
   const removeSpan = useDocumentStore((s) => s.removeSpan)
   const placeBoundary = useDocumentStore((s) => s.placeBoundary)
   const groupIntoLayerAbove = useDocumentStore((s) => s.groupIntoLayerAbove)
+  const extendToEnd = useDocumentStore((s) => s.extendToEnd)
   const { eligibility, performMerge, neighborId } = useMerge()
 
   // Group into (several) or copy to (one) the layer above, then select the
@@ -162,6 +163,7 @@ function SpanMenuItems({ span, layer }: { span: Span; layer: Layer }) {
         Merge with next
       </ContextMenuItem>
       <GroupUpItem label="Copy up a layer" target={upTarget([span.id])} onSelect={() => groupUp([span.id])} />
+      <ContextMenuItem onClick={() => extendToEnd(layer.id, span.id)}>Extend to the end</ContextMenuItem>
       <ContextMenuSeparator />
       <ContextMenuItem
         onClick={handleDelete}

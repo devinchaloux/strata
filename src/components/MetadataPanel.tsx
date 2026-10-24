@@ -384,6 +384,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   const placeBoundary = useDocumentStore((s) => s.placeBoundary)
   const setSpanEdgeAction = useDocumentStore((s) => s.setSpanEdge)
   const resizeSpanByBars = useDocumentStore((s) => s.resizeSpanByBars)
+  const extendToEnd = useDocumentStore((s) => s.extendToEnd)
   const setSpanBars = useDocumentStore((s) => s.setSpanBars)
   const updateSpans = useDocumentStore((s) => s.updateSpans)
   const fillPickerPending = useUIStore((s) => s.fillPickerPending)
@@ -459,6 +460,9 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   const barsLong = endSeg ? Math.round((duration / barLength(endSeg)) * 10) / 10 : null
   const siblings = formSpans(layer)
   const position = siblings.findIndex((s) => s.id === span.id) + 1
+  // For To end: how many spans come after this one, and whether it already ends the track.
+  const after = siblings.filter((s) => s.startTime >= span.endTime - 1e-6).length
+  const isLast = !after && Math.abs(span.endTime - (doc?.duration ?? span.endTime)) < 1e-6
   // Fills already used in this level, for one-click reuse.
   const usedFills = [...new Set(siblings.map((s) => s.fillColor).filter((c): c is string => !!c && c !== 'none'))].slice(0, 8)
   // Spans in this layer with this span's label (itself included).
@@ -524,6 +528,17 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           <TimeInput value={span.startTime} onCommit={commitStart} title="Start time" />
           <span className="text-muted-foreground">→</span>
           <TimeInput value={span.endTime} onCommit={commitEnd} title="End time" />
+          {/* An unmetered ending: run this span to the end, dropping the
+              spans a regular layout put after it (extendToEnd). */}
+          {!isLast && (
+            <button
+              onClick={() => extendToEnd(layer.id, span.id)}
+              title={`Run this span to the end of the track${after ? `, removing the ${after} span${after === 1 ? '' : 's'} after it` : ''}`}
+              className="rounded border border-border px-1.5 py-0.5 text-xs text-foreground hover:bg-accent"
+            >
+              To end
+            </button>
+          )}
           <span className="text-xs text-muted-foreground">
             {formatTime(duration)}
             {firstBar !== null && lastBar !== null && ` · bar${firstBar === lastBar ? ` ${firstBar}` : `s ${firstBar}–${lastBar}`}`}

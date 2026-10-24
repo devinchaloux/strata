@@ -237,6 +237,8 @@ A selected span inside the grid shows its **Length** in bars in the Inspector: a
 
 Placed boundaries are immediately contributed to the shared time point pool via the next `contributeTimePoints` call.
 
+**To end** (beside the End time in the Inspector, and **Extend to the end** on right-click) runs a span to the end of the track and removes the spans after it in its layer, one undo step: for an ending that stops being metered, where a quick setup laid out spans the music doesn't have. Their commentary survives, anchored to their times. `extendToEnd` in the store, `extendSpanToEnd` in lib/spanEdit.ts.
+
 #### Group and Copy Up
 
 **Group into…** (Inspector, several spans selected) lists the other form layers, the one just above first, each with what grouping there would do: "fits" an empty stretch, or replaces and cuts back the spans already there. A last row makes a new layer just above. Picking one makes a blank span over the whole selection on that layer, selected for labelling. **Copy up** (Inspector and right-click, one span) copies the span whole (label, type, look) to the layer just above, or to a new layer if there is none; right-click on several offers **Group into the layer above**. These one-click actions never cut or replace: where the layer above already has a span in the way they are greyed out with the reason. All are one undo step. `groupSpans` and `groupIntoLayerAbove` in the store, lib/groupSpans.ts.
