@@ -128,6 +128,12 @@ export interface UIState {
   librariesOpen: boolean
   /** Bumped to ask the Inspector's span Type picker to open (the "/" key). */
   typePickerRequest: number
+  /**
+   * Set to open the Inspector's Fill colour picker (Quick pick Fills' More…).
+   * A flag, not a counter: the picker may mount only after the request (the
+   * tab switches with it), takes it up then, and clears it.
+   */
+  fillPickerPending: boolean
   /** The span Inspector's open tab, kept as the selection moves. */
   inspectorTab: InspectorTab
   /** The quick-entry bar's mode, remembered in the browser. */
@@ -191,6 +197,9 @@ export interface UIState {
   setPackEnabled: (id: string, on: boolean) => void
   setLibrariesOpen: (open: boolean) => void
   requestTypePicker: () => void
+  /** Shape & color tab, with the Fill picker open. */
+  requestFillPicker: () => void
+  clearFillPickerRequest: () => void
   setInspectorTab: (tab: InspectorTab) => void
   setReadingView: (on: boolean) => void
   setReadingShow: (part: 'commentary' | 'diagram', on: boolean) => void
@@ -298,6 +307,7 @@ const useUIStore = create<UIState>()((set) => ({
   enabledPacks: (readPreference(PACKS_KEY) ?? '').split(',').filter(Boolean),
   librariesOpen: false,
   typePickerRequest: 0,
+  fillPickerPending: false,
   inspectorTab: 'describe',
   quickEntry: (['off', 'type', 'shape', 'fill'] as const).find((m) => m === readPreference(QUICK_KEY)) ?? 'type',
   setQuickEntry: (mode) => {
@@ -390,6 +400,8 @@ const useUIStore = create<UIState>()((set) => ({
     }),
   setLibrariesOpen: (open) => set({ librariesOpen: open }),
   requestTypePicker: () => set((s) => ({ typePickerRequest: s.typePickerRequest + 1 })),
+  requestFillPicker: () => set({ fillPickerPending: true, inspectorTab: 'shape' }),
+  clearFillPickerRequest: () => set({ fillPickerPending: false }),
   setInspectorTab: (tab) => set({ inspectorTab: tab }),
   setReadingView: (on) => set({ readingView: on, selectedSpanIds: [], selectionAnchorId: null, selectedPointMarkerId: null }),
   setReadingShow: (part, on) => set((s) => ({ readingShow: { ...s.readingShow, [part]: on } })),

@@ -385,6 +385,9 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   const setSpanEdgeAction = useDocumentStore((s) => s.setSpanEdge)
   const resizeSpanByBars = useDocumentStore((s) => s.resizeSpanByBars)
   const setSpanBars = useDocumentStore((s) => s.setSpanBars)
+  const updateSpans = useDocumentStore((s) => s.updateSpans)
+  const fillPickerPending = useUIStore((s) => s.fillPickerPending)
+  const clearFillPickerRequest = useUIStore((s) => s.clearFillPickerRequest)
   const groupIntoLayerAbove = useDocumentStore((s) => s.groupIntoLayerAbove)
   const docNow = useDocumentStore((s) => s.document)
   const copyUp = docNow ? groupUpTarget(docNow, [span.id]) : { above: null, blocked: 'No document' }
@@ -458,6 +461,8 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   const position = siblings.findIndex((s) => s.id === span.id) + 1
   // Fills already used in this level, for one-click reuse.
   const usedFills = [...new Set(siblings.map((s) => s.fillColor).filter((c): c is string => !!c && c !== 'none'))].slice(0, 8)
+  // Spans in this layer with this span's label (itself included).
+  const sameLabel = span.label?.trim() ? siblings.filter((s) => s.label?.trim() === span.label!.trim()) : []
 
   return (
     <div className="flex h-full flex-col">
@@ -667,7 +672,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             <div className="flex gap-2">
               <div className="flex-1">
                 <Field label="Fill">
-                  <ColorPicker value={span.fillColor} fallback={layer.fillColorDefault} onChange={(c) => update({ fillColor: c })} />
+                  <ColorPicker value={span.fillColor} fallback={layer.fillColorDefault} onChange={(c) => update({ fillColor: c })} openRequest={fillPickerPending} onOpenRequestTaken={clearFillPickerRequest} />
                 </Field>
               </div>
               <div className="flex-1">
@@ -676,6 +681,20 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
                 </Field>
               </div>
             </div>
+            {/* Same label, same fill: this span's fill onto every span in the
+                layer with its label, in one undo step. */}
+            {sameLabel.length > 1 && (
+              <button
+                disabled={sameLabel.every((s) => (s.fillColor ?? null) === (span.fillColor ?? null))}
+                onClick={() => updateSpans(sameLabel.map((s) => s.id), { fillColor: span.fillColor ?? null })}
+                className="mb-3 w-full rounded border border-border px-2 py-1 text-left text-xs text-foreground hover:bg-accent disabled:opacity-50"
+                title="Every span in this layer with this label gets this span's fill"
+              >
+                {sameLabel.every((s) => (s.fillColor ?? null) === (span.fillColor ?? null))
+                  ? `All ${sameLabel.length} “${span.label}” spans share this fill`
+                  : `Use this fill on all ${sameLabel.length} “${span.label}” spans`}
+              </button>
+            )}
             {usedFills.length > 0 && (
               <div className="mb-3 flex flex-wrap items-center gap-1.5">
                 <span className="text-xs text-muted-foreground">In this layer</span>
@@ -841,6 +860,8 @@ function commonValue<T>(spans: Span[], get: (s: Span) => T): T | typeof MIXED {
 function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
   const doc = useDocumentStore((s) => s.document)
   const updateSpans = useDocumentStore((s) => s.updateSpans)
+  const fillPickerPending = useUIStore((s) => s.fillPickerPending)
+  const clearFillPickerRequest = useUIStore((s) => s.clearFillPickerRequest)
   const { eligibility, performMerge } = useMerge()
 
   const spans = entries.map((e) => e.span)
@@ -1019,6 +1040,8 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
                 value={fill === MIXED ? null : fill}
                 fallback={fillFallback}
                 onChange={(c) => setAll({ fillColor: c })}
+                openRequest={fillPickerPending}
+                onOpenRequestTaken={clearFillPickerRequest}
               />
             </Field>
           </div>

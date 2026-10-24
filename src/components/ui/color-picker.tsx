@@ -1,9 +1,9 @@
 /**
  * ColorPicker — curated swatch popover for per-span fill/stroke overrides.
  *
- * Palette from visual-design-spec.md §6: 10 hue families × 2 shades (deep/bright)
- * = 20 swatches. Organized as a 10-column × 2-row grid so family pairs are
- * visually aligned vertically. Hex input fallback for arbitrary colors.
+ * Palette (lib/palette.ts): 11 hue families in three shades, muted first, then
+ * deep and bright (visual-design-spec.md §6), one column per family so a
+ * family's shades line up. Hex input fallback for arbitrary colors.
  *
  * Three special states:
  *  - null        → inherit from layer default ("Use layer default" / nullLabel)
@@ -11,24 +11,11 @@
  *  - "#rrggbb"   → a specific color override
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from './popover'
 import { cn } from '@/lib/utils'
+import { PALETTE } from '@/lib/palette'
 
-// Palette: 10 hue families, each with a print-safe deep/bright pair.
-const PALETTE = [
-  { label: 'green',   deep: '#166534', bright: '#22c55e' },
-  { label: 'blue',    deep: '#1e40af', bright: '#3b82f6' },
-  { label: 'cyan',    deep: '#0e7490', bright: '#06b6d4' },
-  { label: 'violet',  deep: '#6d28d9', bright: '#8b5cf6' },
-  { label: 'teal',    deep: '#0f766e', bright: '#14b8a6' },
-  { label: 'magenta', deep: '#be185d', bright: '#ec4899' },
-  { label: 'orange',  deep: '#c2410c', bright: '#f97316' },
-  { label: 'amber',   deep: '#b45309', bright: '#f59e0b' },
-  { label: 'red',     deep: '#991b1b', bright: '#dc2626' },
-  { label: 'slate',   deep: '#475569', bright: '#94a3b8' },
-  { label: 'neutral', deep: '#000000', bright: '#ffffff' },
-]
 
 function isValidHex(s: string): boolean {
   return /^#[0-9a-fA-F]{6}$/.test(s)
@@ -56,11 +43,23 @@ export interface ColorPickerProps {
   onChange: (color: string | null) => void
   /** Label for the null/reset action. Defaults to "Use layer default". */
   nullLabel?: string
+  /** True when something elsewhere asks for this picker to open; it opens, then calls onOpenRequestTaken. */
+  openRequest?: boolean
+  onOpenRequestTaken?: () => void
 }
 
-export function ColorPicker({ value, fallback, onChange, nullLabel }: ColorPickerProps) {
+export function ColorPicker({ value, fallback, onChange, nullLabel, openRequest = false, onOpenRequestTaken }: ColorPickerProps) {
   const [open, setOpen] = useState(false)
   const [hexInput, setHexInput] = useState('')
+  // A request opens it, noticed during render (react-hooks/set-state-in-effect),
+  // then is handed back to be cleared, so it opens once.
+  if (openRequest && !open) {
+    setHexInput(value === 'none' || value == null ? '' : value)
+    setOpen(true)
+  }
+  useEffect(() => {
+    if (openRequest && open) onOpenRequestTaken?.()
+  }, [openRequest, open, onOpenRequestTaken])
 
   const isNone = value === 'none'
   const inheriting = value == null
@@ -138,8 +137,17 @@ export function ColorPicker({ value, fallback, onChange, nullLabel }: ColorPicke
       </PopoverTrigger>
 
       <PopoverContent className="w-60 p-3" align="start" sideOffset={4}>
-        {/* Swatches — deep row then bright row; same family aligns in each column */}
+        {/* Swatches — muted, deep, then bright rows; a family lines up in its column */}
         <div className="mb-3 grid grid-cols-11 gap-1">
+          {PALETTE.map(({ label, muted }) => (
+            <Swatch
+              key={`${label}-m`}
+              color={muted}
+              title={`${label} (muted)`}
+              selected={value === muted}
+              onPick={pick}
+            />
+          ))}
           {PALETTE.map(({ label, deep }) => (
             <Swatch
               key={`${label}-d`}

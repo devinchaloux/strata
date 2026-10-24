@@ -11,7 +11,9 @@
  *     file, no library), it shows the library chooser and More… alone.
  *   - Shape: drawn, in groups: the whole shape (1–3) and the line, solid or
  *     dashed (4–5), on number keys; then each end on its own, by click.
- *   - Fill: the layer default and eight colours.
+ *   - Fill: the layer default and eight muted colours (lib/palette.ts).
+ *   Shape and Fill end with More…, which opens the Inspector's Shape & color
+ *   tab (with the Fill picker open, for fills), as Type's opens the Type list.
  * Picking applies to every selected span in one undo step, with labels
  * following a new type as in the Inspector (store/typeActions.ts).
  * docs/decisions.md, "Quick Entry".
@@ -20,7 +22,7 @@
  * kept inside the window, and stops its clicks from reaching the diagram
  * (whose click clears the selection: React events bubble through portals).
  */
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
@@ -33,6 +35,7 @@ import { LIBRARIES } from '@/lib/vocabulary'
 import { isInputFocused } from '@/lib/youtube'
 import type { Layer, Span } from '@/types/strata'
 import { CAP_ICONS, WHOLE_ICONS } from '@/lib/capIcons'
+import { QUICK_FILLS } from '@/lib/palette'
 
 const BAR_H = 36
 const MAX_TYPES = 8
@@ -79,7 +82,6 @@ function shared<T>(spans: Span[], get: (s: Span) => T): T | null {
   return spans.every((s) => get(s) === first) ? first : null
 }
 
-const FILLS = ['#94a3b8', '#22c55e', '#3b82f6', '#06b6d4', '#8b5cf6', '#14b8a6', '#ec4899', '#f97316']
 
 export function QuickEntryBar({
   containerRef,
@@ -97,6 +99,14 @@ export function QuickEntryBar({
   const selected = useUIStore((s) => s.selectedSpanIds)
   const mode = useUIStore((s) => s.quickEntry)
   const requestTypePicker = useUIStore((s) => s.requestTypePicker)
+  const requestFillPicker = useUIStore((s) => s.requestFillPicker)
+  const setInspectorTab = useUIStore((s) => s.setInspectorTab)
+  // More… (or "/"): the full list in the Inspector for whatever this offers.
+  const more = useCallback(() => {
+    if (mode === 'type') requestTypePicker()
+    else if (mode === 'fill') requestFillPicker()
+    else setInspectorTab('shape')
+  }, [mode, requestTypePicker, requestFillPicker, setInspectorTab])
   const barRef = useRef<HTMLDivElement>(null)
 
   // The selection, if it all sits in one visible layer.
@@ -171,7 +181,7 @@ export function QuickEntryBar({
     }
     return [
       { key: 'default', label: 'Layer default', hotkey: 1, swatch: target.layer.fillColorDefault, apply: () => updateSpans(ids, { fillColor: null }) },
-      ...FILLS.map((c, i) => ({ key: c, label: '', title: c, hotkey: i + 2, swatch: c, apply: () => updateSpans(ids, { fillColor: c }) })),
+      ...QUICK_FILLS.map((c, i) => ({ key: c, label: '', title: c, hotkey: i + 2, swatch: c, apply: () => updateSpans(ids, { fillColor: c }) })),
     ]
   }, [doc, target, mode])
 
@@ -189,14 +199,14 @@ export function QuickEntryBar({
       if (picked) {
         e.preventDefault()
         picked.apply()
-      } else if (e.key === '/' && mode === 'type') {
+      } else if (e.key === '/') {
         e.preventDefault()
-        requestTypePicker()
+        more()
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [showing, options, mode, requestTypePicker])
+  }, [showing, options, more])
 
   // Where the container sits on screen, and the bar's own width (to keep it
   // inside the window); refreshed on scroll and resize.
@@ -285,11 +295,11 @@ export function QuickEntryBar({
           </button>
         </span>
       ))}
-      {mode === 'type' && (
+      {mode !== 'off' && (
         <button
           type="button"
-          onClick={requestTypePicker}
-          title="Every type, with search"
+          onClick={more}
+          title={mode === 'type' ? 'Every type, with search' : mode === 'fill' ? 'Every colour' : 'Every shape setting, in the Inspector'}
           className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           More… <kbd className="font-sans text-[11px]">/</kbd>
