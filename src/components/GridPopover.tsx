@@ -252,6 +252,10 @@ export function GridPopover() {
               </tbody>
             </table>
 
+            <p className="mt-1 text-muted-foreground">
+              Check it by ear: turn on the Metronome in the play bar, which can fine-tune the tempo as it plays.
+            </p>
+
             {/* Tempo changes and free passages: rarer, so folded away. */}
             <button
               type="button"

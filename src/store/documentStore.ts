@@ -3,6 +3,7 @@ import { temporal } from 'zundo'
 import type { StrataDocument, Layer, LayerBase, Span, PointMarker, SharedTimePoint, GridSegment, VocabTerm } from '@/types/strata'
 import { formSpans } from '@/lib/layers'
 import { sortedSegments, segmentAt, segmentEnd, extendBack, snapToGrid, barTiling, barLength } from '@/lib/beatGrid'
+import { roundTempo, segmentForAdjusting, tempoThroughDownbeat } from '@/lib/metronome'
 import type { FormDiagramData } from '@/types/strata'
 import { mergeVocabPack, type MergeResult, type VocabPack } from '@/lib/vocabPack'
 import { placeBoundaryInSpans, setSpanEdge, findOverlaps, endSpanAtTime, snapSpansToGrid, rippleSpanEnd, MIN_SPAN_WIDTH } from '@/lib/spanEdit'
@@ -145,6 +146,15 @@ interface DocumentState {
   // first fell on a downbeat. Returns the segment's id for the next tap.
   layGridFromTaps: (start: number, bpm: number, id?: string | null) => string | null
   removeGridSegment: (id: string) => void
+  // Beat matching against the click track (lib/metronome.ts). Each acts on
+  // the grid row at `time` (or the last before it). Tempo steps keep the row's
+  // first downbeat in place; a nudge moves the whole row earlier or later;
+  // pinning sets the tempo so the downbeat nearest `time` lands on it, and
+  // returns the new tempo and how many bars in that downbeat is (null if
+  // `time` is under a bar from the row's start).
+  stepGridTempo: (time: number, deltaBpm: number) => void
+  nudgeGrid: (time: number, seconds: number) => void
+  pinDownbeat: (time: number) => { bpm: number; bars: number } | null
 
   // Shared time point pool
   // Replaces all pool entries contributed by layerId with the given points.
@@ -779,6 +789,36 @@ const useDocumentStore = create<DocumentState>()(
             updatedAt: now(),
           },
         })
+      },
+
+      stepGridTempo: (time, deltaBpm) => {
+        const doc = get().document
+        const seg = doc && segmentForAdjusting(sortedSegments(doc.beatGrid), time, doc.duration)
+        if (!seg) return
+        get().updateGridSegment(seg.id, { bpm: Math.max(1, roundTempo(seg.bpm + deltaBpm)) })
+      },
+
+      nudgeGrid: (time, seconds) => {
+        const doc = get().document
+        if (!doc) return
+        const segs = sortedSegments(doc.beatGrid)
+        const seg = segmentForAdjusting(segs, time, doc.duration)
+        if (!seg) return
+        // Not before 0:00, and not onto the row before it.
+        const before = segs[segs.indexOf(seg) - 1]
+        const floor = before ? before.start + 0.05 : 0
+        const start = Math.max(floor, Math.round((seg.start + seconds) * 1000) / 1000)
+        if (start !== seg.start) get().updateGridSegment(seg.id, { start })
+      },
+
+      pinDownbeat: (time) => {
+        const doc = get().document
+        const seg = doc && segmentForAdjusting(sortedSegments(doc.beatGrid), time, doc.duration)
+        if (!seg) return null
+        const bpm = tempoThroughDownbeat(seg, time)
+        if (bpm == null) return null
+        get().updateGridSegment(seg.id, { bpm })
+        return { bpm, bars: Math.round(((time - seg.start) * bpm) / (seg.beatsPerBar * 60)) }
       },
 
       removeGridSegment: (id) => {

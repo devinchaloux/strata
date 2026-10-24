@@ -26,7 +26,7 @@ By area, in the order the entries were made:
 
 **Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01)
 
-**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01)
+**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24)
 
 **Point markers:** [Point Markers](#point-markers) · [Point Markers — Implementation (2026-07-03)](#point-markers--implementation-2026-07-03) · [Point Markers — Redesign (2026-07-04)](#point-markers--redesign-2026-07-04) · [Marker Band, Absent Events, and the Diagram Control Bar (2026-07-24, cont.)](#marker-band-absent-events-and-the-diagram-control-bar-2026-07-24-cont)
 
@@ -34,7 +34,7 @@ By area, in the order the entries were made:
 
 **Commentary and lyrics:** [Written Analysis Widget (2026-09-27)](#written-analysis-widget-2026-09-27) · [Commentary Links to Point Markers (2026-09-27)](#commentary-links-to-point-markers-2026-09-27) · [Commentary on a Stretch of Time (2026-09-27)](#commentary-on-a-stretch-of-time-2026-09-27) · [Hiding Commentary (2026-09-27)](#hiding-commentary-2026-09-27) · [The Commentary Stack (2026-10-01)](#the-commentary-stack-2026-10-01) · [Lyrics Stay in the File; Shared Views Leave Them Out by Default (2026-10-01)](#lyrics-stay-in-the-file-shared-views-leave-them-out-by-default-2026-10-01) · [Shared Links Treat Lyrics Like Any Other View (2026-10-03)](#shared-links-treat-lyrics-like-any-other-view-2026-10-03)
 
-**The player and the source:** [Player Chrome (Phase 0.3)](#player-chrome-phase-03) · [Source Linking (2026-07-02)](#source-linking-2026-07-02) · [Video Curtain Covers Every Dialog (2026-09-27)](#video-curtain-covers-every-dialog-2026-09-27) · [Dialogs Stay Clear of the Player (2026-09-27)](#dialogs-stay-clear-of-the-player-2026-09-27) · [Video Below the Fold (2026-09-27)](#video-below-the-fold-2026-09-27) · [Menus Keep Clear of the Player (2026-10-02)](#menus-keep-clear-of-the-player-2026-10-02)
+**The player and the source:** [Player Chrome (Phase 0.3)](#player-chrome-phase-03) · [Source Linking (2026-07-02)](#source-linking-2026-07-02) · [Video Curtain Covers Every Dialog (2026-09-27)](#video-curtain-covers-every-dialog-2026-09-27) · [Dialogs Stay Clear of the Player (2026-09-27)](#dialogs-stay-clear-of-the-player-2026-09-27) · [Video Below the Fold (2026-09-27)](#video-below-the-fold-2026-09-27) · [Menus Keep Clear of the Player (2026-10-02)](#menus-keep-clear-of-the-player-2026-10-02) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24)
 
 **Reading, sharing, embedding and export:** [Sharing](#sharing) · [Embeddable Viewer](#embeddable-viewer) · [Export (2026-09-27)](#export-2026-09-27) · [The Reading View (2026-10-01)](#the-reading-view-2026-10-01) · [Sharing by Link (2026-10-01)](#sharing-by-link-2026-10-01) · [Export: Choose Layers, Cut Spans at the Range (2026-10-02)](#export-choose-layers-cut-spans-at-the-range-2026-10-02) · [Share From the Toolbar; Dropbox and OneDrive Links (2026-10-02)](#share-from-the-toolbar-dropbox-and-onedrive-links-2026-10-02) · [Example Analyses (2026-10-02)](#example-analyses-2026-10-02) · [Embedding an Analysis (2026-10-03)](#embedding-an-analysis-2026-10-03) · [Starting an Analysis from a Link (2026-10-03)](#starting-an-analysis-from-a-link-2026-10-03)
 
@@ -4086,4 +4086,48 @@ chosen. That change used to reset the fields, wiping a tempo still being typed.
 
 A guided walkthrough for first-time users is wanted too; it isn't part of
 this change.
+
+---
+
+## Click Track and Beat Matching (2026-10-24)
+
+**Decision.** A **Metronome** button in the play bar opens a panel with an
+on/off switch and a volume slider. While on, it clicks every beat of the beat
+grid over the video or audio, louder on downbeats. A free stretch is silent,
+and tempo changes are followed. The volume is remembered in the browser; the
+switch is not.
+
+**Decision.** With a grid, the panel adjusts the grid row at the playhead
+while it plays:
+- **Tempo** in steps of 0.01 or 0.1 BPM, keeping the row's first downbeat in
+  place, so the click drifts into or out of line further into the track.
+- **Beat earlier / later** by 5 ms, moving the whole row, to line up the start.
+- **Downbeat is here** sets the tempo so the downbeat nearest the playhead
+  lands exactly on it. Paused on a downbeat two minutes in at 159 BPM, a 20 ms
+  error in where it's paused moves the tempo by under 0.03 BPM.
+
+Each has a key that works whenever the metronome is on: `[` `]` for tempo
+(Shift for 0.1), `,` `.` for earlier and later (Shift for 25 ms), and `D` for
+"downbeat is here". A run of adjustments with under 1.5 s between them is one
+undo step. Tempos are kept to a thousandth of a BPM.
+
+**Decision.** The click is scheduled on the Web Audio clock, a little ahead,
+from a mapping of audio time to media time that is read from the player every
+25 ms. A reading only eases the mapping, since YouTube reports its time in
+steps; a jump of more than 0.15 s (a seek) or a change of speed resets it, and
+a grid edit drops clicks already scheduled. In a headless test against an
+audio file, clicks landed within 12 ms of the beat on the first beat and
+within about 3 ms after that.
+**Why.** The media can't be driven from the click, nor the click from the
+media: a YouTube iframe gives no access to its audio. Scheduling ahead on the
+audio clock is what keeps a click steady; following the player is what keeps
+it in step after a seek.
+
+**Why.** Devin: tracks made in a DAW have an exact tempo, sometimes a
+fractional one (158.9 BPM), and a diagram's bar lines are only right if the
+grid has it. Tap-along rounds to a whole BPM (see "Tap-Along Refinements"),
+and the Grid menu's typed tempo can only be checked by eye. Hearing the click
+against the track shows drift at once, and pinning a far downbeat turns that
+into the exact tempo without trial and error. Not meant for freely timed
+music, which has no grid to match.
 
