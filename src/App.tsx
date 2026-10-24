@@ -8,7 +8,7 @@ import { FormDiagram } from '@/components/FormDiagram'
 import { Inspector } from '@/components/Inspector'
 import { MergeConflictDialog } from '@/components/MergeConflictDialog'
 import { DocumentSettingsDialog } from '@/components/DocumentSettingsDialog'
-import { copySpan, pasteOnto } from '@/store/spanClipboard'
+import { copySpans, pasteOnto } from '@/store/spanClipboard'
 import { LinkSourceDialog } from '@/components/LinkSourceDialog'
 import { ExportDialog } from '@/components/ExportDialog'
 import { LibrariesDialog } from '@/components/LibrariesDialog'
@@ -534,8 +534,8 @@ export default function App() {
         }
       }
 
-      // Ctrl/⌘+C / Ctrl/⌘+V — copy the selected span, paste the chosen parts
-      // of it onto the selection (store/spanClipboard.ts). Not in a text field,
+      // Ctrl/⌘+C / Ctrl/⌘+V — copy the selected spans, paste the chosen parts
+      // of them onto the selection (store/spanClipboard.ts). Not in a text field,
       // and not over selected page text, where the usual copy and paste apply.
       if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && (e.key === 'c' || e.key === 'v')) {
         const el = e.target as HTMLElement | null
@@ -545,7 +545,7 @@ export default function App() {
         const ui = useUIStore.getState()
         const textSelected = !!window.getSelection()?.toString()
         if (!inField && !textSelected && !ui.readingView && ui.selectedSpanIds.length) {
-          if (e.key === 'c' && copySpan(ui.selectedSpanIds[0])) e.preventDefault()
+          if (e.key === 'c' && copySpans(ui.selectedSpanIds)) e.preventDefault()
           if (e.key === 'v' && pasteOnto(ui.selectedSpanIds)) e.preventDefault()
           return
         }

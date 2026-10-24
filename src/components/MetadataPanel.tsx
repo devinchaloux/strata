@@ -14,7 +14,7 @@ import { useUIStore, type InspectorTab } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
 import { GroupPopover } from '@/components/GroupPopover'
 import { PatternPicker } from '@/components/PatternPicker'
-import { CopyButton, PasteButton } from '@/components/CopyPaste'
+import { CopyButton, PasteButton, PasteHint } from '@/components/CopyPaste'
 import { groupUpTarget } from '@/lib/groupSpans'
 import { safeFill } from '@/lib/palette'
 import { formatTime, formatClock } from '@/lib/youtube'
@@ -600,9 +600,12 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         <SpanLinks span={span} />
 
         {/* Copy this span; paste the chosen parts of a copied one here. */}
-        <div className="flex items-center gap-1.5">
-          <CopyButton spanId={span.id} />
-          <PasteButton spanIds={[span.id]} />
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-1.5">
+            <CopyButton spanIds={[span.id]} />
+            <PasteButton spanIds={[span.id]} />
+          </div>
+          <PasteHint spanIds={[span.id]} />
         </div>
 
         {/* The three tabs as one segmented control, so they read as the way
@@ -955,9 +958,12 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
 
         {/* Group: one span over all of these, on another layer. */}
         <GroupPopover spans={spans} />
-        <div className="-mt-2 mb-4 flex items-center gap-1.5">
-          <PasteButton spanIds={ids} />
-          <span className="text-[11px] text-muted-foreground">onto all {spans.length}</span>
+        <div className="-mt-2 mb-4 flex flex-col gap-1">
+          <div className="flex items-center gap-1.5">
+            <CopyButton spanIds={ids} />
+            <PasteButton spanIds={ids} />
+          </div>
+          <PasteHint spanIds={ids} />
         </div>
 
         <Field

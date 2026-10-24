@@ -1,7 +1,8 @@
 /**
- * Copy and paste between spans: Ctrl/⌘+C copies the selected span, and
- * Ctrl/⌘+V pastes the chosen parts of it onto every selected span (by default
- * the label and type), one undo step. Which parts paste is the analyst's
+ * Copy and paste between spans: Ctrl/⌘+C copies the selected spans, and
+ * Ctrl/⌘+V pastes the chosen parts of them (by default the label and type),
+ * one undo step. One copied span pastes onto every selected span; several
+ * paste in time order onto the same number of selected spans, first to first. Which parts paste is the analyst's
  * remembered choice, set in the Inspector's Paste menu. The clipboard is the
  * app's own, not the system's, and lasts the visit. docs/decisions.md, "Copy
  * and Paste Between Spans".
@@ -46,13 +47,14 @@ export interface CopiedSpan {
 }
 
 interface ClipboardState {
-  copied: CopiedSpan | null
+  /** In time order; empty when nothing has been copied. */
+  copied: CopiedSpan[]
   fields: PasteField[]
   setFields: (fields: PasteField[]) => void
 }
 
 export const useSpanClipboard = create<ClipboardState>()((set) => ({
-  copied: null,
+  copied: [],
   fields: readFields(),
   setFields: (fields) => {
     try {
@@ -64,13 +66,43 @@ export const useSpanClipboard = create<ClipboardState>()((set) => ({
   },
 }))
 
-/** Copy a span (and its commentary). False if it isn't in the document. */
-export function copySpan(spanId: string): boolean {
+/**
+ * Spans by id, in time order (at the same time, the higher layer first): the
+ * order copied spans and paste targets are paired in.
+ */
+function inOrder(ids: string[]): Span[] {
   const doc = useDocumentStore.getState().document
-  const span = doc?.layers.flatMap(formSpans).find((s) => s.id === spanId)
-  if (!doc || !span) return false
-  useSpanClipboard.setState({ copied: { span, commentary: blockForSpan(doc, spanId)?.text ?? '' } })
+  if (!doc) return []
+  return doc.layers
+    .filter((l) => l.type === 'form-diagram')
+    .flatMap((l) => formSpans(l).filter((s) => ids.includes(s.id)).map((span) => ({ span, order: l.displayOrder })))
+    .sort((a, b) => a.span.startTime - b.span.startTime || b.order - a.order)
+    .map((e) => e.span)
+}
+
+/** Copy spans (and their commentary), in time order. False if none is in the document. */
+export function copySpans(spanIds: string[]): boolean {
+  const doc = useDocumentStore.getState().document
+  const spans = inOrder(spanIds)
+  if (!doc || !spans.length) return false
+  useSpanClipboard.setState({ copied: spans.map((span) => ({ span, commentary: blockForSpan(doc, span.id)?.text ?? '' })) })
   return true
+}
+
+/**
+ * Whether what's copied can paste onto `spanIds`: one copied span onto any
+ * selection (but itself), several onto the same number. The reason when not.
+ */
+export function pasteCheck(spanIds: string[]): { ok: boolean; reason: string | null } {
+  const { copied } = useSpanClipboard.getState()
+  if (!copied.length) return { ok: false, reason: 'Copy a span first (Ctrl/⌘+C).' }
+  if (copied.length === 1) {
+    const ok = spanIds.some((id) => id !== copied[0].span.id)
+    return { ok, reason: ok ? null : 'Select the spans to paste onto.' }
+  }
+  if (spanIds.length !== copied.length)
+    return { ok: false, reason: `${copied.length} spans copied: select ${copied.length} to paste them in order.` }
+  return { ok: true, reason: null }
 }
 
 /** The span fields each paste choice carries (label and commentary are written their own way). */
@@ -92,20 +124,26 @@ export function pastePatch(from: Span, fields: PasteField[]): Partial<Omit<Span,
 }
 
 /**
- * Paste the chosen parts of the copied span onto `spanIds` (the copied span
- * itself is skipped), one undo step. Returns how many spans changed.
+ * Paste the chosen parts of what's copied onto `spanIds`, one undo step: one
+ * copied span onto each of them (not onto itself), or several onto as many,
+ * paired in time order. Returns how many spans changed (0 when it can't).
  */
 export function pasteOnto(spanIds: string[], fields = useSpanClipboard.getState().fields): number {
   const { copied } = useSpanClipboard.getState()
-  const targets = spanIds.filter((id) => id !== copied?.span.id)
-  if (!copied || !targets.length || !fields.length) return 0
-  const store = useDocumentStore.getState()
+  if (!fields.length || !pasteCheck(spanIds).ok) return 0
+  const pairs: [CopiedSpan, string][] =
+    copied.length === 1
+      ? spanIds.filter((id) => id !== copied[0].span.id).map((id) => [copied[0], id])
+      : inOrder(spanIds).map((target, i) => [copied[i], target.id])
   withHistoryGroup(newGestureKey('paste'), () => {
-    const patch = pastePatch(copied.span, fields)
-    if (Object.keys(patch).length) store.updateSpans(targets, patch)
-    if (fields.includes('label')) useDocumentStore.getState().setSpanLabels(targets, copied.span.label ?? null)
-    if (fields.includes('commentary'))
-      for (const id of targets) useDocumentStore.getState().setSpanCommentary(id, copied.commentary)
+    for (const [from, id] of pairs) {
+      if (from.span.id === id) continue
+      const store = useDocumentStore.getState()
+      const patch = pastePatch(from.span, fields)
+      if (Object.keys(patch).length) store.updateSpans([id], patch)
+      if (fields.includes('label')) useDocumentStore.getState().setSpanLabels([id], from.span.label ?? null)
+      if (fields.includes('commentary')) useDocumentStore.getState().setSpanCommentary(id, from.commentary)
+    }
   })
-  return targets.length
+  return pairs.filter(([from, id]) => from.span.id !== id).length
 }
