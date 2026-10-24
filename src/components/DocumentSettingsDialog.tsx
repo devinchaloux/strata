@@ -191,9 +191,15 @@ export function DocumentSettingsDialog({
     }
   }
 
-  const [mirrorsSeen, setMirrorsSeen] = useState<{ open: boolean; doc: typeof doc }>({ open: false, doc: null })
-  if (mirrorsSeen.open !== open || mirrorsSeen.doc !== doc) {
-    setMirrorsSeen({ open, doc })
+  // Re-copied when the dialog opens or one of these values changes (an undo,
+  // a link filling them in), not on every document change: the media's length
+  // arriving while the analyst types a tempo used to wipe what they'd typed.
+  const mirrored = doc
+    ? JSON.stringify([doc.artist, doc.bpm, doc.timeSignature, doc.source.sourceOffset])
+    : ''
+  const [mirrorsSeen, setMirrorsSeen] = useState({ open: false, mirrored: '' })
+  if (mirrorsSeen.open !== open || mirrorsSeen.mirrored !== mirrored) {
+    setMirrorsSeen({ open, mirrored })
     if (open && doc) {
       setArtistText(doc.artist.join(', '))
       setBpmText(doc.bpm != null ? String(doc.bpm) : '')

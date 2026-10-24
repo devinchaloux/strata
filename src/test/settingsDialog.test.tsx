@@ -5,7 +5,7 @@
  * in, which the analyst should see before pressing Start.
  */
 import { describe, it, expect, afterEach } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { DocumentSettingsDialog } from '@/components/DocumentSettingsDialog'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useDocumentStore } from '@/store/documentStore'
@@ -38,5 +38,14 @@ describe('New analysis dialog', () => {
     expect(screen.getByRole('button', { name: 'Advanced' }).getAttribute('aria-expanded')).toBe('true')
     expect(screen.getByDisplayValue('128')).toBeTruthy()
     expect(screen.getByDisplayValue('A. Analyst')).toBeTruthy()
+  })
+
+  it('keeps a tempo being typed when the media’s length arrives', () => {
+    useDocumentStore.getState().loadDocument(createEmptyDocument())
+    open()
+    const tempo = screen.getByRole('textbox', { name: 'Tempo (BPM)' })
+    fireEvent.change(tempo, { target: { value: '128' } })
+    act(() => useDocumentStore.getState().updateMeta({ duration: 285 }))
+    expect((screen.getByRole('textbox', { name: 'Tempo (BPM)' }) as HTMLInputElement).value).toBe('128')
   })
 })
