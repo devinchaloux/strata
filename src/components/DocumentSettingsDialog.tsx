@@ -9,8 +9,8 @@
  *
  * The Source section embeds SourceLinkForm (set/swap/unlink) — so this dialog
  * doubles as the new-analysis setup modal: "New" opens it with isNew, which
- * swaps the framing copy and starts with "Advanced" folded. Same fields, same
- * live-edit behavior.
+ * swaps the framing copy. Same fields, same live-edit behavior; "Advanced"
+ * starts folded in both.
  *
  * Up front: title, artist, source, tempo and meter (the last two seed the beat
  * grid). Everything else is under "Advanced", ending with the read-only
@@ -176,18 +176,18 @@ export function DocumentSettingsDialog({
   const [tsDenText, setTsDenText] = useState('')
   const [offsetText, setOffsetText] = useState('')
   // A new analysis asks only for what starting needs (title, artist, source,
-  // tempo and meter); everything else waits behind "Advanced". Settings open
-  // with it expanded — and so does a new analysis whose advanced details are
-  // already filled in (one started from a link, lib/newFromLink.ts), so what
-  // was filled in can be checked.
-  const [showMore, setShowMore] = useState(!isNew)
+  // tempo and meter); everything else waits behind "Advanced", folded in
+  // Document settings too. It opens unfolded only for a new analysis whose
+  // advanced details are already filled in (one started from a link,
+  // lib/newFromLink.ts), so what was filled in can be checked.
+  const [showMore, setShowMore] = useState(false)
   // Both re-seeds below are noticed during render, not in an effect (react-hooks/set-state-in-effect).
   const [framingSeen, setFramingSeen] = useState({ open: false, isNew })
   if (framingSeen.open !== open || framingSeen.isNew !== isNew) {
     setFramingSeen({ open, isNew })
     if (open) {
       const filled = !!doc && (!!doc.homeKey || !!doc.analysisAuthor)
-      setShowMore(!isNew || filled)
+      setShowMore(isNew && filled)
     }
   }
 
@@ -255,7 +255,7 @@ export function DocumentSettingsDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-md gap-3"
+        className="max-w-lg gap-3"
         // Start in Title, not on the info button beside the heading (which
         // would also pop its tooltip open).
         onOpenAutoFocus={(e) => {

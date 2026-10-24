@@ -22,7 +22,7 @@ By area, in the order the entries were made:
 
 **File format and schema:** [File Format](#file-format) · [Span Data Model](#span-data-model) · [File-Level Metadata](#file-level-metadata) · [Schema](#schema) · [Shared Time Point Pool](#shared-time-point-pool) · [Source References](#source-references) · [Schema Finalization (Phase 0.1)](#schema-finalization-phase-01) · [Schema Revision (Phase 0.1 — Session 2)](#schema-revision-phase-01--session-2) · [Schema Changes (Phase 2 prep, 2026-06-20)](#schema-changes-phase-2-prep-2026-06-20) · [Trust and Format Integrity, Round 1 (2026-09-27)](#trust-and-format-integrity-round-1-2026-09-27) · [File Format Integrity, Round 2 (2026-09-27)](#file-format-integrity-round-2-2026-09-27)
 
-**Drawing and editing the form diagram:** [Merge UX (Phase 0.5)](#merge-ux-phase-05) · [Hierarchical Enforcement](#hierarchical-enforcement) · [Form Diagram Editor — Interaction Model](#form-diagram-editor--interaction-model) · [Merge](#merge) · [Form Diagram Editor (Phase 0.4)](#form-diagram-editor-phase-04) · [Phase 2 Implementation (Form Diagram — Milestone A)](#phase-2-implementation-form-diagram--milestone-a) · [Merge Implementation (Phase 2.5)](#merge-implementation-phase-25) · [Form Diagram Shape Model — Adjoin Rework (2026-06-27)](#form-diagram-shape-model--adjoin-rework-2026-06-27) · [Label Collision Strategy (2026-06-27)](#label-collision-strategy-2026-06-27) · [Phase 2.5 Merge — Interaction Completion (2026-06-30)](#phase-25-merge--interaction-completion-2026-06-30) · [Elision Rendering & Boundary-First Shape Control (2026-07-25)](#elision-rendering--boundary-first-shape-control-2026-07-25) · [Keyboard Navigation of Spans (2026-09-27)](#keyboard-navigation-of-spans-2026-09-27) · [Space Plays, B Marks a Boundary (2026-10-01)](#space-plays-b-marks-a-boundary-2026-10-01) · [Paused Clicks Stay Paused; Open Caps Fill and Join; Issue Links (2026-10-01)](#paused-clicks-stay-paused-open-caps-fill-and-join-issue-links-2026-10-01) · [Quick Type (2026-10-01)](#quick-type-2026-10-01) · [Quick Entry (2026-10-02)](#quick-entry-2026-10-02) · [B in an Empty Stretch; Shift+B; Fit to the Grid (2026-10-02)](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02) · [Hidden Labels Show on Hover and Selection (2026-10-02)](#hidden-labels-show-on-hover-and-selection-2026-10-02) · [Inside Text Keeps Clear of Rounded and Angled Ends (2026-10-02)](#inside-text-keeps-clear-of-rounded-and-angled-ends-2026-10-02) · [Quick Setup From the Tempo; a Plainer Grid Menu and Quick Pick (2026-10-24)](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24)
+**Drawing and editing the form diagram:** [Merge UX (Phase 0.5)](#merge-ux-phase-05) · [Hierarchical Enforcement](#hierarchical-enforcement) · [Form Diagram Editor — Interaction Model](#form-diagram-editor--interaction-model) · [Merge](#merge) · [Form Diagram Editor (Phase 0.4)](#form-diagram-editor-phase-04) · [Phase 2 Implementation (Form Diagram — Milestone A)](#phase-2-implementation-form-diagram--milestone-a) · [Merge Implementation (Phase 2.5)](#merge-implementation-phase-25) · [Form Diagram Shape Model — Adjoin Rework (2026-06-27)](#form-diagram-shape-model--adjoin-rework-2026-06-27) · [Label Collision Strategy (2026-06-27)](#label-collision-strategy-2026-06-27) · [Phase 2.5 Merge — Interaction Completion (2026-06-30)](#phase-25-merge--interaction-completion-2026-06-30) · [Elision Rendering & Boundary-First Shape Control (2026-07-25)](#elision-rendering--boundary-first-shape-control-2026-07-25) · [Keyboard Navigation of Spans (2026-09-27)](#keyboard-navigation-of-spans-2026-09-27) · [Space Plays, B Marks a Boundary (2026-10-01)](#space-plays-b-marks-a-boundary-2026-10-01) · [Paused Clicks Stay Paused; Open Caps Fill and Join; Issue Links (2026-10-01)](#paused-clicks-stay-paused-open-caps-fill-and-join-issue-links-2026-10-01) · [Quick Type (2026-10-01)](#quick-type-2026-10-01) · [Quick Entry (2026-10-02)](#quick-entry-2026-10-02) · [B in an Empty Stretch; Shift+B; Fit to the Grid (2026-10-02)](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02) · [Hidden Labels Show on Hover and Selection (2026-10-02)](#hidden-labels-show-on-hover-and-selection-2026-10-02) · [Inside Text Keeps Clear of Rounded and Angled Ends (2026-10-02)](#inside-text-keeps-clear-of-rounded-and-angled-ends-2026-10-02) · [Quick Setup From the Tempo; a Plainer Grid Menu and Quick Pick (2026-10-24)](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24) · [Typed Phrase Lengths; Quick Pick Fixes and Drawn Shapes (2026-10-24)](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24)
 
 **Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01)
 
@@ -4136,4 +4136,45 @@ from the metronome's steps, "Downbeat is here", or typing one in the Grid menu.
 **Why.** Devin: a tapped decimal goes off the rails easily. Taps by hand are
 too uneven to place a tenth of a BPM, so the whole number is the steadier
 starting point, and the metronome refines it.
+
+---
+
+## Typed Phrase Lengths; Quick Pick Fixes and Drawn Shapes (2026-10-24)
+
+*From Devin's analysis of "Alive" after the quick setup merged.*
+
+**Decision.** A span's Length in bars can be typed, not just stepped. Typing 2
+makes the span exactly two bars and moves every later boundary by the
+difference, as the − and + buttons do.
+**Why.** "Alive" has a two-bar silence at 2:15, which put every phrase after it
+out of step with a four-bar quick setup. Saying "this is 2 bars" fixes the
+rest in one move.
+
+**Decision.** The New analysis and Document settings dialog is wider (32rem),
+and Advanced starts folded in both. It opens unfolded only when a link
+filled in an advanced field, so that what was filled in is seen before Start.
+**Why.** Devin found the dialog cramped, and wanted Advanced folded by default.
+
+**Decision.** In Types mode, Quick pick shows its bar even when it has
+nothing to offer yet, with "Choose a library…" and More….
+**Why.** In a new file, with no types used and no library chosen, the bar had
+nothing to show and so never appeared, and the library chooser lives in that
+bar. Quick pick for types looked broken from the first span.
+
+**Decision.** Quick pick's Shapes bar draws each option and groups them:
+**Whole** (rounded, square, angled; keys 1–3), **Line** (solid, dashed; keys
+4–5), then **Start** and **End** (all five end shapes each, by click). An
+option already applied to every selected span is marked.
+**Why.** Devin: the shapes should show what they look like, broken down by
+whole shape or ends, plus the solid or dashed line. Named buttons ("Elided
+start") had to be read and imagined. The ends go without number keys because
+there are fifteen options and nine keys; the whole shape and line are the
+common first pass.
+
+**Decision.** Every popover closes on a press anywhere outside it, including
+on the diagram. A press inside a panel opened from it (a colour picker, a
+list) keeps it open; the trigger still toggles it.
+**Why.** Radix leaves a popover open when the outside click is handled and
+stopped, which every span does, so clicking the diagram never closed a menu.
+Devin hit it with Quick pick; the Grid, Metronome and layer menus had it too.
 

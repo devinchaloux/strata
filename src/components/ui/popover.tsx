@@ -5,7 +5,10 @@
  * collision-aware positioning (flips when it would run off-screen), and portal
  * rendering so the panel is never clipped by a parent's `overflow: hidden`.
  *
- * One addition: an open popover keeps clear of the YouTube player. Nothing may
+ * Two additions. A press anywhere outside an open popover closes it, even
+ * where the press is handled and stopped (the diagram's spans), which Radix's
+ * own outside-click doesn't catch (useCloseOnOutsidePress). And an open
+ * popover keeps clear of the YouTube player. Nothing may
  * cover the player (YouTube's rules), and it sits above every menu, so a menu
  * that opens over it would be hidden behind it. On opening, and while the
  * window changes, the panel measures itself and shifts by the smallest move
@@ -18,7 +21,66 @@ import * as PopoverPrimitive from '@radix-ui/react-popover'
 import { cn } from '@/lib/utils'
 import { getPlayerElement, nudgeClear } from '@/lib/playerClearance'
 
-const Popover = PopoverPrimitive.Root
+/**
+ * Closes the popover; provided by Popover below for PopoverContent's
+ * outside-press check.
+ */
+const CloseContext = React.createContext<() => void>(() => {})
+
+/**
+ * Popover root. Works controlled (open + onOpenChange) or uncontrolled, as
+ * Radix's does, but always holds the open state itself so its content can
+ * close it (see useCloseOnOutsidePress).
+ */
+function Popover({
+  open: openProp,
+  defaultOpen,
+  onOpenChange,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Root>) {
+  const [inner, setInner] = React.useState(defaultOpen ?? false)
+  const controlled = openProp !== undefined
+  const open = controlled ? openProp : inner
+  const setOpen = React.useCallback(
+    (o: boolean) => {
+      if (!controlled) setInner(o)
+      onOpenChange?.(o)
+    },
+    [controlled, onOpenChange],
+  )
+  const close = React.useCallback(() => setOpen(false), [setOpen])
+  return (
+    <CloseContext.Provider value={close}>
+      <PopoverPrimitive.Root open={open} onOpenChange={setOpen} {...props} />
+    </CloseContext.Provider>
+  )
+}
+
+/**
+ * Close on any press outside the panel. Radix leaves a popover open when the
+ * outside click is handled by something that stops it propagating, which
+ * every span on the diagram does, so clicking the diagram never closed a menu.
+ * This listens in the capture phase, before anything can stop it. A press on
+ * the trigger is left to Radix (it toggles), and one inside another open
+ * panel (a colour picker or list opened from this one) keeps this open.
+ */
+function useCloseOnOutsidePress(node: React.RefObject<HTMLDivElement | null>, active: boolean) {
+  const close = React.useContext(CloseContext)
+  React.useEffect(() => {
+    if (!active) return
+    const onPress = (e: PointerEvent) => {
+      const el = node.current
+      const target = e.target
+      if (!el || !(target instanceof Element) || el.contains(target)) return
+      if (el.id && target.closest(`[aria-controls="${CSS.escape(el.id)}"]`)) return
+      if (target.closest('[data-radix-popper-content-wrapper]')) return
+      close()
+    }
+    document.addEventListener('pointerdown', onPress, true)
+    return () => document.removeEventListener('pointerdown', onPress, true)
+  }, [node, active, close])
+}
+
 const PopoverTrigger = PopoverPrimitive.Trigger
 const PopoverAnchor = PopoverPrimitive.Anchor
 
@@ -96,12 +158,17 @@ const PopoverContent = React.forwardRef<
 >(({ className, align = 'center', sideOffset = 4, style, ...props }, ref) => {
   const clear = useClearOfPlayer()
   const { attach } = clear
+  const panel = React.useRef<HTMLDivElement | null>(null)
+  const [mounted, setMounted] = React.useState(false)
+  useCloseOnOutsidePress(panel, mounted)
   const forwarded = React.useRef(ref)
   // Written once the render commits, not while it runs (react-hooks/refs).
   React.useLayoutEffect(() => { forwarded.current = ref })
   const setRefs = React.useCallback(
     (node: HTMLDivElement | null) => {
       attach(node)
+      panel.current = node
+      setMounted(!!node)
       const r = forwarded.current
       if (typeof r === 'function') r(node)
       else if (r) r.current = node

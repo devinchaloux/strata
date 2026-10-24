@@ -23,6 +23,7 @@ import { ColorPicker } from '@/components/ui/color-picker'
 import { Field, inputClass } from '@/components/Field'
 import { toAccidentals } from '@/lib/musicSymbols'
 import { barAt, barLength, segmentAt, sortedSegments } from '@/lib/beatGrid'
+import { CAP_ICONS } from '@/lib/capIcons'
 import { formSpans } from '@/lib/layers'
 import type {
   Span,
@@ -286,26 +287,6 @@ const INSPECTOR_TABS: [InspectorTab, string][] = [
   ['more', 'More'],
 ]
 
-// One end of a bracket in the shape picker: a dashed line marks the boundary,
-// so an elided end visibly reaches past it.
-// An elided end also draws its neighbour (faint), so the overlap shows.
-const CAP_ICONS: Record<'start' | 'end', { cap: CapStyle; name: string; bx: number; d: string; n?: string }[]> = {
-  start: [
-    { cap: 'rounded', name: 'Rounded', bx: 8, d: 'M 8 22 L 8 12 A 10 10 0 0 1 18 2 L 40 2' },
-    { cap: 'square', name: 'Square', bx: 8, d: 'M 8 22 L 8 2 L 40 2' },
-    { cap: 'angled', name: 'Angled', bx: 8, d: 'M 8 22 L 16 2 L 40 2' },
-    { cap: 'open', name: 'Open', bx: 8, d: 'M 8 2 L 40 2' },
-    { cap: 'elision', name: 'Elided', bx: 14, d: 'M 4 22 L 4 12 A 10 10 0 0 1 14 2 L 40 2', n: 'M 0 6 L 6 6 A 8 8 0 0 1 14 14 L 14 22' },
-  ],
-  end: [
-    { cap: 'rounded', name: 'Rounded', bx: 32, d: 'M 0 2 L 22 2 A 10 10 0 0 1 32 12 L 32 22' },
-    { cap: 'square', name: 'Square', bx: 32, d: 'M 0 2 L 32 2 L 32 22' },
-    { cap: 'angled', name: 'Angled', bx: 32, d: 'M 0 2 L 24 2 L 32 22' },
-    { cap: 'open', name: 'Open', bx: 32, d: 'M 0 2 L 32 2' },
-    { cap: 'elision', name: 'Elided', bx: 26, d: 'M 0 2 L 26 2 A 10 10 0 0 1 36 12 L 36 22', n: 'M 26 22 L 26 14 A 8 8 0 0 1 34 6 L 40 6' },
-  ],
-}
-
 /** The five shapes for one end of a bracket, as pictures. */
 function CapRow({ side, value, onChange }: { side: 'start' | 'end'; value: CapStyle; onChange: (c: CapStyle) => void }) {
   const name = side === 'start' ? 'Start' : 'End'
@@ -365,6 +346,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   const placeBoundary = useDocumentStore((s) => s.placeBoundary)
   const setSpanEdgeAction = useDocumentStore((s) => s.setSpanEdge)
   const resizeSpanByBars = useDocumentStore((s) => s.resizeSpanByBars)
+  const setSpanBars = useDocumentStore((s) => s.setSpanBars)
   const setSpanLabels = useDocumentStore((s) => s.setSpanLabels)
   const regenerateSlug = useDocumentStore((s) => s.regenerateSlug)
   const setSpanCommentary = useDocumentStore((s) => s.setSpanCommentary)
@@ -517,9 +499,21 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             >
               −
             </button>
-            <span className="min-w-12 text-center tabular-nums text-foreground">
-              {barsLong} {barsLong === 1 ? 'bar' : 'bars'}
-            </span>
+            {/* Typed: "this phrase is 2 bars" in one step (setSpanBars). */}
+            <input
+              key={barsLong}
+              aria-label="Length in bars"
+              inputMode="decimal"
+              defaultValue={barsLong}
+              onBlur={(e) => {
+                const n = Number(e.target.value)
+                if (Number.isFinite(n) && n > 0 && n !== barsLong) setSpanBars(layer.id, span.id, n)
+                else e.target.value = String(barsLong)
+              }}
+              onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+              className="w-12 rounded border border-border bg-card px-1 py-0.5 text-center text-xs tabular-nums text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
+            />
+            <span className="text-muted-foreground">{barsLong === 1 ? 'bar' : 'bars'}</span>
             <button
               aria-label="One bar longer"
               title="One bar longer; the spans after it move later"
@@ -529,7 +523,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
               +
             </button>
           </div>
-          <p className="text-[11px] text-muted-foreground">Changes its length in whole bars. Later spans move with it.</p>
+          <p className="text-[11px] text-muted-foreground">Type a length or step it by a bar. Later spans move with it.</p>
           </div>
         )}
 

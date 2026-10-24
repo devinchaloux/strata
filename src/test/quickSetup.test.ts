@@ -93,4 +93,12 @@ describe('in the store', () => {
     store().resizeSpanByBars(id, layerSpans(id)[0].id, 1)
     expect(times(layerSpans(id))).toEqual([[0, 10], [10, 18], [18, 26], [26, 30]])
   })
+
+  it('makes a phrase a typed number of bars, the rest moving back into step', () => {
+    const id = load()
+    store().fillLayerWithBars(id, 0, 4)
+    // A two-bar break where the second phrase starts: every later phrase moves two bars earlier.
+    store().setSpanBars(id, layerSpans(id)[1].id, 2)
+    expect(times(layerSpans(id))).toEqual([[0, 8], [8, 12], [12, 20], [20, 30]])
+  })
 })
