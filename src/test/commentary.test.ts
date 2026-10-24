@@ -93,6 +93,14 @@ describe('commentary text', () => {
     ])
   })
 
+  it('gives an unlabelled span no placeholder heading, only its time', () => {
+    store().updateSpans(['b'], { label: null })
+    store().setSpanCommentary('b', 'A quiet bridge.')
+    expect(commentaryToHtml(doc())).toContain('<h2><span class="time">0:30–1:00</span></h2>')
+    expect(commentaryToMarkdown(doc())).toContain('## (0:30–1:00)')
+    expect(commentaryToHtml(doc())).not.toContain('Untitled')
+  })
+
   it('exports to HTML in time order, with links between sections and escaped text', () => {
     store().setSpanCommentary('c', 'Echoes [[drop]].')
     store().setSpanCommentary('b', 'Loud <and> proud.')

@@ -163,7 +163,8 @@ function Level({
 }) {
   const { layer, span, block } = row
   const reading = useUIStore((s) => s.readingView)
-  const heading = span.label || spanTypeName(span.type, doc.vocabulary.spanTypes) || 'Untitled span'
+  // Nothing for an unlabelled, untyped span: the layer name and times say enough.
+  const heading = span.label || spanTypeName(span.type, doc.vocabulary.spanTypes)
   return (
     <article
       className={`flex flex-col gap-1.5 border-l-2 py-1 pl-3 ${selected ? 'border-primary' : 'border-border'}`}
@@ -171,7 +172,7 @@ function Level({
     >
       <header className="flex items-baseline gap-2">
         <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{layer.label}</span>
-        <h2 className={`font-semibold text-foreground ${reading ? 'text-xl' : 'text-sm'}`}>{heading}</h2>
+        {heading && <h2 className={`font-semibold text-foreground ${reading ? 'text-xl' : 'text-sm'}`}>{heading}</h2>}
         <span className="text-xs tabular-nums text-muted-foreground">
           {mmss(span.startTime)}–{mmss(span.endTime)}
         </span>

@@ -234,10 +234,13 @@ export function QuickEntryBar({
   if (!target || !box || !showing) return null
 
   // Just above the diagram, centred on the selection but kept inside the
-  // window; below the selected layer if the diagram is at the top.
+  // window, and from the diagram's right edge leftwards: past it is the
+  // Inspector, which a wide bar (Shapes) used to cover for right-hand spans.
+  // Below the selected layer if the diagram is at the top.
   const mid = box.left + ((target.start + target.end) / 2) * pps - scrollOffset
   const half = width / 2
-  const left = Math.max(EDGE + half, Math.min(mid, window.innerWidth - EDGE - half))
+  const right = Math.min(window.innerWidth, box.right) - EDGE
+  const left = Math.max(EDGE + half, Math.min(mid, right - half))
   const above = box.top - BAR_H - 34
   const top = above > EDGE ? above : box.top + shapeTopY(layers, target.idx) + layerBodyHeight(target.layer) + 6
   const stop = (e: React.SyntheticEvent) => e.stopPropagation()

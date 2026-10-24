@@ -130,8 +130,12 @@ export interface UIState {
   enabledPacks: string[]
   /** The Libraries dialog (packs on or off, import, share). */
   librariesOpen: boolean
-  /** Bumped to ask the Inspector's span Type picker to open (the "/" key). */
-  typePickerRequest: number
+  /**
+   * Set to open the Inspector's span Type picker (Quick pick's "/" or More…).
+   * A flag the picker takes up and clears, so a request opens it once: as a
+   * counter it reopened on every later mount of the picker.
+   */
+  typePickerPending: boolean
   /**
    * Set to open the Inspector's Fill colour picker (Quick pick Fills' More…).
    * A flag, not a counter: the picker may mount only after the request (the
@@ -202,6 +206,7 @@ export interface UIState {
   setPackEnabled: (id: string, on: boolean) => void
   setLibrariesOpen: (open: boolean) => void
   requestTypePicker: () => void
+  clearTypePickerRequest: () => void
   /** Shape & color tab, with the Fill picker open. */
   requestFillPicker: () => void
   clearFillPickerRequest: () => void
@@ -274,6 +279,8 @@ function readClickVolume(): number {
   return readPreference(CLICK_VOLUME_KEY) != null && Number.isFinite(v) && v >= 0 && v <= 1 ? v : 0.6
 }
 
+const NO_PICKER_REQUEST = { typePickerPending: false, fillPickerPending: false }
+
 const useUIStore = create<UIState>()((set) => ({
   currentTime: 0,
   duration: 0,
@@ -313,7 +320,7 @@ const useUIStore = create<UIState>()((set) => ({
   showLyrics: readPreference(LYRICS_KEY) !== 'off',
   enabledPacks: (readPreference(PACKS_KEY) ?? '').split(',').filter(Boolean),
   librariesOpen: false,
-  typePickerRequest: 0,
+  typePickerPending: false,
   fillPickerPending: false,
   inspectorTab: 'describe',
   quickEntry: (['off', 'type', 'shape', 'fill'] as const).find((m) => m === readPreference(QUICK_KEY)) ?? 'type',
@@ -337,8 +344,10 @@ const useUIStore = create<UIState>()((set) => ({
   setViewportWidth: (width) => set({ viewportWidth: width }),
 
 
+  // A new selection drops any picker request not yet taken up (typePickerPending,
+  // fillPickerPending), so one can't open a picker on a later span.
   selectSpan: (id) =>
-    set({ selectedSpanIds: id ? [id] : [], selectionAnchorId: id, selectedPointMarkerId: null }),
+    set({ selectedSpanIds: id ? [id] : [], selectionAnchorId: id, selectedPointMarkerId: null, ...NO_PICKER_REQUEST }),
   toggleSpan: (id) =>
     set((s) => ({
       selectedSpanIds: s.selectedSpanIds.includes(id)
@@ -346,15 +355,17 @@ const useUIStore = create<UIState>()((set) => ({
         : [...s.selectedSpanIds, id],
       selectionAnchorId: id,
       selectedPointMarkerId: null,
+      ...NO_PICKER_REQUEST,
     })),
   setSelection: (ids, anchorId) =>
     set({
       selectedSpanIds: ids,
       selectionAnchorId: anchorId !== undefined ? anchorId : ids[ids.length - 1] ?? null,
       selectedPointMarkerId: null,
+      ...NO_PICKER_REQUEST,
     }),
   clearSelection: () =>
-    set({ selectedSpanIds: [], selectionAnchorId: null, selectedPointMarkerId: null }),
+    set({ selectedSpanIds: [], selectionAnchorId: null, selectedPointMarkerId: null, ...NO_PICKER_REQUEST }),
   hoverSpan: (id) => set({ hoveredSpanId: id }),
   setActiveLayer: (id) => set({ activeLayerId: id }),
 
@@ -410,7 +421,8 @@ const useUIStore = create<UIState>()((set) => ({
       return { enabledPacks }
     }),
   setLibrariesOpen: (open) => set({ librariesOpen: open }),
-  requestTypePicker: () => set((s) => ({ typePickerRequest: s.typePickerRequest + 1 })),
+  requestTypePicker: () => set({ typePickerPending: true }),
+  clearTypePickerRequest: () => set({ typePickerPending: false }),
   requestFillPicker: () => set({ fillPickerPending: true, inspectorTab: 'shape' }),
   clearFillPickerRequest: () => set({ fillPickerPending: false }),
   setInspectorTab: (tab) => set({ inspectorTab: tab }),
