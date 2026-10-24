@@ -139,6 +139,13 @@ where `pps = BASE_PPS * viewState.zoom`.
   `span.strokeColor ?? layer.strokeColorDefault`. The path is open; fill closes it
   along the baseline, so a white fill reads as an open bracket and a colored fill as
   a solid block.
+  With the viewer's **Colour-blind safe** switch on, a quick fill is drawn as its
+  safe counterpart (lib/palette.ts `safeFill`); the file keeps the quick fill.
+- **Fill pattern:** `span.fillPattern` (hatch, cross, dots, lines) draws a faint
+  texture over the fill, in a darker shade of the fill as shown, under the
+  outline (lib/patterns.ts).
+- **Text on a fill:** an inside label or annotation keeps the ink while it reaches
+  4.5:1 against the fill, else a deeper ink or white (lib/formShape.ts `textOnFill`).
 - **Label:** per layer rendering config — above the shape (in the negative space of
   the layer above) by default; truncated to fit when rendered inside the body.
 - **Annotation:** `span.annotation` inside the shape body; tooltip on hover for long text.

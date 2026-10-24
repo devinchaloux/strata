@@ -36,6 +36,8 @@ import { isInputFocused } from '@/lib/youtube'
 import type { Layer, Span } from '@/types/strata'
 import { CAP_ICONS, WHOLE_ICONS } from '@/lib/capIcons'
 import { QUICK_FILLS, safeFill } from '@/lib/palette'
+import { FILL_PATTERNS } from '@/lib/patterns'
+import { PatternSwatch } from '@/components/PatternPicker'
 
 const BAR_H = 36
 const MAX_TYPES = 8
@@ -100,7 +102,7 @@ export function QuickEntryBar({
   const mode = useUIStore((s) => s.quickEntry)
   // Swatches as the diagram draws them (the colour-blind safe switch).
   const colorblindSafe = useUIStore((s) => s.colorblindSafe)
-  const shown = (c: string) => (colorblindSafe ? safeFill(c) : c)
+  const shown = useCallback((c: string) => (colorblindSafe ? safeFill(c) : c), [colorblindSafe])
   const requestTypePicker = useUIStore((s) => s.requestTypePicker)
   const requestFillPicker = useUIStore((s) => s.requestFillPicker)
   const setInspectorTab = useUIStore((s) => s.setInspectorTab)
@@ -185,8 +187,17 @@ export function QuickEntryBar({
     return [
       { key: 'default', label: 'Layer default', hotkey: 1, swatch: target.layer.fillColorDefault, apply: () => updateSpans(ids, { fillColor: null }) },
       ...QUICK_FILLS.map((c, i) => ({ key: c, label: '', title: c, hotkey: i + 2, swatch: c, apply: () => updateSpans(ids, { fillColor: c }) })),
+      // Patterns after the colours, by click (the colours have every number key).
+      ...[{ id: undefined, name: 'No pattern' }, ...FILL_PATTERNS].map((pt) => ({
+        key: `pattern-${pt.id ?? 'none'}`,
+        label: pt.name,
+        group: 'Pattern',
+        icon: <PatternSwatch pattern={pt.id} fill={shown(target.spans[0].fillColor ?? target.layer.fillColorDefault)} />,
+        on: target.spans.every((s) => s.fillPattern === pt.id),
+        apply: () => updateSpans(ids, { fillPattern: pt.id }),
+      })),
     ]
-  }, [doc, target, mode])
+  }, [doc, target, mode, shown])
 
   // Types show even with nothing to offer yet (a new file, no library chosen):
   // the bar is where the library is chosen, and More… opens every type.

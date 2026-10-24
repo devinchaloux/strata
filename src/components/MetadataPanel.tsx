@@ -13,6 +13,7 @@ import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore, type InspectorTab } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
 import { GroupPopover } from '@/components/GroupPopover'
+import { PatternPicker } from '@/components/PatternPicker'
 import { groupUpTarget } from '@/lib/groupSpans'
 import { safeFill } from '@/lib/palette'
 import { formatTime, formatClock } from '@/lib/youtube'
@@ -701,6 +702,14 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
                 </Field>
               </div>
             </div>
+            {/* A faint texture over the fill: a second cue besides colour. */}
+            <Field label="Pattern">
+              <PatternPicker
+                value={span.fillPattern}
+                fill={shownFill(span.fillColor ?? layer.fillColorDefault)}
+                onChange={(p) => update({ fillPattern: p })}
+              />
+            </Field>
             {/* Same label, same fill: this span's fill onto every span in the
                 layer with its label, in one undo step. */}
             {sameLabel.length > 1 && (
@@ -904,6 +913,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
   const startCap = commonValue(spans, (s) => s.startCap ?? capFromBoundaryType(s.startBoundaryType))
   const endCap = commonValue(spans, (s) => s.endCap ?? capFromBoundaryType(s.endBoundaryType))
   const lineStyle = commonValue(spans, (s) => s.lineStyle ?? 'solid')
+  const pattern = commonValue(spans, (s) => s.fillPattern)
 
   // Layer color defaults for the swatch fallback (use the first selection's layer).
   const fillFallback = entries[0].layer.fillColorDefault
@@ -1022,6 +1032,15 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
             options={LINESTYLE_OPTS}
             value={lineStyle === MIXED ? ('' as LineStyle) : lineStyle}
             onChange={(v) => setAll({ lineStyle: v })}
+          />
+        </Field>
+
+        {/* Pattern — a faint texture over the fill */}
+        <Field label="Pattern" helper={pattern === MIXED ? 'Mixed' : undefined}>
+          <PatternPicker
+            value={pattern === MIXED ? null : pattern}
+            fill={shownFill(fill === MIXED || fill == null ? fillFallback : fill)}
+            onChange={(p) => setAll({ fillPattern: p })}
           />
         </Field>
 

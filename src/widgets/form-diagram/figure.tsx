@@ -46,6 +46,7 @@ import {
 } from '@/lib/markerBand'
 import type { Layer, Span, FormDiagramData, CapStyle } from '@/types/strata'
 import type { FigureTheme } from './theme'
+import { PATTERN_TILE, patternInk, patternMarks } from '@/lib/patterns'
 
 /** A white halo behind text that overhangs the ink of the layer above. */
 function halo(theme: FigureTheme) {
@@ -136,29 +137,65 @@ function SpanFigure({
   const annotationLocalX = annotationAbove ? textX(0, width, annotationJust) : insideTextX(annotBox, annotationJust)
   const textHalo = halo(theme)
 
+  // Shape and fill outlines, and the span's fill pattern (lib/patterns.ts):
+  // marks in a darker shade of the fill as drawn, tiled from the span's own
+  // corner. The id is the span's, so it is unique in the figure.
+  const openCap = startCap === 'open' || endCap === 'open'
+  const shapePath = isBar ? '' : buildShapePath({ width, startCap, endCap, inset: ISLAND_INSET, joinStart: join?.start, joinEnd: join?.end })
+  const fillPath = isBar ? '' : openCap ? buildFillPath({ width, startCap, endCap, inset: ISLAND_INSET, joinStart: join?.start, joinEnd: join?.end }) : shapePath
+  const marks = patternMarks(span.fillPattern)
+  const patternId = `fill-pattern-${span.id}`
+  const markInk = patternInk(fill)
+  const patternDefs = marks && (
+    <defs>
+      <pattern id={patternId} patternUnits="userSpaceOnUse" width={PATTERN_TILE} height={PATTERN_TILE}>
+        <path
+          d={marks.d}
+          fill={marks.dots ? markInk : 'none'}
+          stroke={marks.dots ? 'none' : markInk}
+          strokeWidth={0.9}
+          opacity={0.7}
+        />
+      </pattern>
+    </defs>
+  )
+
   return (
     <g transform={`translate(${x}, 0)`}>
+      {patternDefs}
       {isBar ? (
-        <rect
-          x={ISLAND_INSET}
-          y={0}
-          width={Math.max(0, width - 2 * ISLAND_INSET)}
-          height={bodyHeight}
-          rx={1.5}
-          fill={fill}
-          stroke={stroke}
-          strokeWidth={STROKE_WIDTH}
-        />
+        <>
+          <rect
+            x={ISLAND_INSET}
+            y={0}
+            width={Math.max(0, width - 2 * ISLAND_INSET)}
+            height={bodyHeight}
+            rx={1.5}
+            fill={fill}
+            stroke={stroke}
+            strokeWidth={STROKE_WIDTH}
+          />
+          {marks && (
+            <rect
+              x={ISLAND_INSET + 1}
+              y={1}
+              width={Math.max(0, width - 2 * ISLAND_INSET - 2)}
+              height={Math.max(0, bodyHeight - 2)}
+              fill={`url(#${patternId})`}
+              stroke="none"
+            />
+          )}
+        </>
       ) : (
         <>
           {/* With an open cap the outline and the fill differ: the fill still
-              runs down to the baseline on the open side. */}
-          {(startCap === 'open' || endCap === 'open') && (
-            <path d={buildFillPath({ width, startCap, endCap, inset: ISLAND_INSET, joinStart: join?.start, joinEnd: join?.end })} fill={fill} stroke="none" />
-          )}
+              runs down to the baseline on the open side. A pattern sits on the
+              fill, under the outline, so its marks never cross the line. */}
+          {(openCap || marks) && <path d={fillPath} fill={fill} stroke="none" />}
+          {marks && <path d={fillPath} fill={`url(#${patternId})`} stroke="none" />}
           <path
-            d={buildShapePath({ width, startCap, endCap, inset: ISLAND_INSET, joinStart: join?.start, joinEnd: join?.end })}
-            fill={startCap === 'open' || endCap === 'open' ? 'none' : fill}
+            d={shapePath}
+            fill={openCap || marks ? 'none' : fill}
             stroke={stroke}
             strokeWidth={STROKE_WIDTH}
             strokeDasharray={lineStyleDash(span.lineStyle)}

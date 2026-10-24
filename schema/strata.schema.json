@@ -618,6 +618,11 @@
           "enum": ["solid", "dashed"],
           "description": "Visual stroke style of the whole bracket — the analyst's choice, decoupled from confidence. Whole-shape uniform; solid and dashed are never mixed at a shared edge. Absent = 'solid'."
         },
+        "fillPattern": {
+          "type": "string",
+          "enum": ["hatch", "cross", "dots", "lines"],
+          "description": "A faint texture drawn over the fill, in a darker shade of the fill colour: diagonal hatching, cross-hatching, dots or horizontal lines. A second cue besides colour (for colour-blind readers, or print in grey). Visual only; carries no analytical claim. Absent = no pattern."
+        },
         "endOnTop": {
           "type": "boolean",
           "description": "Drawing order at this span's end boundary, where an elision makes its bracket overlap the next span's: true = this span draws on top. Absent or false = the next span draws on top. Visual only; carries no analytical claim."

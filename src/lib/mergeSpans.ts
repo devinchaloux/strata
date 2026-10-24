@@ -19,7 +19,7 @@
  *   confidence             lowest of the selection (speculative > approximate > definite)
  *   startBoundaryType      first span's (earliest startTime)
  *   endBoundaryType        last span's (latest endTime)
- *   startCap / lineStyle   first span's (outer face / whole-shape style)
+ *   startCap / lineStyle / fillPattern   first span's (outer face / whole-shape style)
  *   endCap, endOnTop       last span's (outer face)
  *   startTime / endTime    min / max across the selection
  *   slug                   regenerated from the resolved label
@@ -238,6 +238,7 @@ export function resolveMerge(spans: Span[], mkId: () => string): MergeResolution
     // The merged span's end is the last source's end, drawing order included.
     endOnTop: last.endOnTop,
     lineStyle: first.lineStyle,
+    fillPattern: first.fillPattern,
     mergedFrom: sorted.map((s) => s.id),
   }
 
