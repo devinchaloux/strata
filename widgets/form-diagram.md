@@ -219,6 +219,7 @@ Full design rationale in `docs/decisions.md`. This section is the implementation
 | **B** | Place a boundary at `currentTime` — split the span containing `currentTime`, or mark a boundary in empty layer space. (Space until 2026-10-01; Space now plays and pauses.) |
 | **Shift+B** | End the span containing `currentTime` there, leaving the rest of it empty. |
 | **Delete** | Remove the selected spans (or the selected point marker), one undo step; not while typing in a field. Backspace does not delete spans. |
+| **Ctrl/⌘+C, Ctrl/⌘+V** | Copy the selected span; paste the chosen parts of it (label and type by default; annotation, commentary, lyrics, fill, pattern, shape by choice in the Inspector's Paste menu) onto every selected span, one undo step. Not in a text field or over selected page text. store/spanClipboard.ts. |
 | **← / →** | Select the previous / next span in the layer; `Shift` extends the selection |
 | **↑ / ↓** | Select the span in the layer above / below |
 | **Drag boundary handle** | Move boundary; hard-stops at adjacent span boundaries; minimum span width enforced |
