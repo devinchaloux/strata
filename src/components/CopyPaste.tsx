@@ -1,29 +1,30 @@
 /**
  * Copy and Paste for spans in the Inspector (store/spanClipboard.ts): Copy the
- * span shown, Paste the chosen parts of the copied one onto the selection, and
- * a small menu to choose those parts (remembered; Ctrl/⌘+V uses them too).
+ * selection, Paste the chosen parts of what's copied onto it (one copied span
+ * onto any number; several onto as many, in time order), and a small menu to
+ * choose those parts (remembered; Ctrl/⌘+V uses them too).
  */
 import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { PASTE_FIELDS, copySpan, pasteOnto, useSpanClipboard } from '@/store/spanClipboard'
+import { PASTE_FIELDS, copySpans, pasteCheck, pasteOnto, useSpanClipboard } from '@/store/spanClipboard'
 
 const button = 'rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40'
 
-/** Copy, for the one span shown. */
-export function CopyButton({ spanId }: { spanId: string }) {
+/** Copy the selected spans. */
+export function CopyButton({ spanIds }: { spanIds: string[] }) {
   const [copied, setCopied] = useState(false)
   return (
     <button
       className={button}
-      title="Copy this span (Ctrl/⌘+C), to paste its label and type onto others"
+      title={spanIds.length > 1 ? `Copy these ${spanIds.length} spans (Ctrl/⌘+C), to paste onto ${spanIds.length} others in order` : 'Copy this span (Ctrl/⌘+C), to paste its label and type onto others'}
       onClick={() => {
-        if (!copySpan(spanId)) return
+        if (!copySpans(spanIds)) return
         setCopied(true)
         window.setTimeout(() => setCopied(false), 1200)
       }}
     >
-      {copied ? 'Copied' : 'Copy'}
+      {copied ? 'Copied' : spanIds.length > 1 ? `Copy ${spanIds.length}` : 'Copy'}
     </button>
   )
 }
@@ -33,16 +34,18 @@ export function PasteButton({ spanIds }: { spanIds: string[] }) {
   const copied = useSpanClipboard((s) => s.copied)
   const fields = useSpanClipboard((s) => s.fields)
   const setFields = useSpanClipboard((s) => s.setFields)
-  const targets = spanIds.filter((id) => id !== copied?.span.id)
-  const from = copied ? copied.span.label || copied.span.type || 'the copied span' : null
+  // Subscribing to `copied` re-renders this when the clipboard changes.
+  const check = copied.length ? pasteCheck(spanIds) : { ok: false, reason: 'Copy a span first (Ctrl/⌘+C).' }
+  const from =
+    copied.length > 1 ? `${copied.length} spans` : copied.length ? `“${copied[0].span.label || copied[0].span.type || 'the copied span'}”` : null
   const names = PASTE_FIELDS.filter((f) => fields.includes(f.id)).map((f) => f.name.toLowerCase())
   return (
     <span className="inline-flex">
       <button
         className={`${button} rounded-r-none`}
-        disabled={!copied || !targets.length || !fields.length}
+        disabled={!check.ok || !fields.length}
         onClick={() => pasteOnto(spanIds)}
-        title={copied ? `Paste ${names.join(', ') || 'nothing'} from “${from}” (Ctrl/⌘+V)` : 'Copy a span first (Ctrl/⌘+C)'}
+        title={check.reason ?? `Paste ${names.join(', ') || 'nothing'} from ${from} (Ctrl/⌘+V)`}
       >
         Paste
       </button>
@@ -65,10 +68,19 @@ export function PasteButton({ spanIds }: { spanIds: string[] }) {
             </label>
           ))}
           <p className="mt-1.5 px-1 text-[11px] text-muted-foreground">
-            {copied ? `Copied: “${from}”.` : 'Nothing copied yet.'} Ctrl/⌘+C copies a span; Ctrl/⌘+V pastes these.
+            {from ? `Copied: ${from}.` : 'Nothing copied yet.'} Ctrl/⌘+C copies the selected spans; Ctrl/⌘+V pastes
+            these. Several copied spans paste onto as many, in time order.
           </p>
         </PopoverContent>
       </Popover>
     </span>
   )
+}
+
+/** Why Paste can't go ahead here, under the buttons, when something is copied but doesn't fit. */
+export function PasteHint({ spanIds }: { spanIds: string[] }) {
+  const copied = useSpanClipboard((s) => s.copied)
+  if (copied.length < 2) return null
+  const { reason } = pasteCheck(spanIds)
+  return reason ? <p className="text-[11px] text-muted-foreground">{reason}</p> : null
 }

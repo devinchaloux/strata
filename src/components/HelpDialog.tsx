@@ -70,8 +70,8 @@ const KEYS: [string, [string, string][]][] = [
   [
     'Editing',
     [
-      [`${MOD}+C`, 'Copy the selected span'],
-      [`${MOD}+V`, 'Paste its label and type onto the selected spans (choose more in the Inspector’s Paste menu)'],
+      [`${MOD}+C`, 'Copy the selected spans'],
+      [`${MOD}+V`, 'Paste their label and type: one span onto all selected, several onto as many in time order (choose more in the Inspector’s Paste menu)'],
       [`${MOD}+J`, 'Merge the selected spans'],
       [`${MOD}+Z`, 'Undo'],
       [`${MOD}+Shift+Z`, 'Redo'],
