@@ -549,9 +549,10 @@ export default function App() {
       const reading = useUIStore.getState().readingView
       if (!reading && navigateSpans(e)) return
 
-      // Delete / Backspace — remove the selected spans (or the selected
-      // marker), one undo step, from anywhere but a text field.
-      if ((e.key === 'Delete' || e.key === 'Backspace') && !reading && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      // Delete — remove the selected spans (or the selected marker), one undo
+      // step, from anywhere but a text field. Not Backspace: erasing text, a
+      // press that lands just outside the field deleted the whole span.
+      if (e.key === 'Delete' && !reading && !e.metaKey && !e.ctrlKey && !e.altKey) {
         const el = e.target as HTMLElement | null
         const tag = el?.tagName
         const inField =

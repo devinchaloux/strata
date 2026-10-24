@@ -218,7 +218,7 @@ Full design rationale in `docs/decisions.md`. This section is the implementation
 |---|---|
 | **B** | Place a boundary at `currentTime` — split the span containing `currentTime`, or mark a boundary in empty layer space. (Space until 2026-10-01; Space now plays and pauses.) |
 | **Shift+B** | End the span containing `currentTime` there, leaving the rest of it empty. |
-| **Delete / Backspace** | Remove the selected spans (or the selected point marker), one undo step; not while typing in a field. |
+| **Delete** | Remove the selected spans (or the selected point marker), one undo step; not while typing in a field. Backspace does not delete spans. |
 | **← / →** | Select the previous / next span in the layer; `Shift` extends the selection |
 | **↑ / ↓** | Select the span in the layer above / below |
 | **Drag boundary handle** | Move boundary; hard-stops at adjacent span boundaries; minimum span width enforced |
