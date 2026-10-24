@@ -53,14 +53,16 @@ function Segmented<T extends string>({
   onChange: (v: T) => void
 }) {
   return (
-    <div className="flex rounded border border-border p-0.5">
+    <div className="flex shrink-0 rounded border border-border p-0.5">
       {options.map((o) => {
         const active = o.value === value
         return (
           <button
             key={o.value}
+            type="button"
+            aria-pressed={active}
             onClick={() => onChange(o.value)}
-            className="flex-1 rounded px-1.5 py-0.5 text-xs transition-colors"
+            className="whitespace-nowrap rounded px-2 py-0.5 text-xs transition-colors"
             style={{
               backgroundColor: active ? 'hsl(var(--primary))' : 'transparent',
               color: active ? 'hsl(var(--primary-foreground))' : 'hsl(var(--muted-foreground))',
@@ -80,7 +82,7 @@ function Segmented<T extends string>({
 // ---------------------------------------------------------------------------
 
 const MODE_OPTIONS: { value: SourceType; label: string }[] = [
-  { value: 'youtube', label: 'YouTube video' },
+  { value: 'youtube', label: 'YouTube' },
   { value: 'local', label: 'Audio file' },
 ]
 
@@ -182,51 +184,48 @@ export function SourceLinkForm({
 
   const canLink = mode === 'youtube' ? parsedId != null : pickedFile != null
 
-  return (
-    <div className="flex flex-col gap-3">
-      <Segmented options={MODE_OPTIONS} value={mode} onChange={setMode} />
+  // One row: the YouTube/audio switch beside its input. Below it, a status
+  // line only when there's something to say.
+  const status =
+    mode === 'youtube' ? (
+      parsedId ? (
+        <>
+          <Check size={11} className="shrink-0 text-primary" aria-hidden />
+          <span>
+            Video found: <code>{parsedId}</code>
+            {parsedId === currentVideoId && ' (currently linked)'}
+          </span>
+        </>
+      ) : showParseError ? (
+        <>
+          <CircleAlert size={11} className="shrink-0 text-destructive" aria-hidden />
+          <span>Not a YouTube link or video ID.</span>
+        </>
+      ) : null
+    ) : (
+      <span>The file stays on your computer; you’ll pick it again next time.</span>
+    )
 
-      {mode === 'youtube' ? (
-        <div>
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <Segmented options={MODE_OPTIONS} value={mode} onChange={setMode} />
+        {mode === 'youtube' ? (
           <input
             aria-label="YouTube URL or video ID"
-            className={inputClass}
+            className={'min-w-0 ' + inputClass}
             placeholder="Paste a YouTube URL or video ID…"
             value={urlText}
             onChange={(e) => setUrlText(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && parsedId && linkYouTube()}
             autoFocus={autoFocus}
           />
-          <p
-            className="mt-1 flex min-h-4 items-center gap-1 text-[11px]"
-            aria-live="polite"
-          >
-            {parsedId && (
-              <>
-                <Check size={11} className="text-primary" aria-hidden />
-                <span className="text-muted-foreground">
-                  Video found: <code>{parsedId}</code>
-                  {parsedId === currentVideoId && ' (currently linked)'}
-                </span>
-              </>
-            )}
-            {showParseError && (
-              <>
-                <CircleAlert size={11} className="text-destructive" aria-hidden />
-                <span className="text-muted-foreground">
-                  Not a YouTube link or video ID.
-                </span>
-              </>
-            )}
-          </p>
-        </div>
-      ) : (
-        <div>
-          <div className="flex items-center gap-2">
+        ) : (
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             <Button
               variant="outline"
               size="sm"
-              className="h-7 text-xs"
+              className="h-7 shrink-0 text-xs"
               onClick={async () => {
                 const file = await pickAudioFile()
                 setPickedFile(file)
@@ -234,7 +233,7 @@ export function SourceLinkForm({
                 if (embedded && file) linkAudio(file)
               }}
             >
-              Choose audio file…
+              Choose file…
             </Button>
             <span className="min-w-0 truncate text-xs text-muted-foreground">
               {pickedFile?.name ??
@@ -243,13 +242,27 @@ export function SourceLinkForm({
                   : 'No file chosen')}
             </span>
           </div>
-          <p className="mt-1.5 text-[11px] text-muted-foreground">
-            The file stays on your computer, so you’ll be asked to find it again next time.
-          </p>
+        )}
+      </div>
+
+      {(status || (embedded && isLinked)) && (
+        <div className="flex items-start gap-1 text-[11px] text-muted-foreground" aria-live="polite">
+          {status}
+          {/* Embedded, unlinking is a quiet link at the end of the status line
+              rather than a row of its own. */}
+          {embedded && isLinked && (
+            <button
+              type="button"
+              onClick={unlink}
+              className="ml-auto shrink-0 text-destructive underline-offset-2 hover:underline"
+            >
+              Unlink
+            </button>
+          )}
         </div>
       )}
 
-      {(isLinked || !embedded) && (
+      {!embedded && (
       <div className="flex items-center justify-end gap-2">
         {isLinked && (
           <Button
@@ -261,21 +274,17 @@ export function SourceLinkForm({
             Unlink source
           </Button>
         )}
-        {onDone && (
-          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={onDone}>
-            Cancel
-          </Button>
-        )}
-        {!embedded && (
-          <Button
-            size="sm"
-            className="h-7 text-xs"
-            disabled={!canLink}
-            onClick={mode === 'youtube' ? linkYouTube : () => linkAudio()}
-          >
-            {mode === 'youtube' ? 'Link video' : 'Link audio'}
-          </Button>
-        )}
+        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={onDone}>
+          Cancel
+        </Button>
+        <Button
+          size="sm"
+          className="h-7 text-xs"
+          disabled={!canLink}
+          onClick={mode === 'youtube' ? linkYouTube : () => linkAudio()}
+        >
+          {mode === 'youtube' ? 'Link video' : 'Link audio'}
+        </Button>
       </div>
       )}
     </div>
@@ -306,7 +315,7 @@ export function LinkSourceDialog() {
             {isLinked ? 'Change source' : 'Link a source'}
           </DialogTitle>
           <DialogDescription>
-            The video or audio this analysis plays against. Swapping the source never affects the data.
+            The video or audio this analysis plays against. You can swap it any time; the analysis stays as it is.
           </DialogDescription>
         </DialogHeader>
         <SourceLinkForm autoFocus onDone={() => setOpen(false)} />

@@ -9,13 +9,17 @@
  *
  * The Source section embeds SourceLinkForm (set/swap/unlink) — so this dialog
  * doubles as the new-analysis setup modal: "New" opens it with isNew, which
- * only swaps the framing copy. Same fields, same live-edit behavior.
+ * swaps the framing copy and starts with "Advanced" folded. Same fields, same
+ * live-edit behavior.
  *
- * Read-only identity fields (duration, created/updated, file format version)
- * are shown in a quiet footer; they're derived, not edited here.
+ * Up front: title, artist, source, tempo and meter (the last two seed the beat
+ * grid). Everything else is under "Advanced", ending with the read-only
+ * identity fields (duration, created/updated, file format version), which are
+ * derived, not edited here.
  */
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { ChevronRight, Info } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
 import { formatClock } from '@/lib/youtube'
 import { BUILT_IN_MODES } from '@/lib/modes'
@@ -23,6 +27,7 @@ import { SourceLinkForm } from '@/components/LinkSourceDialog'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Field, inputClass } from '@/components/Field'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { toAccidentals } from '@/lib/musicSymbols'
 import {
   Dialog,
@@ -161,6 +166,7 @@ export function DocumentSettingsDialog({
 }) {
   const doc = useDocumentStore((s) => s.document)
   const updateMeta = useDocumentStore((s) => s.updateMeta)
+  const titleRef = useRef<HTMLInputElement>(null)
 
   // Local text-input mirrors for fields that need free typing before commit
   // (array/number fields). Re-synced whenever the dialog opens.
@@ -169,17 +175,18 @@ export function DocumentSettingsDialog({
   const [tsNumText, setTsNumText] = useState('')
   const [tsDenText, setTsDenText] = useState('')
   const [offsetText, setOffsetText] = useState('')
-  // A new analysis asks only for what starting needs (title, artist, source);
-  // everything else waits behind "More details". Settings show it all — and
-  // so does a new analysis whose details are already filled in (one started
-  // from a link, lib/newFromLink.ts), so what was filled in can be checked.
+  // A new analysis asks only for what starting needs (title, artist, source,
+  // tempo and meter); everything else waits behind "Advanced". Settings open
+  // with it expanded — and so does a new analysis whose advanced details are
+  // already filled in (one started from a link, lib/newFromLink.ts), so what
+  // was filled in can be checked.
   const [showMore, setShowMore] = useState(!isNew)
   // Both re-seeds below are noticed during render, not in an effect (react-hooks/set-state-in-effect).
   const [framingSeen, setFramingSeen] = useState({ open: false, isNew })
   if (framingSeen.open !== open || framingSeen.isNew !== isNew) {
     setFramingSeen({ open, isNew })
     if (open) {
-      const filled = !!doc && (doc.bpm != null || !!doc.homeKey || !!doc.analysisAuthor)
+      const filled = !!doc && (!!doc.homeKey || !!doc.analysisAuthor)
       setShowMore(!isNew || filled)
     }
   }
@@ -241,19 +248,42 @@ export function DocumentSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent
+        className="max-w-md gap-3"
+        // Start in Title, not on the info button beside the heading (which
+        // would also pop its tooltip open).
+        onOpenAutoFocus={(e) => {
+          e.preventDefault()
+          titleRef.current?.select()
+        }}
+      >
         <DialogHeader>
-          <DialogTitle>{isNew ? 'New analysis' : 'Document settings'}</DialogTitle>
-          <DialogDescription>
-            {isNew
-              ? 'Name the track and link its video or audio. You can change any of this later.'
-              : 'About the track and this analysis.'}
+          <DialogTitle className="flex items-center gap-1.5">
+            {isNew ? 'New analysis' : 'Document settings'}
+            {isNew && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="About this dialog"
+                    className="inline-flex rounded text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <Info className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>You can change any of this later.</TooltipContent>
+              </Tooltip>
+            )}
+          </DialogTitle>
+          <DialogDescription className={isNew ? 'sr-only' : undefined}>
+            {isNew ? 'You can change any of this later.' : 'About the track and this analysis.'}
           </DialogDescription>
         </DialogHeader>
 
         <div>
           <Field label="Title">
             <input
+              ref={titleRef}
               className={inputClass}
               value={doc.title}
               onChange={(e) => updateMeta({ title: e.target.value })}
@@ -270,9 +300,68 @@ export function DocumentSettingsDialog({
             />
           </Field>
 
+          <Field label="Source" tooltip="You can swap it any time; the analysis stays as it is.">
+            <SourceLinkForm />
+          </Field>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field
+              label="Tempo (BPM)"
+              tooltip="The beat grid starts at this tempo and meter, so bars line up for faster drawing."
+            >
+              <input
+                className={inputClass}
+                inputMode="decimal"
+                placeholder="e.g. 120"
+                value={bpmText}
+                onChange={(e) => setBpmText(e.target.value)}
+                onBlur={commitBpm}
+                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+              />
+            </Field>
+            <Field label="Time signature">
+              <div className="flex items-center gap-1">
+                <input
+                  className={inputClass}
+                  aria-label="Beats per bar"
+                  inputMode="numeric"
+                  placeholder="4"
+                  value={tsNumText}
+                  onChange={(e) => setTsNumText(e.target.value)}
+                  onBlur={commitTimeSignature}
+                  onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                />
+                <span className="text-xs text-muted-foreground">/</span>
+                <input
+                  className={inputClass}
+                  aria-label="Beat unit"
+                  inputMode="numeric"
+                  placeholder="4"
+                  value={tsDenText}
+                  onChange={(e) => setTsDenText(e.target.value)}
+                  onBlur={commitTimeSignature}
+                  onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                />
+              </div>
+            </Field>
+          </div>
+
+          <button
+            type="button"
+            aria-expanded={showMore}
+            onClick={() => setShowMore((v) => !v)}
+            className="mb-3 flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+          >
+            <ChevronRight
+              className={'h-3.5 w-3.5 transition-transform' + (showMore ? ' rotate-90' : '')}
+              aria-hidden
+            />
+            Advanced
+          </button>
+
           {showMore && (
-          <>
-          <Field label="Context">
+          <div className="mb-3 border-l border-border pl-3">
+          <Field label="Context" helper="For corpus analysis: a studio recording or a live performance.">
             <Segmented
               options={CONTEXT_OPTIONS}
               value={doc.context ?? 'unset'}
@@ -290,28 +379,6 @@ export function DocumentSettingsDialog({
             </Field>
           )}
 
-          </>
-          )}
-
-          <Field label="Source" tooltip="Changing the source never changes the analysis.">
-            <div className="rounded border border-border p-2">
-              <SourceLinkForm />
-            </div>
-          </Field>
-
-          {!showMore && (
-            <button
-              type="button"
-              onClick={() => setShowMore(true)}
-              className="mb-3 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-            >
-              More details (work, key, tempo, notes…)
-            </button>
-          )}
-
-          {showMore && (
-          <>
-
           <Field label="Work" tooltip="Analyses that name the same work can be compared across files.">
             <input
               className={inputClass}
@@ -320,39 +387,6 @@ export function DocumentSettingsDialog({
               onChange={(e) => updateMeta({ work: e.target.value || null })}
             />
           </Field>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="BPM">
-              <input
-                className={inputClass}
-                value={bpmText}
-                onChange={(e) => setBpmText(e.target.value)}
-                onBlur={commitBpm}
-                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-              />
-            </Field>
-            <Field label="Time signature">
-              <div className="flex items-center gap-1">
-                <input
-                  className={inputClass}
-                  placeholder="4"
-                  value={tsNumText}
-                  onChange={(e) => setTsNumText(e.target.value)}
-                  onBlur={commitTimeSignature}
-                  onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-                />
-                <span className="text-xs text-muted-foreground">/</span>
-                <input
-                  className={inputClass}
-                  placeholder="4"
-                  value={tsDenText}
-                  onChange={(e) => setTsDenText(e.target.value)}
-                  onBlur={commitTimeSignature}
-                  onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-                />
-              </div>
-            </Field>
-          </div>
 
           <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-foreground">Home key</p>
           <div className="grid grid-cols-2 gap-3">
@@ -422,10 +456,21 @@ export function DocumentSettingsDialog({
             />
           </Field>
 
-          </>
+          {/* Read-only identity footer */}
+          <div className="text-[11px] leading-relaxed text-muted-foreground">
+            <p>Duration: {formatClock(doc.duration)}</p>
+            <p>
+              Created {new Date(doc.createdAt).toLocaleString()} · Updated{' '}
+              {new Date(doc.updatedAt).toLocaleString()}
+            </p>
+            <p>
+              Strata {doc.strataVersion} · File format v{doc.fileFormatVersion}
+            </p>
+          </div>
+          </div>
           )}
 
-          <div className="mt-2 flex justify-end">
+          <div className="flex justify-end">
             <Button
               size="sm"
               onClick={() => {
@@ -436,20 +481,6 @@ export function DocumentSettingsDialog({
               {isNew ? 'Start' : 'Done'}
             </Button>
           </div>
-
-          {/* Read-only identity footer */}
-          {showMore && (
-          <div className="mt-4 border-t border-border pt-3 text-[11px] leading-relaxed text-muted-foreground">
-            <p>Duration: {formatClock(doc.duration)}</p>
-            <p>
-              Created {new Date(doc.createdAt).toLocaleString()} · Updated{' '}
-              {new Date(doc.updatedAt).toLocaleString()}
-            </p>
-            <p>
-              Strata {doc.strataVersion} · File format v{doc.fileFormatVersion}
-            </p>
-          </div>
-          )}
         </div>
       </DialogContent>
     </Dialog>

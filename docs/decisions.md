@@ -38,7 +38,7 @@ By area, in the order the entries were made:
 
 **Reading, sharing, embedding and export:** [Sharing](#sharing) · [Embeddable Viewer](#embeddable-viewer) · [Export (2026-09-27)](#export-2026-09-27) · [The Reading View (2026-10-01)](#the-reading-view-2026-10-01) · [Sharing by Link (2026-10-01)](#sharing-by-link-2026-10-01) · [Export: Choose Layers, Cut Spans at the Range (2026-10-02)](#export-choose-layers-cut-spans-at-the-range-2026-10-02) · [Share From the Toolbar; Dropbox and OneDrive Links (2026-10-02)](#share-from-the-toolbar-dropbox-and-onedrive-links-2026-10-02) · [Example Analyses (2026-10-02)](#example-analyses-2026-10-02) · [Embedding an Analysis (2026-10-03)](#embedding-an-analysis-2026-10-03) · [Starting an Analysis from a Link (2026-10-03)](#starting-an-analysis-from-a-link-2026-10-03)
 
-**The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03)
+**The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03) · [A Shorter New Analysis Dialog; Darker Interface Greys (2026-10-24)](#a-shorter-new-analysis-dialog-darker-interface-greys-2026-10-24)
 
 **Architecture, scope and process:** [Architecture](#architecture) · [Widgets](#widgets) · [Architecture](#architecture-1) · [Launch](#launch) · [Corpus Builder](#corpus-builder) · [v1 Feature Scope (Phase 0.6)](#v1-feature-scope-phase-06) · [Energy Contour Widget](#energy-contour-widget) · [EDM as Origin — Product Claim Reframe](#edm-as-origin--product-claim-reframe) · [Tech Stack](#tech-stack) · [v1 Scope](#v1-scope) · [Widget Contract (Phase 0.2)](#widget-contract-phase-02) · [Correctness Pass (post-Phase 2 polish)](#correctness-pass-post-phase-2-polish) · [Improvement Backlog Batch 1 (2026-07-03)](#improvement-backlog-batch-1-2026-07-03) · [Improvement Backlog Batch 2 (2026-07-03)](#improvement-backlog-batch-2-2026-07-03) · [Render / Edit Split (2026-09-27)](#render--edit-split-2026-09-27) · [Large-Analysis Performance (2026-09-27)](#large-analysis-performance-2026-09-27) · [Safari and Firefox Read-Through (2026-09-27)](#safari-and-firefox-read-through-2026-09-27) · [Beta Launch Pass (2026-10-01)](#beta-launch-pass-2026-10-01) · [Releases and Open Tabs (2026-10-02)](#releases-and-open-tabs-2026-10-02) · [Faster Checks: Tests in Node, a Weekly Audit (2026-10-05)](#faster-checks-tests-in-node-a-weekly-audit-2026-10-05) · [Development Tools Upgraded (2026-10-07)](#development-tools-upgraded-2026-10-07) · [No Corpus Builder: Strata Stays a One-File Tool (2026-10-16)](#no-corpus-builder-strata-stays-a-one-file-tool-2026-10-16) · [React's Newer Checks On (2026-10-16)](#reacts-newer-checks-on-2026-10-16)
 
@@ -3850,7 +3850,9 @@ https://strata.devinchaloux.com/?new&title=Alive&artist=Krewella&video=<YouTube 
 doesn't read (a video address that isn't YouTube, a tempo of 0) is left out
 rather than refusing the link. When the link fills in a tempo, key or author,
 the dialog opens with "More details" expanded, so what was filled in is seen
-before Start (added 2026-10-03, after the first link hid them). The address
+before Start (added 2026-10-03, after the first link hid them; since
+2026-10-24 the section is "Advanced", and tempo sits outside it, so only a
+key or author unfolds it). The address
 loses its parameters once read, so reloading doesn't start a second analysis.
 
 **Why.** A catalogue that already knows a recording (its title, artists,
@@ -3988,3 +3990,37 @@ React's concurrent rendering, where a render can be started and thrown away.
 Fixing the 22 places once, and keeping the checks on, stops new ones arriving
 unnoticed.
 
+---
+
+## A Shorter New Analysis Dialog; Darker Interface Greys (2026-10-24)
+
+**Decision.** The New analysis dialog asks, in order, for Title, Artist,
+Source, Tempo (BPM) and Time signature. Everything else (context, composer,
+work, home key, cadence marker captions, notes, project, analysis author, sync
+offset, and the read-only duration and dates) sits under a folded "Advanced"
+section. Document settings is the same dialog with Advanced unfolded.
+
+- **No lead sentence.** "Name the track and link its video or audio" is gone;
+  "You can change any of this later" is a tooltip on the heading's info icon.
+- **Tempo and meter come up front.** They are what a beat grid starts from, so
+  setting them at the start makes drawing to the grid quicker. The tooltip on
+  Tempo says so.
+- **Context explains itself.** Its helper reads "For corpus analysis: a studio
+  recording or a live performance."
+- **The source form is one row.** A YouTube / Audio file switch sits beside
+  the link field or file button, with a status line under it only when there
+  is something to say. Inside the dialog, Unlink is a link at the end of that
+  line; the standalone Link source dialog keeps its button row.
+- **The source tooltip is rewritten** as "You can swap it any time; the
+  analysis stays as it is.", and the Link source dialog's description matches.
+
+**Decision.** The interface's muted text (labels, hints, inactive toggles) is
+the secondary slate ink, #475569, instead of #64748b. Placeholders keep their
+lighter grey so an empty field doesn't read as filled in. The diagram keeps
+its own ink ramp, since it is also the exported figure.
+
+**Why.** Devin started an analysis from scratch and found the dialog hard
+going: too much text and space, and fields that matter later (author, notes,
+sync offset) shown before the ones that help now. The grey text was too faint
+to read comfortably. This amends the 2026-09-27 entries that put the other
+fields behind "More details" and set hint text to #64748b.
