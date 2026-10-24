@@ -4131,3 +4131,9 @@ against the track shows drift at once, and pinning a far downbeat turns that
 into the exact tempo without trial and error. Not meant for freely timed
 music, which has no grid to match.
 
+**Decision.** Tap-along keeps rounding to a whole BPM; decimals come only
+from the metronome's steps, "Downbeat is here", or typing one in the Grid menu.
+**Why.** Devin: a tapped decimal goes off the rails easily. Taps by hand are
+too uneven to place a tenth of a BPM, so the whole number is the steadier
+starting point, and the metronome refines it.
+
