@@ -13,7 +13,10 @@ import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore, type InspectorTab } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
 import { GroupPopover } from '@/components/GroupPopover'
+import { PatternPicker } from '@/components/PatternPicker'
+import { CopyButton, PasteButton } from '@/components/CopyPaste'
 import { groupUpTarget } from '@/lib/groupSpans'
+import { safeFill } from '@/lib/palette'
 import { formatTime, formatClock } from '@/lib/youtube'
 import { TimeInput } from './TimeInput'
 import { TypePicker } from './TypePicker'
@@ -36,6 +39,9 @@ import type {
   CapStyle,
   LineStyle,
 } from '@/types/strata'
+
+/** A colour shown as it is (the colour-blind safe switch off). */
+const sameColor = (c: string) => c
 
 // Key area is offered in two places (leading the panel on a bar layer, tucked
 // into Advanced otherwise) and again for multi-select. One string each, so the
@@ -384,7 +390,12 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   const placeBoundary = useDocumentStore((s) => s.placeBoundary)
   const setSpanEdgeAction = useDocumentStore((s) => s.setSpanEdge)
   const resizeSpanByBars = useDocumentStore((s) => s.resizeSpanByBars)
+  const extendToEnd = useDocumentStore((s) => s.extendToEnd)
   const setSpanBars = useDocumentStore((s) => s.setSpanBars)
+  const updateSpans = useDocumentStore((s) => s.updateSpans)
+  const fillPickerPending = useUIStore((s) => s.fillPickerPending)
+  const clearFillPickerRequest = useUIStore((s) => s.clearFillPickerRequest)
+  const shownFill = useUIStore((s) => (s.colorblindSafe ? safeFill : sameColor))
   const groupIntoLayerAbove = useDocumentStore((s) => s.groupIntoLayerAbove)
   const docNow = useDocumentStore((s) => s.document)
   const copyUp = docNow ? groupUpTarget(docNow, [span.id]) : { above: null, blocked: 'No document' }
@@ -456,8 +467,13 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   const barsLong = endSeg ? Math.round((duration / barLength(endSeg)) * 10) / 10 : null
   const siblings = formSpans(layer)
   const position = siblings.findIndex((s) => s.id === span.id) + 1
+  // For To end: how many spans come after this one, and whether it already ends the track.
+  const after = siblings.filter((s) => s.startTime >= span.endTime - 1e-6).length
+  const isLast = !after && Math.abs(span.endTime - (doc?.duration ?? span.endTime)) < 1e-6
   // Fills already used in this level, for one-click reuse.
   const usedFills = [...new Set(siblings.map((s) => s.fillColor).filter((c): c is string => !!c && c !== 'none'))].slice(0, 8)
+  // Spans in this layer with this span's label (itself included).
+  const sameLabel = span.label?.trim() ? siblings.filter((s) => s.label?.trim() === span.label!.trim()) : []
 
   return (
     <div className="flex h-full flex-col">
@@ -519,6 +535,17 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           <TimeInput value={span.startTime} onCommit={commitStart} title="Start time" />
           <span className="text-muted-foreground">→</span>
           <TimeInput value={span.endTime} onCommit={commitEnd} title="End time" />
+          {/* An unmetered ending: run this span to the end, dropping the
+              spans a regular layout put after it (extendToEnd). */}
+          {!isLast && (
+            <button
+              onClick={() => extendToEnd(layer.id, span.id)}
+              title={`Run this span to the end of the track${after ? `, removing the ${after} span${after === 1 ? '' : 's'} after it` : ''}`}
+              className="rounded border border-border px-1.5 py-0.5 text-xs text-foreground hover:bg-accent"
+            >
+              To end
+            </button>
+          )}
           <span className="text-xs text-muted-foreground">
             {formatTime(duration)}
             {firstBar !== null && lastBar !== null && ` · bar${firstBar === lastBar ? ` ${firstBar}` : `s ${firstBar}–${lastBar}`}`}
@@ -571,6 +598,12 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         {/* Linked to a parent or children (Group, Copy up): boundaries they
             share move together (lib/linkedBoundaries.ts). Unlink frees them. */}
         <SpanLinks span={span} />
+
+        {/* Copy this span; paste the chosen parts of a copied one here. */}
+        <div className="flex items-center gap-1.5">
+          <CopyButton spanId={span.id} />
+          <PasteButton spanIds={[span.id]} />
+        </div>
 
         {/* The three tabs as one segmented control, so they read as the way
             into the rest of the span's fields. */}
@@ -667,7 +700,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             <div className="flex gap-2">
               <div className="flex-1">
                 <Field label="Fill">
-                  <ColorPicker value={span.fillColor} fallback={layer.fillColorDefault} onChange={(c) => update({ fillColor: c })} />
+                  <ColorPicker value={span.fillColor} fallback={layer.fillColorDefault} onChange={(c) => update({ fillColor: c })} showAs={shownFill} openRequest={fillPickerPending} onOpenRequestTaken={clearFillPickerRequest} />
                 </Field>
               </div>
               <div className="flex-1">
@@ -676,6 +709,28 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
                 </Field>
               </div>
             </div>
+            {/* A faint texture over the fill: a second cue besides colour. */}
+            <Field label="Pattern">
+              <PatternPicker
+                value={span.fillPattern}
+                fill={shownFill(span.fillColor ?? layer.fillColorDefault)}
+                onChange={(p) => update({ fillPattern: p })}
+              />
+            </Field>
+            {/* Same label, same fill: this span's fill onto every span in the
+                layer with its label, in one undo step. */}
+            {sameLabel.length > 1 && (
+              <button
+                disabled={sameLabel.every((s) => (s.fillColor ?? null) === (span.fillColor ?? null))}
+                onClick={() => updateSpans(sameLabel.map((s) => s.id), { fillColor: span.fillColor ?? null })}
+                className="mb-3 w-full rounded border border-border px-2 py-1 text-left text-xs text-foreground hover:bg-accent disabled:opacity-50"
+                title="Every span in this layer with this label gets this span's fill"
+              >
+                {sameLabel.every((s) => (s.fillColor ?? null) === (span.fillColor ?? null))
+                  ? `All ${sameLabel.length} “${span.label}” spans share this fill`
+                  : `Use this fill on all ${sameLabel.length} “${span.label}” spans`}
+              </button>
+            )}
             {usedFills.length > 0 && (
               <div className="mb-3 flex flex-wrap items-center gap-1.5">
                 <span className="text-xs text-muted-foreground">In this layer</span>
@@ -686,7 +741,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
                     title={c}
                     onClick={() => update({ fillColor: c })}
                     className="h-5 w-5 rounded border border-border"
-                    style={{ background: c }}
+                    style={{ background: shownFill(c) }}
                   />
                 ))}
               </div>
@@ -841,6 +896,9 @@ function commonValue<T>(spans: Span[], get: (s: Span) => T): T | typeof MIXED {
 function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
   const doc = useDocumentStore((s) => s.document)
   const updateSpans = useDocumentStore((s) => s.updateSpans)
+  const fillPickerPending = useUIStore((s) => s.fillPickerPending)
+  const clearFillPickerRequest = useUIStore((s) => s.clearFillPickerRequest)
+  const shownFill = useUIStore((s) => (s.colorblindSafe ? safeFill : sameColor))
   const { eligibility, performMerge } = useMerge()
 
   const spans = entries.map((e) => e.span)
@@ -862,6 +920,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
   const startCap = commonValue(spans, (s) => s.startCap ?? capFromBoundaryType(s.startBoundaryType))
   const endCap = commonValue(spans, (s) => s.endCap ?? capFromBoundaryType(s.endBoundaryType))
   const lineStyle = commonValue(spans, (s) => s.lineStyle ?? 'solid')
+  const pattern = commonValue(spans, (s) => s.fillPattern)
 
   // Layer color defaults for the swatch fallback (use the first selection's layer).
   const fillFallback = entries[0].layer.fillColorDefault
@@ -896,6 +955,10 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
 
         {/* Group: one span over all of these, on another layer. */}
         <GroupPopover spans={spans} />
+        <div className="-mt-2 mb-4 flex items-center gap-1.5">
+          <PasteButton spanIds={ids} />
+          <span className="text-[11px] text-muted-foreground">onto all {spans.length}</span>
+        </div>
 
         <Field
           label={`Commentary, ${formatClock(rangeStart)}–${formatClock(rangeEnd)}`}
@@ -983,6 +1046,15 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
           />
         </Field>
 
+        {/* Pattern — a faint texture over the fill */}
+        <Field label="Pattern" helper={pattern === MIXED ? 'Mixed' : undefined}>
+          <PatternPicker
+            value={pattern === MIXED ? null : pattern}
+            fill={shownFill(fill === MIXED || fill == null ? fillFallback : fill)}
+            onChange={(p) => setAll({ fillPattern: p })}
+          />
+        </Field>
+
         {/* Lyrics — repeating sections (e.g. a chorus) often share lyrics */}
         <Field label="Lyrics">
           <textarea
@@ -1019,6 +1091,9 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
                 value={fill === MIXED ? null : fill}
                 fallback={fillFallback}
                 onChange={(c) => setAll({ fillColor: c })}
+                showAs={shownFill}
+                openRequest={fillPickerPending}
+                onOpenRequestTaken={clearFillPickerRequest}
               />
             </Field>
           </div>

@@ -14,6 +14,8 @@ export interface FigureTheme {
   ring: string
   caption: string
   captionSelected: string
+  /** How a span's fill is drawn; absent draws it as stored ("Colour-blind safe", lib/palette.ts safeFill). */
+  mapFill?: (color: string) => string
 }
 
 /** In the app: CSS variables, so the figure follows the app's theme. */

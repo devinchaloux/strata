@@ -31,6 +31,8 @@ export function ReadingHeader() {
   const setShow = useUIStore((s) => s.setReadingShow)
   const showLyrics = useUIStore((s) => s.showLyrics)
   const setShowLyrics = useUIStore((s) => s.setShowLyrics)
+  const colorblindSafe = useUIStore((s) => s.colorblindSafe)
+  const setColorblindSafe = useUIStore((s) => s.setColorblindSafe)
   const setReadingView = useUIStore((s) => s.setReadingView)
   const setShareOpen = useUIStore((s) => s.setShareOpen)
   const sharedFrom = useUIStore((s) => s.sharedFrom)
@@ -49,6 +51,7 @@ export function ReadingHeader() {
         {hasCommentary && <Chip on={show.commentary} label="Commentary" onClick={() => setShow('commentary', !show.commentary)} />}
         <Chip on={show.diagram} label="Form diagram" onClick={() => setShow('diagram', !show.diagram)} />
         {hasLyrics && <Chip on={showLyrics} label="Lyrics" onClick={() => setShowLyrics(!showLyrics)} />}
+        <Chip on={colorblindSafe} label="Colour-blind safe" onClick={() => setColorblindSafe(!colorblindSafe)} />
       </div>
       <button
         type="button"

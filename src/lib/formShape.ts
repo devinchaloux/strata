@@ -600,21 +600,38 @@ export function parseHex(hex: string): [number, number, number] | null {
   return null
 }
 
-/** Relative luminance (WCAG-ish, simple sRGB) 0 (black) – 1 (white). */
+/** WCAG relative luminance, 0 (black) – 1 (white); an unreadable colour counts as white. */
 export function luminance(hex: string): number {
   const rgb = parseHex(hex)
-  if (!rgb) return 1 // unknown → treat as light
-  const [r, g, b] = rgb.map((c) => c / 255)
+  if (!rgb) return 1
+  const [r, g, b] = rgb.map((c) => {
+    const v = c / 255
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+  })
   return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }
 
+/** WCAG contrast ratio between two colours, 1 – 21. */
+export function contrast(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x)
+  return (hi + 0.05) / (lo + 0.05)
+}
+
+/** The darkest ink the diagram uses (slate 900): never plain black (spec §6). */
+const DEEP_INK = '#0f172a'
+
 /**
- * Pick a legible text color for a label/annotation sitting ON a filled shape.
- * White fills (open brackets) → use the supplied ink color; dark fills → white.
- * Per spec §6 we never use plain black; the caller passes the ink ramp color.
+ * A legible text colour for a label or annotation drawn ON a filled shape:
+ * the caller's ink while it reaches 4.5:1 (WCAG AA for text) against the
+ * fill, else whichever of a deeper ink or white contrasts more. Mid-tone
+ * fills (bright cyan, orange) used to get white text at under 3:1.
  */
 export function textOnFill(fill: string, ink: string): string {
-  return luminance(fill) > 0.6 ? ink : '#ffffff'
+  // The editor passes its ink as a CSS variable (var(--ink-primary)); it is
+  // measured as the ink it stands for.
+  const measured = parseHex(ink) ? ink : '#334155'
+  if (contrast(fill, measured) >= 4.5) return ink
+  return contrast(fill, DEEP_INK) >= contrast(fill, '#ffffff') ? DEEP_INK : '#ffffff'
 }
 
 // ---------------------------------------------------------------------------

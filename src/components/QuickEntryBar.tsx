@@ -11,7 +11,9 @@
  *     file, no library), it shows the library chooser and More… alone.
  *   - Shape: drawn, in groups: the whole shape (1–3) and the line, solid or
  *     dashed (4–5), on number keys; then each end on its own, by click.
- *   - Fill: the layer default and eight colours.
+ *   - Fill: the layer default and eight muted colours (lib/palette.ts).
+ *   Shape and Fill end with More…, which opens the Inspector's Shape & color
+ *   tab (with the Fill picker open, for fills), as Type's opens the Type list.
  * Picking applies to every selected span in one undo step, with labels
  * following a new type as in the Inspector (store/typeActions.ts).
  * docs/decisions.md, "Quick Entry".
@@ -20,7 +22,7 @@
  * kept inside the window, and stops its clicks from reaching the diagram
  * (whose click clears the selection: React events bubble through portals).
  */
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
@@ -33,6 +35,9 @@ import { LIBRARIES } from '@/lib/vocabulary'
 import { isInputFocused } from '@/lib/youtube'
 import type { Layer, Span } from '@/types/strata'
 import { CAP_ICONS, WHOLE_ICONS } from '@/lib/capIcons'
+import { QUICK_FILLS, safeFill } from '@/lib/palette'
+import { FILL_PATTERNS } from '@/lib/patterns'
+import { PatternSwatch } from '@/components/PatternPicker'
 
 const BAR_H = 36
 const MAX_TYPES = 8
@@ -79,7 +84,6 @@ function shared<T>(spans: Span[], get: (s: Span) => T): T | null {
   return spans.every((s) => get(s) === first) ? first : null
 }
 
-const FILLS = ['#94a3b8', '#22c55e', '#3b82f6', '#06b6d4', '#8b5cf6', '#14b8a6', '#ec4899', '#f97316']
 
 export function QuickEntryBar({
   containerRef,
@@ -96,7 +100,18 @@ export function QuickEntryBar({
   const updateLayer = useDocumentStore((s) => s.updateLayer)
   const selected = useUIStore((s) => s.selectedSpanIds)
   const mode = useUIStore((s) => s.quickEntry)
+  // Swatches as the diagram draws them (the colour-blind safe switch).
+  const colorblindSafe = useUIStore((s) => s.colorblindSafe)
+  const shown = useCallback((c: string) => (colorblindSafe ? safeFill(c) : c), [colorblindSafe])
   const requestTypePicker = useUIStore((s) => s.requestTypePicker)
+  const requestFillPicker = useUIStore((s) => s.requestFillPicker)
+  const setInspectorTab = useUIStore((s) => s.setInspectorTab)
+  // More… (or "/"): the full list in the Inspector for whatever this offers.
+  const more = useCallback(() => {
+    if (mode === 'type') requestTypePicker()
+    else if (mode === 'fill') requestFillPicker()
+    else setInspectorTab('shape')
+  }, [mode, requestTypePicker, requestFillPicker, setInspectorTab])
   const barRef = useRef<HTMLDivElement>(null)
 
   // The selection, if it all sits in one visible layer.
@@ -171,9 +186,18 @@ export function QuickEntryBar({
     }
     return [
       { key: 'default', label: 'Layer default', hotkey: 1, swatch: target.layer.fillColorDefault, apply: () => updateSpans(ids, { fillColor: null }) },
-      ...FILLS.map((c, i) => ({ key: c, label: '', title: c, hotkey: i + 2, swatch: c, apply: () => updateSpans(ids, { fillColor: c }) })),
+      ...QUICK_FILLS.map((c, i) => ({ key: c, label: '', title: c, hotkey: i + 2, swatch: c, apply: () => updateSpans(ids, { fillColor: c }) })),
+      // Patterns after the colours, by click (the colours have every number key).
+      ...[{ id: undefined, name: 'No pattern' }, ...FILL_PATTERNS].map((pt) => ({
+        key: `pattern-${pt.id ?? 'none'}`,
+        label: pt.name,
+        group: 'Pattern',
+        icon: <PatternSwatch pattern={pt.id} fill={shown(target.spans[0].fillColor ?? target.layer.fillColorDefault)} />,
+        on: target.spans.every((s) => s.fillPattern === pt.id),
+        apply: () => updateSpans(ids, { fillPattern: pt.id }),
+      })),
     ]
-  }, [doc, target, mode])
+  }, [doc, target, mode, shown])
 
   // Types show even with nothing to offer yet (a new file, no library chosen):
   // the bar is where the library is chosen, and More… opens every type.
@@ -189,14 +213,14 @@ export function QuickEntryBar({
       if (picked) {
         e.preventDefault()
         picked.apply()
-      } else if (e.key === '/' && mode === 'type') {
+      } else if (e.key === '/') {
         e.preventDefault()
-        requestTypePicker()
+        more()
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [showing, options, mode, requestTypePicker])
+  }, [showing, options, more])
 
   // Where the container sits on screen, and the bar's own width (to keep it
   // inside the window); refreshed on scroll and resize.
@@ -221,10 +245,13 @@ export function QuickEntryBar({
   if (!target || !box || !showing) return null
 
   // Just above the diagram, centred on the selection but kept inside the
-  // window; below the selected layer if the diagram is at the top.
+  // window, and from the diagram's right edge leftwards: past it is the
+  // Inspector, which a wide bar (Shapes) used to cover for right-hand spans.
+  // Below the selected layer if the diagram is at the top.
   const mid = box.left + ((target.start + target.end) / 2) * pps - scrollOffset
   const half = width / 2
-  const left = Math.max(EDGE + half, Math.min(mid, window.innerWidth - EDGE - half))
+  const right = Math.min(window.innerWidth, box.right) - EDGE
+  const left = Math.max(EDGE + half, Math.min(mid, right - half))
   const above = box.top - BAR_H - 34
   const top = above > EDGE ? above : box.top + shapeTopY(layers, target.idx) + layerBodyHeight(target.layer) + 6
   const stop = (e: React.SyntheticEvent) => e.stopPropagation()
@@ -280,16 +307,16 @@ export function QuickEntryBar({
             }`}
           >
             {o.hotkey != null && <kbd className="font-sans text-[11px] text-muted-foreground">{o.hotkey}</kbd>}
-            {o.swatch && <span className="h-4 w-4 rounded border border-border" style={{ background: o.swatch }} aria-hidden />}
+            {o.swatch && <span className="h-4 w-4 rounded border border-border" style={{ background: shown(o.swatch) }} aria-hidden />}
             {o.icon ?? o.label}
           </button>
         </span>
       ))}
-      {mode === 'type' && (
+      {mode !== 'off' && (
         <button
           type="button"
-          onClick={requestTypePicker}
-          title="Every type, with search"
+          onClick={more}
+          title={mode === 'type' ? 'Every type, with search' : mode === 'fill' ? 'Every colour' : 'Every shape setting, in the Inspector'}
           className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           More… <kbd className="font-sans text-[11px]">/</kbd>

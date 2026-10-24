@@ -122,12 +122,26 @@ export interface UIState {
   // remembered in this browser. docs/decisions.md, "Click Track and Beat Matching".
   clickOn: boolean
   clickVolume: number
+  // Colour-blind safe: quick fills drawn in their safe counterparts
+  // (lib/palette.ts safeFill). A viewer's preference, remembered in this
+  // browser, never in the file.
+  colorblindSafe: boolean
   /** Vocabulary packs the analyst has switched on in the type picker (lib/vocabulary.ts). */
   enabledPacks: string[]
   /** The Libraries dialog (packs on or off, import, share). */
   librariesOpen: boolean
-  /** Bumped to ask the Inspector's span Type picker to open (the "/" key). */
-  typePickerRequest: number
+  /**
+   * Set to open the Inspector's span Type picker (Quick pick's "/" or More…).
+   * A flag the picker takes up and clears, so a request opens it once: as a
+   * counter it reopened on every later mount of the picker.
+   */
+  typePickerPending: boolean
+  /**
+   * Set to open the Inspector's Fill colour picker (Quick pick Fills' More…).
+   * A flag, not a counter: the picker may mount only after the request (the
+   * tab switches with it), takes it up then, and clears it.
+   */
+  fillPickerPending: boolean
   /** The span Inspector's open tab, kept as the selection moves. */
   inspectorTab: InspectorTab
   /** The quick-entry bar's mode, remembered in the browser. */
@@ -188,9 +202,14 @@ export interface UIState {
   setSnapMode: (mode: SnapMode) => void
   setClickOn: (on: boolean) => void
   setClickVolume: (volume: number) => void
+  setColorblindSafe: (on: boolean) => void
   setPackEnabled: (id: string, on: boolean) => void
   setLibrariesOpen: (open: boolean) => void
   requestTypePicker: () => void
+  clearTypePickerRequest: () => void
+  /** Shape & color tab, with the Fill picker open. */
+  requestFillPicker: () => void
+  clearFillPickerRequest: () => void
   setInspectorTab: (tab: InspectorTab) => void
   setReadingView: (on: boolean) => void
   setReadingShow: (part: 'commentary' | 'diagram', on: boolean) => void
@@ -226,6 +245,7 @@ export interface UIState {
 
 const SNAP_KEY = 'strata:snapMode'
 const CLICK_VOLUME_KEY = 'strata:clickVolume'
+const COLORBLIND_KEY = 'strata:colorblindSafe'
 const LYRICS_KEY = 'strata:showLyrics'
 const PACKS_KEY = 'strata:packs'
 const QUICK_KEY = 'strata:quickEntry'
@@ -258,6 +278,8 @@ function readClickVolume(): number {
   const v = Number(readPreference(CLICK_VOLUME_KEY))
   return readPreference(CLICK_VOLUME_KEY) != null && Number.isFinite(v) && v >= 0 && v <= 1 ? v : 0.6
 }
+
+const NO_PICKER_REQUEST = { typePickerPending: false, fillPickerPending: false }
 
 const useUIStore = create<UIState>()((set) => ({
   currentTime: 0,
@@ -293,10 +315,13 @@ const useUIStore = create<UIState>()((set) => ({
   snapMode: readSnapPreference(),
   clickOn: false,
   clickVolume: readClickVolume(),
-  showLyrics: readPreference(LYRICS_KEY) === 'on',
+  colorblindSafe: readPreference(COLORBLIND_KEY) === 'on',
+  // On unless the analyst has turned it off (docs/decisions.md, "Lyrics Show in the Editor").
+  showLyrics: readPreference(LYRICS_KEY) !== 'off',
   enabledPacks: (readPreference(PACKS_KEY) ?? '').split(',').filter(Boolean),
   librariesOpen: false,
-  typePickerRequest: 0,
+  typePickerPending: false,
+  fillPickerPending: false,
   inspectorTab: 'describe',
   quickEntry: (['off', 'type', 'shape', 'fill'] as const).find((m) => m === readPreference(QUICK_KEY)) ?? 'type',
   setQuickEntry: (mode) => {
@@ -319,8 +344,10 @@ const useUIStore = create<UIState>()((set) => ({
   setViewportWidth: (width) => set({ viewportWidth: width }),
 
 
+  // A new selection drops any picker request not yet taken up (typePickerPending,
+  // fillPickerPending), so one can't open a picker on a later span.
   selectSpan: (id) =>
-    set({ selectedSpanIds: id ? [id] : [], selectionAnchorId: id, selectedPointMarkerId: null }),
+    set({ selectedSpanIds: id ? [id] : [], selectionAnchorId: id, selectedPointMarkerId: null, ...NO_PICKER_REQUEST }),
   toggleSpan: (id) =>
     set((s) => ({
       selectedSpanIds: s.selectedSpanIds.includes(id)
@@ -328,15 +355,17 @@ const useUIStore = create<UIState>()((set) => ({
         : [...s.selectedSpanIds, id],
       selectionAnchorId: id,
       selectedPointMarkerId: null,
+      ...NO_PICKER_REQUEST,
     })),
   setSelection: (ids, anchorId) =>
     set({
       selectedSpanIds: ids,
       selectionAnchorId: anchorId !== undefined ? anchorId : ids[ids.length - 1] ?? null,
       selectedPointMarkerId: null,
+      ...NO_PICKER_REQUEST,
     }),
   clearSelection: () =>
-    set({ selectedSpanIds: [], selectionAnchorId: null, selectedPointMarkerId: null }),
+    set({ selectedSpanIds: [], selectionAnchorId: null, selectedPointMarkerId: null, ...NO_PICKER_REQUEST }),
   hoverSpan: (id) => set({ hoveredSpanId: id }),
   setActiveLayer: (id) => set({ activeLayerId: id }),
 
@@ -377,6 +406,10 @@ const useUIStore = create<UIState>()((set) => ({
     set({ snapMode: mode })
   },
   setClickOn: (on) => set({ clickOn: on }),
+  setColorblindSafe: (on) => {
+    writePreference(COLORBLIND_KEY, on ? 'on' : 'off')
+    set({ colorblindSafe: on })
+  },
   setClickVolume: (volume) => {
     writePreference(CLICK_VOLUME_KEY, String(volume))
     set({ clickVolume: volume })
@@ -388,7 +421,10 @@ const useUIStore = create<UIState>()((set) => ({
       return { enabledPacks }
     }),
   setLibrariesOpen: (open) => set({ librariesOpen: open }),
-  requestTypePicker: () => set((s) => ({ typePickerRequest: s.typePickerRequest + 1 })),
+  requestTypePicker: () => set({ typePickerPending: true }),
+  clearTypePickerRequest: () => set({ typePickerPending: false }),
+  requestFillPicker: () => set({ fillPickerPending: true, inspectorTab: 'shape' }),
+  clearFillPickerRequest: () => set({ fillPickerPending: false }),
   setInspectorTab: (tab) => set({ inspectorTab: tab }),
   setReadingView: (on) => set({ readingView: on, selectedSpanIds: [], selectionAnchorId: null, selectedPointMarkerId: null }),
   setReadingShow: (part, on) => set((s) => ({ readingShow: { ...s.readingShow, [part]: on } })),

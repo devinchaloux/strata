@@ -242,7 +242,8 @@ function sections(doc: StrataDocument) {
     .map(({ block }) => {
       const span = 'spanId' in block.anchor ? spans.get(block.anchor.spanId) : undefined
       const range = anchorRange(doc, block.anchor) ?? [0, 0]
-      const heading = span ? span.label || spanTypeName(span.type, doc.vocabulary.spanTypes) || 'Untitled span' : 'Passage'
+      // An unlabelled, untyped span has no heading: just its time.
+      const heading = span ? span.label || spanTypeName(span.type, doc.vocabulary.spanTypes) || '' : 'Passage'
       return { block, span, range, heading }
     })
     .sort((a, b) => a.range[0] - b.range[0])
@@ -283,7 +284,7 @@ export function commentaryToHtml(doc: StrataDocument): string {
             '</p>',
         )
         .join('\n')
-      return `<section${id}>\n<h2>${esc(heading)} <span class="time">${mmss(range[0])}–${mmss(range[1])}</span></h2>\n${paras}\n</section>`
+      return `<section${id}>\n<h2>${heading ? `${esc(heading)} ` : ''}<span class="time">${mmss(range[0])}–${mmss(range[1])}</span></h2>\n${paras}\n</section>`
     })
     .join('\n')
 
@@ -331,7 +332,7 @@ export function commentaryToMarkdown(doc: StrataDocument): string {
   for (const { block, span, range, heading } of entries) {
     out.push('')
     if (span?.slug) out.push(`<a id="${span.slug}"></a>`, '')
-    out.push(`## ${heading} (${mmss(range[0])}–${mmss(range[1])})`)
+    out.push(`## ${heading ? `${heading} ` : ''}(${mmss(range[0])}–${mmss(range[1])})`)
     for (const para of parseCommentary(block.text)) {
       out.push(
         '',

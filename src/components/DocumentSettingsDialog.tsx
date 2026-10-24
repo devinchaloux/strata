@@ -21,6 +21,7 @@
 import { useRef, useState } from 'react'
 import { ChevronRight, Info } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
+import { useUIStore } from '@/store/uiStore'
 import { formatClock } from '@/lib/youtube'
 import { BUILT_IN_MODES } from '@/lib/modes'
 import { SourceLinkForm } from '@/components/LinkSourceDialog'
@@ -166,6 +167,8 @@ export function DocumentSettingsDialog({
 }) {
   const doc = useDocumentStore((s) => s.document)
   const updateMeta = useDocumentStore((s) => s.updateMeta)
+  const colorblindSafe = useUIStore((s) => s.colorblindSafe)
+  const setColorblindSafe = useUIStore((s) => s.setColorblindSafe)
   const titleRef = useRef<HTMLInputElement>(null)
 
   // Local text-input mirrors for fields that need free typing before commit
@@ -351,6 +354,20 @@ export function DocumentSettingsDialog({
               </div>
             </Field>
           </div>
+
+          {/* A viewer's preference, not part of the file (lib/palette.ts safeFill). */}
+          {!isNew && (
+            <label className="mb-3 flex cursor-pointer items-center justify-between gap-3 rounded border border-border px-2 py-1.5">
+              <span className="flex flex-col">
+                <span className="text-xs text-foreground">Colour-blind safe colours</span>
+                <span className="text-[11px] text-muted-foreground">
+                  Shows the quick colours in a set that stays distinct for colour blindness. In this browser only;
+                  the file keeps its colours.
+                </span>
+              </span>
+              <Switch checked={colorblindSafe} onCheckedChange={setColorblindSafe} aria-label="Colour-blind safe colours" />
+            </label>
+          )}
 
           <button
             type="button"

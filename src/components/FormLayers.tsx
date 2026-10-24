@@ -29,6 +29,7 @@ import { snapToActiveGrid } from '@/store/snap'
 import { Playhead } from './Playhead'
 import { FormDiagramFigure, type SpanDecoration } from '@/widgets/form-diagram/figure'
 import { EDITOR_THEME } from '@/widgets/form-diagram/theme'
+import { safeFill } from '@/lib/palette'
 import type { Layer, Span, FormDiagramData, PointMarker, VocabTerm, GridSegment } from '@/types/strata'
 import {
   ContextMenu,
@@ -37,6 +38,9 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
 } from '@/components/ui/context-menu'
+
+/** The editor's theme with quick fills drawn colour-blind safe (lib/palette.ts). */
+const SAFE_EDITOR_THEME = { ...EDITOR_THEME, mapFill: safeFill }
 
 // Stable empty references, so a null document doesn't produce a new array on
 // every render (which would defeat the store's identity comparison).
@@ -88,6 +92,7 @@ function SpanMenuItems({ span, layer }: { span: Span; layer: Layer }) {
   const removeSpan = useDocumentStore((s) => s.removeSpan)
   const placeBoundary = useDocumentStore((s) => s.placeBoundary)
   const groupIntoLayerAbove = useDocumentStore((s) => s.groupIntoLayerAbove)
+  const extendToEnd = useDocumentStore((s) => s.extendToEnd)
   const { eligibility, performMerge, neighborId } = useMerge()
 
   // Group into (several) or copy to (one) the layer above, then select the
@@ -162,6 +167,7 @@ function SpanMenuItems({ span, layer }: { span: Span; layer: Layer }) {
         Merge with next
       </ContextMenuItem>
       <GroupUpItem label="Copy up a layer" target={upTarget([span.id])} onSelect={() => groupUp([span.id])} />
+      <ContextMenuItem onClick={() => extendToEnd(layer.id, span.id)}>Extend to the end</ContextMenuItem>
       <ContextMenuSeparator />
       <ContextMenuItem
         onClick={handleDelete}
@@ -540,6 +546,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   const doc = useDocumentStore((s) => s.document)
   const updatePointMarker = useDocumentStore((s) => s.updatePointMarker)
   const selectedMarkerId = useUIStore((s) => s.selectedPointMarkerId)
+  const colorblindSafe = useUIStore((s) => s.colorblindSafe)
   const selectPointMarker = useUIStore((s) => s.selectPointMarker)
   const pointMarkers = doc?.pointMarkers ?? EMPTY_MARKERS
   const markerTypes = doc?.vocabulary.pointMarkerTypes ?? EMPTY_TERMS
@@ -784,7 +791,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
             pps={pps}
             totalWidth={totalWidth}
             showCaptions={showCaptions}
-            theme={EDITOR_THEME}
+            theme={colorblindSafe ? SAFE_EDITOR_THEME : EDITOR_THEME}
             selectedMarkerId={selectedMarkerId}
             Decoration={SelectionHighlight}
           />

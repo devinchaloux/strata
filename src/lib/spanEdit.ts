@@ -238,3 +238,17 @@ export function rippleSpanEnd(spans: Span[], spanId: string, delta: number, dura
   moved[moved.length - 1] = { ...lastSpan, endTime: layerEnd }
   return moved
 }
+
+/**
+ * A span run on to the end of the track, the spans after it in its layer
+ * removed: for a passage that stops being metered, where a regular layout
+ * (quick setup) left spans the music doesn't have. Null when the span is
+ * already last and at the end.
+ */
+export function extendSpanToEnd(spans: Span[], spanId: string, duration: number): Span[] | null {
+  const span = spans.find((s) => s.id === spanId)
+  if (!span) return null
+  const kept = spans.filter((s) => s.id === spanId || s.startTime < span.endTime - 1e-6)
+  if (kept.length === spans.length && Math.abs(span.endTime - duration) < 1e-6) return null
+  return kept.map((s) => (s.id === spanId ? { ...s, endTime: duration } : s))
+}

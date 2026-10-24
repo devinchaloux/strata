@@ -139,6 +139,13 @@ where `pps = BASE_PPS * viewState.zoom`.
   `span.strokeColor ?? layer.strokeColorDefault`. The path is open; fill closes it
   along the baseline, so a white fill reads as an open bracket and a colored fill as
   a solid block.
+  With the viewer's **Colour-blind safe** switch on, a quick fill is drawn as its
+  safe counterpart (lib/palette.ts `safeFill`); the file keeps the quick fill.
+- **Fill pattern:** `span.fillPattern` (hatch, cross, dots, lines) draws a faint
+  texture over the fill, in a darker shade of the fill as shown, under the
+  outline (lib/patterns.ts).
+- **Text on a fill:** an inside label or annotation keeps the ink while it reaches
+  4.5:1 against the fill, else a deeper ink or white (lib/formShape.ts `textOnFill`).
 - **Label:** per layer rendering config — above the shape (in the negative space of
   the layer above) by default; truncated to fit when rendered inside the body.
 - **Annotation:** `span.annotation` inside the shape body; tooltip on hover for long text.
@@ -211,7 +218,8 @@ Full design rationale in `docs/decisions.md`. This section is the implementation
 |---|---|
 | **B** | Place a boundary at `currentTime` — split the span containing `currentTime`, or mark a boundary in empty layer space. (Space until 2026-10-01; Space now plays and pauses.) |
 | **Shift+B** | End the span containing `currentTime` there, leaving the rest of it empty. |
-| **Delete / Backspace** | Remove the selected spans (or the selected point marker), one undo step; not while typing in a field. |
+| **Delete** | Remove the selected spans (or the selected point marker), one undo step; not while typing in a field. Backspace does not delete spans. |
+| **Ctrl/⌘+C, Ctrl/⌘+V** | Copy the selected span; paste the chosen parts of it (label and type by default; annotation, commentary, lyrics, fill, pattern, shape by choice in the Inspector's Paste menu) onto every selected span, one undo step. Not in a text field or over selected page text. store/spanClipboard.ts. |
 | **← / →** | Select the previous / next span in the layer; `Shift` extends the selection |
 | **↑ / ↓** | Select the span in the layer above / below |
 | **Drag boundary handle** | Move boundary; hard-stops at adjacent span boundaries; minimum span width enforced |
@@ -236,6 +244,8 @@ While the source is linked and no layer has spans, the open area above the diagr
 A selected span inside the grid shows its **Length** in bars in the Inspector: a field to type a length in ("this phrase is 2 bars", `setSpanBars`), between − and + buttons. Each changes the span's end by one bar (of the grid where it ends) and moves every later boundary in the layer by the same amount, so the spans after it keep their lengths. The layer still ends where it did: lengthening pushes the last span's start later and drops a span pushed past the end; shortening stretches the last span to fill. On the last span itself, only its end moves, within the track. `resizeSpanByBars` in the store, `rippleSpanEnd` in lib/spanEdit.ts.
 
 Placed boundaries are immediately contributed to the shared time point pool via the next `contributeTimePoints` call.
+
+**To end** (beside the End time in the Inspector, and **Extend to the end** on right-click) runs a span to the end of the track and removes the spans after it in its layer, one undo step: for an ending that stops being metered, where a quick setup laid out spans the music doesn't have. Their commentary survives, anchored to their times. `extendToEnd` in the store, `extendSpanToEnd` in lib/spanEdit.ts.
 
 #### Group and Copy Up
 

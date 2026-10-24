@@ -8,7 +8,7 @@ import { sortedSegments, segmentAt, segmentEnd, extendBack, snapToGrid, barTilin
 import { roundTempo, segmentForAdjusting, tempoThroughDownbeat } from '@/lib/metronome'
 import type { FormDiagramData } from '@/types/strata'
 import { mergeVocabPack, type MergeResult, type VocabPack } from '@/lib/vocabPack'
-import { placeBoundaryInSpans, setSpanEdge, findOverlaps, endSpanAtTime, snapSpansToGrid, rippleSpanEnd, MIN_SPAN_WIDTH } from '@/lib/spanEdit'
+import { placeBoundaryInSpans, setSpanEdge, findOverlaps, endSpanAtTime, snapSpansToGrid, rippleSpanEnd, extendSpanToEnd, MIN_SPAN_WIDTH } from '@/lib/spanEdit'
 import { groupingHandleSet, breakHistoryGroup } from '@/store/history'
 import { slugify, uniqueSlug, slugsInUse, allSpans, resolveSlugCollisions } from '@/lib/slug'
 import {
@@ -99,6 +99,9 @@ interface DocumentState {
   // (or filling the gap it falls in — an empty layer is one gap). No-op if the
   // cut isn't valid.
   placeBoundary: (layerId: string, time: number) => void
+  // A span run on to the end of the track, the later spans in its layer
+  // removed (lib/spanEdit.ts, extendSpanToEnd). One undo step.
+  extendToEnd: (layerId: string, spanId: string) => void
   // Shift+B: the span under `time` ends there, leaving the rest empty.
   endSpanAt: (layerId: string, time: number) => void
   // Move every boundary in a layer to the nearest bar or beat. One undo step;
@@ -482,6 +485,23 @@ const useDocumentStore = create<DocumentState>()(
         const base = span.label ? slugify(span.label) : null
         const slug = base ? uniqueSlug(base, slugsInUse(doc, new Set([spanId]))) : null
         set({ document: { ...patchSpans(doc, new Set([spanId]), (s) => ({ ...s, slug })), updatedAt: now() } })
+      },
+
+      extendToEnd: (layerId, spanId) => {
+        const doc = get().document
+        if (!doc) return
+        let changed = false
+        const layers = mapLayer(doc.layers, layerId, (l) =>
+          mapFormDiagramSpans(l, (spans) => {
+            const next = extendSpanToEnd(spans, spanId, doc.duration)
+            if (!next) return spans
+            changed = true
+            return next
+          }),
+        )
+        if (!changed) return
+        // Removed spans' commentary survives, anchored to their old times.
+        set({ document: reanchorOrphans(doc, { ...doc, layers, updatedAt: now() }) })
       },
 
       removeSpan: (layerId, spanId) => {

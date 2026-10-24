@@ -100,7 +100,7 @@ export function ExportDialog() {
   useEffect(() => {
     if (!open || !doc || !range || range[1] <= range[0]) return
     let cancelled = false
-    exportFormDiagramSvg(doc, { start: range[0], end: range[1], width, includeMarkers, includeAxis, layerIds })
+    exportFormDiagramSvg(doc, { start: range[0], end: range[1], width, includeMarkers, includeAxis, layerIds, colorblindSafe: useUIStore.getState().colorblindSafe })
       .then((s) => !cancelled && setSvg(s))
       .catch((e: unknown) => {
         if (cancelled) return

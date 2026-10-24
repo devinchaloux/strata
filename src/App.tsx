@@ -8,6 +8,7 @@ import { FormDiagram } from '@/components/FormDiagram'
 import { Inspector } from '@/components/Inspector'
 import { MergeConflictDialog } from '@/components/MergeConflictDialog'
 import { DocumentSettingsDialog } from '@/components/DocumentSettingsDialog'
+import { copySpan, pasteOnto } from '@/store/spanClipboard'
 import { LinkSourceDialog } from '@/components/LinkSourceDialog'
 import { ExportDialog } from '@/components/ExportDialog'
 import { LibrariesDialog } from '@/components/LibrariesDialog'
@@ -533,6 +534,23 @@ export default function App() {
         }
       }
 
+      // Ctrl/⌘+C / Ctrl/⌘+V — copy the selected span, paste the chosen parts
+      // of it onto the selection (store/spanClipboard.ts). Not in a text field,
+      // and not over selected page text, where the usual copy and paste apply.
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && (e.key === 'c' || e.key === 'v')) {
+        const el = e.target as HTMLElement | null
+        const tag = el?.tagName
+        const inField =
+          tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable
+        const ui = useUIStore.getState()
+        const textSelected = !!window.getSelection()?.toString()
+        if (!inField && !textSelected && !ui.readingView && ui.selectedSpanIds.length) {
+          if (e.key === 'c' && copySpan(ui.selectedSpanIds[0])) e.preventDefault()
+          if (e.key === 'v' && pasteOnto(ui.selectedSpanIds)) e.preventDefault()
+          return
+        }
+      }
+
       // ? — the help dialog, from anywhere but a text field.
       if (e.key === '?') {
         const el = e.target as HTMLElement | null
@@ -549,9 +567,10 @@ export default function App() {
       const reading = useUIStore.getState().readingView
       if (!reading && navigateSpans(e)) return
 
-      // Delete / Backspace — remove the selected spans (or the selected
-      // marker), one undo step, from anywhere but a text field.
-      if ((e.key === 'Delete' || e.key === 'Backspace') && !reading && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      // Delete — remove the selected spans (or the selected marker), one undo
+      // step, from anywhere but a text field. Not Backspace: erasing text, a
+      // press that lands just outside the field deleted the whole span.
+      if (e.key === 'Delete' && !reading && !e.metaKey && !e.ctrlKey && !e.altKey) {
         const el = e.target as HTMLElement | null
         const tag = el?.tagName
         const inField =

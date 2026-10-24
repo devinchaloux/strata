@@ -29,6 +29,8 @@ export type CapStyle = 'rounded' | 'square' | 'angled' | 'open' | 'elision'
 
 /** Visual stroke style of a bracket; whole-shape uniform. Decoupled from confidence. */
 export type LineStyle = 'solid' | 'dashed'
+/** A faint texture over a span's fill, in a darker shade of it (lib/patterns.ts). */
+export type FillPattern = 'hatch' | 'cross' | 'dots' | 'lines'
 
 // ---------------------------------------------------------------------------
 // Source Reference
@@ -174,6 +176,7 @@ export interface Span {
   startCap?: CapStyle            // Default 'rounded' (falls back from startBoundaryType for old files)
   endCap?: CapStyle              // Default 'rounded' (falls back from endBoundaryType for old files)
   lineStyle?: LineStyle          // Default 'solid'
+  fillPattern?: FillPattern      // Texture over the fill, a darker shade of it. Omit for none.
   endOnTop?: boolean             // Where an elision makes this bracket overlap the next one:
                                   // true = this span draws on top. Omit for false (next on top).
 }

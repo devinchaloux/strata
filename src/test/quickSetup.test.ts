@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest'
 import type { GridSegment, Span } from '@/types/strata'
 import { barTiling } from '@/lib/beatGrid'
-import { rippleSpanEnd } from '@/lib/spanEdit'
+import { rippleSpanEnd, extendSpanToEnd } from '@/lib/spanEdit'
 import { useDocumentStore } from '@/store/documentStore'
 import { formSpans } from '@/lib/layers'
 import { makeDoc, makeLayer } from './fixtures'
@@ -65,6 +65,22 @@ describe('rippleSpanEnd', () => {
   })
 })
 
+describe('extendSpanToEnd', () => {
+  const spans = [span('a', 0, 8), span('b', 8, 16), span('c', 16, 24), span('d', 24, 30)]
+
+  it('runs a span to the end and drops the spans after it', () => {
+    expect(times(extendSpanToEnd(spans, 'b', 30)!)).toEqual([[0, 8], [8, 30]])
+  })
+
+  it('reaches the track end past the last span', () => {
+    expect(times(extendSpanToEnd([span('a', 0, 8)], 'a', 30)!)).toEqual([[0, 30]])
+  })
+
+  it('does nothing for a last span already at the end', () => {
+    expect(extendSpanToEnd(spans, 'd', 30)).toBeNull()
+  })
+})
+
 describe('in the store', () => {
   const store = () => useDocumentStore.getState()
   const load = (extra = {}) => {
@@ -100,5 +116,12 @@ describe('in the store', () => {
     // A two-bar break where the second phrase starts: every later phrase moves two bars earlier.
     store().setSpanBars(id, layerSpans(id)[1].id, 2)
     expect(times(layerSpans(id))).toEqual([[0, 8], [8, 12], [12, 20], [20, 30]])
+  })
+
+  it('extends a phrase to the end over an unmetered ending, in one step', () => {
+    const id = load()
+    store().fillLayerWithBars(id, 0, 4)
+    store().extendToEnd(id, layerSpans(id)[1].id)
+    expect(times(layerSpans(id))).toEqual([[0, 8], [8, 30]])
   })
 })

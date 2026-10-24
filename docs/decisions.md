@@ -20,9 +20,9 @@ aren't part of this repository.
 
 By area, in the order the entries were made:
 
-**File format and schema:** [File Format](#file-format) · [Span Data Model](#span-data-model) · [File-Level Metadata](#file-level-metadata) · [Schema](#schema) · [Shared Time Point Pool](#shared-time-point-pool) · [Source References](#source-references) · [Schema Finalization (Phase 0.1)](#schema-finalization-phase-01) · [Schema Revision (Phase 0.1 — Session 2)](#schema-revision-phase-01--session-2) · [Schema Changes (Phase 2 prep, 2026-06-20)](#schema-changes-phase-2-prep-2026-06-20) · [Trust and Format Integrity, Round 1 (2026-09-27)](#trust-and-format-integrity-round-1-2026-09-27) · [File Format Integrity, Round 2 (2026-09-27)](#file-format-integrity-round-2-2026-09-27)
+**File format and schema:** [File Format](#file-format) · [Span Data Model](#span-data-model) · [File-Level Metadata](#file-level-metadata) · [Schema](#schema) · [Shared Time Point Pool](#shared-time-point-pool) · [Source References](#source-references) · [Schema Finalization (Phase 0.1)](#schema-finalization-phase-01) · [Schema Revision (Phase 0.1 — Session 2)](#schema-revision-phase-01--session-2) · [Schema Changes (Phase 2 prep, 2026-06-20)](#schema-changes-phase-2-prep-2026-06-20) · [Trust and Format Integrity, Round 1 (2026-09-27)](#trust-and-format-integrity-round-1-2026-09-27) · [File Format Integrity, Round 2 (2026-09-27)](#file-format-integrity-round-2-2026-09-27) · [Fill Patterns (2026-10-24)](#fill-patterns-2026-10-24)
 
-**Drawing and editing the form diagram:** [Merge UX (Phase 0.5)](#merge-ux-phase-05) · [Hierarchical Enforcement](#hierarchical-enforcement) · [Form Diagram Editor — Interaction Model](#form-diagram-editor--interaction-model) · [Merge](#merge) · [Form Diagram Editor (Phase 0.4)](#form-diagram-editor-phase-04) · [Phase 2 Implementation (Form Diagram — Milestone A)](#phase-2-implementation-form-diagram--milestone-a) · [Merge Implementation (Phase 2.5)](#merge-implementation-phase-25) · [Form Diagram Shape Model — Adjoin Rework (2026-06-27)](#form-diagram-shape-model--adjoin-rework-2026-06-27) · [Label Collision Strategy (2026-06-27)](#label-collision-strategy-2026-06-27) · [Phase 2.5 Merge — Interaction Completion (2026-06-30)](#phase-25-merge--interaction-completion-2026-06-30) · [Elision Rendering & Boundary-First Shape Control (2026-07-25)](#elision-rendering--boundary-first-shape-control-2026-07-25) · [Keyboard Navigation of Spans (2026-09-27)](#keyboard-navigation-of-spans-2026-09-27) · [Space Plays, B Marks a Boundary (2026-10-01)](#space-plays-b-marks-a-boundary-2026-10-01) · [Paused Clicks Stay Paused; Open Caps Fill and Join; Issue Links (2026-10-01)](#paused-clicks-stay-paused-open-caps-fill-and-join-issue-links-2026-10-01) · [Quick Type (2026-10-01)](#quick-type-2026-10-01) · [Quick Entry (2026-10-02)](#quick-entry-2026-10-02) · [B in an Empty Stretch; Shift+B; Fit to the Grid (2026-10-02)](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02) · [Hidden Labels Show on Hover and Selection (2026-10-02)](#hidden-labels-show-on-hover-and-selection-2026-10-02) · [Inside Text Keeps Clear of Rounded and Angled Ends (2026-10-02)](#inside-text-keeps-clear-of-rounded-and-angled-ends-2026-10-02) · [Quick Setup From the Tempo; a Plainer Grid Menu and Quick Pick (2026-10-24)](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24) · [Typed Phrase Lengths; Quick Pick Fixes and Drawn Shapes (2026-10-24)](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24)
+**Drawing and editing the form diagram:** [Merge UX (Phase 0.5)](#merge-ux-phase-05) · [Hierarchical Enforcement](#hierarchical-enforcement) · [Form Diagram Editor — Interaction Model](#form-diagram-editor--interaction-model) · [Merge](#merge) · [Form Diagram Editor (Phase 0.4)](#form-diagram-editor-phase-04) · [Phase 2 Implementation (Form Diagram — Milestone A)](#phase-2-implementation-form-diagram--milestone-a) · [Merge Implementation (Phase 2.5)](#merge-implementation-phase-25) · [Form Diagram Shape Model — Adjoin Rework (2026-06-27)](#form-diagram-shape-model--adjoin-rework-2026-06-27) · [Label Collision Strategy (2026-06-27)](#label-collision-strategy-2026-06-27) · [Phase 2.5 Merge — Interaction Completion (2026-06-30)](#phase-25-merge--interaction-completion-2026-06-30) · [Elision Rendering & Boundary-First Shape Control (2026-07-25)](#elision-rendering--boundary-first-shape-control-2026-07-25) · [Keyboard Navigation of Spans (2026-09-27)](#keyboard-navigation-of-spans-2026-09-27) · [Space Plays, B Marks a Boundary (2026-10-01)](#space-plays-b-marks-a-boundary-2026-10-01) · [Paused Clicks Stay Paused; Open Caps Fill and Join; Issue Links (2026-10-01)](#paused-clicks-stay-paused-open-caps-fill-and-join-issue-links-2026-10-01) · [Quick Type (2026-10-01)](#quick-type-2026-10-01) · [Quick Entry (2026-10-02)](#quick-entry-2026-10-02) · [B in an Empty Stretch; Shift+B; Fit to the Grid (2026-10-02)](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02) · [Hidden Labels Show on Hover and Selection (2026-10-02)](#hidden-labels-show-on-hover-and-selection-2026-10-02) · [Inside Text Keeps Clear of Rounded and Angled Ends (2026-10-02)](#inside-text-keeps-clear-of-rounded-and-angled-ends-2026-10-02) · [Quick Setup From the Tempo; a Plainer Grid Menu and Quick Pick (2026-10-24)](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24) · [Typed Phrase Lengths; Quick Pick Fixes and Drawn Shapes (2026-10-24)](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24) · [Muted Fills; Same Label, Same Fill; Legible Text on Any Fill (2026-10-24)](#muted-fills-same-label-same-fill-legible-text-on-any-fill-2026-10-24) · [To End (2026-10-24)](#to-end-2026-10-24) · [Quick Pick Colours, and a Colour-Blind Safe Switch (2026-10-24)](#quick-pick-colours-and-a-colour-blind-safe-switch-2026-10-24) · [Fill Patterns (2026-10-24)](#fill-patterns-2026-10-24) · [Backspace No Longer Deletes Spans (2026-10-24)](#backspace-no-longer-deletes-spans-2026-10-24) · [Copy and Paste Between Spans (2026-10-24)](#copy-and-paste-between-spans-2026-10-24)
 
 **Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01) · [Group Spans Into Another Layer (2026-10-24)](#group-spans-into-another-layer-2026-10-24)
 
@@ -32,7 +32,7 @@ By area, in the order the entries were made:
 
 **Vocabulary and types:** [Vocabulary](#vocabulary) · [UI Copy Pass & Point Marker Vocabulary (2026-07-24)](#ui-copy-pass--point-marker-vocabulary-2026-07-24) · [Vocabulary Libraries (2026-10-01)](#vocabulary-libraries-2026-10-01) · [A Span's Label Follows Its Type (2026-10-01)](#a-spans-label-follows-its-type-2026-10-01) · [Vocabulary Packs (2026-10-01)](#vocabulary-packs-2026-10-01) · [The Libraries Dialog (2026-10-01)](#the-libraries-dialog-2026-10-01) · [The Type Picker Follows the Layer (2026-10-01)](#the-type-picker-follows-the-layer-2026-10-01) · [Sound Layers Come From a Shared List (2026-10-01)](#sound-layers-come-from-a-shared-list-2026-10-01)
 
-**Commentary and lyrics:** [Written Analysis Widget (2026-09-27)](#written-analysis-widget-2026-09-27) · [Commentary Links to Point Markers (2026-09-27)](#commentary-links-to-point-markers-2026-09-27) · [Commentary on a Stretch of Time (2026-09-27)](#commentary-on-a-stretch-of-time-2026-09-27) · [Hiding Commentary (2026-09-27)](#hiding-commentary-2026-09-27) · [The Commentary Stack (2026-10-01)](#the-commentary-stack-2026-10-01) · [Lyrics Stay in the File; Shared Views Leave Them Out by Default (2026-10-01)](#lyrics-stay-in-the-file-shared-views-leave-them-out-by-default-2026-10-01) · [Shared Links Treat Lyrics Like Any Other View (2026-10-03)](#shared-links-treat-lyrics-like-any-other-view-2026-10-03)
+**Commentary and lyrics:** [Written Analysis Widget (2026-09-27)](#written-analysis-widget-2026-09-27) · [Commentary Links to Point Markers (2026-09-27)](#commentary-links-to-point-markers-2026-09-27) · [Commentary on a Stretch of Time (2026-09-27)](#commentary-on-a-stretch-of-time-2026-09-27) · [Hiding Commentary (2026-09-27)](#hiding-commentary-2026-09-27) · [The Commentary Stack (2026-10-01)](#the-commentary-stack-2026-10-01) · [Lyrics Stay in the File; Shared Views Leave Them Out by Default (2026-10-01)](#lyrics-stay-in-the-file-shared-views-leave-them-out-by-default-2026-10-01) · [Shared Links Treat Lyrics Like Any Other View (2026-10-03)](#shared-links-treat-lyrics-like-any-other-view-2026-10-03) · [Lyrics Show in the Editor (2026-10-24)](#lyrics-show-in-the-editor-2026-10-24) · [Fixes From a Real Analysis: Stray Type List, Bar Over the Inspector, Untitled Spans (2026-10-24)](#fixes-from-a-real-analysis-stray-type-list-bar-over-the-inspector-untitled-spans-2026-10-24)
 
 **The player and the source:** [Player Chrome (Phase 0.3)](#player-chrome-phase-03) · [Source Linking (2026-07-02)](#source-linking-2026-07-02) · [Video Curtain Covers Every Dialog (2026-09-27)](#video-curtain-covers-every-dialog-2026-09-27) · [Dialogs Stay Clear of the Player (2026-09-27)](#dialogs-stay-clear-of-the-player-2026-09-27) · [Video Below the Fold (2026-09-27)](#video-below-the-fold-2026-09-27) · [Menus Keep Clear of the Player (2026-10-02)](#menus-keep-clear-of-the-player-2026-10-02) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24)
 
@@ -4220,4 +4220,178 @@ The file format is unchanged; the schema reference now says what sets
 `parentId` and what it does in the editor. Devin asked for a later review
 of the schema, to check that recent quick edits haven't added anything
 needlessly.
+
+---
+
+## Lyrics Show in the Editor (2026-10-24)
+
+**Decision.** Lyrics are on by default, in the editor's commentary stack as in
+the reading view; turning them off is still remembered in the browser. The
+editor's Lyrics and Hide commentary buttons move from the top-right corner to
+the top of the stack, and the stack keeps a right margin the width of the
+corner mini player while it shows.
+**Why.** Devin: lyrics need to show in the commentary view, not only the
+reading view. They were off by default, and since the video became the corner
+mini player by default (see "Quick Setup From the Tempo"), it sat over the
+only button that turned them on. Nothing may be drawn over the player, so the
+controls and text move out from under it instead.
+
+---
+
+## Muted Fills; Same Label, Same Fill; Legible Text on Any Fill (2026-10-24)
+
+**Decision.** The colour palette gains a **muted** shade for each hue family,
+offered first: the colour picker's top row, and Quick pick's eight fills
+(blue, teal, green, amber, red, magenta, violet, slate). Deep and bright stay
+in the picker for emphasis. Bright violet moves a step darker (#8b5cf6 to
+#7c3aed) so text on it can reach 4.5:1. The palette lives in
+`lib/palette.ts`, shared by the picker and Quick pick.
+**Why.** Devin found Quick pick's fills samey (four of eight were blues and
+greens), and asked whether a diagram's fills should be muted rather than
+bold. Soft tints with well-separated hues read as categories in a figure
+without fighting the brackets and labels. This amends the 2026-06 palette
+entry, which offered deep and bright only.
+
+**Decision.** Text on a filled span (an inside label or annotation) uses the
+usual ink while it reaches 4.5:1 against the fill (WCAG AA), else a deeper
+ink (slate 900) or white, whichever contrasts more. Contrast is measured
+with WCAG relative luminance. Every palette colour now passes for both label
+and annotation ink, tested in `src/test/palette.test.ts`.
+**Why.** Devin: text over a darker fill needs an accessible colour. Deep
+fills already got white, but a rough brightness threshold gave mid-tone
+fills (bright cyan, teal, orange) white text at under 3:1.
+
+**Decision.** With a span selected whose label other spans in the same layer
+share, the Shape & color tab offers **Use this fill on all N “label” spans**,
+one undo step. It is limited to the same layer, so a "Chorus" section and a
+"Chorus" phrase stay independent.
+**Why.** Devin asked for a way to colour every span with the same label alike.
+
+**Decision.** Quick pick's Fills and Shapes rows end with **More…** (or "/"),
+as Types already did. Fills opens the Inspector's Shape & color tab with the
+Fill picker open; Shapes opens that tab.
+**Why.** Devin wanted a way from the quick row to the fuller menu.
+
+---
+
+## To End (2026-10-24)
+
+**Decision.** A span can be run to the end of the track in one step, removing
+the spans after it in its layer: **To end** beside the End time in the
+Inspector (shown unless the span already ends the track) and **Extend to the
+end** on right-click. Removed spans' commentary survives, anchored to their
+times.
+**Why.** Devin: a quick setup by tempo lays phrases to the end of the track,
+but a track whose ending isn't metered leaves extra phrases there, which had
+to be deleted one by one before the last real one could be stretched out.
+
+---
+
+## Quick Pick Colours, and a Colour-Blind Safe Switch (2026-10-24)
+
+**Decision (amends "Muted Fills" above, same day).** Quick pick's eight
+fills are seven muted hues round the wheel and a warm grey: coral, orange,
+yellow, green, seafoam, blue, violet and stone (option C of five compared).
+The full picker's families are red, orange, yellow, green, seafoam, cyan,
+blue, violet, magenta, slate and neutral, each muted, deep and bright;
+teal and amber give way to seafoam and yellow (files that use them keep
+them). The grey is for passages to keep quiet, so the colours keep their
+meaning.
+**Why.** Devin found the picker missing a seafoam green and a true yellow,
+and wanted the quick palette thought through. Five options were compared on
+a mock analysis with a colour-blindness preview; Devin chose C, and D for
+the switch below.
+
+**Decision.** A **Colour-blind safe colours** switch (Document settings, and
+a chip in the reading view's header) draws each quick fill as its
+counterpart in a colour-blind safe set: lighter tints of the Okabe–Ito
+palette, slot for slot (coral → vermilion, seafoam → sky, stone → grey …,
+option D). It changes what is drawn, not the file: the file keeps the quick
+fill, so turning it off brings the colours back, and a file is never stuck
+in one set. It is a viewer's preference, remembered in the browser. Quick
+pick, the colour picker and the Inspector's swatches show the safe colours
+while it is on, and an export made then uses them. Other colours are drawn
+as they are.
+**Why.** Muted colours lose most of their difference for the common kinds
+of colour blindness: in the preview, coral, orange and green all became
+similar tans. Devin asked to ship both sets with a switch that flips them.
+A viewer's switch, not a document setting, because the reader who needs it
+is often not the analyst who made the file.
+
+Devin also raised a small set of muted fill patterns (hatching, dots) as a
+second cue that doesn't rely on colour. That would add a field to the file
+format, so it is proposed separately.
+
+---
+
+## Fixes From a Real Analysis: Stray Type List, Bar Over the Inspector, Untitled Spans (2026-10-24)
+
+*Found by Devin working on "Scary Monsters and Nice Sprites".*
+
+**Decision.** Quick pick's request to open the Type list (`/` or More… on
+Types) is a one-shot flag the list takes up and clears, as the Fill picker's
+request already was, and a change of selection drops any request not yet
+taken up.
+**Why.** The request was a counter, and the Type list opened whenever it
+appeared with the counter above zero. After one use of `/`, it popped open on
+every later mount (deselecting, then selecting a span) whatever Quick pick was
+set to, which looked random.
+
+**Decision.** The Quick pick row stays within the diagram's width; it no
+longer runs over the Inspector beside it.
+**Why.** For right-hand spans, the wide Shapes row was kept inside the
+window, which put it over the Inspector's fields.
+
+**Decision.** An unlabelled, untyped span has no heading in the commentary
+stack (the layer name and times only) or in the commentary export (the time
+only). "Untitled span" is gone.
+**Why.** Devin: untitled spans should show nothing there.
+
+---
+
+## Fill Patterns (2026-10-24)
+
+**Decision.** A span can carry a faint **fill pattern**: hatch, cross-hatch,
+dots or horizontal lines (`Span.fillPattern`, optional; absent means none).
+The marks are drawn in a darker shade of the fill as shown (about 40%
+darker, at 70% opacity), so the texture stays tone-on-tone and follows the
+colour-blind safe switch. A span with no colour gets the faint ink. The
+pattern sits on the fill and under the outline, so no mark crosses the
+bracket line. It is offered in the Inspector's Shape & color tab (one span or
+several) and after the colours on Quick pick's Fills row, by click. Merging
+keeps the first span's pattern, as for the line style.
+**Why.** Devin: a small, muted set of patterns would help where colour
+can't, and muted colours lose much of their difference for colour-blind
+readers. Four patterns were Devin's choice over three, with marks in a darker
+shade of the fill over faint ink.
+
+A new optional field, so no format version bump (the versioning policy
+above): the schema, `src/types/strata.ts` and the schema reference say what
+it is. Older builds ignore it and draw the plain fill.
+
+---
+
+## Backspace No Longer Deletes Spans (2026-10-24)
+
+**Decision (amends "B in an Empty Stretch; Shift+B; Fit to the Grid").** Only
+the Delete key removes the selected spans or marker; Backspace does nothing
+to them. The Delete button in the Inspector and on right-click are unchanged.
+**Why.** Devin was erasing an annotation, a press landed outside the field,
+and Backspace deleted the whole span. Backspace is the key for erasing text,
+so it is pressed often near fields; Delete is a deliberate reach.
+
+---
+
+## Copy and Paste Between Spans (2026-10-24)
+
+**Decision.** Ctrl/⌘+C copies the selected span; Ctrl/⌘+V pastes parts of
+it onto every selected span, one undo step. By default the label and type
+paste. The Inspector's **Paste** menu adds annotation, commentary, lyrics,
+fill colour, pattern, and shape and line (caps, boundary types and line
+style); the choice is remembered in the browser and the keys use it too. The
+Inspector also has Copy and Paste buttons (Paste "onto all N" for several
+spans). The clipboard is the app's own and lasts the visit. Text fields, and
+selected page text, keep the usual copy and paste.
+**Why.** Devin: copying labels and types between spans, with an easy way to
+take more along, would save a lot of entry.
 
