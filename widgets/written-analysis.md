@@ -33,8 +33,18 @@ lookup, re-anchoring, the text format, HTML export) and `CommentaryPanel.tsx`
   (rotation → section → phrase), the span sounding then, with its layer, label,
   times, annotation and commentary. Lower levels are indented, so the nesting
   reads at a glance.
-- Commentary on a stretch of time ("Passage") covering the moment comes first,
-  with its in-place **Edit** button.
+- Commentary on a stretch of time ("Passage") covering the moment comes first.
+- **Editing in place** (editor only, not the reading view): hovering a level
+  shows **Edit** (or **Add commentary** for a span without any), and
+  double-clicking its text does the same. The text becomes a box with a
+  Markdown toolbar: bold, italic, code, heading, bulleted and numbered lists,
+  quote, a link picker (spans and markers with a slug, found by name, written
+  `[[slug]]`, or `[[slug|selected text]]`), and the symbol palette. Ctrl/⌘+B
+  and Ctrl/⌘+I format; Esc, Ctrl/⌘+Enter or **Done** finishes. Changes write
+  through at once to the same text the Inspector shows, and one session's
+  typing and formatting undo together. While a box is open the stack holds at
+  the moment editing began (`uiStore.commentaryEdit`), so playback can't swap
+  it away. Passage commentary is edited only here.
 - The moment is the playhead during playback. Paused with spans selected, it
   is where the selection begins: a selected rotation shows the rotation and
   what opens it; a selected phrase, the phrase and everything it sits inside.
@@ -52,18 +62,30 @@ lookup, re-anchoring, the text format, HTML export) and `CommentaryPanel.tsx`
 
 ## 3. Text format
 
+Commentary is **Markdown** (CommonMark, rendered by react-markdown), with
+Strata's own links:
+
 | Write | Get |
 |---|---|
 | a blank line | a new paragraph |
-| `**words**` | bold |
-| `*words*` | italic |
+| `**words**`, `*words*`, `` `code` `` | bold, italic, code |
+| `# ` … `###### ` at a line's start | a heading |
+| `- ` or `* `, `1. ` at a line's start | a bulleted or numbered list |
+| `> ` at a line's start | a quote |
+| `[text](https://…)` | a link, opening in a new tab |
 | `[[slug]]` | a link to the span or point marker with that slug, showing the slug |
 | `[[slug\|shown text]]` | the same link, showing the text |
 
-Anything else is literal. A link to a slug that doesn't exist reads as plain
-text (with a tooltip saying so). Clicking a link selects the span and seeks the
-player to its start, or selects the point marker and seeks to its moment. A
-marker's slug is shown, ready to copy, in its Inspector panel.
+Commentary comes from shared files, so only those elements are drawn (plus
+code blocks, rules and line breaks): raw HTML is never rendered, an angle
+bracket outside code shows as typed (`<tonic>`, `I < V`), images are dropped,
+and unsafe link schemes are removed. A link to a slug that doesn't exist reads
+as plain text (with a tooltip saying so). Clicking a `[[slug]]` link selects
+the span and seeks the player to its start, or selects the point marker and
+seeks to its moment. A marker's slug is shown, ready to copy, in its Inspector
+panel. The HTML export renders the same Markdown with the same renderer, and
+the Markdown export keeps it as written, `[[slug]]` links becoming in-page
+links (or their text, where the target has no section).
 
 ## 4. What edits do to commentary
 

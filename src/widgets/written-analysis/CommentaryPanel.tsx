@@ -13,7 +13,6 @@
  * up the stack (a string key), not to the time itself: it re-renders when the
  * playhead crosses a boundary, not every frame.
  */
-import { useState } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import type { AnalysisBlock, StrataDocument } from '@/types/strata'
@@ -21,10 +20,11 @@ import { formSpans, analysisLayers } from '@/lib/layers'
 import { spanTypeName } from '@/lib/vocabulary'
 import { EyeOff } from 'lucide-react'
 import { READING_VIDEO_W } from '@/components/PlayerDock'
+import { CommentaryMarkdown } from './CommentaryMarkdown'
+import { CommentaryEditor } from './CommentaryEditor'
 import {
   anchorRange,
   allBlocks,
-  parseCommentary,
   passagesAt,
   spanBySlug,
   markerBySlug,
@@ -48,7 +48,18 @@ function momentOf(doc: StrataDocument, time: number, selected: string[], playing
   return time
 }
 
-/** Commentary text: paragraphs, emphasis, and links that go to a span or marker. */
+/**
+ * The moment the stack holds at while commentary is being edited, if what's
+ * being edited is still in the document (another file may have been opened).
+ */
+function heldMoment(doc: StrataDocument, edit: { key: string; at: number } | null): number | null {
+  if (!edit) return null
+  const [kind, id] = edit.key.split(':')
+  const exists = kind === 'span' ? doc.layers.some((l) => formSpans(l).some((s) => s.id === id)) : allBlocks(doc).some((b) => b.block.id === id)
+  return exists ? edit.at : null
+}
+
+/** Commentary text, as Markdown, with [[slug]] links that go to a span or marker. */
 function CommentaryText({ doc, text }: { doc: StrataDocument; text: string }) {
   const selectSpan = useUIStore((s) => s.selectSpan)
   const selectPointMarker = useUIStore((s) => s.selectPointMarker)
@@ -72,51 +83,30 @@ function CommentaryText({ doc, text }: { doc: StrataDocument; text: string }) {
   }
 
   return (
-    <>
-      {parseCommentary(text).map((para, i) => (
-        <p key={i} className={`max-w-[65ch] leading-relaxed text-foreground ${reading ? 'text-[17px]' : 'text-[14px]'}`}>
-          {para.map((piece, j) =>
-            piece.kind === 'bold' ? (
-              <strong key={j}>{piece.value}</strong>
-            ) : piece.kind === 'italic' ? (
-              <em key={j}>{piece.value}</em>
-            ) : piece.kind === 'link' ? (
-              spanBySlug(doc, piece.slug) || markerBySlug(doc, piece.slug) ? (
-                <button
-                  key={j}
-                  className="text-primary underline decoration-dotted underline-offset-2 hover:decoration-solid"
-                  onClick={() => follow(piece.slug)}
-                  title={`Go to ${piece.slug}`}
-                >
-                  {piece.value}
-                </button>
-              ) : (
-                // A link to a slug that doesn't exist (renamed, or a typo) reads as plain text.
-                <span key={j} title={`Nothing has the slug "${piece.slug}"`}>
-                  {piece.value}
-                </span>
-              )
-            ) : (
-              <span key={j}>{piece.value}</span>
-            ),
-          )}
-        </p>
-      ))}
-    </>
+    <div className="flex flex-col gap-2">
+      <CommentaryMarkdown
+        text={text}
+        large={reading}
+        exists={(slug) => !!spanBySlug(doc, slug) || !!markerBySlug(doc, slug)}
+        onFollow={follow}
+      />
+    </div>
   )
 }
 
 /**
  * Commentary on a stretch of time. No span's Inspector owns it (and a deleted
- * span's commentary lands here), so it edits in place.
+ * span's commentary lands here), so it edits only here.
  */
-function PassageBlock({ doc, block }: { doc: StrataDocument; block: AnalysisBlock }) {
-  const [editing, setEditing] = useState(false)
+function PassageBlock({ doc, block, moment }: { doc: StrataDocument; block: AnalysisBlock; moment: number }) {
   const reading = useUIStore((s) => s.readingView)
+  const key = `block:${block.id}`
+  const editing = useUIStore((s) => s.commentaryEdit?.key === key) && !reading
+  const setCommentaryEdit = useUIStore((s) => s.setCommentaryEdit)
   const setCommentaryText = useDocumentStore((s) => s.setCommentaryText)
   const range = anchorRange(doc, block.anchor)
   return (
-    <article className="flex flex-col gap-2">
+    <article className="group flex flex-col gap-2">
       <header className="flex items-baseline gap-2">
         <h2 className="text-sm font-semibold text-foreground">Passage</h2>
         {range && (
@@ -124,26 +114,35 @@ function PassageBlock({ doc, block }: { doc: StrataDocument; block: AnalysisBloc
             {mmss(range[0])}–{mmss(range[1])}
           </span>
         )}
-        <button
-          className="ml-auto text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-          onClick={() => setEditing((v) => !v)}
-        >
-          {editing ? 'Done' : 'Edit'}
-        </button>
+        {!reading && !editing && <EditButton onPress={() => setCommentaryEdit({ key, at: moment })}>Edit</EditButton>}
       </header>
-      {editing && !reading ? (
-        <textarea
-          autoFocus
-          className="w-full resize-y rounded border border-border bg-card px-2 py-1 text-[13px] leading-relaxed text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
-          rows={5}
+      {editing ? (
+        <CommentaryEditor
+          doc={doc}
           value={block.text}
-          aria-label="Commentary on this passage"
-          onChange={(e) => setCommentaryText(block.id, e.target.value)}
+          label="Commentary on this passage"
+          onChange={(text) => setCommentaryText(block.id, text)}
+          onDone={() => setCommentaryEdit(null)}
         />
       ) : (
-        <CommentaryText doc={doc} text={block.text} />
+        <div onDoubleClick={reading ? undefined : () => setCommentaryEdit({ key, at: moment })}>
+          <CommentaryText doc={doc} text={block.text} />
+        </div>
       )}
     </article>
+  )
+}
+
+/** Edit / Add commentary: quiet until the block is hovered or has the keyboard. */
+function EditButton({ onPress, children }: { onPress: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onPress}
+      className="ml-auto text-xs text-muted-foreground opacity-0 underline-offset-2 transition-opacity hover:text-foreground hover:underline focus-visible:opacity-100 group-hover:opacity-100"
+    >
+      {children}
+    </button>
   )
 }
 
@@ -154,20 +153,28 @@ function Level({
   depth,
   selected,
   showLyrics,
+  moment,
 }: {
   doc: StrataDocument
   row: StackRow
   depth: number
   selected: boolean
   showLyrics: boolean
+  /** The stack's moment, held while this span's commentary is being edited. */
+  moment: number
 }) {
   const { layer, span, block } = row
   const reading = useUIStore((s) => s.readingView)
+  const key = `span:${span.id}`
+  const editing = useUIStore((s) => s.commentaryEdit?.key === key) && !reading
+  const setCommentaryEdit = useUIStore((s) => s.setCommentaryEdit)
+  const setSpanCommentary = useDocumentStore((s) => s.setSpanCommentary)
+  const edit = () => setCommentaryEdit({ key, at: moment })
   // Nothing for an unlabelled, untyped span: the layer name and times say enough.
   const heading = span.label || spanTypeName(span.type, doc.vocabulary.spanTypes)
   return (
     <article
-      className={`flex flex-col gap-1.5 border-l-2 py-1 pl-3 ${selected ? 'border-primary' : 'border-border'}`}
+      className={`group flex flex-col gap-1.5 border-l-2 py-1 pl-3 ${selected ? 'border-primary' : 'border-border'}`}
       style={{ marginLeft: depth * 14 }}
     >
       <header className="flex items-baseline gap-2">
@@ -176,9 +183,24 @@ function Level({
         <span className="text-xs tabular-nums text-muted-foreground">
           {mmss(span.startTime)}–{mmss(span.endTime)}
         </span>
+        {!reading && !editing && <EditButton onPress={edit}>{block ? 'Edit' : 'Add commentary'}</EditButton>}
       </header>
       {span.annotation && <p className="text-[13px] italic text-muted-foreground">{span.annotation}</p>}
-      {block && <CommentaryText doc={doc} text={block.text} />}
+      {editing ? (
+        <CommentaryEditor
+          doc={doc}
+          value={block?.text ?? ''}
+          label={`Commentary on ${heading || layer.label}`}
+          onChange={(text) => setSpanCommentary(span.id, text)}
+          onDone={() => setCommentaryEdit(null)}
+        />
+      ) : (
+        block && (
+          <div onDoubleClick={reading ? undefined : edit}>
+            <CommentaryText doc={doc} text={block.text} />
+          </div>
+        )
+      )}
       {showLyrics && span.lyrics && (
         <p className={`whitespace-pre-line leading-relaxed text-muted-foreground ${reading ? 'text-[15px] italic' : 'text-[13px]'}`}>{span.lyrics}</p>
       )}
@@ -214,7 +236,7 @@ export function CommentaryPanel() {
   // A string key of what the stack holds now: equal strings mean no re-render.
   const momentKey = useUIStore((s) => {
     if (!doc) return ''
-    const t = momentOf(doc, s.currentTime, s.selectedSpanIds, s.playbackState === 'playing')
+    const t = heldMoment(doc, s.commentaryEdit) ?? momentOf(doc, s.currentTime, s.selectedSpanIds, s.playbackState === 'playing')
     return [...passagesAt(doc, t).map((b) => b.id), ...stackAt(doc, t).map((r) => r.span.id)].join(',')
   })
   if (!doc) return null
@@ -234,7 +256,8 @@ export function CommentaryPanel() {
   // Read the moment now rather than subscribing to it (see momentKey).
   void momentKey
   const ui = useUIStore.getState()
-  const t = momentOf(doc, ui.currentTime, ui.selectedSpanIds, ui.playbackState === 'playing')
+  // While commentary is being edited, the stack holds at the moment editing began.
+  const t = heldMoment(doc, ui.commentaryEdit) ?? momentOf(doc, ui.currentTime, ui.selectedSpanIds, ui.playbackState === 'playing')
   const passages = passagesAt(doc, t)
   const rows = stackAt(doc, t)
   const anyLyrics = doc.layers.some((l) => formSpans(l).some((s) => s.lyrics))
@@ -285,7 +308,7 @@ export function CommentaryPanel() {
     >
       {controls}
       {passages.map((b) => (
-        <PassageBlock key={b.id} doc={doc} block={b} />
+        <PassageBlock key={b.id} doc={doc} block={b} moment={t} />
       ))}
       {rows.map((row, i) => (
         <Level
@@ -295,6 +318,7 @@ export function CommentaryPanel() {
           depth={i}
           selected={selectedIds.includes(row.span.id)}
           showLyrics={showLyrics}
+          moment={t}
         />
       ))}
       {step && !reading && <p className="mt-1 text-xs text-muted-foreground">{step}</p>}

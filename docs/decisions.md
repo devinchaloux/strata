@@ -32,7 +32,7 @@ By area, in the order the entries were made:
 
 **Vocabulary and types:** [Vocabulary](#vocabulary) · [UI Copy Pass & Point Marker Vocabulary (2026-07-24)](#ui-copy-pass--point-marker-vocabulary-2026-07-24) · [Vocabulary Libraries (2026-10-01)](#vocabulary-libraries-2026-10-01) · [A Span's Label Follows Its Type (2026-10-01)](#a-spans-label-follows-its-type-2026-10-01) · [Vocabulary Packs (2026-10-01)](#vocabulary-packs-2026-10-01) · [The Libraries Dialog (2026-10-01)](#the-libraries-dialog-2026-10-01) · [The Type Picker Follows the Layer (2026-10-01)](#the-type-picker-follows-the-layer-2026-10-01) · [Sound Layers Come From a Shared List (2026-10-01)](#sound-layers-come-from-a-shared-list-2026-10-01)
 
-**Commentary and lyrics:** [Written Analysis Widget (2026-09-27)](#written-analysis-widget-2026-09-27) · [Commentary Links to Point Markers (2026-09-27)](#commentary-links-to-point-markers-2026-09-27) · [Commentary on a Stretch of Time (2026-09-27)](#commentary-on-a-stretch-of-time-2026-09-27) · [Hiding Commentary (2026-09-27)](#hiding-commentary-2026-09-27) · [The Commentary Stack (2026-10-01)](#the-commentary-stack-2026-10-01) · [Lyrics Stay in the File; Shared Views Leave Them Out by Default (2026-10-01)](#lyrics-stay-in-the-file-shared-views-leave-them-out-by-default-2026-10-01) · [Shared Links Treat Lyrics Like Any Other View (2026-10-03)](#shared-links-treat-lyrics-like-any-other-view-2026-10-03) · [Lyrics Show in the Editor (2026-10-24)](#lyrics-show-in-the-editor-2026-10-24) · [Fixes From a Real Analysis: Stray Type List, Bar Over the Inspector, Untitled Spans (2026-10-24)](#fixes-from-a-real-analysis-stray-type-list-bar-over-the-inspector-untitled-spans-2026-10-24)
+**Commentary and lyrics:** [Written Analysis Widget (2026-09-27)](#written-analysis-widget-2026-09-27) · [Commentary Links to Point Markers (2026-09-27)](#commentary-links-to-point-markers-2026-09-27) · [Commentary on a Stretch of Time (2026-09-27)](#commentary-on-a-stretch-of-time-2026-09-27) · [Hiding Commentary (2026-09-27)](#hiding-commentary-2026-09-27) · [The Commentary Stack (2026-10-01)](#the-commentary-stack-2026-10-01) · [Lyrics Stay in the File; Shared Views Leave Them Out by Default (2026-10-01)](#lyrics-stay-in-the-file-shared-views-leave-them-out-by-default-2026-10-01) · [Shared Links Treat Lyrics Like Any Other View (2026-10-03)](#shared-links-treat-lyrics-like-any-other-view-2026-10-03) · [Lyrics Show in the Editor (2026-10-24)](#lyrics-show-in-the-editor-2026-10-24) · [Fixes From a Real Analysis: Stray Type List, Bar Over the Inspector, Untitled Spans (2026-10-24)](#fixes-from-a-real-analysis-stray-type-list-bar-over-the-inspector-untitled-spans-2026-10-24) · [Commentary in Markdown, Edited in Place (2026-10-24)](#commentary-in-markdown-edited-in-place-2026-10-24)
 
 **The player and the source:** [Player Chrome (Phase 0.3)](#player-chrome-phase-03) · [Source Linking (2026-07-02)](#source-linking-2026-07-02) · [Video Curtain Covers Every Dialog (2026-09-27)](#video-curtain-covers-every-dialog-2026-09-27) · [Dialogs Stay Clear of the Player (2026-09-27)](#dialogs-stay-clear-of-the-player-2026-09-27) · [Video Below the Fold (2026-09-27)](#video-below-the-fold-2026-09-27) · [Menus Keep Clear of the Player (2026-10-02)](#menus-keep-clear-of-the-player-2026-10-02) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24)
 
@@ -4407,4 +4407,38 @@ different number is refused: Paste is greyed out and the Inspector says how
 many to select. The Inspector's Copy reads "Copy N" for several.
 **Why.** Devin wanted to copy a run of spans and paste it onto another run,
 matching one for one, such as a repeated verse's phrase labels.
+
+---
+
+## Commentary in Markdown, Edited in Place (2026-10-24)
+
+**Decision.** Commentary text is Markdown, rendered with **react-markdown**
+(a new dependency, 10.1.0, approved by Devin): paragraphs, bold, italic,
+code, headings, bulleted and numbered lists, quotes and web links, plus
+Strata's own `[[slug]]` links, which become internal links. Text written
+under the old format (bold, italic, `[[slug]]`) reads the same.
+**Why a library.** Devin asked why not. A hand-written parser would get
+Markdown's edge cases (nested lists, escaping, a `*` that isn't emphasis)
+partly wrong; react-markdown renders straight to React elements and never
+renders raw HTML, so shared files need no sanitiser. It adds about 39 KB
+gzipped to the app (206 to 245 KB); the HTML export renders the same
+Markdown through react-dom/server, loaded on demand as the figure export's is.
+
+**Decision.** Only plain elements are drawn: raw HTML is never rendered, an
+angle bracket outside code shows as typed, images are dropped and unsafe link
+schemes are removed. Web links open in a new tab.
+**Why.** Commentary arrives in files other people share. A shared file
+shouldn't run anything, load anything from elsewhere, or silently lose text:
+in testing, "Loud <and> proud." lost a word to the HTML rule.
+
+**Decision.** Commentary is edited in place in the stack above the diagram
+(editor only): Edit or Add commentary on hover, or a double-click, opens a
+text box with a Markdown toolbar (bold, italic, code, heading, lists, quote,
+a span and marker link picker, symbols) and Ctrl/⌘+B / I. While it is open
+the stack holds at the moment editing began, so playback can't swap it away.
+It edits the same text the Inspector shows. Passage commentary, which had its
+own small text box, uses the same editor.
+**Why.** Devin: commentary shouldn't be stuck in the Inspector. Writing
+beside the music, where it will be read, is the natural place. Devin chose a
+Markdown text box over WYSIWYG editing.
 

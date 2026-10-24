@@ -153,6 +153,10 @@ export interface UIState {
   readingShow: { commentary: boolean; diagram: boolean }
   // Lyrics in the commentary stack: also the analyst's remembered preference.
   showLyrics: boolean
+  // The commentary being edited in place in the stack (CommentaryEditor):
+  // "span:<id>" or "block:<id>", and the moment the stack is held at while
+  // the box is open, so playback can't swap it away. Null when none is.
+  commentaryEdit: { key: string; at: number } | null
 
   // A request for the player to jump to a time, from outside the transport
   // (e.g. a commentary link). PlayerDock owns the engine and carries it out;
@@ -214,6 +218,7 @@ export interface UIState {
   setReadingView: (on: boolean) => void
   setReadingShow: (part: 'commentary' | 'diagram', on: boolean) => void
   setShowLyrics: (show: boolean) => void
+  setCommentaryEdit: (edit: { key: string; at: number } | null) => void
   /** The address a shared analysis was opened from (?src=), or null. */
   sharedFrom: string | null
   setSharedFrom: (url: string | null) => void
@@ -318,6 +323,7 @@ const useUIStore = create<UIState>()((set) => ({
   colorblindSafe: readPreference(COLORBLIND_KEY) === 'on',
   // On unless the analyst has turned it off (docs/decisions.md, "Lyrics Show in the Editor").
   showLyrics: readPreference(LYRICS_KEY) !== 'off',
+  commentaryEdit: null,
   enabledPacks: (readPreference(PACKS_KEY) ?? '').split(',').filter(Boolean),
   librariesOpen: false,
   typePickerPending: false,
@@ -383,6 +389,7 @@ const useUIStore = create<UIState>()((set) => ({
   showAppMessage: (title, lines) => set({ appMessage: { title, lines } }),
   dismissAppMessage: () => set({ appMessage: null }),
   setExportOpen: (open) => set({ exportOpen: open }),
+  setCommentaryEdit: (edit) => set({ commentaryEdit: edit }),
   setShowLyrics: (show) => {
     writePreference(LYRICS_KEY, show ? 'on' : 'off')
     set({ showLyrics: show })
