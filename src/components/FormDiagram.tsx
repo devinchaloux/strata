@@ -52,6 +52,7 @@ import { DiagramControlBar } from './DiagramControlBar'
 import { GridPopover } from './GridPopover'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { QuickSetup } from './QuickSetup'
+import { VIDEO_MINI_WIDTH } from './PlayerDock'
 import { CommentaryPanel } from '@/widgets/written-analysis/CommentaryPanel'
 import { formSpans, analysisLayers, quickSetupLayer } from '@/lib/layers'
 import {
@@ -573,6 +574,7 @@ export function FormDiagram() {
   // bar while the ruler (TimelineAxis) renders below. One shared instance.
   const timeline = useTimeline()
   const reading = useUIStore((s) => s.readingView)
+  const videoMini = useUIStore((s) => s.videoMini)
   const activeLayerId = useUIStore((s) => s.activeLayerId)
   const showDiagram = useUIStore((s) => !s.readingView || s.readingShow.diagram)
   if (!doc) return null
@@ -608,6 +610,7 @@ export function FormDiagram() {
     timeline.pps,
   )
   const headerWidth = collapsed ? HEADER_WIDTH_RAIL : HEADER_WIDTH_EXPANDED
+  const miniVideo = videoMini && !reading && doc.source.type === 'youtube' && !!doc.source.url
   // A linked analysis with no spans yet gets the quick setup (QuickSetup.tsx).
   const linked = !!doc.source.url || (doc.source.type === 'local' && !!doc.source.filename)
   const quickLayer =
@@ -623,7 +626,11 @@ export function FormDiagram() {
       {/* The open area above the widget card (flex-1, so it shrinks as a tall
           layer stack claims the room). The written-analysis widget reads here;
           with no commentary yet it shows a one-line hint instead. */}
-      <div className={`relative flex min-h-0 flex-1 overflow-y-auto ${reading ? 'items-start justify-start' : 'items-center justify-center'}`}>
+      <div
+        className={`relative flex min-h-0 flex-1 overflow-y-auto ${reading ? 'items-start justify-start' : 'items-center justify-center'}`}
+        // Keep the commentary out from under the corner mini player (PlayerDock).
+        style={miniVideo ? { paddingRight: VIDEO_MINI_WIDTH + 24 } : undefined}
+      >
         {/* The written-analysis widget reads here: the commentary for what's
             playing (see widgets/written-analysis/CommentaryPanel). Before
             any span exists, its hint is joined by the quick setup. */}

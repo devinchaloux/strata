@@ -113,8 +113,8 @@ const RATES: PlaybackRate[] = [0.5, 0.75, 1, 1.25]
  * be shrunk below this or removed.
  */
 const VIDEO_MIN = 200
-/** Mini player width: 16:9 at the minimum height. */
-const VIDEO_MINI_WIDTH = Math.round((VIDEO_MIN * 16) / 9)
+/** Mini player width: 16:9 at the minimum height (200). Exported so the commentary can keep clear of it. */
+export const VIDEO_MINI_WIDTH = 356
 /**
  * Docked below the fold it costs the work area nothing, so it gets the size
  * YouTube recommends for a 16:9 player (at least 480×270).

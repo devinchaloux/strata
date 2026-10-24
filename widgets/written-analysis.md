@@ -39,10 +39,14 @@ lookup, re-anchoring, the text format, HTML export) and `CommentaryPanel.tsx`
   is where the selection begins: a selected rotation shows the rotation and
   what opens it; a selected phrase, the phrase and everything it sits inside.
   The selected span's level is marked.
-- **Lyrics on/off** (top right, shown when any span has lyrics) adds each
-  span's lyrics to its level. The choice is remembered in the browser.
+- **Lyrics on/off** (at the top of the stack, shown when any span has lyrics)
+  adds each span's lyrics to its level. On until the analyst turns it off;
+  the choice is remembered in the browser and shared with the reading view's
+  Lyrics chip.
 - The panel re-renders only when the stack's spans change, never per frame.
-- **Hide commentary** (top right) sets the commentary layer's visibility off;
+- With the corner mini player showing, the panel keeps clear of it (a right
+  margin the player's width), so no text or control sits underneath.
+- **Hide commentary** (beside Lyrics) sets the commentary layer's visibility off;
   the panel then shows nothing and the diagram's "Hidden:" chips bring it back,
   as for a hidden form layer. Exports are unaffected.
 

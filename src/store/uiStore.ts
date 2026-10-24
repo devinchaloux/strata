@@ -293,7 +293,8 @@ const useUIStore = create<UIState>()((set) => ({
   snapMode: readSnapPreference(),
   clickOn: false,
   clickVolume: readClickVolume(),
-  showLyrics: readPreference(LYRICS_KEY) === 'on',
+  // On unless the analyst has turned it off (docs/decisions.md, "Lyrics Show in the Editor").
+  showLyrics: readPreference(LYRICS_KEY) !== 'off',
   enabledPacks: (readPreference(PACKS_KEY) ?? '').split(',').filter(Boolean),
   librariesOpen: false,
   typePickerRequest: 0,

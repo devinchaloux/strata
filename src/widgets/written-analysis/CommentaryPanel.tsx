@@ -243,8 +243,10 @@ export function CommentaryPanel() {
   // these controls, and no editing hints show.
   const hasVideo = doc.source.type === 'youtube' && !!doc.source.url
   const readingStyle = reading && hasVideo ? { marginLeft: `calc(${READING_VIDEO_W} + 40px)` } : undefined
-  const controls = reading ? null : (
-    <div className="absolute right-3 top-2 flex items-center gap-1">
+  // At the top of the stack, not the corner: the corner mini player sits
+  // there, and nothing may be drawn over it.
+  const controls = reading || (!anyLyrics && !commentaryLayers.length) ? null : (
+    <div className="-ml-1.5 flex items-center gap-1">
       {anyLyrics && (
         <button
           className={`rounded px-1.5 py-0.5 text-xs hover:bg-accent ${showLyrics ? 'text-foreground' : 'text-muted-foreground'}`}
@@ -269,34 +271,32 @@ export function CommentaryPanel() {
 
   if (!rows.length && !passages.length)
     return (
-      <>
+      <div className="flex flex-col items-center gap-2">
         {controls}
         {!reading && <Hint>Nothing is marked at this moment.</Hint>}
-      </>
+      </div>
     )
   return (
-    <>
+    <div
+      className={`flex w-full flex-col gap-3 self-start px-4 py-4 ${reading ? 'max-w-176 gap-4' : 'max-w-2xl'}`}
+      style={readingStyle}
+      aria-live="polite"
+    >
       {controls}
-      <div
-        className={`flex w-full flex-col gap-3 self-start px-4 py-4 ${reading ? 'max-w-176 gap-4' : 'max-w-2xl'}`}
-        style={readingStyle}
-        aria-live="polite"
-      >
-        {passages.map((b) => (
-          <PassageBlock key={b.id} doc={doc} block={b} />
-        ))}
-        {rows.map((row, i) => (
-          <Level
-            key={row.span.id}
-            doc={doc}
-            row={row}
-            depth={i}
-            selected={selectedIds.includes(row.span.id)}
-            showLyrics={showLyrics}
-          />
-        ))}
-        {step && !reading && <p className="mt-1 text-xs text-muted-foreground">{step}</p>}
-      </div>
-    </>
+      {passages.map((b) => (
+        <PassageBlock key={b.id} doc={doc} block={b} />
+      ))}
+      {rows.map((row, i) => (
+        <Level
+          key={row.span.id}
+          doc={doc}
+          row={row}
+          depth={i}
+          selected={selectedIds.includes(row.span.id)}
+          showLyrics={showLyrics}
+        />
+      ))}
+      {step && !reading && <p className="mt-1 text-xs text-muted-foreground">{step}</p>}
+    </div>
   )
 }

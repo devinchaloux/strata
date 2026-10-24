@@ -32,7 +32,7 @@ By area, in the order the entries were made:
 
 **Vocabulary and types:** [Vocabulary](#vocabulary) · [UI Copy Pass & Point Marker Vocabulary (2026-07-24)](#ui-copy-pass--point-marker-vocabulary-2026-07-24) · [Vocabulary Libraries (2026-10-01)](#vocabulary-libraries-2026-10-01) · [A Span's Label Follows Its Type (2026-10-01)](#a-spans-label-follows-its-type-2026-10-01) · [Vocabulary Packs (2026-10-01)](#vocabulary-packs-2026-10-01) · [The Libraries Dialog (2026-10-01)](#the-libraries-dialog-2026-10-01) · [The Type Picker Follows the Layer (2026-10-01)](#the-type-picker-follows-the-layer-2026-10-01) · [Sound Layers Come From a Shared List (2026-10-01)](#sound-layers-come-from-a-shared-list-2026-10-01)
 
-**Commentary and lyrics:** [Written Analysis Widget (2026-09-27)](#written-analysis-widget-2026-09-27) · [Commentary Links to Point Markers (2026-09-27)](#commentary-links-to-point-markers-2026-09-27) · [Commentary on a Stretch of Time (2026-09-27)](#commentary-on-a-stretch-of-time-2026-09-27) · [Hiding Commentary (2026-09-27)](#hiding-commentary-2026-09-27) · [The Commentary Stack (2026-10-01)](#the-commentary-stack-2026-10-01) · [Lyrics Stay in the File; Shared Views Leave Them Out by Default (2026-10-01)](#lyrics-stay-in-the-file-shared-views-leave-them-out-by-default-2026-10-01) · [Shared Links Treat Lyrics Like Any Other View (2026-10-03)](#shared-links-treat-lyrics-like-any-other-view-2026-10-03)
+**Commentary and lyrics:** [Written Analysis Widget (2026-09-27)](#written-analysis-widget-2026-09-27) · [Commentary Links to Point Markers (2026-09-27)](#commentary-links-to-point-markers-2026-09-27) · [Commentary on a Stretch of Time (2026-09-27)](#commentary-on-a-stretch-of-time-2026-09-27) · [Hiding Commentary (2026-09-27)](#hiding-commentary-2026-09-27) · [The Commentary Stack (2026-10-01)](#the-commentary-stack-2026-10-01) · [Lyrics Stay in the File; Shared Views Leave Them Out by Default (2026-10-01)](#lyrics-stay-in-the-file-shared-views-leave-them-out-by-default-2026-10-01) · [Shared Links Treat Lyrics Like Any Other View (2026-10-03)](#shared-links-treat-lyrics-like-any-other-view-2026-10-03) · [Lyrics Show in the Editor (2026-10-24)](#lyrics-show-in-the-editor-2026-10-24)
 
 **The player and the source:** [Player Chrome (Phase 0.3)](#player-chrome-phase-03) · [Source Linking (2026-07-02)](#source-linking-2026-07-02) · [Video Curtain Covers Every Dialog (2026-09-27)](#video-curtain-covers-every-dialog-2026-09-27) · [Dialogs Stay Clear of the Player (2026-09-27)](#dialogs-stay-clear-of-the-player-2026-09-27) · [Video Below the Fold (2026-09-27)](#video-below-the-fold-2026-09-27) · [Menus Keep Clear of the Player (2026-10-02)](#menus-keep-clear-of-the-player-2026-10-02) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24)
 
@@ -4220,4 +4220,19 @@ The file format is unchanged; the schema reference now says what sets
 `parentId` and what it does in the editor. Devin asked for a later review
 of the schema, to check that recent quick edits haven't added anything
 needlessly.
+
+---
+
+## Lyrics Show in the Editor (2026-10-24)
+
+**Decision.** Lyrics are on by default, in the editor's commentary stack as in
+the reading view; turning them off is still remembered in the browser. The
+editor's Lyrics and Hide commentary buttons move from the top-right corner to
+the top of the stack, and the stack keeps a right margin the width of the
+corner mini player while it shows.
+**Why.** Devin: lyrics need to show in the commentary view, not only the
+reading view. They were off by default, and since the video became the corner
+mini player by default (see "Quick Setup From the Tempo"), it sat over the
+only button that turned them on. Nothing may be drawn over the player, so the
+controls and text move out from under it instead.
 
