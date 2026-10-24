@@ -267,8 +267,9 @@ const useUIStore = create<UIState>()((set) => ({
 
   audioFile: null,
 
-  // Default true — the panel is expanded when a video first loads
-  videoMini: false,
+  // The corner mini player by default, so the linked video shows as soon as a
+  // new analysis starts; the dock button moves it below the play bar.
+  videoMini: true,
   headersCollapsed: false,
 
   mergeDialog: null,

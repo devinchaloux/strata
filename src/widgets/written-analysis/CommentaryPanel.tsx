@@ -196,7 +196,9 @@ function nextStep(doc: StrataDocument): string | null {
   if (!doc.layers.some((l) => formSpans(l).length > 0))
     return 'Press Space to play, and B at each boundary you hear. M places a point marker.'
   if (!allBlocks(doc).length)
-    return 'Click a span to describe it. Its commentary shows here while that passage plays.'
+    return doc.beatGrid?.length
+      ? 'Click a span to describe it, or to make it a bar longer or shorter. Its commentary shows here while that passage plays.'
+      : 'Click a span to describe it. Its commentary shows here while that passage plays.'
   return null
 }
 

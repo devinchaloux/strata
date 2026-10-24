@@ -50,8 +50,10 @@ import { LayerSettingsPopover } from './LayerSettingsPopover'
 import { AddLayerPopover } from './AddLayerPopover'
 import { DiagramControlBar } from './DiagramControlBar'
 import { GridPopover } from './GridPopover'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { QuickSetup } from './QuickSetup'
 import { CommentaryPanel } from '@/widgets/written-analysis/CommentaryPanel'
-import { formSpans, analysisLayers } from '@/lib/layers'
+import { formSpans, analysisLayers, quickSetupLayer } from '@/lib/layers'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -507,35 +509,55 @@ function WidgetTopBar({
 }
 
 /**
- * What the quick-entry bar sets for the selected spans (QuickEntryBar.tsx):
- * types, shapes, fills, or nothing. Remembered in the browser.
+ * What the quick-entry bar offers for the selected spans (QuickEntryBar.tsx):
+ * types, shapes, fills, or nothing. Remembered in the browser. Named "Quick
+ * pick" on screen, with each choice described, since a bare Off / Type /
+ * Shape / Fill switch didn't say what it switched.
  */
+const QUICK_PICK: [QuickEntry, string, string][] = [
+  ['type', 'Types', 'The layer’s span types, such as Verse or Chorus.'],
+  ['shape', 'Shapes', 'How each end is drawn, and the line.'],
+  ['fill', 'Fills', 'A fill colour.'],
+  ['off', 'Off', 'Nothing pops up.'],
+]
+
 function QuickEntrySwitch() {
   const mode = useUIStore((s) => s.quickEntry)
   const setMode = useUIStore((s) => s.setQuickEntry)
-  const opts: [QuickEntry, string][] = [
-    ['off', 'Off'],
-    ['type', 'Type'],
-    ['shape', 'Shape'],
-    ['fill', 'Fill'],
-  ]
+  const current = QUICK_PICK.find(([m]) => m === mode)
   return (
-    <div className="ml-2 flex items-center gap-1" title="Set a type, shape or fill with the number keys">
-      <span className="text-[11px] text-muted-foreground">Quick entry</span>
-      <div className="flex overflow-hidden rounded border border-border" role="radiogroup" aria-label="Quick entry">
-        {opts.map(([m, label]) => (
-          <button
-            key={m}
-            role="radio"
-            aria-checked={mode === m}
-            onClick={() => setMode(m)}
-            className={`px-1.5 py-0.5 text-[11px] ${mode === m ? 'bg-accent font-medium text-foreground' : 'text-muted-foreground hover:bg-accent/60'}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-    </div>
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          title="One-click choices above the spans you select"
+          className="ml-1 flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          Quick pick
+          <span className="rounded bg-accent px-1 text-[11px] text-foreground">{mode === 'off' ? 'off' : current?.[1].toLowerCase()}</span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-72 p-3 text-xs">
+        <p className="text-[13px] font-semibold text-foreground">Quick pick</p>
+        <p className="mt-0.5 leading-relaxed text-muted-foreground">
+          When you select spans, a row of choices appears above them. Click one, or press its number key.
+        </p>
+        <div className="mt-2 flex flex-col gap-0.5" role="radiogroup" aria-label="Quick pick offers">
+          {QUICK_PICK.map(([m, label, what]) => (
+            <button
+              key={m}
+              role="radio"
+              aria-checked={mode === m}
+              onClick={() => setMode(m)}
+              className={`flex flex-col rounded px-2 py-1 text-left ${mode === m ? 'bg-accent' : 'hover:bg-accent/60'}`}
+            >
+              <span className={mode === m ? 'font-medium text-foreground' : 'text-foreground'}>{label}</span>
+              <span className="text-[11px] text-muted-foreground">{what}</span>
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -551,6 +573,7 @@ export function FormDiagram() {
   // bar while the ruler (TimelineAxis) renders below. One shared instance.
   const timeline = useTimeline()
   const reading = useUIStore((s) => s.readingView)
+  const activeLayerId = useUIStore((s) => s.activeLayerId)
   const showDiagram = useUIStore((s) => !s.readingView || s.readingShow.diagram)
   if (!doc) return null
 
@@ -585,6 +608,10 @@ export function FormDiagram() {
     timeline.pps,
   )
   const headerWidth = collapsed ? HEADER_WIDTH_RAIL : HEADER_WIDTH_EXPANDED
+  // A linked analysis with no spans yet gets the quick setup (QuickSetup.tsx).
+  const linked = !!doc.source.url || (doc.source.type === 'local' && !!doc.source.filename)
+  const quickLayer =
+    !reading && linked && !doc.layers.some((l) => formSpans(l).length > 0) ? quickSetupLayer(doc, activeLayerId) : null
 
   return (
     // px-2 insets the whole diagram (widget card + ruler) together, so the
@@ -598,8 +625,16 @@ export function FormDiagram() {
           with no commentary yet it shows a one-line hint instead. */}
       <div className={`relative flex min-h-0 flex-1 overflow-y-auto ${reading ? 'items-start justify-start' : 'items-center justify-center'}`}>
         {/* The written-analysis widget reads here: the commentary for what's
-            playing (see widgets/written-analysis/CommentaryPanel). */}
-        <CommentaryPanel />
+            playing (see widgets/written-analysis/CommentaryPanel). Before
+            any span exists, its hint is joined by the quick setup. */}
+        {quickLayer ? (
+          <div className="flex flex-col items-center">
+            <CommentaryPanel />
+            <QuickSetup doc={doc} layer={quickLayer} />
+          </div>
+        ) : (
+          <CommentaryPanel />
+        )}
       </div>
 
       {/* The widget is a framed card: the top bar (collapse / add / hidden

@@ -2,7 +2,7 @@
  * QuickEntryBar — quick entry for the selected spans, right on the diagram.
  *
  * Floats just above the diagram, in line with the selection, and offers one
- * thing at a time on number keys, chosen by the Quick entry switch in the
+ * thing at a time on number keys, chosen by the Quick pick menu in the
  * diagram's top bar (uiStore.quickEntry):
  *   - Type: the layer's own types, then its library's (chosen here, saved as
  *     Layer.library, or guessed); on a lettered layer its letters and the next
@@ -170,7 +170,7 @@ export function QuickEntryBar({
       ref={barRef}
       data-keeps-selection
       role="toolbar"
-      aria-label="Quick entry"
+      aria-label="Quick pick"
       onPointerDown={stop}
       onClick={stop}
       onDoubleClick={stop}

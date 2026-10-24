@@ -2,10 +2,10 @@ import { create } from 'zustand'
 import { temporal } from 'zundo'
 import type { StrataDocument, Layer, LayerBase, Span, PointMarker, SharedTimePoint, GridSegment, VocabTerm } from '@/types/strata'
 import { formSpans } from '@/lib/layers'
-import { sortedSegments, segmentAt, segmentEnd, extendBack, snapToGrid } from '@/lib/beatGrid'
+import { sortedSegments, segmentAt, segmentEnd, extendBack, snapToGrid, barTiling, barLength } from '@/lib/beatGrid'
 import type { FormDiagramData } from '@/types/strata'
 import { mergeVocabPack, type MergeResult, type VocabPack } from '@/lib/vocabPack'
-import { placeBoundaryInSpans, setSpanEdge, findOverlaps, endSpanAtTime, snapSpansToGrid, MIN_SPAN_WIDTH } from '@/lib/spanEdit'
+import { placeBoundaryInSpans, setSpanEdge, findOverlaps, endSpanAtTime, snapSpansToGrid, rippleSpanEnd, MIN_SPAN_WIDTH } from '@/lib/spanEdit'
 import { groupingHandleSet, breakHistoryGroup } from '@/store/history'
 import { slugify, uniqueSlug, slugsInUse, allSpans, resolveSlugCollisions } from '@/lib/slug'
 import {
@@ -101,6 +101,15 @@ interface DocumentState {
   // Move every boundary in a layer to the nearest bar or beat. One undo step;
   // returns how many boundaries moved.
   snapLayerToGrid: (layerId: string, unit: 'bar' | 'beat') => number
+  // Quick setup: tile a layer with a span every `barsPer` bars from the bar
+  // line at `start` to where the grid stops (lib/beatGrid.ts, barTiling). With
+  // no grid at `start`, one is started there at the document's tempo and
+  // meter. One undo step; returns how many spans it made (0 when there is no
+  // tempo to go on, or the layer already has spans in that stretch).
+  fillLayerWithBars: (layerId: string, start: number, barsPer: number) => number
+  // A span one or more bars longer or shorter, every later boundary in its
+  // layer moving with it (lib/spanEdit.ts, rippleSpanEnd).
+  resizeSpanByBars: (layerId: string, spanId: string, bars: number) => void
   // Numeric time entry: move one edge of a span. A touching neighbour's edge
   // moves with it; otherwise the edge stops at the gap's far side.
   setSpanEdge: (layerId: string, spanId: string, edge: 'start' | 'end', time: number) => void
@@ -208,6 +217,27 @@ function markerSlug(doc: StrataDocument, marker: PointMarker, frozen: Set<string
   if (frozen.has(marker.id) && marker.slug) return marker.slug
   const base = marker.label ? slugify(marker.label) : null
   return base ? uniqueSlug(base, slugsInUse(doc, new Set([marker.id]))) : null
+}
+
+/**
+ * A grid segment starting on the downbeat at `time`. It carries on the tempo
+ * and meter of the segment running there, else of the last one before; the
+ * document's tempo and meter are the first default.
+ */
+function newSegmentAt(doc: StrataDocument, segs: GridSegment[], time: number): GridSegment {
+  const running = segmentAt(segs, time, doc.duration)?.seg
+  const before = [...segs].reverse().find((g) => g.start < time)
+  const model = running ?? before
+  const beatUnit = model?.beatUnit ?? doc.timeSignature?.denominator
+  return {
+    id: crypto.randomUUID(),
+    start: time,
+    bpm: model?.bpm ?? doc.bpm ?? 120,
+    beatsPerBar: model?.beatsPerBar ?? doc.timeSignature?.numerator ?? 4,
+    ...(beatUnit ? { beatUnit } : {}),
+    // A split segment's own stopping point now belongs to the new one.
+    ...(running?.end != null && running.end > time ? { end: running.end } : {}),
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -517,6 +547,52 @@ const useDocumentStore = create<DocumentState>()(
         return moved
       },
 
+      fillLayerWithBars: (layerId, start, barsPer) => {
+        const doc = get().document
+        if (!doc) return 0
+        let segs = sortedSegments(doc.beatGrid)
+        if (!segmentAt(segs, start, doc.duration)) {
+          if (doc.bpm == null) return 0
+          segs = sortedSegments([...segs, newSegmentAt(doc, segs, start)])
+        }
+        const times = barTiling(segs, doc.duration, start, barsPer)
+        if (times.length < 2) return 0
+        const from = times[0]
+        const to = times[times.length - 1]
+        let made = 0
+        const layers = mapLayer(doc.layers, layerId, (l) =>
+          mapFormDiagramSpans(l, (spans) => {
+            if (spans.some((x) => x.endTime > from + 1e-6 && x.startTime < to - 1e-6)) return spans
+            const fresh: Span[] = times.slice(1).map((end, k) => ({ id: crypto.randomUUID(), startTime: times[k], endTime: end }))
+            made = fresh.length
+            return [...spans, ...fresh].sort((a, b) => a.startTime - b.startTime)
+          }),
+        )
+        if (!made) return 0
+        set({ document: { ...doc, beatGrid: segs, layers, updatedAt: now() } })
+        return made
+      },
+
+      resizeSpanByBars: (layerId, spanId, bars) => {
+        const doc = get().document
+        if (!doc) return
+        const layer = doc.layers.find((l) => l.id === layerId)
+        const span = layer && formSpans(layer).find((x) => x.id === spanId)
+        if (!layer || !span) return
+        // A bar as long as the one the span ends in.
+        const hit = segmentAt(sortedSegments(doc.beatGrid), Math.max(span.startTime, span.endTime - 1e-3), doc.duration)
+        if (!hit) return
+        const next = rippleSpanEnd(formSpans(layer), spanId, bars * barLength(hit.seg), doc.duration)
+        if (!next) return
+        set({
+          document: {
+            ...doc,
+            layers: mapLayer(doc.layers, layerId, (l) => mapFormDiagramSpans(l, () => next)),
+            updatedAt: now(),
+          },
+        })
+      },
+
       setSpanEdge: (layerId, spanId, edge, time) => {
         const doc = get().document
         if (!doc) return
@@ -622,21 +698,7 @@ const useDocumentStore = create<DocumentState>()(
         if (!doc) return
         const segs = sortedSegments(doc.beatGrid)
         if (segs.some((g) => Math.abs(g.start - time) < 0.05)) return
-        const running = segmentAt(segs, time, doc.duration)?.seg
-        // Carry the tempo and meter on from the segment running here, else the
-        // last one before; the document's tempo and meter are the first default.
-        const before = [...segs].reverse().find((g) => g.start < time)
-        const model = running ?? before
-        const seg: GridSegment = {
-          id: crypto.randomUUID(),
-          start: time,
-          bpm: model?.bpm ?? doc.bpm ?? 120,
-          beatsPerBar: model?.beatsPerBar ?? doc.timeSignature?.numerator ?? 4,
-          ...(model?.beatUnit ?? doc.timeSignature?.denominator ? { beatUnit: model?.beatUnit ?? doc.timeSignature?.denominator } : {}),
-          // A split segment's own stopping point now belongs to the new one.
-          ...(running?.end != null && running.end > time ? { end: running.end } : {}),
-        }
-        set({ document: { ...doc, beatGrid: sortedSegments([...segs, seg]), updatedAt: now() } })
+        set({ document: { ...doc, beatGrid: sortedSegments([...segs, newSegmentAt(doc, segs, time)]), updatedAt: now() } })
       },
 
       endGridAt: (time) => {

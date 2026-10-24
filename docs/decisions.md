@@ -22,7 +22,7 @@ By area, in the order the entries were made:
 
 **File format and schema:** [File Format](#file-format) · [Span Data Model](#span-data-model) · [File-Level Metadata](#file-level-metadata) · [Schema](#schema) · [Shared Time Point Pool](#shared-time-point-pool) · [Source References](#source-references) · [Schema Finalization (Phase 0.1)](#schema-finalization-phase-01) · [Schema Revision (Phase 0.1 — Session 2)](#schema-revision-phase-01--session-2) · [Schema Changes (Phase 2 prep, 2026-06-20)](#schema-changes-phase-2-prep-2026-06-20) · [Trust and Format Integrity, Round 1 (2026-09-27)](#trust-and-format-integrity-round-1-2026-09-27) · [File Format Integrity, Round 2 (2026-09-27)](#file-format-integrity-round-2-2026-09-27)
 
-**Drawing and editing the form diagram:** [Merge UX (Phase 0.5)](#merge-ux-phase-05) · [Hierarchical Enforcement](#hierarchical-enforcement) · [Form Diagram Editor — Interaction Model](#form-diagram-editor--interaction-model) · [Merge](#merge) · [Form Diagram Editor (Phase 0.4)](#form-diagram-editor-phase-04) · [Phase 2 Implementation (Form Diagram — Milestone A)](#phase-2-implementation-form-diagram--milestone-a) · [Merge Implementation (Phase 2.5)](#merge-implementation-phase-25) · [Form Diagram Shape Model — Adjoin Rework (2026-06-27)](#form-diagram-shape-model--adjoin-rework-2026-06-27) · [Label Collision Strategy (2026-06-27)](#label-collision-strategy-2026-06-27) · [Phase 2.5 Merge — Interaction Completion (2026-06-30)](#phase-25-merge--interaction-completion-2026-06-30) · [Elision Rendering & Boundary-First Shape Control (2026-07-25)](#elision-rendering--boundary-first-shape-control-2026-07-25) · [Keyboard Navigation of Spans (2026-09-27)](#keyboard-navigation-of-spans-2026-09-27) · [Space Plays, B Marks a Boundary (2026-10-01)](#space-plays-b-marks-a-boundary-2026-10-01) · [Paused Clicks Stay Paused; Open Caps Fill and Join; Issue Links (2026-10-01)](#paused-clicks-stay-paused-open-caps-fill-and-join-issue-links-2026-10-01) · [Quick Type (2026-10-01)](#quick-type-2026-10-01) · [Quick Entry (2026-10-02)](#quick-entry-2026-10-02) · [B in an Empty Stretch; Shift+B; Fit to the Grid (2026-10-02)](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02) · [Hidden Labels Show on Hover and Selection (2026-10-02)](#hidden-labels-show-on-hover-and-selection-2026-10-02) · [Inside Text Keeps Clear of Rounded and Angled Ends (2026-10-02)](#inside-text-keeps-clear-of-rounded-and-angled-ends-2026-10-02)
+**Drawing and editing the form diagram:** [Merge UX (Phase 0.5)](#merge-ux-phase-05) · [Hierarchical Enforcement](#hierarchical-enforcement) · [Form Diagram Editor — Interaction Model](#form-diagram-editor--interaction-model) · [Merge](#merge) · [Form Diagram Editor (Phase 0.4)](#form-diagram-editor-phase-04) · [Phase 2 Implementation (Form Diagram — Milestone A)](#phase-2-implementation-form-diagram--milestone-a) · [Merge Implementation (Phase 2.5)](#merge-implementation-phase-25) · [Form Diagram Shape Model — Adjoin Rework (2026-06-27)](#form-diagram-shape-model--adjoin-rework-2026-06-27) · [Label Collision Strategy (2026-06-27)](#label-collision-strategy-2026-06-27) · [Phase 2.5 Merge — Interaction Completion (2026-06-30)](#phase-25-merge--interaction-completion-2026-06-30) · [Elision Rendering & Boundary-First Shape Control (2026-07-25)](#elision-rendering--boundary-first-shape-control-2026-07-25) · [Keyboard Navigation of Spans (2026-09-27)](#keyboard-navigation-of-spans-2026-09-27) · [Space Plays, B Marks a Boundary (2026-10-01)](#space-plays-b-marks-a-boundary-2026-10-01) · [Paused Clicks Stay Paused; Open Caps Fill and Join; Issue Links (2026-10-01)](#paused-clicks-stay-paused-open-caps-fill-and-join-issue-links-2026-10-01) · [Quick Type (2026-10-01)](#quick-type-2026-10-01) · [Quick Entry (2026-10-02)](#quick-entry-2026-10-02) · [B in an Empty Stretch; Shift+B; Fit to the Grid (2026-10-02)](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02) · [Hidden Labels Show on Hover and Selection (2026-10-02)](#hidden-labels-show-on-hover-and-selection-2026-10-02) · [Inside Text Keeps Clear of Rounded and Angled Ends (2026-10-02)](#inside-text-keeps-clear-of-rounded-and-angled-ends-2026-10-02) · [Quick Setup From the Tempo; a Plainer Grid Menu and Quick Pick (2026-10-24)](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24)
 
 **Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01)
 
@@ -4024,3 +4024,66 @@ going: too much text and space, and fields that matter later (author, notes,
 sync offset) shown before the ones that help now. The grey text was too faint
 to read comfortably. This amends the 2026-09-27 entries that put the other
 fields behind "More details" and set hint text to #64748b.
+
+---
+
+## Quick Setup From the Tempo; a Plainer Grid Menu and Quick Pick (2026-10-24)
+
+*From Devin starting an analysis of Krewella's "Alive" from scratch, with an
+eye on demoing Strata to people seeing it for the first time.*
+
+**Decision.** The video starts as the corner mini player, not docked below the
+play bar. The dock button still moves it there.
+**Why.** Seeing the video the moment an analysis starts confirms the right one
+was linked; docked, it was out of view below the fold. This amends "Video
+Below the Fold", which kept docked as the default.
+
+**Decision.** While the source is linked and no layer has spans, a **Quick
+setup by tempo…** button sits under the "Press Space to play" hint. It opens a
+card in place: tempo (the document's, editable there), first downbeat (typed,
+or Use playhead), and "a span every N bars". **Fill** starts a beat grid at
+the first downbeat unless one covers it, then fills the active layer with a
+span every N bars to where the grid stops, in one undo step. The spans are
+left unlabelled and untyped.
+**Why.** A track as regular as "Alive" has phrases of a known length, and
+tapping B at each one through five minutes is slow and daunting for a newcomer
+facing an empty diagram. Laying them out from the tempo gets an analyst most
+of the way at once. Devin asked for a button rather than the whole card up
+front, so the empty screen stays calm.
+
+**Decision.** A selected span inside the grid shows its length in bars in the
+Inspector, with − and + buttons that change it by one bar and move every later
+boundary in the layer with it. The layer's end stays put: the last span
+absorbs the change, and one pushed past the end is dropped.
+**Why.** The next thing after a regular layout is the exception: a five-bar
+phrase among four-bar ones. Moving one boundary by hand would leave every
+later phrase out of step; moving them all with it keeps the regular pattern
+after the exception.
+
+**Decision.** The Grid menu shows what fits the state it's in. With no grid it
+says what a grid is and offers to set one from the tempo and meter (the
+document's, editable there) at the first downbeat, or to tap it in with T.
+With a grid it shows "Snap boundaries to" (Off / Beats / Bars), the grid's rows
+to edit, and, folded away, how to mark a tempo change or a passage with no
+beat. Snapping isn't offered before there is a grid to snap to.
+**Why.** Devin, coming back after two weeks: "even as a creator, I don't know
+what this is supposed to be". The menu opened on snapping as if a grid
+already existed, even when only a tempo had been set.
+
+**Decision.** "Quick entry" and its Off / Type / Shape / Fill switch become a
+**Quick pick** button showing the current choice. Its menu says what it does
+(a row of choices appears above the spans you select; click one or press its
+number) and describes each option. The setting and its storage are unchanged.
+**Why.** The bare switch didn't say what it switched, so it meant nothing to a
+new user.
+
+**Decision.** The New analysis and Document settings dialog re-copies its
+typed fields (artist, tempo, time signature, sync offset) from the document
+only when it opens or when one of those values changes, not on every document
+change.
+**Why.** The media's length arrives a moment after a link is pasted or a file
+chosen. That change used to reset the fields, wiping a tempo still being typed.
+
+A guided walkthrough for first-time users is wanted too; it isn't part of
+this change.
+
