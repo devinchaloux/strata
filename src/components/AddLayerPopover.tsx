@@ -21,10 +21,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
-import type { Layer } from '@/types/strata'
-
-const NEW_LAYER_FILL_DEFAULT = '#ffffff'
-const NEW_LAYER_STROKE_DEFAULT = '#475569'
+import { newFormLayer } from '@/lib/layers'
 
 export function AddLayerPopover() {
   const layers = useDocumentStore((s) => s.document?.layers)
@@ -44,20 +41,9 @@ export function AddLayerPopover() {
     if (!trimmed) return
     // New layer goes on top: one above the current max displayOrder.
     const maxOrder = (layers ?? []).reduce((m, l) => Math.max(m, l.displayOrder), -1)
-    const id = crypto.randomUUID()
-    const layer: Layer = {
-      id,
-      type: 'form-diagram',
-      label: trimmed,
-      visibility: true,
-      locked: false,
-      fillColorDefault: NEW_LAYER_FILL_DEFAULT,
-      strokeColorDefault: NEW_LAYER_STROKE_DEFAULT,
-      displayOrder: maxOrder + 1,
-      data: { hierarchicalEnforcement: false, spans: [] },
-    }
+    const layer = newFormLayer(trimmed, maxOrder + 1)
     addLayer(layer)
-    setActiveLayer(id)
+    setActiveLayer(layer.id)
     close()
   }
 

@@ -1,7 +1,9 @@
 import { create } from 'zustand'
 import { temporal } from 'zundo'
 import type { StrataDocument, Layer, LayerBase, Span, PointMarker, SharedTimePoint, GridSegment, VocabTerm } from '@/types/strata'
-import { formSpans } from '@/lib/layers'
+import { formSpans, newFormLayer } from '@/lib/layers'
+import { groupUpTarget, placeSpan } from '@/lib/groupSpans'
+import { boundaryMoves, followLinks } from '@/lib/linkedBoundaries'
 import { sortedSegments, segmentAt, segmentEnd, extendBack, snapToGrid, barTiling, barLength } from '@/lib/beatGrid'
 import { roundTempo, segmentForAdjusting, tempoThroughDownbeat } from '@/lib/metronome'
 import type { FormDiagramData } from '@/types/strata'
@@ -111,6 +113,16 @@ interface DocumentState {
   // A span one or more bars longer or shorter, every later boundary in its
   // layer moving with it (lib/spanEdit.ts, rippleSpanEnd).
   resizeSpanByBars: (layerId: string, spanId: string, bars: number) => void
+  // Group spans into one span on another layer, covering them all; one span
+  // is copied there whole (lib/groupSpans.ts). The new span becomes their
+  // parent (parentId), so boundaries they share move together. The target is a form layer
+  // (not one of theirs, not locked) or a new layer, named, made just above
+  // the highest of theirs. Spans already in that stretch are cut back or
+  // replaced. One undo step; returns the new span's id, or null.
+  groupSpans: (spanIds: string[], target: { layerId: string } | { newLayer: string }) => string | null
+  // groupSpans into the layer just above theirs, or a new one there if none;
+  // null, doing nothing, if that layer has spans in the way (groupUpTarget).
+  groupIntoLayerAbove: (spanIds: string[]) => string | null
   // The same, to a length typed in bars ("this phrase is 2 bars"): the span
   // becomes exactly that long and every later boundary moves by the difference.
   setSpanBars: (layerId: string, spanId: string, bars: number) => void
@@ -254,6 +266,17 @@ function newSegmentAt(doc: StrataDocument, segs: GridSegment[], time: number): G
 }
 
 /**
+ * `next` with the boundary moves an edit made in `layerId` carried to linked
+ * parent and child spans in other layers (lib/linkedBoundaries.ts).
+ */
+function withLinks(prev: StrataDocument, next: StrataDocument, layerId: string): StrataDocument {
+  const before = prev.layers.find((l) => l.id === layerId)
+  const after = next.layers.find((l) => l.id === layerId)
+  if (!before || !after) return next
+  return followLinks(next, layerId, boundaryMoves(formSpans(before), formSpans(after)))
+}
+
+/**
  * The document with a span's end moved by `delta(barLength, span)` seconds and
  * every later boundary in its layer with it (lib/spanEdit.ts, rippleSpanEnd),
  * the bar being the one the span ends in. Null when the span isn't on the grid
@@ -272,7 +295,7 @@ function rippleByBars(
   if (!hit) return null
   const next = rippleSpanEnd(formSpans(layer), spanId, delta(barLength(hit.seg), span), doc.duration)
   if (!next) return null
-  return { ...doc, layers: mapLayer(doc.layers, layerId, (l) => mapFormDiagramSpans(l, () => next)), updatedAt: now() }
+  return withLinks(doc, { ...doc, layers: mapLayer(doc.layers, layerId, (l) => mapFormDiagramSpans(l, () => next)), updatedAt: now() }, layerId)
 }
 
 // ---------------------------------------------------------------------------
@@ -578,7 +601,7 @@ const useDocumentStore = create<DocumentState>()(
           moved = r.moved
           return moved ? { ...l, data: { ...data, spans: r.spans } } : l
         })
-        if (moved) set({ document: { ...doc, layers, updatedAt: now() } })
+        if (moved) set({ document: withLinks(doc, { ...doc, layers, updatedAt: now() }, layerId) })
         return moved
       },
 
@@ -620,47 +643,91 @@ const useDocumentStore = create<DocumentState>()(
         if (next) set({ document: next })
       },
 
+      groupSpans: (spanIds, target) => {
+        const doc = get().document
+        if (!doc) return null
+        const picked = doc.layers.flatMap((l) => formSpans(l).filter((x) => spanIds.includes(x.id)).map((span) => ({ span, layer: l })))
+        if (!picked.length) return null
+        const sources = new Set(picked.map((p) => p.layer.id))
+        const top = picked.map((p) => p.layer).sort((a, b) => b.displayOrder - a.displayOrder)[0]
+        let layers = doc.layers
+        let targetId: string
+        if ('layerId' in target) {
+          const t = doc.layers.find((l) => l.id === target.layerId)
+          if (!t || t.type !== 'form-diagram' || t.locked || sources.has(t.id)) return null
+          targetId = t.id
+        } else {
+          // Made just above the highest source layer; those above it move up one.
+          const made = newFormLayer(target.newLayer.trim() || 'New layer', top.displayOrder + 1)
+          layers = [...layers.map((l) => (l.displayOrder > top.displayOrder ? { ...l, displayOrder: l.displayOrder + 1 } : l)), made]
+          targetId = made.id
+        }
+        const start = Math.min(...picked.map((p) => p.span.startTime))
+        const end = Math.max(...picked.map((p) => p.span.endTime))
+        const id = crypto.randomUUID()
+        // One span is copied whole (label, type, look; its slug resolved
+        // below); several make a new, blank span over their stretch.
+        const span: Span = picked.length === 1 ? { ...picked[0].span, id } : { id, startTime: start, endTime: end }
+        layers = mapLayer(layers, targetId, (l) => mapFormDiagramSpans(l, (spans) => placeSpan(spans, span, () => crypto.randomUUID())))
+        // The new span is their parent, which ties their outer boundaries to
+        // its edges (lib/linkedBoundaries.ts).
+        layers = layers.map((l) =>
+          sources.has(l.id) ? mapFormDiagramSpans(l, (spans) => spans.map((x) => (spanIds.includes(x.id) ? { ...x, parentId: id } : x))) : l,
+        )
+        const next = { ...doc, layers, updatedAt: now() }
+        // Replaced spans' commentary survives, anchored to their old times.
+        set({ document: resolveSlugCollisions(doc, reanchorOrphans(doc, next)) })
+        return id
+      },
+
+      groupIntoLayerAbove: (spanIds) => {
+        const doc = get().document
+        if (!doc) return null
+        const { above, blocked } = groupUpTarget(doc, spanIds)
+        if (blocked) return null
+        const count = doc.layers.filter((l) => l.type === 'form-diagram').length
+        return get().groupSpans(spanIds, above ? { layerId: above.id } : { newLayer: `Layer ${count + 1}` })
+      },
+
       setSpanEdge: (layerId, spanId, edge, time) => {
         const doc = get().document
         if (!doc) return
-        set({
-          document: {
-            ...doc,
-            layers: mapLayer(doc.layers, layerId, (l) =>
-              mapFormDiagramSpans(l, (spans) => setSpanEdge(spans, spanId, edge, time, doc.duration) ?? spans),
-            ),
-            updatedAt: now(),
-          },
-        })
+        const next = {
+          ...doc,
+          layers: mapLayer(doc.layers, layerId, (l) =>
+            mapFormDiagramSpans(l, (spans) => setSpanEdge(spans, spanId, edge, time, doc.duration) ?? spans),
+          ),
+          updatedAt: now(),
+        }
+        set({ document: withLinks(doc, next, layerId) })
       },
 
       setAdjacentBoundary: (layerId, leftSpanId, rightSpanId, time, minWidth) => {
         const doc = get().document
         if (!doc) return
         const gap = Math.max(MIN_SPAN_WIDTH, minWidth ?? MIN_SPAN_WIDTH)
-        set({
-          document: {
-            ...doc,
-            layers: mapLayer(doc.layers, layerId, (l) =>
-              mapFormDiagramSpans(l, (spans) => {
-                const left = spans.find((s) => s.id === leftSpanId)
-                const right = spans.find((s) => s.id === rightSpanId)
-                if (!left || !right) return spans
-                // Hard-stop: keep both spans at least `gap` seconds wide.
-                const min = left.startTime + gap
-                const max = right.endTime - gap
-                if (min > max) return spans // too narrow to satisfy on both sides
-                const t = Math.max(min, Math.min(max, time))
-                return spans.map((s) => {
-                  if (s.id === leftSpanId) return { ...s, endTime: t }
-                  if (s.id === rightSpanId) return { ...s, startTime: t }
-                  return s
-                })
-              }),
-            ),
-            updatedAt: now(),
-          },
-        })
+        const next = {
+          ...doc,
+          layers: mapLayer(doc.layers, layerId, (l) =>
+            mapFormDiagramSpans(l, (spans) => {
+              const left = spans.find((s) => s.id === leftSpanId)
+              const right = spans.find((s) => s.id === rightSpanId)
+              if (!left || !right) return spans
+              // Hard-stop: keep both spans at least `gap` seconds wide.
+              const min = left.startTime + gap
+              const max = right.endTime - gap
+              if (min > max) return spans // too narrow to satisfy on both sides
+              const t = Math.max(min, Math.min(max, time))
+              return spans.map((s) => {
+                if (s.id === leftSpanId) return { ...s, endTime: t }
+                if (s.id === rightSpanId) return { ...s, startTime: t }
+                return s
+              })
+            }),
+          ),
+          updatedAt: now(),
+        }
+        set({ document: withLinks(doc, next, layerId) })
       },
 
       // --- Point Markers ---

@@ -17,6 +17,7 @@ import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
 import { computePps, totalContentWidth, snapTime } from '@/lib/timeline'
+import { groupUpTarget } from '@/lib/groupSpans'
 import { stackHeight, shapeTopY, layerBodyHeight, layerIndexAtY, layerFonts, estimateTextWidth, layerLabelLayout, LABEL_RISE } from '@/lib/formShape'
 import { layoutMarkerBand, BAND_TOP_GAP, BAND_ROW_HEIGHT, GLYPH_HALF, type MarkerPlacement } from '@/lib/markerBand'
 import { MIN_SPAN_WIDTH, MIN_BOUNDARY_DRAG_PX } from '@/lib/spanEdit'
@@ -68,13 +69,35 @@ function SpanContextMenuContent({ span, layer }: { span: Span; layer: Layer }) {
   )
 }
 
+/** Copy up / Group into the layer above, greyed out with the reason when blocked. */
+function GroupUpItem({ label, target, onSelect }: { label: string; target: { blocked: string | null }; onSelect: () => void }) {
+  return (
+    <ContextMenuItem disabled={!!target.blocked} onClick={target.blocked ? undefined : onSelect}>
+      <span className="flex flex-col">
+        {label}
+        {target.blocked && <span className="text-[11px]">{target.blocked}</span>}
+      </span>
+    </ContextMenuItem>
+  )
+}
+
 function SpanMenuItems({ span, layer }: { span: Span; layer: Layer }) {
   const selectedIds = useUIStore((s) => s.selectedSpanIds)
   const selectSpan = useUIStore((s) => s.selectSpan)
   const [currentTime] = useState(() => useUIStore.getState().currentTime)
   const removeSpan = useDocumentStore((s) => s.removeSpan)
   const placeBoundary = useDocumentStore((s) => s.placeBoundary)
+  const groupIntoLayerAbove = useDocumentStore((s) => s.groupIntoLayerAbove)
   const { eligibility, performMerge, neighborId } = useMerge()
+
+  // Group into (several) or copy to (one) the layer above, then select the
+  // result; offered only where it cuts nothing (groupUpTarget).
+  const doc = useDocumentStore.getState().document
+  const upTarget = (ids: string[]) => (doc ? groupUpTarget(doc, ids) : { above: null, blocked: 'No document' })
+  function groupUp(ids: string[]) {
+    const id = groupIntoLayerAbove(ids)
+    if (id) selectSpan(id)
+  }
 
   const isInSelection = selectedIds.includes(span.id)
   const isMulti = isInSelection && selectedIds.length > 1
@@ -98,9 +121,10 @@ function SpanMenuItems({ span, layer }: { span: Span; layer: Layer }) {
             <ContextMenuItem onClick={() => performMerge()}>
               Merge {selectedIds.length} spans
             </ContextMenuItem>
-            <ContextMenuSeparator />
           </>
         )}
+        <GroupUpItem label="Group into the layer above" target={upTarget(selectedIds)} onSelect={() => groupUp(selectedIds)} />
+        <ContextMenuSeparator />
         <ContextMenuItem
           onClick={handleDelete}
           className="text-destructive focus:text-destructive"
@@ -137,6 +161,7 @@ function SpanMenuItems({ span, layer }: { span: Span; layer: Layer }) {
       >
         Merge with next
       </ContextMenuItem>
+      <GroupUpItem label="Copy up a layer" target={upTarget([span.id])} onSelect={() => groupUp([span.id])} />
       <ContextMenuSeparator />
       <ContextMenuItem
         onClick={handleDelete}

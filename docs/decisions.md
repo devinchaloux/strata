@@ -24,7 +24,7 @@ By area, in the order the entries were made:
 
 **Drawing and editing the form diagram:** [Merge UX (Phase 0.5)](#merge-ux-phase-05) · [Hierarchical Enforcement](#hierarchical-enforcement) · [Form Diagram Editor — Interaction Model](#form-diagram-editor--interaction-model) · [Merge](#merge) · [Form Diagram Editor (Phase 0.4)](#form-diagram-editor-phase-04) · [Phase 2 Implementation (Form Diagram — Milestone A)](#phase-2-implementation-form-diagram--milestone-a) · [Merge Implementation (Phase 2.5)](#merge-implementation-phase-25) · [Form Diagram Shape Model — Adjoin Rework (2026-06-27)](#form-diagram-shape-model--adjoin-rework-2026-06-27) · [Label Collision Strategy (2026-06-27)](#label-collision-strategy-2026-06-27) · [Phase 2.5 Merge — Interaction Completion (2026-06-30)](#phase-25-merge--interaction-completion-2026-06-30) · [Elision Rendering & Boundary-First Shape Control (2026-07-25)](#elision-rendering--boundary-first-shape-control-2026-07-25) · [Keyboard Navigation of Spans (2026-09-27)](#keyboard-navigation-of-spans-2026-09-27) · [Space Plays, B Marks a Boundary (2026-10-01)](#space-plays-b-marks-a-boundary-2026-10-01) · [Paused Clicks Stay Paused; Open Caps Fill and Join; Issue Links (2026-10-01)](#paused-clicks-stay-paused-open-caps-fill-and-join-issue-links-2026-10-01) · [Quick Type (2026-10-01)](#quick-type-2026-10-01) · [Quick Entry (2026-10-02)](#quick-entry-2026-10-02) · [B in an Empty Stretch; Shift+B; Fit to the Grid (2026-10-02)](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02) · [Hidden Labels Show on Hover and Selection (2026-10-02)](#hidden-labels-show-on-hover-and-selection-2026-10-02) · [Inside Text Keeps Clear of Rounded and Angled Ends (2026-10-02)](#inside-text-keeps-clear-of-rounded-and-angled-ends-2026-10-02) · [Quick Setup From the Tempo; a Plainer Grid Menu and Quick Pick (2026-10-24)](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24) · [Typed Phrase Lengths; Quick Pick Fixes and Drawn Shapes (2026-10-24)](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24)
 
-**Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01)
+**Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01) · [Group Spans Into Another Layer (2026-10-24)](#group-spans-into-another-layer-2026-10-24)
 
 **Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24)
 
@@ -4177,4 +4177,47 @@ list) keeps it open; the trigger still toggles it.
 **Why.** Radix leaves a popover open when the outside click is handled and
 stopped, which every span does, so clicking the diagram never closed a menu.
 Devin hit it with Quick pick; the Grid, Metronome and layer menus had it too.
+
+---
+
+## Group Spans Into Another Layer (2026-10-24)
+
+**Decision.** Spans can be grouped into one span on another layer. With
+several selected, **Group into…** in the Inspector lists the other form layers,
+the one just above first, each with what grouping there would do ("fits", or
+"replaces 2 spans, cuts 1 back"), plus a new layer just above. The new span is
+blank, covers the whole selection, and is selected for labelling. With one
+selected, **Copy up** copies it whole (label, type, look) to the layer just
+above, or a new layer if there is none. Right-click offers both for the layer
+above.
+**Why.** Devin: building sections from phrases meant redrawing every
+section boundary by hand on a second layer.
+
+**Decision.** The one-click actions (Copy up, Group into the layer above)
+never cut or replace spans. Where the layer above has one in the way they are
+greyed out with the reason, and Group into… is the way to overwrite, with the
+effect shown first.
+**Why.** Copying up over an existing section silently cut it back in testing.
+
+**Decision.** The grouped span becomes the **parent** of the spans it came
+from, using the existing `parentId` field (Copy up: the original's parent is
+the copy). A parent and its children move their shared boundaries together.
+A drag, a typed time, Fit to the grid or a change of length in bars that
+moves a boundary where a parent and child meet moves the boundary at the same
+moment in the other layer, neighbours included, through any number of levels.
+Inner boundaries of the children move alone, and split and merge leave links
+alone. The Inspector shows the link ("Part of Verse in Sections", "Groups 4
+spans in Phrases") with **Unlink**, which clears `parentId`. The read-only
+"Parent" ID in the More tab is gone; the link line replaces it.
+**Why.** Devin: "if it's intentionally grouped, if they make a small tweak to
+one boundary they only want to do it once", with a way to break the link.
+Reusing `parentId` instead of adding a field was Devin's choice: grouping
+phrases into a section is the hierarchy that field was reserved for (see the
+v1.5 picker entry above), and it adds nothing to the schema. The cost,
+accepted: unlinking also drops the hierarchy claim.
+
+The file format is unchanged; the schema reference now says what sets
+`parentId` and what it does in the editor. Devin asked for a later review
+of the schema, to check that recent quick edits haven't added anything
+needlessly.
 
