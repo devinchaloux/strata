@@ -111,6 +111,9 @@ interface DocumentState {
   // A span one or more bars longer or shorter, every later boundary in its
   // layer moving with it (lib/spanEdit.ts, rippleSpanEnd).
   resizeSpanByBars: (layerId: string, spanId: string, bars: number) => void
+  // The same, to a length typed in bars ("this phrase is 2 bars"): the span
+  // becomes exactly that long and every later boundary moves by the difference.
+  setSpanBars: (layerId: string, spanId: string, bars: number) => void
   // Numeric time entry: move one edge of a span. A touching neighbour's edge
   // moves with it; otherwise the edge stops at the gap's far side.
   setSpanEdge: (layerId: string, spanId: string, edge: 'start' | 'end', time: number) => void
@@ -248,6 +251,28 @@ function newSegmentAt(doc: StrataDocument, segs: GridSegment[], time: number): G
     // A split segment's own stopping point now belongs to the new one.
     ...(running?.end != null && running.end > time ? { end: running.end } : {}),
   }
+}
+
+/**
+ * The document with a span's end moved by `delta(barLength, span)` seconds and
+ * every later boundary in its layer with it (lib/spanEdit.ts, rippleSpanEnd),
+ * the bar being the one the span ends in. Null when the span isn't on the grid
+ * or nothing would change.
+ */
+function rippleByBars(
+  doc: StrataDocument,
+  layerId: string,
+  spanId: string,
+  delta: (barLen: number, span: Span) => number,
+): StrataDocument | null {
+  const layer = doc.layers.find((l) => l.id === layerId)
+  const span = layer && formSpans(layer).find((x) => x.id === spanId)
+  if (!layer || !span) return null
+  const hit = segmentAt(sortedSegments(doc.beatGrid), Math.max(span.startTime, span.endTime - 1e-3), doc.duration)
+  if (!hit) return null
+  const next = rippleSpanEnd(formSpans(layer), spanId, delta(barLength(hit.seg), span), doc.duration)
+  if (!next) return null
+  return { ...doc, layers: mapLayer(doc.layers, layerId, (l) => mapFormDiagramSpans(l, () => next)), updatedAt: now() }
 }
 
 // ---------------------------------------------------------------------------
@@ -585,22 +610,14 @@ const useDocumentStore = create<DocumentState>()(
 
       resizeSpanByBars: (layerId, spanId, bars) => {
         const doc = get().document
-        if (!doc) return
-        const layer = doc.layers.find((l) => l.id === layerId)
-        const span = layer && formSpans(layer).find((x) => x.id === spanId)
-        if (!layer || !span) return
-        // A bar as long as the one the span ends in.
-        const hit = segmentAt(sortedSegments(doc.beatGrid), Math.max(span.startTime, span.endTime - 1e-3), doc.duration)
-        if (!hit) return
-        const next = rippleSpanEnd(formSpans(layer), spanId, bars * barLength(hit.seg), doc.duration)
-        if (!next) return
-        set({
-          document: {
-            ...doc,
-            layers: mapLayer(doc.layers, layerId, (l) => mapFormDiagramSpans(l, () => next)),
-            updatedAt: now(),
-          },
-        })
+        const next = doc && rippleByBars(doc, layerId, spanId, (barLen) => bars * barLen)
+        if (next) set({ document: next })
+      },
+
+      setSpanBars: (layerId, spanId, bars) => {
+        const doc = get().document
+        const next = doc && rippleByBars(doc, layerId, spanId, (barLen, span) => bars * barLen - (span.endTime - span.startTime))
+        if (next) set({ document: next })
       },
 
       setSpanEdge: (layerId, spanId, edge, time) => {

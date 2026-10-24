@@ -48,4 +48,14 @@ describe('New analysis dialog', () => {
     act(() => useDocumentStore.getState().updateMeta({ duration: 285 }))
     expect((screen.getByRole('textbox', { name: 'Tempo (BPM)' }) as HTMLInputElement).value).toBe('128')
   })
+
+  it('opens Document settings with Advanced folded too', () => {
+    useDocumentStore.getState().loadDocument(createEmptyDocument())
+    render(
+      <TooltipProvider>
+        <DocumentSettingsDialog open onOpenChange={() => {}} />
+      </TooltipProvider>,
+    )
+    expect(screen.getByRole('button', { name: 'Advanced' }).getAttribute('aria-expanded')).toBe('false')
+  })
 })
