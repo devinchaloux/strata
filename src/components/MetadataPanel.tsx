@@ -657,7 +657,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             <Field
               label="Commentary"
               symbols
-              tooltip="Shows above the diagram while this span plays. Link to a span or point marker with [[its-slug]]; **bold** and *italic* work."
+              tooltip="Shows above the diagram while this span plays, where it can be edited too. Markdown works: **bold**, *italic*, - lists, ## headings, > quotes. Link to a span or point marker with [[its-slug]]."
             >
               <textarea
                 className={`${inputClass} resize-y`}

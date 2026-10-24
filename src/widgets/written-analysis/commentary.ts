@@ -20,6 +20,7 @@ import type {
 } from '@/types/strata'
 import { formSpans, analysisLayers } from '@/lib/layers'
 import { spanTypeName } from '@/lib/vocabulary'
+import { slugLinksForExport } from './markdownText'
 
 /** Blank-line separator used when two pieces of commentary are combined. */
 export const JOIN = '\n\n'
@@ -188,38 +189,6 @@ export function reanchorOrphans(prev: StrataDocument, next: StrataDocument): Str
 
 // ── Text ────────────────────────────────────────────────────────────────────
 
-export type Inline =
-  | { kind: 'text'; value: string }
-  | { kind: 'bold'; value: string }
-  | { kind: 'italic'; value: string }
-  | { kind: 'link'; slug: string; value: string }
-
-/**
- * Split commentary into paragraphs of inline pieces. Deliberately tiny: blank
- * lines separate paragraphs; **bold**, *italic*, and [[slug]] (or
- * [[slug|shown text]]) link to a span. Everything else is literal text.
- */
-export function parseCommentary(text: string): Inline[][] {
-  const pattern = /\[\[([a-z0-9-]+)(?:\|([^\]]+))?\]\]|\*\*([^*]+)\*\*|\*([^*\s][^*]*)\*/g
-  return text
-    .split(/\n\s*\n/)
-    .map((p) => p.trim())
-    .filter(Boolean)
-    .map((para) => {
-      const out: Inline[] = []
-      let last = 0
-      for (const m of para.matchAll(pattern)) {
-        if (m.index! > last) out.push({ kind: 'text', value: para.slice(last, m.index) })
-        if (m[1]) out.push({ kind: 'link', slug: m[1], value: m[2] ?? m[1] })
-        else if (m[3]) out.push({ kind: 'bold', value: m[3] })
-        else out.push({ kind: 'italic', value: m[4] })
-        last = m.index! + m[0].length
-      }
-      if (last < para.length) out.push({ kind: 'text', value: para.slice(last) })
-      return out
-    })
-}
-
 /** The span a [[slug]] link names, if it exists. */
 export function spanBySlug(doc: StrataDocument, slug: string): Span | undefined {
   return allSpans(doc).find((s) => s.slug === slug)
@@ -260,30 +229,18 @@ function linkTargets(entries: ReturnType<typeof sections>): Set<string> {
  * that span's section when it has one. HTML is the default export for this
  * widget (docs/decisions.md): it opens anywhere, no markdown reader needed.
  */
-export function commentaryToHtml(doc: StrataDocument): string {
+export async function commentaryToHtml(doc: StrataDocument): Promise<string> {
+  // The renderer (and react-dom/server) loads on demand, as for the figure
+  // export, so the editor's bundle doesn't carry it.
+  const { commentaryMarkdownHtml } = await import('./commentaryHtml')
   const entries = sections(doc)
   const targets = linkTargets(entries)
 
   const body = entries
     .map(({ block, span, range, heading }) => {
       const id = span?.slug ? ` id="${esc(span.slug)}"` : ''
-      const paras = parseCommentary(block.text)
-        .map(
-          (p) =>
-            '<p>' +
-            p
-              .map((piece) => {
-                if (piece.kind === 'bold') return `<strong>${esc(piece.value)}</strong>`
-                if (piece.kind === 'italic') return `<em>${esc(piece.value)}</em>`
-                if (piece.kind === 'link') {
-                  return targets.has(piece.slug) ? `<a href="#${esc(piece.slug)}">${esc(piece.value)}</a>` : esc(piece.value)
-                }
-                return esc(piece.value)
-              })
-              .join('') +
-            '</p>',
-        )
-        .join('\n')
+      const exists = (slug: string) => !!spanBySlug(doc, slug) || !!markerBySlug(doc, slug)
+      const paras = commentaryMarkdownHtml(block.text, exists, targets)
       return `<section${id}>\n<h2>${heading ? `${esc(heading)} ` : ''}<span class="time">${mmss(range[0])}–${mmss(range[1])}</span></h2>\n${paras}\n</section>`
     })
     .join('\n')
@@ -319,7 +276,7 @@ ${body}
  * The same document as Markdown, the secondary export for technical users
  * (docs/decisions.md). Each span section carries an `<a id>` anchor, since
  * Markdown renderers derive heading ids differently; [[slug]] links point at
- * it. The commentary's own **bold** and *italic* are already Markdown.
+ * it. The commentary itself is Markdown already; only [[slug]] links change.
  */
 export function commentaryToMarkdown(doc: StrataDocument): string {
   const entries = sections(doc)
@@ -333,24 +290,8 @@ export function commentaryToMarkdown(doc: StrataDocument): string {
     out.push('')
     if (span?.slug) out.push(`<a id="${span.slug}"></a>`, '')
     out.push(`## ${heading ? `${heading} ` : ''}(${mmss(range[0])}–${mmss(range[1])})`)
-    for (const para of parseCommentary(block.text)) {
-      out.push(
-        '',
-        para
-          .map((piece) =>
-            piece.kind === 'bold'
-              ? `**${piece.value}**`
-              : piece.kind === 'italic'
-                ? `*${piece.value}*`
-                : piece.kind === 'link'
-                  ? targets.has(piece.slug)
-                    ? `[${piece.value}](#${piece.slug})`
-                    : piece.value
-                  : piece.value,
-          )
-          .join(''),
-      )
-    }
+    // The commentary is Markdown already; only its [[slug]] links change.
+    out.push('', slugLinksForExport(block.text.trim(), targets))
   }
   return out.join('\n') + '\n'
 }

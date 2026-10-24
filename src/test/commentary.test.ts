@@ -9,7 +9,6 @@ import { analysisLayers } from '@/lib/layers'
 import {
   blockForSpan,
   blocksAt,
-  parseCommentary,
   commentaryToHtml,
   commentaryToMarkdown,
   markerBySlug,
@@ -17,6 +16,7 @@ import {
   stackAt,
   passagesAt,
 } from '@/widgets/written-analysis/commentary'
+import { commentaryMarkdownHtml } from '@/widgets/written-analysis/commentaryHtml'
 import { makeDoc, makeLayer, makeSpan } from './fixtures'
 
 const store = () => useDocumentStore.getState()
@@ -74,37 +74,56 @@ describe('span commentary', () => {
 })
 
 describe('commentary text', () => {
-  it('parses paragraphs, emphasis and span links', () => {
-    expect(parseCommentary('A **bold** and *soft* point.\n\nSee [[drop]] and [[intro|the opening]].')).toEqual([
-      [
-        { kind: 'text', value: 'A ' },
-        { kind: 'bold', value: 'bold' },
-        { kind: 'text', value: ' and ' },
-        { kind: 'italic', value: 'soft' },
-        { kind: 'text', value: ' point.' },
-      ],
-      [
-        { kind: 'text', value: 'See ' },
-        { kind: 'link', slug: 'drop', value: 'drop' },
-        { kind: 'text', value: ' and ' },
-        { kind: 'link', slug: 'intro', value: 'the opening' },
-        { kind: 'text', value: '.' },
-      ],
-    ])
+  const html = (text: string, slugs = ['drop', 'intro']) =>
+    commentaryMarkdownHtml(text, (slug) => slugs.includes(slug), new Set(slugs))
+
+  it('renders Markdown: paragraphs, emphasis, lists, headings, quotes, code', () => {
+    const out = html('A **bold** and *soft* point.\n\n## Form\n\n- one\n- two\n\n1. first\n\n> quoted\n\nUse `code`.')
+    expect(out).toContain('<strong>bold</strong>')
+    expect(out).toContain('<em>soft</em>')
+    expect(out).toContain('<h2>Form</h2>')
+    expect(out).toContain('<ul>')
+    expect(out).toContain('<ol>')
+    expect(out).toContain('<blockquote>')
+    expect(out).toContain('<code>code</code>')
   })
 
-  it('gives an unlabelled span no placeholder heading, only its time', () => {
+  it('turns [[slug]] links into links to their sections, or plain text if nothing has the slug', () => {
+    const out = html('See [[drop]], [[intro|the opening]] and [[gone]].')
+    expect(out).toContain('<a href="#drop">drop</a>')
+    expect(out).toContain('<a href="#intro">the opening</a>')
+    expect(out).not.toContain('#gone')
+    expect(out).toContain('gone')
+  })
+
+  it('shows angle brackets as typed, outside code and in it', () => {
+    const out = html('The <tonic> returns; I < V. `a<b`')
+    expect(out).toContain('The &lt;tonic&gt; returns; I &lt; V.')
+    expect(out).toContain('<code>a&lt;b</code>')
+  })
+
+  it('opens other links in a new tab, and never renders raw HTML, scripts or images', () => {
+    const out = html('[site](https://example.com) <b>raw</b><script>x()</script> ![pic](https://example.com/p.png) [bad](javascript:alert(1))')
+    expect(out).toContain('href="https://example.com" target="_blank" rel="noopener noreferrer"')
+    expect(out).not.toContain('<b>')
+    expect(out).toContain('&lt;b&gt;raw') // shown as typed, not drawn
+    expect(out).not.toContain('<script')
+    expect(out).not.toContain('<img')
+    expect(out).not.toContain('javascript:')
+  })
+
+  it('gives an unlabelled span no placeholder heading, only its time', async () => {
     store().updateSpans(['b'], { label: null })
     store().setSpanCommentary('b', 'A quiet bridge.')
-    expect(commentaryToHtml(doc())).toContain('<h2><span class="time">0:30–1:00</span></h2>')
+    expect(await commentaryToHtml(doc())).toContain('<h2><span class="time">0:30–1:00</span></h2>')
     expect(commentaryToMarkdown(doc())).toContain('## (0:30–1:00)')
-    expect(commentaryToHtml(doc())).not.toContain('Untitled')
+    expect(await commentaryToHtml(doc())).not.toContain('Untitled')
   })
 
-  it('exports to HTML in time order, with links between sections and escaped text', () => {
+  it('exports to HTML in time order, with links between sections and escaped text', async () => {
     store().setSpanCommentary('c', 'Echoes [[drop]].')
     store().setSpanCommentary('b', 'Loud <and> proud.')
-    const html = commentaryToHtml(doc())
+    const html = await commentaryToHtml(doc())
     expect(html.indexOf('Drop')).toBeLessThan(html.indexOf('Outro'))
     expect(html).toContain('<section id="drop">')
     expect(html).toContain('<a href="#drop">drop</a>')
@@ -172,11 +191,11 @@ describe('the stack at a moment', () => {
 })
 
 describe('links to point markers', () => {
-  it('resolve by slug, and export as plain text (a marker has no section)', () => {
+  it('resolve by slug, and export as plain text (a marker has no section)', async () => {
     store().addPointMarker({ id: 'mk', timestamp: 44, label: 'MC' })
     expect(markerBySlug(doc(), 'mc')?.id).toBe('mk')
     store().setSpanCommentary('b', 'After the [[mc]].')
-    expect(commentaryToHtml(doc())).toContain('After the mc.')
+    expect(await commentaryToHtml(doc())).toContain('After the mc.')
   })
 })
 

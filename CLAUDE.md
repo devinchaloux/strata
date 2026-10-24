@@ -36,7 +36,8 @@ decisions. Raise them; don't settle them in code.
 ## Architecture in brief
 
 - React 18 + Vite + TypeScript. Zustand for state, with zundo for undo/redo.
-  Tailwind and Radix (shadcn/ui) for UI. Vitest for tests.
+  Tailwind and Radix (shadcn/ui) for UI. react-markdown renders commentary.
+  Vitest for tests.
 - `src/types/strata.ts` mirrors the JSON Schema. A format change updates both,
   plus the schema reference.
 - `src/main.tsx` starts the editor (`src/App.tsx`) or, for an address with

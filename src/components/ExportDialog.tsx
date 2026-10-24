@@ -221,7 +221,7 @@ export function ExportDialog() {
                 size="sm"
                 className="mr-auto"
                 title="All commentary as one web page, in time order"
-                onClick={() => downloadBlob(new Blob([commentaryToHtml(doc)], { type: 'text/html' }), `${base}-commentary.html`)}
+                onClick={async () => downloadBlob(new Blob([await commentaryToHtml(doc)], { type: 'text/html' }), `${base}-commentary.html`)}
               >
                 <Download size={13} aria-hidden /> Commentary (HTML)
               </Button>

@@ -21,7 +21,7 @@ const STEPS: [string, string][] = [
   ['Describe', 'Click a span to set its type and details in the Inspector. Drag a boundary to move it.'],
   ['Grid', 'Optional: tap T on the beat, or set a tempo in the Grid menu, to number bars and snap to beats. A selected span’s − / + bar buttons make it a bar shorter or longer. The Metronome in the play bar clicks the grid over the track, to fine-tune its tempo by ear.'],
   ['Layers', 'Add a layer (+ above the layer names) for another level of form, or another framework. Group into… (several spans) or Copy up (one) builds the level above from the one below; their shared boundaries then move together.'],
-  ['Write', 'Write in a span’s Commentary box. It appears while that passage plays.'],
+  ['Write', 'Write in a span’s Commentary box, or in place above the diagram (hover a span’s level for Edit). Markdown works, with a toolbar for bold, lists, headings and links. It appears while that passage plays.'],
   ['Keep', 'Save a .strata file. Export makes a figure (SVG or PNG) or a commentary page (HTML).'],
   ['Read', 'Reading view shows the video, commentary and diagram for reading or teaching, with editing off. Share… makes a link to a copy you’ve put online (Dropbox, OneDrive, GitHub or your own site). Esc goes back.'],
 ]
