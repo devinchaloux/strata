@@ -22,3 +22,22 @@ export function quickSetupLayer(doc: StrataDocument, activeId: string | null): L
     .sort((a, b) => b.displayOrder - a.displayOrder)
   return empty.find((l) => l.id === activeId) ?? empty[0] ?? null
 }
+
+/**
+ * A new, empty form layer. White fill (reads as no fill on the canvas) and a
+ * neutral ink stroke, never a grey box (docs/decisions.md, layer colour
+ * defaults).
+ */
+export function newFormLayer(label: string, displayOrder: number): Layer {
+  return {
+    id: crypto.randomUUID(),
+    type: 'form-diagram',
+    label,
+    visibility: true,
+    locked: false,
+    fillColorDefault: '#ffffff',
+    strokeColorDefault: '#475569',
+    displayOrder,
+    data: { hierarchicalEnforcement: false, spans: [] },
+  }
+}

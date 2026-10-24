@@ -12,6 +12,8 @@
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore, type InspectorTab } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
+import { GroupPopover } from '@/components/GroupPopover'
+import { groupUpTarget } from '@/lib/groupSpans'
 import { formatTime, formatClock } from '@/lib/youtube'
 import { TimeInput } from './TimeInput'
 import { TypePicker } from './TypePicker'
@@ -340,6 +342,42 @@ export function MetadataPanel() {
 // Single-span panel — the full Phase 0.4 §5 field set for one selected span.
 // ---------------------------------------------------------------------------
 
+/**
+ * The span's links to a parent and to children, with Unlink: "Part of Verse
+ * in Sections", "Groups 4 spans in Phrases". Linked spans move their shared
+ * boundaries together; unlinking clears parentId (the child's own, or all its
+ * children's).
+ */
+function SpanLinks({ span }: { span: Span }) {
+  const doc = useDocumentStore((s) => s.document)
+  const updateSpans = useDocumentStore((s) => s.updateSpans)
+  if (!doc) return null
+  const all = doc.layers.flatMap((l) => formSpans(l).map((s) => ({ s, l })))
+  const parent = span.parentId ? all.find((e) => e.s.id === span.parentId) : undefined
+  const children = all.filter((e) => e.s.parentId === span.id)
+  if (!parent && !children.length) return null
+  const row = (text: string, onUnlink: () => void) => (
+    <div className="flex items-center justify-between gap-2 text-xs">
+      <span className="min-w-0 truncate text-muted-foreground" title="Boundaries they share move together">
+        {text}
+      </span>
+      <button onClick={onUnlink} className="shrink-0 rounded border border-border px-1.5 py-0.5 text-foreground hover:bg-accent" title="Move them separately from now on">
+        Unlink
+      </button>
+    </div>
+  )
+  return (
+    <div className="flex flex-col gap-1">
+      {parent && row(`Part of ${parent.s.label || 'a span'} in ${parent.l.label}`, () => updateSpans([span.id], { parentId: null }))}
+      {children.length > 0 &&
+        row(
+          `Groups ${children.length} span${children.length === 1 ? '' : 's'} in ${children[0].l.label}`,
+          () => updateSpans(children.map((e) => e.s.id), { parentId: null }),
+        )}
+    </div>
+  )
+}
+
 function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   const updateSpan = useDocumentStore((s) => s.updateSpan)
   const removeSpan = useDocumentStore((s) => s.removeSpan)
@@ -347,6 +385,9 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   const setSpanEdgeAction = useDocumentStore((s) => s.setSpanEdge)
   const resizeSpanByBars = useDocumentStore((s) => s.resizeSpanByBars)
   const setSpanBars = useDocumentStore((s) => s.setSpanBars)
+  const groupIntoLayerAbove = useDocumentStore((s) => s.groupIntoLayerAbove)
+  const docNow = useDocumentStore((s) => s.document)
+  const copyUp = docNow ? groupUpTarget(docNow, [span.id]) : { above: null, blocked: 'No document' }
   const setSpanLabels = useDocumentStore((s) => s.setSpanLabels)
   const regenerateSlug = useDocumentStore((s) => s.regenerateSlug)
   const setSpanCommentary = useDocumentStore((s) => s.setSpanCommentary)
@@ -526,6 +567,10 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           <p className="text-[11px] text-muted-foreground">Type a length or step it by a bar. Later spans move with it.</p>
           </div>
         )}
+
+        {/* Linked to a parent or children (Group, Copy up): boundaries they
+            share move together (lib/linkedBoundaries.ts). Unlink frees them. */}
+        <SpanLinks span={span} />
 
         {/* The three tabs as one segmented control, so they read as the way
             into the rest of the span's fields. */}
@@ -716,10 +761,6 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
               <Segmented options={CONFIDENCE_OPTS} value={span.confidence ?? 'definite'} onChange={(v) => update({ confidence: v })} />
             </Field>
 
-            <Field label="Parent">
-              <div className={`${inputClass} text-muted-foreground`}>{span.parentId ?? 'none'}</div>
-            </Field>
-
             <Field label="ID">
               <button
                 className={`${inputClass} flex items-center justify-between text-left`}
@@ -735,7 +776,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
       </div>
 
       {/* Actions, always in reach */}
-      <div className="flex gap-1.5 border-t px-3 py-2" style={{ borderColor: 'var(--hairline)' }}>
+      <div className="flex flex-wrap gap-1.5 whitespace-nowrap border-t px-3 py-2" style={{ borderColor: 'var(--hairline)' }}>
         <button
           onClick={handleSplit}
           disabled={!canSplit}
@@ -759,6 +800,17 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
         >
           → Merge
+        </button>
+        <button
+          onClick={() => {
+            const id = groupIntoLayerAbove([span.id])
+            if (id) selectSpan(id)
+          }}
+          disabled={!!copyUp.blocked}
+          title={copyUp.blocked ?? `Copy this span to ${copyUp.above ? copyUp.above.label : 'a new layer above'}`}
+          className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
+        >
+          Copy up
         </button>
         <button
           onClick={handleDelete}
@@ -841,6 +893,9 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
         {!eligibility.ok && (
           <p className="-mt-3 mb-4 text-[11px] text-muted-foreground">{mergeReason}</p>
         )}
+
+        {/* Group: one span over all of these, on another layer. */}
+        <GroupPopover spans={spans} />
 
         <Field
           label={`Commentary, ${formatClock(rangeStart)}–${formatClock(rangeEnd)}`}
