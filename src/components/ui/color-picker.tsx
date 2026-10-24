@@ -43,12 +43,14 @@ export interface ColorPickerProps {
   onChange: (color: string | null) => void
   /** Label for the null/reset action. Defaults to "Use layer default". */
   nullLabel?: string
+  /** How a colour is shown (the colour-blind safe switch); the value picked is unchanged. */
+  showAs?: (color: string) => string
   /** True when something elsewhere asks for this picker to open; it opens, then calls onOpenRequestTaken. */
   openRequest?: boolean
   onOpenRequestTaken?: () => void
 }
 
-export function ColorPicker({ value, fallback, onChange, nullLabel, openRequest = false, onOpenRequestTaken }: ColorPickerProps) {
+export function ColorPicker({ value, fallback, onChange, nullLabel, showAs = (c) => c, openRequest = false, onOpenRequestTaken }: ColorPickerProps) {
   const [open, setOpen] = useState(false)
   const [hexInput, setHexInput] = useState('')
   // A request opens it, noticed during render (react-hooks/set-state-in-effect),
@@ -124,7 +126,7 @@ export function ColorPicker({ value, fallback, onChange, nullLabel, openRequest 
             <span
               className="h-3.5 w-3.5 shrink-0 rounded-sm border"
               style={{
-                backgroundColor: effectiveColor,
+                backgroundColor: showAs(effectiveColor),
                 borderColor: 'rgba(0,0,0,0.15)',
                 opacity: inheriting ? 0.55 : 1,
               }}
@@ -143,6 +145,7 @@ export function ColorPicker({ value, fallback, onChange, nullLabel, openRequest 
             <Swatch
               key={`${label}-m`}
               color={muted}
+              shownAs={showAs(muted)}
               title={`${label} (muted)`}
               selected={value === muted}
               onPick={pick}
@@ -152,6 +155,7 @@ export function ColorPicker({ value, fallback, onChange, nullLabel, openRequest 
             <Swatch
               key={`${label}-d`}
               color={deep}
+              shownAs={showAs(deep)}
               title={`${label} (deep)`}
               selected={value === deep}
               onPick={pick}
@@ -161,6 +165,7 @@ export function ColorPicker({ value, fallback, onChange, nullLabel, openRequest 
             <Swatch
               key={`${label}-b`}
               color={bright}
+              shownAs={showAs(bright)}
               title={`${label} (bright)`}
               selected={value === bright}
               onPick={pick}
@@ -228,11 +233,13 @@ export function ColorPicker({ value, fallback, onChange, nullLabel, openRequest 
 
 function Swatch({
   color,
+  shownAs = color,
   title,
   selected,
   onPick,
 }: {
   color: string
+  shownAs?: string
   title: string
   selected: boolean
   onPick: (color: string) => void
@@ -246,7 +253,7 @@ function Swatch({
         'h-[18px] w-full rounded-sm transition-transform hover:scale-110 focus:outline-hidden focus:ring-1 focus:ring-ring',
         selected && 'ring-2 ring-offset-1 ring-ring',
       )}
-      style={{ backgroundColor: color, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.12)' }}
+      style={{ backgroundColor: shownAs, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.12)' }}
     />
   )
 }

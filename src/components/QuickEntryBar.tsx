@@ -35,7 +35,7 @@ import { LIBRARIES } from '@/lib/vocabulary'
 import { isInputFocused } from '@/lib/youtube'
 import type { Layer, Span } from '@/types/strata'
 import { CAP_ICONS, WHOLE_ICONS } from '@/lib/capIcons'
-import { QUICK_FILLS } from '@/lib/palette'
+import { QUICK_FILLS, safeFill } from '@/lib/palette'
 
 const BAR_H = 36
 const MAX_TYPES = 8
@@ -98,6 +98,9 @@ export function QuickEntryBar({
   const updateLayer = useDocumentStore((s) => s.updateLayer)
   const selected = useUIStore((s) => s.selectedSpanIds)
   const mode = useUIStore((s) => s.quickEntry)
+  // Swatches as the diagram draws them (the colour-blind safe switch).
+  const colorblindSafe = useUIStore((s) => s.colorblindSafe)
+  const shown = (c: string) => (colorblindSafe ? safeFill(c) : c)
   const requestTypePicker = useUIStore((s) => s.requestTypePicker)
   const requestFillPicker = useUIStore((s) => s.requestFillPicker)
   const setInspectorTab = useUIStore((s) => s.setInspectorTab)
@@ -290,7 +293,7 @@ export function QuickEntryBar({
             }`}
           >
             {o.hotkey != null && <kbd className="font-sans text-[11px] text-muted-foreground">{o.hotkey}</kbd>}
-            {o.swatch && <span className="h-4 w-4 rounded border border-border" style={{ background: o.swatch }} aria-hidden />}
+            {o.swatch && <span className="h-4 w-4 rounded border border-border" style={{ background: shown(o.swatch) }} aria-hidden />}
             {o.icon ?? o.label}
           </button>
         </span>

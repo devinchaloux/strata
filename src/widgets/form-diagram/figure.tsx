@@ -94,7 +94,8 @@ function SpanFigure({
   // files written before caps existed.
   const startCap: CapStyle = span.startCap ?? capFromBoundaryType(span.startBoundaryType)
   const endCap: CapStyle = span.endCap ?? capFromBoundaryType(span.endBoundaryType)
-  const fill = span.fillColor ?? layer.fillColorDefault
+  const stored = span.fillColor ?? layer.fillColorDefault
+  const fill = theme.mapFill ? theme.mapFill(stored) : stored
   const stroke = span.strokeColor ?? layer.strokeColorDefault
   const fonts = layerFonts(layer)
 

@@ -14,6 +14,7 @@ import { useUIStore, type InspectorTab } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
 import { GroupPopover } from '@/components/GroupPopover'
 import { groupUpTarget } from '@/lib/groupSpans'
+import { safeFill } from '@/lib/palette'
 import { formatTime, formatClock } from '@/lib/youtube'
 import { TimeInput } from './TimeInput'
 import { TypePicker } from './TypePicker'
@@ -36,6 +37,9 @@ import type {
   CapStyle,
   LineStyle,
 } from '@/types/strata'
+
+/** A colour shown as it is (the colour-blind safe switch off). */
+const sameColor = (c: string) => c
 
 // Key area is offered in two places (leading the panel on a bar layer, tucked
 // into Advanced otherwise) and again for multi-select. One string each, so the
@@ -389,6 +393,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   const updateSpans = useDocumentStore((s) => s.updateSpans)
   const fillPickerPending = useUIStore((s) => s.fillPickerPending)
   const clearFillPickerRequest = useUIStore((s) => s.clearFillPickerRequest)
+  const shownFill = useUIStore((s) => (s.colorblindSafe ? safeFill : sameColor))
   const groupIntoLayerAbove = useDocumentStore((s) => s.groupIntoLayerAbove)
   const docNow = useDocumentStore((s) => s.document)
   const copyUp = docNow ? groupUpTarget(docNow, [span.id]) : { above: null, blocked: 'No document' }
@@ -687,7 +692,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             <div className="flex gap-2">
               <div className="flex-1">
                 <Field label="Fill">
-                  <ColorPicker value={span.fillColor} fallback={layer.fillColorDefault} onChange={(c) => update({ fillColor: c })} openRequest={fillPickerPending} onOpenRequestTaken={clearFillPickerRequest} />
+                  <ColorPicker value={span.fillColor} fallback={layer.fillColorDefault} onChange={(c) => update({ fillColor: c })} showAs={shownFill} openRequest={fillPickerPending} onOpenRequestTaken={clearFillPickerRequest} />
                 </Field>
               </div>
               <div className="flex-1">
@@ -720,7 +725,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
                     title={c}
                     onClick={() => update({ fillColor: c })}
                     className="h-5 w-5 rounded border border-border"
-                    style={{ background: c }}
+                    style={{ background: shownFill(c) }}
                   />
                 ))}
               </div>
@@ -877,6 +882,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
   const updateSpans = useDocumentStore((s) => s.updateSpans)
   const fillPickerPending = useUIStore((s) => s.fillPickerPending)
   const clearFillPickerRequest = useUIStore((s) => s.clearFillPickerRequest)
+  const shownFill = useUIStore((s) => (s.colorblindSafe ? safeFill : sameColor))
   const { eligibility, performMerge } = useMerge()
 
   const spans = entries.map((e) => e.span)
@@ -1055,6 +1061,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
                 value={fill === MIXED ? null : fill}
                 fallback={fillFallback}
                 onChange={(c) => setAll({ fillColor: c })}
+                showAs={shownFill}
                 openRequest={fillPickerPending}
                 onOpenRequestTaken={clearFillPickerRequest}
               />

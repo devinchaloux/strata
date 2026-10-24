@@ -122,6 +122,10 @@ export interface UIState {
   // remembered in this browser. docs/decisions.md, "Click Track and Beat Matching".
   clickOn: boolean
   clickVolume: number
+  // Colour-blind safe: quick fills drawn in their safe counterparts
+  // (lib/palette.ts safeFill). A viewer's preference, remembered in this
+  // browser, never in the file.
+  colorblindSafe: boolean
   /** Vocabulary packs the analyst has switched on in the type picker (lib/vocabulary.ts). */
   enabledPacks: string[]
   /** The Libraries dialog (packs on or off, import, share). */
@@ -194,6 +198,7 @@ export interface UIState {
   setSnapMode: (mode: SnapMode) => void
   setClickOn: (on: boolean) => void
   setClickVolume: (volume: number) => void
+  setColorblindSafe: (on: boolean) => void
   setPackEnabled: (id: string, on: boolean) => void
   setLibrariesOpen: (open: boolean) => void
   requestTypePicker: () => void
@@ -235,6 +240,7 @@ export interface UIState {
 
 const SNAP_KEY = 'strata:snapMode'
 const CLICK_VOLUME_KEY = 'strata:clickVolume'
+const COLORBLIND_KEY = 'strata:colorblindSafe'
 const LYRICS_KEY = 'strata:showLyrics'
 const PACKS_KEY = 'strata:packs'
 const QUICK_KEY = 'strata:quickEntry'
@@ -302,6 +308,7 @@ const useUIStore = create<UIState>()((set) => ({
   snapMode: readSnapPreference(),
   clickOn: false,
   clickVolume: readClickVolume(),
+  colorblindSafe: readPreference(COLORBLIND_KEY) === 'on',
   // On unless the analyst has turned it off (docs/decisions.md, "Lyrics Show in the Editor").
   showLyrics: readPreference(LYRICS_KEY) !== 'off',
   enabledPacks: (readPreference(PACKS_KEY) ?? '').split(',').filter(Boolean),
@@ -388,6 +395,10 @@ const useUIStore = create<UIState>()((set) => ({
     set({ snapMode: mode })
   },
   setClickOn: (on) => set({ clickOn: on }),
+  setColorblindSafe: (on) => {
+    writePreference(COLORBLIND_KEY, on ? 'on' : 'off')
+    set({ colorblindSafe: on })
+  },
   setClickVolume: (volume) => {
     writePreference(CLICK_VOLUME_KEY, String(volume))
     set({ clickVolume: volume })

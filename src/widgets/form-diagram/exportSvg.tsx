@@ -15,6 +15,7 @@
  */
 import { FormDiagramFigure } from './figure'
 import { PRINT_THEME } from './theme'
+import { safeFill } from '@/lib/palette'
 import { stackHeight } from '@/lib/formShape'
 import { layoutMarkerBand } from '@/lib/markerBand'
 import { getTickInterval } from '@/lib/timeline'
@@ -32,6 +33,8 @@ export interface SvgExportOptions {
   includeAxis: boolean
   /** The form-diagram layers to draw; the visible ones when absent. */
   layerIds?: string[]
+  /** Draw quick fills in their colour-blind safe counterparts, as the editor shows them. */
+  colorblindSafe?: boolean
 }
 
 /** White margin on each side of the figure (the drawing itself is clipped to the range). */
@@ -119,7 +122,7 @@ export async function exportFormDiagramSvg(doc: StrataDocument, opts: SvgExportO
       pps={pps}
       totalWidth={opts.width}
       showCaptions={doc.showCadenceCaptions ?? true}
-      theme={PRINT_THEME}
+      theme={opts.colorblindSafe ? { ...PRINT_THEME, mapFill: safeFill } : PRINT_THEME}
     />,
   )
 
