@@ -14,3 +14,11 @@ export function formSpans(layer: Layer): Span[] {
 export function analysisLayers(doc: StrataDocument): WrittenAnalysisLayer[] {
   return doc.layers.filter((l): l is WrittenAnalysisLayer => l.type === 'written-analysis')
 }
+
+/** The layer a quick setup fills: the active one if it's an empty form layer, else the top empty one. */
+export function quickSetupLayer(doc: StrataDocument, activeId: string | null): Layer | null {
+  const empty = doc.layers
+    .filter((l) => l.type === 'form-diagram' && formSpans(l).length === 0)
+    .sort((a, b) => b.displayOrder - a.displayOrder)
+  return empty.find((l) => l.id === activeId) ?? empty[0] ?? null
+}

@@ -16,10 +16,10 @@ import {
 const MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘' : 'Ctrl'
 
 const STEPS: [string, string][] = [
-  ['Start', 'Click New analysis and link a YouTube video or audio file. By default, the video plays below the diagram.'],
-  ['Mark', 'Play (Space), and press B at each boundary you hear. M places a point marker, such as a cadence.'],
+  ['Start', 'Click New analysis and link a YouTube video or audio file. The video plays in the corner; its dock button moves it below the play bar.'],
+  ['Mark', 'Play (Space), and press B at each boundary you hear. M places a point marker, such as a cadence. Know the tempo and phrase length? Quick setup by tempo fills a layer with a span every few bars.'],
   ['Describe', 'Click a span to set its type and details in the Inspector. Drag a boundary to move it.'],
-  ['Grid', 'Optional: tap T on the beat, or set a tempo in the Grid menu, to number bars and snap to beats.'],
+  ['Grid', 'Optional: tap T on the beat, or set a tempo in the Grid menu, to number bars and snap to beats. A selected span’s − / + bar buttons make it a bar shorter or longer. The Metronome in the play bar clicks the grid over the track, to fine-tune its tempo by ear.'],
   ['Layers', 'Add a layer (+ above the layer names) for another level of form, or another framework.'],
   ['Write', 'Write in a span’s Commentary box. It appears while that passage plays.'],
   ['Keep', 'Save a .strata file. Export makes a figure (SVG or PNG) or a commentary page (HTML).'],
@@ -41,6 +41,14 @@ const KEYS: [string, [string, string][]][] = [
     ],
   ],
   [
+    'Metronome (while it’s on)',
+    [
+      ['[ / ]', 'Tempo down / up 0.01 BPM (with Shift, 0.1)'],
+      [', / .', 'Beat earlier / later by 5 ms (with Shift, 25 ms)'],
+      ['D', 'Downbeat is here: set the exact tempo'],
+    ],
+  ],
+  [
     'Selecting',
     [
       ['Click', 'Select a span (when paused, the playhead moves to it)'],
@@ -53,7 +61,7 @@ const KEYS: [string, [string, string][]][] = [
       ['↑ ↓', 'Span in the layer above / below'],
       ['Shift+← →', 'Extend the selection'],
       ['Enter', 'Edit the selected span’s label'],
-      ['1–9', 'Quick entry: set a type, shape or fill'],
+      ['1–9', 'Quick pick: set a type, shape or fill'],
       ['/', 'Choose from every type, with search'],
       ['Esc', 'Clear the selection'],
       ['Delete', 'Remove the selected spans or marker'],

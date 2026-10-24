@@ -203,3 +203,38 @@ export function snapSpansToGrid(spans: Span[], snap: (t: number) => number): { s
     moved,
   }
 }
+
+/**
+ * Lengthen or shorten one span by `delta` seconds and move every later
+ * boundary in the layer by the same amount, so the spans after it keep their
+ * lengths (a four-bar phrase that is really five, and everything after it
+ * one bar later). The layer still ends where it did: lengthening pushes the
+ * last span's start later and drops a span pushed past the end; shortening
+ * stretches the last span to fill. A change to the last span itself just moves
+ * its end, within the track. Returns null if the span would get too short or
+ * nothing changes.
+ */
+export function rippleSpanEnd(spans: Span[], spanId: string, delta: number, duration: number): Span[] | null {
+  const sorted = [...spans].sort((a, b) => a.startTime - b.startTime)
+  const i = sorted.findIndex((s) => s.id === spanId)
+  if (i === -1 || delta === 0) return null
+  const target = sorted[i]
+  const oldEnd = target.endTime
+  if (oldEnd + delta - target.startTime < MIN_SPAN_WIDTH) return null
+  if (i === sorted.length - 1) {
+    const end = Math.min(oldEnd + delta, duration)
+    return Math.abs(end - oldEnd) < 1e-9 ? null : sorted.map((s) => (s.id === spanId ? { ...s, endTime: end } : s))
+  }
+  const layerEnd = sorted[sorted.length - 1].endTime
+  const moved = sorted
+    .map((s) => {
+      if (s.id === spanId) return { ...s, endTime: oldEnd + delta }
+      if (s.startTime >= oldEnd - 1e-6) return { ...s, startTime: s.startTime + delta, endTime: s.endTime + delta }
+      return s
+    })
+    .map((s) => ({ ...s, endTime: Math.min(s.endTime, layerEnd) }))
+    .filter((s) => s.endTime - s.startTime >= MIN_SPAN_WIDTH)
+  const lastSpan = moved[moved.length - 1]
+  moved[moved.length - 1] = { ...lastSpan, endTime: layerEnd }
+  return moved
+}

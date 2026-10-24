@@ -169,3 +169,30 @@ export function barAt(segs: GridSegment[], t: number, duration: number): number 
   const first = firstBarNumbers(segs, duration)[hit.i]
   return first + Math.floor((t - hit.seg.start) / barLength(hit.seg) + 1e-6)
 }
+
+/**
+ * Boundaries for tiling a stretch of the grid with spans of `barsPer` bars
+ * each (the quick setup's "a span every 4 bars"). Starts on the bar line
+ * nearest `start` and runs to where the grid stops: the end of the segments
+ * that follow on from it without a free stretch, or the track's end. The last
+ * span takes whatever is left over, unless that is under a tenth of a bar, when
+ * the span before it absorbs it. Returns the boundary times, first to last, or
+ * an empty list when `start` is in a free stretch.
+ */
+export function barTiling(segs: GridSegment[], duration: number, start: number, barsPer: number): number[] {
+  const hit = segmentAt(segs, start, duration)
+  if (!hit || barsPer < 1) return []
+  let last = hit.i
+  while (last + 1 < segs.length && segs[last + 1].start <= segmentEnd(segs, last, duration) + 1e-6) last++
+  const end = segmentEnd(segs, last, duration)
+  const from = snapToGrid(start, segs, duration, 'bar')
+  const downbeats = gridLines(segs, duration, from - 1e-6, end)
+    .filter((l) => l.bar !== null && l.time >= from - 1e-6)
+    .map((l) => l.time)
+  const out = downbeats.filter((_, k) => k % Math.round(barsPer) === 0)
+  if (!out.length) return []
+  const lastSeg = segmentAt(segs, out[out.length - 1], duration)?.seg ?? hit.seg
+  if (out.length > 1 && end - out[out.length - 1] < barLength(lastSeg) / 10) out.pop()
+  if (end - out[out.length - 1] > 1e-6) out.push(end)
+  return out.length > 1 ? out : []
+}

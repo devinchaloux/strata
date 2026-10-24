@@ -22,11 +22,11 @@ By area, in the order the entries were made:
 
 **File format and schema:** [File Format](#file-format) · [Span Data Model](#span-data-model) · [File-Level Metadata](#file-level-metadata) · [Schema](#schema) · [Shared Time Point Pool](#shared-time-point-pool) · [Source References](#source-references) · [Schema Finalization (Phase 0.1)](#schema-finalization-phase-01) · [Schema Revision (Phase 0.1 — Session 2)](#schema-revision-phase-01--session-2) · [Schema Changes (Phase 2 prep, 2026-06-20)](#schema-changes-phase-2-prep-2026-06-20) · [Trust and Format Integrity, Round 1 (2026-09-27)](#trust-and-format-integrity-round-1-2026-09-27) · [File Format Integrity, Round 2 (2026-09-27)](#file-format-integrity-round-2-2026-09-27)
 
-**Drawing and editing the form diagram:** [Merge UX (Phase 0.5)](#merge-ux-phase-05) · [Hierarchical Enforcement](#hierarchical-enforcement) · [Form Diagram Editor — Interaction Model](#form-diagram-editor--interaction-model) · [Merge](#merge) · [Form Diagram Editor (Phase 0.4)](#form-diagram-editor-phase-04) · [Phase 2 Implementation (Form Diagram — Milestone A)](#phase-2-implementation-form-diagram--milestone-a) · [Merge Implementation (Phase 2.5)](#merge-implementation-phase-25) · [Form Diagram Shape Model — Adjoin Rework (2026-06-27)](#form-diagram-shape-model--adjoin-rework-2026-06-27) · [Label Collision Strategy (2026-06-27)](#label-collision-strategy-2026-06-27) · [Phase 2.5 Merge — Interaction Completion (2026-06-30)](#phase-25-merge--interaction-completion-2026-06-30) · [Elision Rendering & Boundary-First Shape Control (2026-07-25)](#elision-rendering--boundary-first-shape-control-2026-07-25) · [Keyboard Navigation of Spans (2026-09-27)](#keyboard-navigation-of-spans-2026-09-27) · [Space Plays, B Marks a Boundary (2026-10-01)](#space-plays-b-marks-a-boundary-2026-10-01) · [Paused Clicks Stay Paused; Open Caps Fill and Join; Issue Links (2026-10-01)](#paused-clicks-stay-paused-open-caps-fill-and-join-issue-links-2026-10-01) · [Quick Type (2026-10-01)](#quick-type-2026-10-01) · [Quick Entry (2026-10-02)](#quick-entry-2026-10-02) · [B in an Empty Stretch; Shift+B; Fit to the Grid (2026-10-02)](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02) · [Hidden Labels Show on Hover and Selection (2026-10-02)](#hidden-labels-show-on-hover-and-selection-2026-10-02) · [Inside Text Keeps Clear of Rounded and Angled Ends (2026-10-02)](#inside-text-keeps-clear-of-rounded-and-angled-ends-2026-10-02)
+**Drawing and editing the form diagram:** [Merge UX (Phase 0.5)](#merge-ux-phase-05) · [Hierarchical Enforcement](#hierarchical-enforcement) · [Form Diagram Editor — Interaction Model](#form-diagram-editor--interaction-model) · [Merge](#merge) · [Form Diagram Editor (Phase 0.4)](#form-diagram-editor-phase-04) · [Phase 2 Implementation (Form Diagram — Milestone A)](#phase-2-implementation-form-diagram--milestone-a) · [Merge Implementation (Phase 2.5)](#merge-implementation-phase-25) · [Form Diagram Shape Model — Adjoin Rework (2026-06-27)](#form-diagram-shape-model--adjoin-rework-2026-06-27) · [Label Collision Strategy (2026-06-27)](#label-collision-strategy-2026-06-27) · [Phase 2.5 Merge — Interaction Completion (2026-06-30)](#phase-25-merge--interaction-completion-2026-06-30) · [Elision Rendering & Boundary-First Shape Control (2026-07-25)](#elision-rendering--boundary-first-shape-control-2026-07-25) · [Keyboard Navigation of Spans (2026-09-27)](#keyboard-navigation-of-spans-2026-09-27) · [Space Plays, B Marks a Boundary (2026-10-01)](#space-plays-b-marks-a-boundary-2026-10-01) · [Paused Clicks Stay Paused; Open Caps Fill and Join; Issue Links (2026-10-01)](#paused-clicks-stay-paused-open-caps-fill-and-join-issue-links-2026-10-01) · [Quick Type (2026-10-01)](#quick-type-2026-10-01) · [Quick Entry (2026-10-02)](#quick-entry-2026-10-02) · [B in an Empty Stretch; Shift+B; Fit to the Grid (2026-10-02)](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02) · [Hidden Labels Show on Hover and Selection (2026-10-02)](#hidden-labels-show-on-hover-and-selection-2026-10-02) · [Inside Text Keeps Clear of Rounded and Angled Ends (2026-10-02)](#inside-text-keeps-clear-of-rounded-and-angled-ends-2026-10-02) · [Quick Setup From the Tempo; a Plainer Grid Menu and Quick Pick (2026-10-24)](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24)
 
 **Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01)
 
-**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01)
+**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24)
 
 **Point markers:** [Point Markers](#point-markers) · [Point Markers — Implementation (2026-07-03)](#point-markers--implementation-2026-07-03) · [Point Markers — Redesign (2026-07-04)](#point-markers--redesign-2026-07-04) · [Marker Band, Absent Events, and the Diagram Control Bar (2026-07-24, cont.)](#marker-band-absent-events-and-the-diagram-control-bar-2026-07-24-cont)
 
@@ -34,11 +34,11 @@ By area, in the order the entries were made:
 
 **Commentary and lyrics:** [Written Analysis Widget (2026-09-27)](#written-analysis-widget-2026-09-27) · [Commentary Links to Point Markers (2026-09-27)](#commentary-links-to-point-markers-2026-09-27) · [Commentary on a Stretch of Time (2026-09-27)](#commentary-on-a-stretch-of-time-2026-09-27) · [Hiding Commentary (2026-09-27)](#hiding-commentary-2026-09-27) · [The Commentary Stack (2026-10-01)](#the-commentary-stack-2026-10-01) · [Lyrics Stay in the File; Shared Views Leave Them Out by Default (2026-10-01)](#lyrics-stay-in-the-file-shared-views-leave-them-out-by-default-2026-10-01) · [Shared Links Treat Lyrics Like Any Other View (2026-10-03)](#shared-links-treat-lyrics-like-any-other-view-2026-10-03)
 
-**The player and the source:** [Player Chrome (Phase 0.3)](#player-chrome-phase-03) · [Source Linking (2026-07-02)](#source-linking-2026-07-02) · [Video Curtain Covers Every Dialog (2026-09-27)](#video-curtain-covers-every-dialog-2026-09-27) · [Dialogs Stay Clear of the Player (2026-09-27)](#dialogs-stay-clear-of-the-player-2026-09-27) · [Video Below the Fold (2026-09-27)](#video-below-the-fold-2026-09-27) · [Menus Keep Clear of the Player (2026-10-02)](#menus-keep-clear-of-the-player-2026-10-02)
+**The player and the source:** [Player Chrome (Phase 0.3)](#player-chrome-phase-03) · [Source Linking (2026-07-02)](#source-linking-2026-07-02) · [Video Curtain Covers Every Dialog (2026-09-27)](#video-curtain-covers-every-dialog-2026-09-27) · [Dialogs Stay Clear of the Player (2026-09-27)](#dialogs-stay-clear-of-the-player-2026-09-27) · [Video Below the Fold (2026-09-27)](#video-below-the-fold-2026-09-27) · [Menus Keep Clear of the Player (2026-10-02)](#menus-keep-clear-of-the-player-2026-10-02) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24)
 
 **Reading, sharing, embedding and export:** [Sharing](#sharing) · [Embeddable Viewer](#embeddable-viewer) · [Export (2026-09-27)](#export-2026-09-27) · [The Reading View (2026-10-01)](#the-reading-view-2026-10-01) · [Sharing by Link (2026-10-01)](#sharing-by-link-2026-10-01) · [Export: Choose Layers, Cut Spans at the Range (2026-10-02)](#export-choose-layers-cut-spans-at-the-range-2026-10-02) · [Share From the Toolbar; Dropbox and OneDrive Links (2026-10-02)](#share-from-the-toolbar-dropbox-and-onedrive-links-2026-10-02) · [Example Analyses (2026-10-02)](#example-analyses-2026-10-02) · [Embedding an Analysis (2026-10-03)](#embedding-an-analysis-2026-10-03) · [Starting an Analysis from a Link (2026-10-03)](#starting-an-analysis-from-a-link-2026-10-03)
 
-**The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03)
+**The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03) · [A Shorter New Analysis Dialog; Darker Interface Greys (2026-10-24)](#a-shorter-new-analysis-dialog-darker-interface-greys-2026-10-24)
 
 **Architecture, scope and process:** [Architecture](#architecture) · [Widgets](#widgets) · [Architecture](#architecture-1) · [Launch](#launch) · [Corpus Builder](#corpus-builder) · [v1 Feature Scope (Phase 0.6)](#v1-feature-scope-phase-06) · [Energy Contour Widget](#energy-contour-widget) · [EDM as Origin — Product Claim Reframe](#edm-as-origin--product-claim-reframe) · [Tech Stack](#tech-stack) · [v1 Scope](#v1-scope) · [Widget Contract (Phase 0.2)](#widget-contract-phase-02) · [Correctness Pass (post-Phase 2 polish)](#correctness-pass-post-phase-2-polish) · [Improvement Backlog Batch 1 (2026-07-03)](#improvement-backlog-batch-1-2026-07-03) · [Improvement Backlog Batch 2 (2026-07-03)](#improvement-backlog-batch-2-2026-07-03) · [Render / Edit Split (2026-09-27)](#render--edit-split-2026-09-27) · [Large-Analysis Performance (2026-09-27)](#large-analysis-performance-2026-09-27) · [Safari and Firefox Read-Through (2026-09-27)](#safari-and-firefox-read-through-2026-09-27) · [Beta Launch Pass (2026-10-01)](#beta-launch-pass-2026-10-01) · [Releases and Open Tabs (2026-10-02)](#releases-and-open-tabs-2026-10-02) · [Faster Checks: Tests in Node, a Weekly Audit (2026-10-05)](#faster-checks-tests-in-node-a-weekly-audit-2026-10-05) · [Development Tools Upgraded (2026-10-07)](#development-tools-upgraded-2026-10-07) · [No Corpus Builder: Strata Stays a One-File Tool (2026-10-16)](#no-corpus-builder-strata-stays-a-one-file-tool-2026-10-16) · [React's Newer Checks On (2026-10-16)](#reacts-newer-checks-on-2026-10-16)
 
@@ -3850,7 +3850,9 @@ https://strata.devinchaloux.com/?new&title=Alive&artist=Krewella&video=<YouTube 
 doesn't read (a video address that isn't YouTube, a tempo of 0) is left out
 rather than refusing the link. When the link fills in a tempo, key or author,
 the dialog opens with "More details" expanded, so what was filled in is seen
-before Start (added 2026-10-03, after the first link hid them). The address
+before Start (added 2026-10-03, after the first link hid them; since
+2026-10-24 the section is "Advanced", and tempo sits outside it, so only a
+key or author unfolds it). The address
 loses its parameters once read, so reloading doesn't start a second analysis.
 
 **Why.** A catalogue that already knows a recording (its title, artists,
@@ -3987,4 +3989,151 @@ are fixed in all 22 places, and lint now fails on a new one.
 React's concurrent rendering, where a render can be started and thrown away.
 Fixing the 22 places once, and keeping the checks on, stops new ones arriving
 unnoticed.
+
+---
+
+## A Shorter New Analysis Dialog; Darker Interface Greys (2026-10-24)
+
+**Decision.** The New analysis dialog asks, in order, for Title, Artist,
+Source, Tempo (BPM) and Time signature. Everything else (context, composer,
+work, home key, cadence marker captions, notes, project, analysis author, sync
+offset, and the read-only duration and dates) sits under a folded "Advanced"
+section. Document settings is the same dialog with Advanced unfolded.
+
+- **No lead sentence.** "Name the track and link its video or audio" is gone;
+  "You can change any of this later" is a tooltip on the heading's info icon.
+- **Tempo and meter come up front.** They are what a beat grid starts from, so
+  setting them at the start makes drawing to the grid quicker. The tooltip on
+  Tempo says so.
+- **Context explains itself.** Its helper reads "For corpus analysis: a studio
+  recording or a live performance."
+- **The source form is one row.** A YouTube / Audio file switch sits beside
+  the link field or file button, with a status line under it only when there
+  is something to say. Inside the dialog, Unlink is a link at the end of that
+  line; the standalone Link source dialog keeps its button row.
+- **The source tooltip is rewritten** as "You can swap it any time; the
+  analysis stays as it is.", and the Link source dialog's description matches.
+
+**Decision.** The interface's muted text (labels, hints, inactive toggles) is
+the secondary slate ink, #475569, instead of #64748b. Placeholders keep their
+lighter grey so an empty field doesn't read as filled in. The diagram keeps
+its own ink ramp, since it is also the exported figure.
+
+**Why.** Devin started an analysis from scratch and found the dialog hard
+going: too much text and space, and fields that matter later (author, notes,
+sync offset) shown before the ones that help now. The grey text was too faint
+to read comfortably. This amends the 2026-09-27 entries that put the other
+fields behind "More details" and set hint text to #64748b.
+
+---
+
+## Quick Setup From the Tempo; a Plainer Grid Menu and Quick Pick (2026-10-24)
+
+*From Devin starting an analysis of Krewella's "Alive" from scratch, with an
+eye on demoing Strata to people seeing it for the first time.*
+
+**Decision.** The video starts as the corner mini player, not docked below the
+play bar. The dock button still moves it there.
+**Why.** Seeing the video the moment an analysis starts confirms the right one
+was linked; docked, it was out of view below the fold. This amends "Video
+Below the Fold", which kept docked as the default.
+
+**Decision.** While the source is linked and no layer has spans, a **Quick
+setup by tempo…** button sits under the "Press Space to play" hint. It opens a
+card in place: tempo (the document's, editable there), first downbeat (typed,
+or Use playhead), and "a span every N bars". **Fill** starts a beat grid at
+the first downbeat unless one covers it, then fills the active layer with a
+span every N bars to where the grid stops, in one undo step. The spans are
+left unlabelled and untyped.
+**Why.** A track as regular as "Alive" has phrases of a known length, and
+tapping B at each one through five minutes is slow and daunting for a newcomer
+facing an empty diagram. Laying them out from the tempo gets an analyst most
+of the way at once. Devin asked for a button rather than the whole card up
+front, so the empty screen stays calm.
+
+**Decision.** A selected span inside the grid shows its length in bars in the
+Inspector, with − and + buttons that change it by one bar and move every later
+boundary in the layer with it. The layer's end stays put: the last span
+absorbs the change, and one pushed past the end is dropped.
+**Why.** The next thing after a regular layout is the exception: a five-bar
+phrase among four-bar ones. Moving one boundary by hand would leave every
+later phrase out of step; moving them all with it keeps the regular pattern
+after the exception.
+
+**Decision.** The Grid menu shows what fits the state it's in. With no grid it
+says what a grid is and offers to set one from the tempo and meter (the
+document's, editable there) at the first downbeat, or to tap it in with T.
+With a grid it shows "Snap boundaries to" (Off / Beats / Bars), the grid's rows
+to edit, and, folded away, how to mark a tempo change or a passage with no
+beat. Snapping isn't offered before there is a grid to snap to.
+**Why.** Devin, coming back after two weeks: "even as a creator, I don't know
+what this is supposed to be". The menu opened on snapping as if a grid
+already existed, even when only a tempo had been set.
+
+**Decision.** "Quick entry" and its Off / Type / Shape / Fill switch become a
+**Quick pick** button showing the current choice. Its menu says what it does
+(a row of choices appears above the spans you select; click one or press its
+number) and describes each option. The setting and its storage are unchanged.
+**Why.** The bare switch didn't say what it switched, so it meant nothing to a
+new user.
+
+**Decision.** The New analysis and Document settings dialog re-copies its
+typed fields (artist, tempo, time signature, sync offset) from the document
+only when it opens or when one of those values changes, not on every document
+change.
+**Why.** The media's length arrives a moment after a link is pasted or a file
+chosen. That change used to reset the fields, wiping a tempo still being typed.
+
+A guided walkthrough for first-time users is wanted too; it isn't part of
+this change.
+
+---
+
+## Click Track and Beat Matching (2026-10-24)
+
+**Decision.** A **Metronome** button in the play bar opens a panel with an
+on/off switch and a volume slider. While on, it clicks every beat of the beat
+grid over the video or audio, louder on downbeats. A free stretch is silent,
+and tempo changes are followed. The volume is remembered in the browser; the
+switch is not.
+
+**Decision.** With a grid, the panel adjusts the grid row at the playhead
+while it plays:
+- **Tempo** in steps of 0.01 or 0.1 BPM, keeping the row's first downbeat in
+  place, so the click drifts into or out of line further into the track.
+- **Beat earlier / later** by 5 ms, moving the whole row, to line up the start.
+- **Downbeat is here** sets the tempo so the downbeat nearest the playhead
+  lands exactly on it. Paused on a downbeat two minutes in at 159 BPM, a 20 ms
+  error in where it's paused moves the tempo by under 0.03 BPM.
+
+Each has a key that works whenever the metronome is on: `[` `]` for tempo
+(Shift for 0.1), `,` `.` for earlier and later (Shift for 25 ms), and `D` for
+"downbeat is here". A run of adjustments with under 1.5 s between them is one
+undo step. Tempos are kept to a thousandth of a BPM.
+
+**Decision.** The click is scheduled on the Web Audio clock, a little ahead,
+from a mapping of audio time to media time that is read from the player every
+25 ms. A reading only eases the mapping, since YouTube reports its time in
+steps; a jump of more than 0.15 s (a seek) or a change of speed resets it, and
+a grid edit drops clicks already scheduled. In a headless test against an
+audio file, clicks landed within 12 ms of the beat on the first beat and
+within about 3 ms after that.
+**Why.** The media can't be driven from the click, nor the click from the
+media: a YouTube iframe gives no access to its audio. Scheduling ahead on the
+audio clock is what keeps a click steady; following the player is what keeps
+it in step after a seek.
+
+**Why.** Devin: tracks made in a DAW have an exact tempo, sometimes a
+fractional one (158.9 BPM), and a diagram's bar lines are only right if the
+grid has it. Tap-along rounds to a whole BPM (see "Tap-Along Refinements"),
+and the Grid menu's typed tempo can only be checked by eye. Hearing the click
+against the track shows drift at once, and pinning a far downbeat turns that
+into the exact tempo without trial and error. Not meant for freely timed
+music, which has no grid to match.
+
+**Decision.** Tap-along keeps rounding to a whole BPM; decimals come only
+from the metronome's steps, "Downbeat is here", or typing one in the Grid menu.
+**Why.** Devin: a tapped decimal goes off the rails easily. Taps by hand are
+too uneven to place a tenth of a BPM, so the whole number is the steadier
+starting point, and the metronome refines it.
 

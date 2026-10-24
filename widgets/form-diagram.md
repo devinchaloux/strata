@@ -229,6 +229,12 @@ Whole-span dragging is not implemented. Span movement is always via boundary adj
 
 Shift+B ends the span containing `currentTime` there. Layer settings also offer **Fit boundaries to the grid** (Bars or Beats): every boundary moves to its nearest bar or beat in one undo step, a boundary two spans share moving once, and one that would collapse a span or sits in a free stretch staying put.
 
+#### Quick Setup by Tempo, and Resizing by Bars
+
+While the source is linked and no layer has spans, the open area above the diagram offers **Quick setup by tempo…**. It opens a card asking for the tempo (the document's `bpm`, editable there; a grid already covering the start supplies its own), the first downbeat (typed, or **Use playhead**), and how many bars each span lasts. **Fill** starts a beat-grid segment at the first downbeat if none covers it (at the document's tempo and meter), then tiles the active layer (or the top empty one) with a span every N bars, from the bar line nearest the start to where the grid stops: the end of the segments that follow on without a free stretch, or the track's end. The last span takes the leftover, unless it is under a tenth of a bar, when the span before absorbs it. One undo step. `fillLayerWithBars` in the document store, `barTiling` in lib/beatGrid.ts.
+
+A selected span inside the grid shows its **Length** in bars in the Inspector, with − and + buttons. Each changes the span's end by one bar (of the grid where it ends) and moves every later boundary in the layer by the same amount, so the spans after it keep their lengths. The layer still ends where it did: lengthening pushes the last span's start later and drops a span pushed past the end; shortening stretches the last span to fill. On the last span itself, only its end moves, within the track. `resizeSpanByBars` in the store, `rippleSpanEnd` in lib/spanEdit.ts.
+
 Placed boundaries are immediately contributed to the shared time point pool via the next `contributeTimePoints` call.
 
 ### 5.3 Merge

@@ -118,6 +118,10 @@ export interface UIState {
   // A working preference, not part of the analysis, so never in the file
   // (docs/decisions.md, "Snapping Remembered as a Preference").
   snapMode: SnapMode
+  // The click track (lib/metronome.ts): on for this visit only; its volume is
+  // remembered in this browser. docs/decisions.md, "Click Track and Beat Matching".
+  clickOn: boolean
+  clickVolume: number
   /** Vocabulary packs the analyst has switched on in the type picker (lib/vocabulary.ts). */
   enabledPacks: string[]
   /** The Libraries dialog (packs on or off, import, share). */
@@ -182,6 +186,8 @@ export interface UIState {
   dismissAppMessage: () => void
   setExportOpen: (open: boolean) => void
   setSnapMode: (mode: SnapMode) => void
+  setClickOn: (on: boolean) => void
+  setClickVolume: (volume: number) => void
   setPackEnabled: (id: string, on: boolean) => void
   setLibrariesOpen: (open: boolean) => void
   requestTypePicker: () => void
@@ -219,6 +225,7 @@ export interface UIState {
 // ---------------------------------------------------------------------------
 
 const SNAP_KEY = 'strata:snapMode'
+const CLICK_VOLUME_KEY = 'strata:clickVolume'
 const LYRICS_KEY = 'strata:showLyrics'
 const PACKS_KEY = 'strata:packs'
 const QUICK_KEY = 'strata:quickEntry'
@@ -246,6 +253,12 @@ function readSnapPreference(): SnapMode {
   return v === 'beat' || v === 'bar' ? v : 'off'
 }
 
+/** The remembered click volume, 0–1; 0.6 for a first visit or anything unreadable. */
+function readClickVolume(): number {
+  const v = Number(readPreference(CLICK_VOLUME_KEY))
+  return readPreference(CLICK_VOLUME_KEY) != null && Number.isFinite(v) && v >= 0 && v <= 1 ? v : 0.6
+}
+
 const useUIStore = create<UIState>()((set) => ({
   currentTime: 0,
   duration: 0,
@@ -267,8 +280,9 @@ const useUIStore = create<UIState>()((set) => ({
 
   audioFile: null,
 
-  // Default true — the panel is expanded when a video first loads
-  videoMini: false,
+  // The corner mini player by default, so the linked video shows as soon as a
+  // new analysis starts; the dock button moves it below the play bar.
+  videoMini: true,
   headersCollapsed: false,
 
   mergeDialog: null,
@@ -277,6 +291,8 @@ const useUIStore = create<UIState>()((set) => ({
   appMessage: null,
   exportOpen: false,
   snapMode: readSnapPreference(),
+  clickOn: false,
+  clickVolume: readClickVolume(),
   showLyrics: readPreference(LYRICS_KEY) === 'on',
   enabledPacks: (readPreference(PACKS_KEY) ?? '').split(',').filter(Boolean),
   librariesOpen: false,
@@ -359,6 +375,11 @@ const useUIStore = create<UIState>()((set) => ({
   setSnapMode: (mode) => {
     writePreference(SNAP_KEY, mode)
     set({ snapMode: mode })
+  },
+  setClickOn: (on) => set({ clickOn: on }),
+  setClickVolume: (volume) => {
+    writePreference(CLICK_VOLUME_KEY, String(volume))
+    set({ clickVolume: volume })
   },
   setPackEnabled: (id, on) =>
     set((s) => {

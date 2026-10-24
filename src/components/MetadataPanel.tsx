@@ -22,7 +22,7 @@ import { slugify } from '@/lib/slug'
 import { ColorPicker } from '@/components/ui/color-picker'
 import { Field, inputClass } from '@/components/Field'
 import { toAccidentals } from '@/lib/musicSymbols'
-import { barAt, sortedSegments } from '@/lib/beatGrid'
+import { barAt, barLength, segmentAt, sortedSegments } from '@/lib/beatGrid'
 import { formSpans } from '@/lib/layers'
 import type {
   Span,
@@ -364,6 +364,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   const removeSpan = useDocumentStore((s) => s.removeSpan)
   const placeBoundary = useDocumentStore((s) => s.placeBoundary)
   const setSpanEdgeAction = useDocumentStore((s) => s.setSpanEdge)
+  const resizeSpanByBars = useDocumentStore((s) => s.resizeSpanByBars)
   const setSpanLabels = useDocumentStore((s) => s.setSpanLabels)
   const regenerateSlug = useDocumentStore((s) => s.regenerateSlug)
   const setSpanCommentary = useDocumentStore((s) => s.setSpanCommentary)
@@ -427,6 +428,9 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   const segs = sortedSegments(doc?.beatGrid)
   const firstBar = segs.length ? barAt(segs, span.startTime, doc?.duration ?? 0) : null
   const lastBar = segs.length ? barAt(segs, Math.max(span.startTime, span.endTime - 1e-3), doc?.duration ?? 0) : null
+  // Its length in bars of the grid where it ends, for the − / + bar buttons.
+  const endSeg = segs.length ? segmentAt(segs, Math.max(span.startTime, span.endTime - 1e-3), doc?.duration ?? 0)?.seg : null
+  const barsLong = endSeg ? Math.round((duration / barLength(endSeg)) * 10) / 10 : null
   const siblings = formSpans(layer)
   const position = siblings.findIndex((s) => s.id === span.id) + 1
   // Fills already used in this level, for one-click reuse.
@@ -497,6 +501,37 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             {firstBar !== null && lastBar !== null && ` · bar${firstBar === lastBar ? ` ${firstBar}` : `s ${firstBar}–${lastBar}`}`}
           </span>
         </div>
+
+        {/* A phrase a bar long or short: change it by whole bars, and every
+            later boundary in the layer moves with it (resizeSpanByBars). */}
+        {barsLong !== null && (
+          <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-muted-foreground">Length</span>
+            <button
+              aria-label="One bar shorter"
+              title="One bar shorter; the spans after it move earlier"
+              disabled={barsLong <= 1}
+              onClick={() => resizeSpanByBars(layer.id, span.id, -1)}
+              className="h-6 w-6 rounded border border-border text-foreground hover:bg-accent disabled:opacity-40"
+            >
+              −
+            </button>
+            <span className="min-w-12 text-center tabular-nums text-foreground">
+              {barsLong} {barsLong === 1 ? 'bar' : 'bars'}
+            </span>
+            <button
+              aria-label="One bar longer"
+              title="One bar longer; the spans after it move later"
+              onClick={() => resizeSpanByBars(layer.id, span.id, 1)}
+              className="h-6 w-6 rounded border border-border text-foreground hover:bg-accent"
+            >
+              +
+            </button>
+          </div>
+          <p className="text-[11px] text-muted-foreground">Changes its length in whole bars. Later spans move with it.</p>
+          </div>
+        )}
 
         {/* The three tabs as one segmented control, so they read as the way
             into the rest of the span's fields. */}

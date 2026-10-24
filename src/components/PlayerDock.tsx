@@ -8,7 +8,10 @@ import { extractVideoId, formatClock, isInputFocused } from '@/lib/youtube'
 import { pickAudioFile } from '@/lib/fileIO'
 import { setPlayerElement } from '@/lib/playerClearance'
 import { snapToActiveGrid } from '@/store/snap'
-import { fitTaps } from '@/lib/beatGrid'
+import { fitTaps, sortedSegments } from '@/lib/beatGrid'
+import { ClickScheduler, beatsIn } from '@/lib/metronome'
+import { beatMatch, beatMatchKey } from '@/store/beatMatch'
+import { MetronomePopover } from './MetronomePopover'
 import { newGestureKey, withHistoryGroup } from '@/store/history'
 import { SeekBar } from './SeekBar'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
@@ -400,6 +403,47 @@ export function PlayerDock() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
+  // ── Metronome (lib/metronome.ts) ──────────────────────────────────────────
+  // While on, clicks every beat of the grid over the media. A grid edit drops
+  // clicks already scheduled from the old grid.
+  const clickOn = useUIStore((s) => s.clickOn)
+  useEffect(() => {
+    if (!clickOn) return
+    const scheduler = new ClickScheduler({
+      now: () => engineRef.current.now(),
+      playing: () => useUIStore.getState().playbackState === 'playing',
+      rate: () => useUIStore.getState().playbackRate,
+      volume: () => useUIStore.getState().clickVolume,
+      beats: (from, to) => {
+        const d = useDocumentStore.getState().document
+        return d ? beatsIn(sortedSegments(d.beatGrid), d.duration, from, to) : []
+      },
+    })
+    scheduler.start()
+    const unsubscribe = useDocumentStore.subscribe((s, prev) => {
+      if (s.document?.beatGrid !== prev.document?.beatGrid) scheduler.reset()
+    })
+    return () => {
+      unsubscribe()
+      scheduler.dispose()
+    }
+  }, [clickOn])
+
+  // Beat matching by key while the metronome is on (store/beatMatch.ts): [ ]
+  // tempo, , . earlier or later, D "downbeat is here"; Shift for a bigger step.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const ui = useUIStore.getState()
+      if (!ui.clickOn || ui.readingView || e.metaKey || e.ctrlKey || e.altKey || isInputFocused()) return
+      const action = beatMatchKey(e.key)
+      if (!action || !useDocumentStore.getState().document?.beatGrid?.length) return
+      e.preventDefault()
+      beatMatch(action, engineRef.current.now())
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
   // "Locate" flow: a local-source document was opened but the browser can't
   // reopen the file by name — the analyst re-picks it.
   async function handleLocate() {
@@ -483,6 +527,9 @@ export function PlayerDock() {
             </option>
           ))}
         </select>
+
+        {/* Metronome: a click on the grid's beats, and beat matching. */}
+        {!readingView && !embed && <MetronomePopover disabled={!isReady} />}
 
         {/* The point-marker button and the Spacebar context indicator both used
             to sit here. They moved into the form diagram's control bar
