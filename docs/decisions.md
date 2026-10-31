@@ -22,7 +22,7 @@ By area, in the order the entries were made:
 
 **File format and schema:** [File Format](#file-format) · [Span Data Model](#span-data-model) · [File-Level Metadata](#file-level-metadata) · [Schema](#schema) · [Shared Time Point Pool](#shared-time-point-pool) · [Source References](#source-references) · [Schema Finalization (Phase 0.1)](#schema-finalization-phase-01) · [Schema Revision (Phase 0.1 — Session 2)](#schema-revision-phase-01--session-2) · [Schema Changes (Phase 2 prep, 2026-06-20)](#schema-changes-phase-2-prep-2026-06-20) · [Trust and Format Integrity, Round 1 (2026-09-27)](#trust-and-format-integrity-round-1-2026-09-27) · [File Format Integrity, Round 2 (2026-09-27)](#file-format-integrity-round-2-2026-09-27) · [Fill Patterns (2026-10-24)](#fill-patterns-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31)
 
-**Drawing and editing the form diagram:** [Merge UX (Phase 0.5)](#merge-ux-phase-05) · [Hierarchical Enforcement](#hierarchical-enforcement) · [Form Diagram Editor — Interaction Model](#form-diagram-editor--interaction-model) · [Merge](#merge) · [Form Diagram Editor (Phase 0.4)](#form-diagram-editor-phase-04) · [Phase 2 Implementation (Form Diagram — Milestone A)](#phase-2-implementation-form-diagram--milestone-a) · [Merge Implementation (Phase 2.5)](#merge-implementation-phase-25) · [Form Diagram Shape Model — Adjoin Rework (2026-06-27)](#form-diagram-shape-model--adjoin-rework-2026-06-27) · [Label Collision Strategy (2026-06-27)](#label-collision-strategy-2026-06-27) · [Phase 2.5 Merge — Interaction Completion (2026-06-30)](#phase-25-merge--interaction-completion-2026-06-30) · [Elision Rendering & Boundary-First Shape Control (2026-07-25)](#elision-rendering--boundary-first-shape-control-2026-07-25) · [Keyboard Navigation of Spans (2026-09-27)](#keyboard-navigation-of-spans-2026-09-27) · [Space Plays, B Marks a Boundary (2026-10-01)](#space-plays-b-marks-a-boundary-2026-10-01) · [Paused Clicks Stay Paused; Open Caps Fill and Join; Issue Links (2026-10-01)](#paused-clicks-stay-paused-open-caps-fill-and-join-issue-links-2026-10-01) · [Quick Type (2026-10-01)](#quick-type-2026-10-01) · [Quick Entry (2026-10-02)](#quick-entry-2026-10-02) · [B in an Empty Stretch; Shift+B; Fit to the Grid (2026-10-02)](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02) · [Hidden Labels Show on Hover and Selection (2026-10-02)](#hidden-labels-show-on-hover-and-selection-2026-10-02) · [Inside Text Keeps Clear of Rounded and Angled Ends (2026-10-02)](#inside-text-keeps-clear-of-rounded-and-angled-ends-2026-10-02) · [Quick Setup From the Tempo; a Plainer Grid Menu and Quick Pick (2026-10-24)](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24) · [Typed Phrase Lengths; Quick Pick Fixes and Drawn Shapes (2026-10-24)](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24) · [Muted Fills; Same Label, Same Fill; Legible Text on Any Fill (2026-10-24)](#muted-fills-same-label-same-fill-legible-text-on-any-fill-2026-10-24) · [To End (2026-10-24)](#to-end-2026-10-24) · [Quick Pick Colours, and a Colour-Blind Safe Switch (2026-10-24)](#quick-pick-colours-and-a-colour-blind-safe-switch-2026-10-24) · [Fill Patterns (2026-10-24)](#fill-patterns-2026-10-24) · [Backspace No Longer Deletes Spans (2026-10-24)](#backspace-no-longer-deletes-spans-2026-10-24) · [Copy and Paste Between Spans (2026-10-24)](#copy-and-paste-between-spans-2026-10-24) · [Copy and Paste Several Spans (2026-10-24)](#copy-and-paste-several-spans-2026-10-24)
+**Drawing and editing the form diagram:** [Merge UX (Phase 0.5)](#merge-ux-phase-05) · [Hierarchical Enforcement](#hierarchical-enforcement) · [Form Diagram Editor — Interaction Model](#form-diagram-editor--interaction-model) · [Merge](#merge) · [Form Diagram Editor (Phase 0.4)](#form-diagram-editor-phase-04) · [Phase 2 Implementation (Form Diagram — Milestone A)](#phase-2-implementation-form-diagram--milestone-a) · [Merge Implementation (Phase 2.5)](#merge-implementation-phase-25) · [Form Diagram Shape Model — Adjoin Rework (2026-06-27)](#form-diagram-shape-model--adjoin-rework-2026-06-27) · [Label Collision Strategy (2026-06-27)](#label-collision-strategy-2026-06-27) · [Phase 2.5 Merge — Interaction Completion (2026-06-30)](#phase-25-merge--interaction-completion-2026-06-30) · [Elision Rendering & Boundary-First Shape Control (2026-07-25)](#elision-rendering--boundary-first-shape-control-2026-07-25) · [Keyboard Navigation of Spans (2026-09-27)](#keyboard-navigation-of-spans-2026-09-27) · [Space Plays, B Marks a Boundary (2026-10-01)](#space-plays-b-marks-a-boundary-2026-10-01) · [Paused Clicks Stay Paused; Open Caps Fill and Join; Issue Links (2026-10-01)](#paused-clicks-stay-paused-open-caps-fill-and-join-issue-links-2026-10-01) · [Quick Type (2026-10-01)](#quick-type-2026-10-01) · [Quick Entry (2026-10-02)](#quick-entry-2026-10-02) · [B in an Empty Stretch; Shift+B; Fit to the Grid (2026-10-02)](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02) · [Hidden Labels Show on Hover and Selection (2026-10-02)](#hidden-labels-show-on-hover-and-selection-2026-10-02) · [Inside Text Keeps Clear of Rounded and Angled Ends (2026-10-02)](#inside-text-keeps-clear-of-rounded-and-angled-ends-2026-10-02) · [Quick Setup From the Tempo; a Plainer Grid Menu and Quick Pick (2026-10-24)](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24) · [Typed Phrase Lengths; Quick Pick Fixes and Drawn Shapes (2026-10-24)](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24) · [Muted Fills; Same Label, Same Fill; Legible Text on Any Fill (2026-10-24)](#muted-fills-same-label-same-fill-legible-text-on-any-fill-2026-10-24) · [To End (2026-10-24)](#to-end-2026-10-24) · [Quick Pick Colours, and a Colour-Blind Safe Switch (2026-10-24)](#quick-pick-colours-and-a-colour-blind-safe-switch-2026-10-24) · [Fill Patterns (2026-10-24)](#fill-patterns-2026-10-24) · [Backspace No Longer Deletes Spans (2026-10-24)](#backspace-no-longer-deletes-spans-2026-10-24) · [Copy and Paste Between Spans (2026-10-24)](#copy-and-paste-between-spans-2026-10-24) · [Copy and Paste Several Spans (2026-10-24)](#copy-and-paste-several-spans-2026-10-24) · [Splitting a Parent (2026-10-31)](#splitting-a-parent-2026-10-31)
 
 **Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01) · [Group Spans Into Another Layer (2026-10-24)](#group-spans-into-another-layer-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31)
 
@@ -4505,9 +4505,7 @@ pointing at a span that no longer existed. A change of length in bars that
 drops a span off the end of its layer now also keeps that span's commentary,
 as every other removal already did.
 
-Splitting a parent is left as it was (both halves keep their place; the
-children all stay with the left half, which keeps the id) until Devin picks how
-a split should treat them.
+Splitting a parent: see "Splitting a Parent" below.
 
 **Decision.** The descriptions in the schema, the types and the reference are
 rewritten against what the app does: commentary is Markdown; `bpm` and
@@ -4519,7 +4517,30 @@ them yet; `absent` has its switch. Stale claims (the Corpus Builder, span-type
 UI "in v2", arcs, a "BPM grid utility") are gone. The reference gains a Format
 versions section.
 
-Still open: how a split treats a parent's children; whether to bring the two
+Still open: whether to bring the two
 bundled sample files (`public/demos/alive.strata`, `schema/example.strata`) up
 to version 2, which they reach on opening anyway; and whether `position`,
 `derivativeOf` and `project` stay.
+
+---
+
+## Splitting a Parent (2026-10-31)
+
+**Decision.** Splitting a span that has children (B, the Boundary button,
+Split, or Split at playhead):
+- **Snaps to the children.** A split within half a second of a boundary
+  between its children moves onto that boundary, so no child is left
+  straddling the split. Further away, it stays where it was placed.
+- **Children follow their place.** Each child then belongs to the half that
+  holds most of it (the left half on a tie); the left half keeps the span's
+  id, so the children under it are unchanged.
+
+A span cut back or cut in two by Group or Copy to layer follows the same rule:
+its children go to the piece that holds most of them, or are unlinked if no
+piece is left over them. A span with no children splits exactly as before.
+**Why.** Devin chose these from five options (children follow their place;
+split the children too; snap to a child boundary; unlink all; refuse the
+split). Before, every child stayed with the left half, so phrases under the
+right half claimed a section that no longer covered them. Half a second is
+about the slack in pressing B by ear; a split deliberately inside a phrase
+still works, the phrase going with the larger part.

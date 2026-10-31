@@ -3,7 +3,7 @@ import { temporal } from 'zundo'
 import type { StrataDocument, Layer, LayerBase, Span, PointMarker, GridSegment, VocabTerm } from '@/types/strata'
 import { formSpans, newFormLayer } from '@/lib/layers'
 import { groupUpTarget, placeSpan } from '@/lib/groupSpans'
-import { boundaryMoves, followLinks, repairParentLinks } from '@/lib/linkedBoundaries'
+import { boundaryMoves, followLinks, repairParentLinks, splitTimeNearChildren, relinkToPieces } from '@/lib/linkedBoundaries'
 import { sortedSegments, segmentAt, segmentEnd, extendBack, snapToGrid, barTiling, barLength } from '@/lib/beatGrid'
 import { roundTempo, segmentForAdjusting, tempoThroughDownbeat } from '@/lib/metronome'
 import type { FormDiagramData } from '@/types/strata'
@@ -100,7 +100,9 @@ interface DocumentState {
   mergeSpans: (layerId: string, spanIds: string[], result: Span) => void
   // B (boundary) / Split: place a boundary at `time`, splitting the containing span
   // (or filling the gap it falls in — an empty layer is one gap). No-op if the
-  // cut isn't valid.
+  // cut isn't valid. Splitting a parent moves the cut onto a boundary between
+  // its children within half a second, and each child then belongs to the half
+  // that holds most of it.
   placeBoundary: (layerId: string, time: number) => void
   // A span run on to the end of the track, the later spans in its layer
   // removed (lib/spanEdit.ts, extendSpanToEnd). One undo step.
@@ -579,9 +581,14 @@ const useDocumentStore = create<DocumentState>()(
         if (next !== doc) set({ document: { ...next, updatedAt: now() } })
       },
 
-      placeBoundary: (layerId, time) => {
+      placeBoundary: (layerId, at) => {
         const doc = get().document
         if (!doc) return
+        // Splitting a parent: a split near a boundary between its children
+        // moves onto it, so no child straddles the split (lib/linkedBoundaries.ts).
+        const target = doc.layers.find((l) => l.id === layerId)
+        const parent = target && formSpans(target).find((x) => x.startTime < at && at < x.endTime)
+        const time = parent ? splitTimeNearChildren(doc, parent, at) : at
         let changed = false
         const layers = mapLayer(doc.layers, layerId, (l) => {
           if (l.type !== 'form-diagram') return l
@@ -600,9 +607,16 @@ const useDocumentStore = create<DocumentState>()(
           return { ...l, data: { ...data, spans: next } }
         })
         if (!changed) return
+        let next: StrataDocument = { ...doc, layers, updatedAt: now() }
+        // The left half keeps the span's id; its children under the new right
+        // half move to it.
+        if (parent) {
+          const right = formSpans(next.layers.find((l) => l.id === layerId)!).find((x) => x.id !== parent.id && Math.abs(x.startTime - time) < 1e-9)
+          if (right) next = relinkToPieces(next, parent.id, [parent.id, right.id])
+        }
         // A split copies the label (and so the slug) into the new right half;
         // the original span keeps its slug and the new half gets the next free one.
-        set({ document: resolveSlugCollisions(doc, { ...doc, layers, updatedAt: now() }) })
+        set({ document: resolveSlugCollisions(doc, next) })
       },
 
       endSpanAt: (layerId, time) => {
@@ -716,14 +730,24 @@ const useDocumentStore = create<DocumentState>()(
           // Several make a new, blank span over their stretch.
           span = { id, startTime: start, endTime: end }
         }
+        const before = layers.find((l) => l.id === targetId)!
         layers = mapLayer(layers, targetId, (l) => mapFormDiagramSpans(l, (spans) => placeSpan(spans, span, () => crypto.randomUUID())))
+        // Spans there that the new one cuts back (or cuts in two) keep the
+        // children still under what is left of them, as a split does.
+        const after = formSpans(layers.find((l) => l.id === targetId)!)
+        const cut = formSpans(before).filter((x) => x.endTime > start && x.startTime < end && after.some((y) => y.id === x.id))
+        const kept = new Set(formSpans(before).map((x) => x.id))
         // The new span is their parent, which ties their outer boundaries to
         // its edges (lib/linkedBoundaries.ts).
         if (parentOfSources)
           layers = layers.map((l) =>
             sources.has(l.id) ? mapFormDiagramSpans(l, (spans) => spans.map((x) => (spanIds.includes(x.id) ? { ...x, parentId: id } : x))) : l,
           )
-        const next = { ...doc, layers, updatedAt: now() }
+        let next: StrataDocument = { ...doc, layers, updatedAt: now() }
+        for (const x of cut) {
+          const pieces = after.filter((y) => y.id === x.id || (!kept.has(y.id) && y.id !== id && y.startTime >= x.startTime && y.endTime <= x.endTime))
+          next = relinkToPieces(next, x.id, pieces.map((y) => y.id))
+        }
         // Replaced spans' commentary survives, anchored to their old times,
         // and their children are unlinked.
         set({ document: resolveSlugCollisions(doc, afterRemoval(doc, next)) })

@@ -240,3 +240,52 @@ describe('parent links when a parent goes', () => {
     expect(parents()).toEqual([s1, s1, null, null])
   })
 })
+
+describe('splitting a parent', () => {
+  const store = () => useDocumentStore.getState()
+  const spansOf = (id: string) => formSpans(store().document!.layers.find((l) => l.id === id)!)
+  // Phrases of 8 s, p1–p4, grouped into one section 0–32.
+  function load() {
+    const phrases = makeLayer('phrases', [makeSpan('p1', 0, 8), makeSpan('p2', 8, 16), makeSpan('p3', 16, 24), makeSpan('p4', 24, 32)], 0)
+    store().loadDocument(makeDoc([phrases, makeLayer('sections', [], 1)]))
+    return store().groupSpans(['p1', 'p2', 'p3', 'p4'], { layerId: 'sections' })!
+  }
+
+  it('gives each child to the half it lies under', () => {
+    const s = load()
+    store().placeBoundary('sections', 16)
+    const [left, right] = spansOf('sections')
+    expect(left.id).toBe(s)
+    expect(spansOf('phrases').map((p) => p.parentId)).toEqual([s, s, right.id, right.id])
+  })
+
+  it('moves a split near a phrase boundary onto it', () => {
+    load()
+    store().placeBoundary('sections', 16.4)
+    expect(times(spansOf('sections'))).toEqual([[0, 16], [16, 32]])
+  })
+
+  it('leaves a split well inside a phrase where it is, the phrase going with the larger part', () => {
+    const s = load()
+    store().placeBoundary('sections', 18)
+    const [, right] = spansOf('sections')
+    expect(times(spansOf('sections'))).toEqual([[0, 18], [18, 32]])
+    // p3 (16–24) has 2 s in the left half and 6 s in the right.
+    expect(spansOf('phrases').map((p) => p.parentId)).toEqual([s, s, right.id, right.id])
+  })
+
+  it('doesn’t snap a span with no children', () => {
+    store().loadDocument(makeDoc([makeLayer('phrases', [makeSpan('p1', 0, 8)], 0), makeLayer('other', [makeSpan('x', 0, 4), makeSpan('y', 4, 8)], 1)]))
+    store().placeBoundary('phrases', 4.3)
+    expect(times(spansOf('phrases'))).toEqual([[0, 4.3], [4.3, 8]])
+  })
+
+  it('relinks the children of a span that Group cuts in two', () => {
+    // Copying p2 (8–16) up lands inside the section 0–32 and cuts it in two.
+    const s = load()
+    store().groupSpans(['p2'], { layerId: 'sections' })
+    const [left, middle, right] = spansOf('sections')
+    expect([left.id, times([left, middle, right])]).toEqual([s, [[0, 8], [8, 16], [16, 32]]])
+    expect(spansOf('phrases').map((p) => p.parentId)).toEqual([s, middle.id, right.id, right.id])
+  })
+})

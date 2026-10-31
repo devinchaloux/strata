@@ -233,7 +233,9 @@ A selected span inside the grid shows its **Length** in bars in the Inspector: a
 
 Grouped spans become the **children** of the new span (`parentId`). Of a span and its copy, the one on the **higher layer is the parent**: a copy made up becomes the original's parent; a copy made down is the original's child. A parent and its children move their shared boundaries together: a drag, a typed time, Fit to the grid or a change of length in bars that moves a boundary where a parent and child meet moves the boundary at that moment in the other layer, neighbours included, and on through further levels. A child's inner boundaries move alone. The Inspector shows "Part of … in …" or "Groups N spans in …" with **Unlink**, which clears `parentId` (the child's own, or all the children's). lib/linkedBoundaries.ts.
 
-When a parent goes, its children follow: merging a parent hands its children to the merged span; deleting it, deleting its layer, running a span over it with To end, or replacing it with Group or Copy to layer unlinks them (`repairParentLinks`). Splitting a parent changes no links yet: both halves keep their place, and the children all stay with the left half, which keeps the parent's id. How a split should treat its children is still to be decided.
+When a parent goes, its children follow: merging a parent hands its children to the merged span; deleting it, deleting its layer, running a span over it with To end, or replacing it with Group or Copy to layer unlinks them (`repairParentLinks`).
+
+**Splitting a parent** (B, the Boundary button, Split, Split at playhead): a split within half a second (`SPLIT_SNAP_SEC`) of a boundary between its children moves onto it, so no child straddles the split. Each child then belongs to the half that holds most of it, the left half on a tie; the left half keeps the parent's id. A span cut back or in two by Group or Copy to layer does the same, and a child no piece covers any more is unlinked (`splitTimeNearChildren`, `relinkToPieces`).
 
 ### 5.3 Merge
 
