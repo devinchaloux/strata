@@ -142,6 +142,8 @@ export interface UIState {
    * tab switches with it), takes it up then, and clears it.
    */
   fillPickerPending: boolean
+  /** Set to open the Inspector's Copy to layer picker (the span's right-click menu). A flag, like fillPickerPending. */
+  copyPickerPending: boolean
   /** The span Inspector's open tab, kept as the selection moves. */
   inspectorTab: InspectorTab
   /** The quick-entry bar's mode, remembered in the browser. */
@@ -214,6 +216,8 @@ export interface UIState {
   /** Shape & color tab, with the Fill picker open. */
   requestFillPicker: () => void
   clearFillPickerRequest: () => void
+  requestCopyPicker: () => void
+  clearCopyPickerRequest: () => void
   setInspectorTab: (tab: InspectorTab) => void
   setReadingView: (on: boolean) => void
   setReadingShow: (part: 'commentary' | 'diagram', on: boolean) => void
@@ -284,7 +288,7 @@ function readClickVolume(): number {
   return readPreference(CLICK_VOLUME_KEY) != null && Number.isFinite(v) && v >= 0 && v <= 1 ? v : 0.6
 }
 
-const NO_PICKER_REQUEST = { typePickerPending: false, fillPickerPending: false }
+const NO_PICKER_REQUEST = { typePickerPending: false, fillPickerPending: false, copyPickerPending: false }
 
 const useUIStore = create<UIState>()((set) => ({
   currentTime: 0,
@@ -328,6 +332,7 @@ const useUIStore = create<UIState>()((set) => ({
   librariesOpen: false,
   typePickerPending: false,
   fillPickerPending: false,
+  copyPickerPending: false,
   inspectorTab: 'describe',
   quickEntry: (['off', 'type', 'shape', 'fill'] as const).find((m) => m === readPreference(QUICK_KEY)) ?? 'type',
   setQuickEntry: (mode) => {
@@ -432,6 +437,8 @@ const useUIStore = create<UIState>()((set) => ({
   clearTypePickerRequest: () => set({ typePickerPending: false }),
   requestFillPicker: () => set({ fillPickerPending: true, inspectorTab: 'shape' }),
   clearFillPickerRequest: () => set({ fillPickerPending: false }),
+  requestCopyPicker: () => set({ copyPickerPending: true }),
+  clearCopyPickerRequest: () => set({ copyPickerPending: false }),
   setInspectorTab: (tab) => set({ inspectorTab: tab }),
   setReadingView: (on) => set({ readingView: on, selectedSpanIds: [], selectionAnchorId: null, selectedPointMarkerId: null }),
   setReadingShow: (part, on) => set((s) => ({ readingShow: { ...s.readingShow, [part]: on } })),

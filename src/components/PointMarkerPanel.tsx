@@ -4,8 +4,8 @@
  *
  * Field set: timestamp, label, kind (soft UI preset), type (minimal vocabulary
  * picker), harmonicContext (free text, corpus-queryable), notes, flagged,
- * confidence. `kind` only changes which of [type, harmonicContext, flagged,
- * confidence] the panel leads with — every field stays reachable under "more
+ * absent. `kind` only changes which of [type, harmonicContext, flagged,
+ * absent] the panel leads with — every field stays reachable under "more
  * fields" regardless of kind. See docs/decisions.md "Point Markers — Kind
  * Selector" for the rationale.
  */
@@ -16,7 +16,7 @@ import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { formatTime } from '@/lib/youtube'
 import { parseTimecode } from '@/lib/timecode'
-import type { ConfidenceLevel, PointMarker } from '@/types/strata'
+import type { PointMarker } from '@/types/strata'
 import { Field, inputClass } from '@/components/Field'
 import { toAccidentals } from '@/lib/musicSymbols'
 import { TypePicker } from '@/components/TypePicker'
@@ -54,12 +54,6 @@ function Segmented<T extends string>({
     </div>
   )
 }
-
-const CONFIDENCE_OPTS: { value: ConfidenceLevel; label: string }[] = [
-  { value: 'definite', label: 'Definite' },
-  { value: 'approximate', label: 'Approx.' },
-  { value: 'speculative', label: 'Spec.' },
-]
 
 function TimeInput({
   value,
@@ -110,7 +104,7 @@ function TimeInput({
 // ---------------------------------------------------------------------------
 
 type MarkerKind = NonNullable<PointMarker['kind']>
-type OptionalFieldKey = 'type' | 'harmonicContext' | 'flagged' | 'confidence' | 'absent'
+type OptionalFieldKey = 'type' | 'harmonicContext' | 'flagged' | 'absent'
 
 const KIND_OPTIONS: { value: MarkerKind; label: string }[] = [
   { value: 'other', label: 'Other' },
@@ -124,7 +118,6 @@ const ALL_OPTIONAL_FIELDS: OptionalFieldKey[] = [
   'type',
   'harmonicContext',
   'flagged',
-  'confidence',
   'absent',
 ]
 
@@ -132,10 +125,10 @@ const ALL_OPTIONAL_FIELDS: OptionalFieldKey[] = [
 // exists for — an expected cadence that does not arrive is the analytical
 // claim, not a missing record.
 const KIND_PROMINENT_FIELDS: Record<MarkerKind, OptionalFieldKey[]> = {
-  cadence: ['type', 'harmonicContext', 'absent', 'confidence'],
-  'key-change': ['type', 'harmonicContext', 'confidence'],
-  'tempo-change': ['type', 'confidence'],
-  flag: ['flagged', 'confidence'],
+  cadence: ['type', 'harmonicContext', 'absent'],
+  'key-change': ['type', 'harmonicContext'],
+  'tempo-change': ['type'],
+  flag: ['flagged'],
   other: ALL_OPTIONAL_FIELDS,
 }
 
@@ -243,16 +236,6 @@ export function PointMarkerPanel() {
               ]}
               value={marker!.flagged ? 'yes' : 'no'}
               onChange={(v) => update({ flagged: v === 'yes' })}
-            />
-          </Field>
-        )
-      case 'confidence':
-        return (
-          <Field key="confidence" label="Confidence">
-            <Segmented
-              options={CONFIDENCE_OPTS}
-              value={marker!.confidence ?? 'definite'}
-              onChange={(v) => update({ confidence: v })}
             />
           </Field>
         )

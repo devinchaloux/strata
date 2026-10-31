@@ -82,11 +82,11 @@ export function layerAbove(layers: Layer[], layer: Layer): Layer | null {
 }
 
 /**
- * Where the one-click actions (Copy up, Group into the layer above) would
- * go: the layer just above the selection's highest layer, or a new one if
- * there is none (or it is locked). Blocked when that layer already has spans
- * in the stretch: the one-click actions never cut or replace, which is left
- * to Group into…, where the effect is shown first.
+ * Where the one-click Group into the layer above would go: the layer just
+ * above the selection's highest layer, or a new one if there is none (or it
+ * is locked). Blocked when that layer already has spans in the stretch: the
+ * one-click action never cuts or replaces, which is left to Group into… and
+ * Copy to layer…, where the effect is shown first.
  */
 export function groupUpTarget(doc: StrataDocument, spanIds: string[]): { above: Layer | null; blocked: string | null } {
   const picked = doc.layers.flatMap((l) => formSpans(l).filter((s) => spanIds.includes(s.id)))

@@ -212,7 +212,6 @@ export function createEmptyDocument(): StrataDocument {
     duration: 0,
     source: { type: 'youtube', url: '', sourceOffset: 0 },
     vocabulary: { spanTypes: [], pointMarkerTypes: [], modes: [] },
-    sharedTimePoints: [],
     // One layer to start in, so B marks a boundary straight away; a new
     // analysis with no layers had nowhere for the first boundary to go.
     layers: [
@@ -225,7 +224,7 @@ export function createEmptyDocument(): StrataDocument {
         fillColorDefault: '#ffffff',
         strokeColorDefault: '#475569',
         displayOrder: 0,
-        data: { hierarchicalEnforcement: false, spans: [] },
+        data: { spans: [] },
       },
     ],
     pointMarkers: [],

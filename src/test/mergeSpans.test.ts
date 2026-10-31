@@ -87,24 +87,6 @@ describe('resolveMerge — geometry & additive fields', () => {
     expect(draft.lyrics).toBe('la la')
   })
 
-  it('takes the lowest confidence and omits it when all are definite', () => {
-    const allDefinite = resolveMerge(
-      [span('a', 0, 10), span('b', 10, 20, { confidence: 'definite' })],
-      mkId,
-    )
-    expect(allDefinite.draft.confidence).toBeUndefined()
-
-    const mixed = resolveMerge(
-      [
-        span('a', 0, 10, { confidence: 'approximate' }),
-        span('b', 10, 20, { confidence: 'speculative' }),
-        span('c', 20, 30, { confidence: 'definite' }),
-      ],
-      mkId,
-    )
-    expect(mixed.draft.confidence).toBe('speculative')
-  })
-
   it('takes boundary types and caps from the outer faces, stroke from the first span', () => {
     const s1 = span('a', 0, 10, {
       startBoundaryType: 'gradual',

@@ -20,11 +20,11 @@ aren't part of this repository.
 
 By area, in the order the entries were made:
 
-**File format and schema:** [File Format](#file-format) · [Span Data Model](#span-data-model) · [File-Level Metadata](#file-level-metadata) · [Schema](#schema) · [Shared Time Point Pool](#shared-time-point-pool) · [Source References](#source-references) · [Schema Finalization (Phase 0.1)](#schema-finalization-phase-01) · [Schema Revision (Phase 0.1 — Session 2)](#schema-revision-phase-01--session-2) · [Schema Changes (Phase 2 prep, 2026-06-20)](#schema-changes-phase-2-prep-2026-06-20) · [Trust and Format Integrity, Round 1 (2026-09-27)](#trust-and-format-integrity-round-1-2026-09-27) · [File Format Integrity, Round 2 (2026-09-27)](#file-format-integrity-round-2-2026-09-27) · [Fill Patterns (2026-10-24)](#fill-patterns-2026-10-24)
+**File format and schema:** [File Format](#file-format) · [Span Data Model](#span-data-model) · [File-Level Metadata](#file-level-metadata) · [Schema](#schema) · [Shared Time Point Pool](#shared-time-point-pool) · [Source References](#source-references) · [Schema Finalization (Phase 0.1)](#schema-finalization-phase-01) · [Schema Revision (Phase 0.1 — Session 2)](#schema-revision-phase-01--session-2) · [Schema Changes (Phase 2 prep, 2026-06-20)](#schema-changes-phase-2-prep-2026-06-20) · [Trust and Format Integrity, Round 1 (2026-09-27)](#trust-and-format-integrity-round-1-2026-09-27) · [File Format Integrity, Round 2 (2026-09-27)](#file-format-integrity-round-2-2026-09-27) · [Fill Patterns (2026-10-24)](#fill-patterns-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31)
 
 **Drawing and editing the form diagram:** [Merge UX (Phase 0.5)](#merge-ux-phase-05) · [Hierarchical Enforcement](#hierarchical-enforcement) · [Form Diagram Editor — Interaction Model](#form-diagram-editor--interaction-model) · [Merge](#merge) · [Form Diagram Editor (Phase 0.4)](#form-diagram-editor-phase-04) · [Phase 2 Implementation (Form Diagram — Milestone A)](#phase-2-implementation-form-diagram--milestone-a) · [Merge Implementation (Phase 2.5)](#merge-implementation-phase-25) · [Form Diagram Shape Model — Adjoin Rework (2026-06-27)](#form-diagram-shape-model--adjoin-rework-2026-06-27) · [Label Collision Strategy (2026-06-27)](#label-collision-strategy-2026-06-27) · [Phase 2.5 Merge — Interaction Completion (2026-06-30)](#phase-25-merge--interaction-completion-2026-06-30) · [Elision Rendering & Boundary-First Shape Control (2026-07-25)](#elision-rendering--boundary-first-shape-control-2026-07-25) · [Keyboard Navigation of Spans (2026-09-27)](#keyboard-navigation-of-spans-2026-09-27) · [Space Plays, B Marks a Boundary (2026-10-01)](#space-plays-b-marks-a-boundary-2026-10-01) · [Paused Clicks Stay Paused; Open Caps Fill and Join; Issue Links (2026-10-01)](#paused-clicks-stay-paused-open-caps-fill-and-join-issue-links-2026-10-01) · [Quick Type (2026-10-01)](#quick-type-2026-10-01) · [Quick Entry (2026-10-02)](#quick-entry-2026-10-02) · [B in an Empty Stretch; Shift+B; Fit to the Grid (2026-10-02)](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02) · [Hidden Labels Show on Hover and Selection (2026-10-02)](#hidden-labels-show-on-hover-and-selection-2026-10-02) · [Inside Text Keeps Clear of Rounded and Angled Ends (2026-10-02)](#inside-text-keeps-clear-of-rounded-and-angled-ends-2026-10-02) · [Quick Setup From the Tempo; a Plainer Grid Menu and Quick Pick (2026-10-24)](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24) · [Typed Phrase Lengths; Quick Pick Fixes and Drawn Shapes (2026-10-24)](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24) · [Muted Fills; Same Label, Same Fill; Legible Text on Any Fill (2026-10-24)](#muted-fills-same-label-same-fill-legible-text-on-any-fill-2026-10-24) · [To End (2026-10-24)](#to-end-2026-10-24) · [Quick Pick Colours, and a Colour-Blind Safe Switch (2026-10-24)](#quick-pick-colours-and-a-colour-blind-safe-switch-2026-10-24) · [Fill Patterns (2026-10-24)](#fill-patterns-2026-10-24) · [Backspace No Longer Deletes Spans (2026-10-24)](#backspace-no-longer-deletes-spans-2026-10-24) · [Copy and Paste Between Spans (2026-10-24)](#copy-and-paste-between-spans-2026-10-24) · [Copy and Paste Several Spans (2026-10-24)](#copy-and-paste-several-spans-2026-10-24)
 
-**Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01) · [Group Spans Into Another Layer (2026-10-24)](#group-spans-into-another-layer-2026-10-24)
+**Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01) · [Group Spans Into Another Layer (2026-10-24)](#group-spans-into-another-layer-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31)
 
 **Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24)
 
@@ -4442,3 +4442,84 @@ own small text box, uses the same editor.
 beside the music, where it will be read, is the natural place. Devin chose a
 Markdown text box over WYSIWYG editing.
 
+---
+
+## Schema Review: Three Fields Cut (2026-10-31)
+
+*From a review of the format after the late-October run of quick features,
+which Devin asked for "to make sure that not too much was needlessly created".
+The run added one field, `Span.fillPattern`, proposed on its own and kept.
+Markdown commentary changed what `AnalysisBlock.text` holds without the format
+files saying so; they do now.*
+
+**Decision.** File format 2. Three fields are removed, and dropped from a
+version-1 file when it is opened (`MIGRATIONS[1]` in `src/lib/migrations.ts`):
+- **`sharedTimePoints`.** The app never wrote to it: `syncLayerTimePoints` had
+  no caller and no widget had a `contributeTimePoints`. The bar-level points it
+  was to hold were replaced by `beatGrid` (2026-09-29), and the boundary points
+  are already in each layer's spans, so a stored copy could only fall out of
+  step. The Shared Time Point Pool decision stands, recast: the pool is
+  computed from the layers, never stored (`widgets/_contract.md` §1.3). Point
+  markers now snap to the span boundaries of every visible layer, as their code
+  comment always said; the seek bar's ticks for labelled pool points, of which
+  there were none, are gone.
+- **`FormDiagramData.hierarchicalEnforcement`.** Always false and never read.
+  Since 2026-06-22 the feature, if built, is a rule across layers, so its
+  setting won't live on one layer's data.
+- **`confidence`** on spans and point markers. Devin: cut. It was not drawn or
+  queried, and on 2026-10-02 he leaned towards cutting it. The demo's values
+  (25 spans and a marker marked approximate) go when it is opened. Boundary
+  types stay; they never depended on it.
+
+An older build of Strata opens a version-2 file with its "newer version"
+notice and fills in the fields it expects.
+
+**Decision.** A colour may be `"none"` (span `fillColor` / `strokeColor`, layer
+`fillColorDefault` / `strokeColorDefault`).
+**Why.** The colour picker's No color has written `"none"` since 2026-06-30,
+and the schema's hex pattern rejected it, so the app saved files its own schema
+called invalid.
+
+**Decision.** `Span.notes` is described as what it is: the analyst's working
+note, shown only in the Inspector.
+**Why.** All three format files called it "tooltip only"; there is no tooltip.
+
+**Decision.** **Copy up becomes Copy to layer…**: any other form layer, above
+or below, or a new layer just above or just below, with the same preview of
+what it would replace or cut as Group into…. Right-click opens the same picker
+in the Inspector. Of a span and its copy, the one on the **higher layer is the
+parent**, so a copy made down is the original's child. The copy no longer
+carries the original's `mergedFrom`.
+**Why.** Devin needs a copy down too: "copy to layer and forget the
+directionality". The parent rule follows the stack's order (top = coarsest,
+`widgets/form-diagram.md` §5.4), so shared boundaries stay linked whichever way
+the copy went. A copy isn't the product of a merge, so it can't claim one.
+
+**Decision.** When a parent goes, its children follow. Merging a parent hands
+its children to the merged span, found through its `mergedFrom`. Deleting it,
+deleting its layer, or removing it with To end, a change of length in bars, or
+Group or Copy to layer over it unlinks them (`repairParentLinks`,
+`src/lib/linkedBoundaries.ts`).
+**Why.** In testing, merging or deleting a section left every phrase in it
+pointing at a span that no longer existed. A change of length in bars that
+drops a span off the end of its layer now also keeps that span's commentary,
+as every other removal already did.
+
+Splitting a parent is left as it was (both halves keep their place; the
+children all stay with the left half, which keeps the id) until Devin picks how
+a split should treat them.
+
+**Decision.** The descriptions in the schema, the types and the reference are
+rewritten against what the app does: commentary is Markdown; `bpm` and
+`timeSignature` are the starting tempo and meter, which the grid's segments
+take over once there is a grid (they stay: a tempo is needed before the first
+downbeat is known); `Layer.position` is reserved; `rendering`, `derivativeOf`,
+`project` and a vocabulary term's `color` are kept but nothing sets or draws
+them yet; `absent` has its switch. Stale claims (the Corpus Builder, span-type
+UI "in v2", arcs, a "BPM grid utility") are gone. The reference gains a Format
+versions section.
+
+Still open: how a split treats a parent's children; whether to bring the two
+bundled sample files (`public/demos/alive.strata`, `schema/example.strata`) up
+to version 2, which they reach on opening anyway; and whether `position`,
+`derivativeOf` and `project` stay.

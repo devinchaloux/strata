@@ -39,7 +39,7 @@ function makeLayer(spanShape?: 'bracket' | 'bar'): Layer {
     strokeColorDefault: '#475569',
     displayOrder: 0,
     spanShape,
-    data: { hierarchicalEnforcement: false, spans: [] },
+    data: { spans: [] },
   }
 }
 

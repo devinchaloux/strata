@@ -16,7 +16,6 @@
  *   fillColor, strokeColor each independent; lone override wins; 2+ distinct → conflict
  *   parentId               all same → keep; differ → conflict (incl. "None")
  *   notes, lyrics          concatenate non-null with `\n\n---\n\n`
- *   confidence             lowest of the selection (speculative > approximate > definite)
  *   startBoundaryType      first span's (earliest startTime)
  *   endBoundaryType        last span's (latest endTime)
  *   startCap / lineStyle / fillPattern   first span's (outer face / whole-shape style)
@@ -26,7 +25,7 @@
  *   mergedFrom             all source ids in startTime order
  */
 
-import type { Span, ConfidenceLevel } from '@/types/strata'
+import type { Span } from '@/types/strata'
 import { slugify } from '@/lib/slug'
 
 export const NOTE_SEPARATOR = '\n\n---\n\n'
@@ -121,12 +120,6 @@ export interface MergeResolution {
   conflicts: MergeConflict[]
 }
 
-const CONFIDENCE_RANK: Record<ConfidenceLevel, number> = {
-  definite: 0,
-  approximate: 1,
-  speculative: 2,
-}
-
 /** Distinct non-null values of a field across spans, in first-seen order. */
 function distinct<T>(values: (T | null | undefined)[]): T[] {
   const out: T[] = []
@@ -194,18 +187,6 @@ export function resolveMerge(spans: Span[], mkId: () => string): MergeResolution
 
   // --- Auto-resolved fields ---
 
-  // Lowest confidence present; omit (undefined) when everything is definite so
-  // the merged span keeps the implicit "definite" default rather than storing it.
-  let confidence: ConfidenceLevel | undefined
-  let worst = 0
-  for (const s of sorted) {
-    const rank = CONFIDENCE_RANK[s.confidence ?? 'definite']
-    if (rank > worst) {
-      worst = rank
-      confidence = s.confidence
-    }
-  }
-
   // A conflict field's provisional value is the field's first candidate; a
   // non-conflict field takes its lone value (or null).
   const label = labels[0] ?? null
@@ -229,7 +210,6 @@ export function resolveMerge(spans: Span[], mkId: () => string): MergeResolution
     annotation,
     notes: concatText(sorted.map((s) => s.notes)),
     lyrics: concatText(sorted.map((s) => s.lyrics)),
-    confidence,
     startBoundaryType: first.startBoundaryType ?? null,
     endBoundaryType: last.endBoundaryType ?? null,
     parentId,

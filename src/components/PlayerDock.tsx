@@ -500,7 +500,6 @@ export function PlayerDock() {
         <SeekBar
           currentTime={currentTime}
           duration={duration}
-          sharedTimePoints={doc?.sharedTimePoints ?? []}
           disabled={!isReady}
           onSeek={seek}
         />

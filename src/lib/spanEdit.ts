@@ -26,7 +26,7 @@ export const MIN_BOUNDARY_DRAG_PX = 8
  * - Inside a span: split it into [start, time] and [time, end]. The new cut is
  *   a 'definite' boundary on both inner faces (no elision cap, default drawing
  *   order); the outer faces keep the original boundary character. Both halves inherit the original's attributes
- *   (type, label, colors, line style, confidence).
+ *   (type, label, colors, line style).
  * - Inside a gap: fill the gap with two bare spans, [gapStart, time] and
  *   [time, gapEnd]. An empty layer is simply one gap covering the whole track,
  *   so this is the same rule the first boundary press has always followed.

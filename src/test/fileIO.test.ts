@@ -1,6 +1,7 @@
 import { formSpans } from '@/lib/layers'
 import { describe, it, expect } from 'vitest'
 import { parseStrataFile, createEmptyDocument } from '@/lib/fileIO'
+import { FILE_FORMAT_VERSION } from '@/lib/migrations'
 import type { StrataDocument } from '@/types/strata'
 
 // ---------------------------------------------------------------------------
@@ -11,7 +12,7 @@ function makeMinimalDoc(): StrataDocument {
   const iso = '2026-06-13T00:00:00.000Z'
   return {
     strataVersion: '0.1.0',
-    fileFormatVersion: 1,
+    fileFormatVersion: FILE_FORMAT_VERSION,
     createdAt: iso,
     updatedAt: iso,
     title: 'Levels',
@@ -19,7 +20,6 @@ function makeMinimalDoc(): StrataDocument {
     duration: 201.6,
     source: { type: 'youtube', url: 'https://www.youtube.com/watch?v=_ovdm2yX4MA', sourceOffset: 0 },
     vocabulary: { spanTypes: [], pointMarkerTypes: [], modes: [] },
-    sharedTimePoints: [],
     layers: [],
     pointMarkers: [],
   }
@@ -34,7 +34,7 @@ describe('parseStrataFile', () => {
     const doc = makeMinimalDoc()
     const parsed = parseStrataFile(JSON.stringify(doc))
     expect(parsed.title).toBe('Levels')
-    expect(parsed.fileFormatVersion).toBe(1)
+    expect(parsed.fileFormatVersion).toBe(FILE_FORMAT_VERSION)
     expect(parsed.artist).toEqual(['Avicii'])
   })
 
@@ -82,7 +82,6 @@ describe('JSON roundtrip', () => {
         strokeColorDefault: '#6366f1',
         displayOrder: 0,
         data: {
-          hierarchicalEnforcement: false,
           spans: [
             {
               id: 'span-1',
@@ -117,7 +116,7 @@ describe('createEmptyDocument', () => {
     // One empty form layer, so B has somewhere to place the first boundary.
     expect(doc.layers).toHaveLength(1)
     expect(doc.layers[0]).toMatchObject({ type: 'form-diagram', label: 'Form', data: { spans: [] } })
-    expect(doc.fileFormatVersion).toBe(1)
+    expect(doc.fileFormatVersion).toBe(FILE_FORMAT_VERSION)
     expect(doc.strataVersion).toBe('0.1.0')
   })
 

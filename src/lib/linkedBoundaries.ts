@@ -1,12 +1,13 @@
 /**
  * Linked boundaries between a parent span and its children (Span.parentId),
- * which Group and Copy up set. When a boundary moves in one layer (a drag, a
+ * which Group and Copy to layer set. When a boundary moves in one layer (a drag, a
  * typed time, Fit to the grid, a change of length in bars) and it is where a
  * parent and its child meet, the boundary at the same moment in the other
  * layer moves with it, neighbours included, and on through any further
  * levels (phrases → sections → rotations). A child's inner boundaries aren't
  * its parent's edges, so they move alone. Splitting or merging moves no
- * boundary, so it touches no link. Unlinking clears parentId.
+ * boundary, so it moves nothing here; a merged or deleted parent's children
+ * are re-pointed or unlinked by repairParentLinks. Unlinking clears parentId.
  * docs/decisions.md, "Group Spans Into Another Layer".
  */
 import type { StrataDocument, Span } from '@/types/strata'
@@ -86,4 +87,36 @@ export function followLinks(doc: StrataDocument, layerId: string, moves: Move[])
     }
   }
   return layers === doc.layers ? doc : { ...doc, layers }
+}
+
+/**
+ * Children whose parent is gone after an edit. A parent merged into a larger
+ * span hands its children to that span (found through the merged span's
+ * mergedFrom); a parent deleted outright, removed by another edit or taken
+ * with its layer unlinks them, clearing parentId. Returns `doc` unchanged
+ * when every link still resolves. docs/decisions.md, "Schema Review: Three
+ * Fields Cut".
+ */
+export function repairParentLinks(doc: StrataDocument): StrataDocument {
+  const spans = doc.layers.flatMap((l) => formSpans(l))
+  const live = new Set(spans.map((s) => s.id))
+  if (!spans.some((s) => s.parentId && !live.has(s.parentId))) return doc
+  const heirOf = new Map<string, string>()
+  for (const s of spans) for (const src of s.mergedFrom ?? []) heirOf.set(src, s.id)
+  return {
+    ...doc,
+    layers: doc.layers.map((l) =>
+      l.type === 'form-diagram' && l.data.spans.some((s) => s.parentId && !live.has(s.parentId))
+        ? {
+            ...l,
+            data: {
+              ...l.data,
+              spans: l.data.spans.map((s) =>
+                s.parentId && !live.has(s.parentId) ? { ...s, parentId: heirOf.get(s.parentId) ?? null } : s,
+              ),
+            },
+          }
+        : l,
+    ),
+  }
 }
