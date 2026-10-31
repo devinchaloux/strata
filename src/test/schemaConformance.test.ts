@@ -5,7 +5,7 @@
  * schema doesn't allow (it uses additionalProperties: false) fails here instead
  * of in someone else's corpus script.
  */
-import { formSpans } from '@/lib/layers'
+import { formSpans, newFormLayer } from '@/lib/layers'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -15,6 +15,7 @@ import { useDocumentStore } from '@/store/documentStore'
 import { readDocument } from '@/lib/documentLoad'
 import { createEmptyDocument } from '@/lib/fileIO'
 import { resolveMerge } from '@/lib/mergeSpans'
+import { migrate } from '@/lib/migrations'
 
 const schemaDir = resolve(__dirname, '../../schema')
 const schema = JSON.parse(readFileSync(resolve(schemaDir, 'strata.schema.json'), 'utf8'))
@@ -32,9 +33,10 @@ function expectValid(doc: unknown) {
 const fixture = (path: string) => JSON.parse(readFileSync(resolve(__dirname, '../..', path), 'utf8'))
 
 describe('the JSON Schema', () => {
+  // Both are version-1 files; they open, and are checked, after migration.
   it('accepts both bundled fixtures', () => {
-    expectValid(fixture('public/demos/alive.strata'))
-    expectValid(fixture('schema/example.strata'))
+    expectValid(migrate(fixture('public/demos/alive.strata')))
+    expectValid(migrate(fixture('schema/example.strata')))
   })
 
   it('accepts a fresh document from New', () => {
@@ -61,7 +63,8 @@ describe('documents the app writes', () => {
       endCap: 'elision',
       endOnTop: true,
       keyArea: '♭VI',
-      confidence: 'approximate',
+      fillColor: 'none', // "No color" in the picker
+      strokeColor: 'none',
     })
     store().setSpanEdge(layer.id, second.id, 'end', second.endTime - 1) // numeric edge
     store().addPointMarker({
@@ -73,12 +76,25 @@ describe('documents the app writes', () => {
       absent: true,
     })
     store().updateMeta({ homeKey: { tonic: 'B♭', mode: 'major' } })
-    store().updateLayer(layer.id, { fontScale: 'lg' })
+    store().updateLayer(layer.id, { fontScale: 'lg', fillColorDefault: 'none' })
     store().startGridAt(4)
     store().endGridAt(60)
     store().startGridAt(90)
     store().updateGridSegment(store().document!.beatGrid![1].id, { firstBar: 1, beatUnit: 8 })
 
+    expectValid(doc())
+  })
+
+  it('stay valid after quick setup, a change of length in bars and beat matching', () => {
+    const empty = newFormLayer('Phrases', 99)
+    store().addLayer(empty)
+    expect(store().fillLayerWithBars(empty.id, 1, 4)).toBeGreaterThan(2)
+    const [, second, third] = formSpans(store().document!.layers.find((l) => l.id === empty.id)!)
+    store().resizeSpanByBars(empty.id, second.id, 1)
+    store().setSpanBars(empty.id, third.id, 2)
+    store().stepGridTempo(30, 0.01)
+    store().nudgeGrid(30, 0.005)
+    store().pinDownbeat(61)
     expectValid(doc())
   })
 

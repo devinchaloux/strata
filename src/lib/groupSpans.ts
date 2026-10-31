@@ -82,11 +82,11 @@ export function layerAbove(layers: Layer[], layer: Layer): Layer | null {
 }
 
 /**
- * Where the one-click actions (Copy up, Group into the layer above) would
- * go: the layer just above the selection's highest layer, or a new one if
- * there is none (or it is locked). Blocked when that layer already has spans
- * in the stretch: the one-click actions never cut or replace, which is left
- * to Group into…, where the effect is shown first.
+ * Where the one-click Group into the layer above would go: the layer just
+ * above the selection's highest layer, or a new one if there is none (or it
+ * is locked). Blocked when that layer already has spans in the stretch: the
+ * one-click action never cuts or replaces, which is left to Group into… and
+ * Copy to layer…, where the effect is shown first.
  */
 export function groupUpTarget(doc: StrataDocument, spanIds: string[]): { above: Layer | null; blocked: string | null } {
   const picked = doc.layers.flatMap((l) => formSpans(l).filter((s) => spanIds.includes(s.id)))
@@ -102,4 +102,53 @@ export function groupUpTarget(doc: StrataDocument, spanIds: string[]): { above: 
     above,
     blocked: p.replaced || p.cut ? `${above.label} already has a span here. Use Group into… to replace it.` : null,
   }
+}
+
+/**
+ * The parts of a span Copy to layer can take along; the analyst picks them in
+ * its picker, and the choice is remembered in the browser. Lyrics, notes and
+ * commentary start off: copied, they would show twice at the same moment.
+ * docs/decisions.md, "Choosing What Copy to Layer Takes".
+ */
+export type CopyField = 'label' | 'type' | 'annotation' | 'keyArea' | 'colours' | 'pattern' | 'shape' | 'lyrics' | 'notes' | 'commentary'
+
+export const COPY_FIELDS: { id: CopyField; name: string }[] = [
+  { id: 'label', name: 'Label' },
+  { id: 'type', name: 'Type' },
+  { id: 'annotation', name: 'Annotation' },
+  { id: 'keyArea', name: 'Key area' },
+  { id: 'colours', name: 'Colours' },
+  { id: 'pattern', name: 'Pattern' },
+  { id: 'shape', name: 'Shape and line' },
+  { id: 'lyrics', name: 'Lyrics' },
+  { id: 'notes', name: 'Notes' },
+  { id: 'commentary', name: 'Commentary' },
+]
+
+export const DEFAULT_COPY_FIELDS: CopyField[] = ['label', 'type', 'annotation', 'keyArea', 'colours', 'pattern', 'shape']
+
+/** The span fields each copy choice carries (commentary is copied by the store, its own way). */
+const COPY_KEYS: Record<Exclude<CopyField, 'commentary'>, (keyof Span)[]> = {
+  label: ['label', 'shortLabel', 'slug'],
+  type: ['type'],
+  annotation: ['annotation'],
+  keyArea: ['keyArea'],
+  colours: ['fillColor', 'strokeColor'],
+  pattern: ['fillPattern'],
+  shape: ['startCap', 'endCap', 'startBoundaryType', 'endBoundaryType', 'lineStyle', 'endOnTop'],
+  lyrics: ['lyrics'],
+  notes: ['notes'],
+}
+
+/**
+ * A copy of `span` under `id`: its times, and only the chosen parts. Never its
+ * merge record or parent link; the store sets the link for the layer it goes to.
+ */
+export function copyOfSpan(span: Span, id: string, fields: CopyField[]): Span {
+  const copy: Span = { id, startTime: span.startTime, endTime: span.endTime }
+  for (const field of fields) {
+    if (field === 'commentary') continue
+    for (const key of COPY_KEYS[field]) if (span[key] !== undefined) (copy as unknown as Record<string, unknown>)[key] = span[key]
+  }
+  return copy
 }

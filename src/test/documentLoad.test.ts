@@ -41,7 +41,6 @@ describe('readDocument — older and hand-written files', () => {
     const { doc } = readDocument(bare)
     expect(doc.vocabulary).toEqual({ spanTypes: [], pointMarkerTypes: [], modes: [] })
     expect(doc.pointMarkers).toEqual([])
-    expect(doc.sharedTimePoints).toEqual([])
     expect(doc.artist).toEqual([])
     expect(doc.source.sourceOffset).toBe(0)
     expect(formSpans(doc.layers[0])).toEqual([])

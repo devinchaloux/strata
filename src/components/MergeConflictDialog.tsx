@@ -97,7 +97,6 @@ export function MergeConflictDialog() {
   const lyricCount = draft.lyrics ? draft.lyrics.split(NOTE_SEPARATOR).length : 0
   const autoRows: { label: string; value: string }[] = [
     { label: 'Time range', value: `${formatTime(draft.startTime)} → ${formatTime(draft.endTime)}` },
-    { label: 'Confidence', value: `${draft.confidence ?? 'definite'} (lowest of selected)` },
   ]
   if (noteCount > 0)
     autoRows.push({ label: 'Notes', value: `combined (${noteCount} ${noteCount === 1 ? 'entry' : 'entries'})` })

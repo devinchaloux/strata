@@ -38,6 +38,6 @@ export function newFormLayer(label: string, displayOrder: number): Layer {
     fillColorDefault: '#ffffff',
     strokeColorDefault: '#475569',
     displayOrder,
-    data: { hierarchicalEnforcement: false, spans: [] },
+    data: { spans: [] },
   }
 }

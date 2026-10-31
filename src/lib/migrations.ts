@@ -18,16 +18,48 @@
  */
 
 /** The file format this build writes. */
-export const FILE_FORMAT_VERSION = 1
+export const FILE_FORMAT_VERSION = 2
 
 type Json = Record<string, unknown>
 
+const isObj = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v)
+
+/** A copy of `obj` without `key`, or `obj` itself if it has none. */
+function without(obj: Json, key: string): Json {
+  if (!(key in obj)) return obj
+  const rest = { ...obj }
+  delete rest[key]
+  return rest
+}
+
+/** `doc.list` with each object entry passed through `fn`; anything else is left as it is. */
+function mapList(doc: Json, list: string, fn: (item: Json) => Json): Json {
+  const items = doc[list]
+  return Array.isArray(items) ? { ...doc, [list]: items.map((x) => (isObj(x) ? fn(x) : x)) } : doc
+}
+
 /**
- * MIGRATIONS[n] upgrades a version-n document to version n + 1. Empty while the
- * format is still at version 1; the first entry arrives with the first change
- * that needs one.
+ * MIGRATIONS[n] upgrades a version-n document to version n + 1.
+ *
+ * 1 → 2 (docs/decisions.md, "Schema Review: Three Fields Cut"): drops
+ * `sharedTimePoints` (never written by the app; the beat grid replaced the
+ * points it was meant to hold), each form layer's `hierarchicalEnforcement`
+ * (never used), and `confidence` on spans and point markers (not drawn or
+ * queried, and cut by the maintainer).
  */
-export const MIGRATIONS: Record<number, (doc: Json) => Json> = {}
+export const MIGRATIONS: Record<number, (doc: Json) => Json> = {
+  1: (doc) => {
+    let out = without(doc, 'sharedTimePoints')
+    out = mapList(out, 'pointMarkers', (m) => without(m, 'confidence'))
+    out = mapList(out, 'layers', (layer) => {
+      if (layer.type !== 'form-diagram' || !isObj(layer.data)) return layer
+      let data = without(layer.data, 'hierarchicalEnforcement')
+      data = mapList(data, 'spans', (s) => without(s, 'confidence'))
+      return { ...layer, data }
+    })
+    return out
+  },
+}
 
 /** Upgrade a document to FILE_FORMAT_VERSION. Returns it unchanged if already current or newer. */
 export function migrate(doc: Json): Json {

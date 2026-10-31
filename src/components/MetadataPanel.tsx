@@ -12,10 +12,9 @@
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore, type InspectorTab } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
-import { GroupPopover } from '@/components/GroupPopover'
+import { GroupPopover, CopyToLayerPopover } from '@/components/GroupPopover'
 import { PatternPicker } from '@/components/PatternPicker'
 import { CopyButton, PasteButton, PasteHint } from '@/components/CopyPaste'
-import { groupUpTarget } from '@/lib/groupSpans'
 import { safeFill } from '@/lib/palette'
 import { formatTime, formatClock } from '@/lib/youtube'
 import { TimeInput } from './TimeInput'
@@ -34,7 +33,6 @@ import type {
   Span,
   Layer,
   FormDiagramData,
-  ConfidenceLevel,
   BoundaryType,
   CapStyle,
   LineStyle,
@@ -107,19 +105,8 @@ function findSpans(layers: Layer[], spanIds: string[]): SpanEntry[] {
   return out
 }
 
-// What Confidence records (schema/strata-schema-reference.md, §8).
-const CONFIDENCE_TIP =
-  'How sure you are of this span’s boundaries. Definite is the default. Approx.: something changes here, but the exact point is fuzzy. Spec.: a hypothesis you may revise. (Recorded for queries only.)'
-
-const CONFIDENCE_OPTS: { value: ConfidenceLevel; label: string }[] = [
-  { value: 'definite', label: 'Definite' },
-  { value: 'approximate', label: 'Approx.' },
-  { value: 'speculative', label: 'Spec.' },
-]
-
 // "Clean" rather than "Definite": it is the word analysts reach for when asking
-// whether a boundary cuts or melds, and it stops the option list reading as a
-// second Confidence control. The stored value is unchanged.
+// whether a boundary cuts or melds. The stored value is unchanged.
 const BOUNDARY_OPTS: { value: BoundaryType; label: string }[] = [
   { value: 'definite', label: 'Clean' },
   { value: 'gradual', label: 'Gradual' },
@@ -396,9 +383,6 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   const fillPickerPending = useUIStore((s) => s.fillPickerPending)
   const clearFillPickerRequest = useUIStore((s) => s.clearFillPickerRequest)
   const shownFill = useUIStore((s) => (s.colorblindSafe ? safeFill : sameColor))
-  const groupIntoLayerAbove = useDocumentStore((s) => s.groupIntoLayerAbove)
-  const docNow = useDocumentStore((s) => s.document)
-  const copyUp = docNow ? groupUpTarget(docNow, [span.id]) : { above: null, blocked: 'No document' }
   const setSpanLabels = useDocumentStore((s) => s.setSpanLabels)
   const regenerateSlug = useDocumentStore((s) => s.regenerateSlug)
   const setSpanCommentary = useDocumentStore((s) => s.setSpanCommentary)
@@ -595,7 +579,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           </div>
         )}
 
-        {/* Linked to a parent or children (Group, Copy up): boundaries they
+        {/* Linked to a parent or children (Group, Copy to layer): boundaries they
             share move together (lib/linkedBoundaries.ts). Unlink frees them. */}
         <SpanLinks span={span} />
 
@@ -814,11 +798,6 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
               />
             </Field>
 
-            {/* Rarely needed, so near the bottom. */}
-            <Field label="Confidence" tooltip={CONFIDENCE_TIP}>
-              <Segmented options={CONFIDENCE_OPTS} value={span.confidence ?? 'definite'} onChange={(v) => update({ confidence: v })} />
-            </Field>
-
             <Field label="ID">
               <button
                 className={`${inputClass} flex items-center justify-between text-left`}
@@ -859,17 +838,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         >
           → Merge
         </button>
-        <button
-          onClick={() => {
-            const id = groupIntoLayerAbove([span.id])
-            if (id) selectSpan(id)
-          }}
-          disabled={!!copyUp.blocked}
-          title={copyUp.blocked ?? `Copy this span to ${copyUp.above ? copyUp.above.label : 'a new layer above'}`}
-          className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
-        >
-          Copy up
-        </button>
+        <CopyToLayerPopover span={span} />
         <button
           onClick={handleDelete}
           className="ml-auto rounded px-2 py-1 text-xs font-medium text-destructive hover:bg-destructive/10"
@@ -917,7 +886,6 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
   const annotation = commonValue(spans, (s) => s.annotation ?? '')
   const lyrics = commonValue(spans, (s) => s.lyrics ?? '')
   const keyArea = commonValue(spans, (s) => s.keyArea ?? '')
-  const confidence = commonValue(spans, (s) => s.confidence ?? 'definite')
   const startB = commonValue(spans, (s) => s.startBoundaryType ?? 'definite')
   const endB = commonValue(spans, (s) => s.endBoundaryType ?? 'definite')
   const startCap = commonValue(spans, (s) => s.startCap ?? capFromBoundaryType(s.startBoundaryType))
@@ -1018,15 +986,6 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
             value={annotation === MIXED ? '' : annotation}
             placeholder={annotation === MIXED ? 'Mixed. Type to set all.' : ''}
             onChange={(e) => setAll({ annotation: e.target.value || null })}
-          />
-        </Field>
-
-        {/* Confidence */}
-        <Field label="Confidence" helper={confidence === MIXED ? 'Mixed' : undefined}>
-          <Segmented
-            options={CONFIDENCE_OPTS}
-            value={confidence === MIXED ? ('' as ConfidenceLevel) : confidence}
-            onChange={(v) => setAll({ confidence: v })}
           />
         </Field>
 

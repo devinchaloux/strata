@@ -33,7 +33,6 @@ description: "Layered section-level formal analysis synchronized to the timeline
 
 ```typescript
 interface FormDiagramData {
-  hierarchicalEnforcement: boolean; // STALE — unused; kept for file compatibility (see §5.4)
   spans: Span[];
 }
 ```
@@ -42,38 +41,20 @@ interface FormDiagramData {
 
 ```typescript
 createDefaultData: (): FormDiagramData => ({
-  hierarchicalEnforcement: false,
   spans: [],
 })
 ```
 
 ### 1.4 contributeTimePoints
 
-The form diagram contributes one `SharedTimePoint` per unique boundary timestamp across all spans. Both `startTime` and `endTime` of every span are contributed. Duplicate timestamps (when adjacent spans share a boundary) are deduplicated — only one pool entry per timestamp.
+The form diagram offers every span's `startTime` and `endTime` as snap targets, once each (adjacent spans share a boundary). Computed from the spans when needed; never stored in the file (see `_contract.md` §1.3).
 
 ```typescript
-contributeTimePoints: (data: FormDiagramData, layerId: string): SharedTimePoint[] => {
-  const seen = new Set<number>();
-  const points: SharedTimePoint[] = [];
-
-  for (const span of data.spans) {
-    for (const t of [span.startTime, span.endTime]) {
-      if (!seen.has(t)) {
-        seen.add(t);
-        points.push({
-          id: `${layerId}:${t}`,
-          timestamp: t,
-          sourceLayerId: layerId,
-        });
-      }
-    }
-  }
-
-  return points;
-}
+contributeTimePoints: (data: FormDiagramData): number[] =>
+  [...new Set(data.spans.flatMap((s) => [s.startTime, s.endTime]))]
 ```
 
-Point IDs are derived as `layerId:timestamp`. They are stable as long as the timestamp does not change. When a boundary moves, the old point is replaced by the new one on the next pool sync.
+Until the widget registry exists, point markers snap to these boundaries directly (`markerSnapCandidates` in `components/FormLayers.tsx`).
 
 ---
 
@@ -168,7 +149,7 @@ spans draw on top of each other until the analyst resolves them.
 ### 4.3 Shape Vocabulary (visual style — the analyst's choice)
 
 The drawn shape is the analyst's explicit choice and is **decoupled from the
-analytical data**. The renderer reads only the visual fields below; `confidence` and
+analytical data**. The renderer reads only the visual fields below;
 `startBoundaryType` / `endBoundaryType` are queryable data and **do not affect
 rendering** (see decisions log, 2026-06-27).
 
@@ -190,8 +171,7 @@ dashed vertical is a separate boundary-marker construct, not a dashed bracket ta
 `"rounded"`. When a span has no explicit cap, the renderer derives one from the
 analytical boundary type (`definite`→`rounded`, `gradual`→`angled`, `elided`→`elision`)
 so existing `.strata` files render with no migration; `"square"` is reachable only as
-an explicit visual choice (it has no data analog). `lineStyle` defaults to `"solid"`
-regardless of `confidence`.
+an explicit visual choice (it has no data analog). `lineStyle` defaults to `"solid"`.
 
 ### 4.4 Grouping
 
@@ -243,15 +223,19 @@ While the source is linked and no layer has spans, the open area above the diagr
 
 A selected span inside the grid shows its **Length** in bars in the Inspector: a field to type a length in ("this phrase is 2 bars", `setSpanBars`), between − and + buttons. Each changes the span's end by one bar (of the grid where it ends) and moves every later boundary in the layer by the same amount, so the spans after it keep their lengths. The layer still ends where it did: lengthening pushes the last span's start later and drops a span pushed past the end; shortening stretches the last span to fill. On the last span itself, only its end moves, within the track. `resizeSpanByBars` in the store, `rippleSpanEnd` in lib/spanEdit.ts.
 
-Placed boundaries are immediately contributed to the shared time point pool via the next `contributeTimePoints` call.
-
 **To end** (beside the End time in the Inspector, and **Extend to the end** on right-click) runs a span to the end of the track and removes the spans after it in its layer, one undo step: for an ending that stops being metered, where a quick setup laid out spans the music doesn't have. Their commentary survives, anchored to their times. `extendToEnd` in the store, `extendSpanToEnd` in lib/spanEdit.ts.
 
-#### Group and Copy Up
+#### Group and Copy to Layer
 
-**Group into…** (Inspector, several spans selected) lists the other form layers, the one just above first, each with what grouping there would do: "fits" an empty stretch, or replaces and cuts back the spans already there. A last row makes a new layer just above. Picking one makes a blank span over the whole selection on that layer, selected for labelling. **Copy up** (Inspector and right-click, one span) copies the span whole (label, type, look) to the layer just above, or to a new layer if there is none; right-click on several offers **Group into the layer above**. These one-click actions never cut or replace: where the layer above already has a span in the way they are greyed out with the reason. All are one undo step. `groupSpans` and `groupIntoLayerAbove` in the store, lib/groupSpans.ts.
+**Group into…** (Inspector, several spans selected) lists the other form layers, the one just above first, each with what grouping there would do: "fits" an empty stretch, or replaces and cuts back the spans already there. A last row makes a new layer just above. Picking one makes a blank span over the whole selection on that layer, selected for labelling. Right-click on several offers **Group into the layer above**, a one-click action that never cuts or replaces: where the layer above already has a span in the way it is greyed out with the reason.
 
-The new span becomes the **parent** (`parentId`) of the spans it came from. A parent and its children move their shared boundaries together: a drag, a typed time, Fit to the grid or a change of length in bars that moves a boundary where a parent and child meet moves the boundary at that moment in the other layer, neighbours included, and on through further levels. A child's inner boundaries move alone. Split and merge move no boundary, so they leave links alone. The Inspector shows "Part of … in …" or "Groups N spans in …" with **Unlink**, which clears `parentId` (the child's own, or all the children's). lib/linkedBoundaries.ts.
+**Copy to layer…** (Inspector, one span; right-click opens the same picker) copies the span, taking the parts ticked under **What to copy**: label, type, annotation, key area, colours, pattern, and shape and line by default; lyrics, notes and commentary only when ticked, since they would otherwise show twice. The choice is remembered in the browser (`copyFields`, lib/groupSpans.ts `COPY_FIELDS`). Never its `mergedFrom`, since the copy wasn't made by a merge to any other form layer, listed in drawing order, each marked above or below and with what the copy would do there. A last row makes a new layer just above or just below. There is no fixed direction: a section can be copied down to start its phrases as well as a phrase copied up. All are one undo step. `groupSpans` and `groupIntoLayerAbove` in the store, lib/groupSpans.ts, components/GroupPopover.tsx.
+
+Grouped spans become the **children** of the new span (`parentId`). Of a span and its copy, the one on the **higher layer is the parent**: a copy made up becomes the original's parent; a copy made down is the original's child. A parent and its children move their shared boundaries together: a drag, a typed time, Fit to the grid or a change of length in bars that moves a boundary where a parent and child meet moves the boundary at that moment in the other layer, neighbours included, and on through further levels. A child's inner boundaries move alone. The Inspector shows "Part of … in …" or "Groups N spans in …" with **Unlink**, which clears `parentId` (the child's own, or all the children's). lib/linkedBoundaries.ts.
+
+When a parent goes, its children follow: merging a parent hands its children to the merged span; deleting it, deleting its layer, running a span over it with To end, or replacing it with Group or Copy to layer unlinks them (`repairParentLinks`).
+
+**Splitting a parent** (B, the Boundary button, Split, Split at playhead): a split within half a second (`SPLIT_SNAP_SEC`) of a boundary between its children moves onto it, so no child straddles the split. Each child then belongs to the half that holds most of it, the left half on a tie; the left half keeps the parent's id. A span cut back or in two by Group or Copy to layer does the same, and a child no piece covers any more is unlinked (`splitTimeNearChildren`, `relinkToPieces`).
 
 ### 5.3 Merge
 
@@ -264,6 +248,6 @@ Merged spans receive a new UUID. The source IDs are stored in `mergedFrom: strin
 > *Superseded 2026-06-22 (see `docs/decisions.md` → the hierarchical enforcement
 > reversal entry). The per-layer definition below is no longer the design.*
 
-Hierarchical enforcement is redefined as a **cross-layer nesting** constraint scoped to the **form-diagram widget type**: when enabled, a span must nest within the boundaries a coarser layer has established (each layer's boundary set must be a superset of the layer above it; bottom = finest, top = coarsest; coextensive spans allowed). It is therefore not a per-layer flag — the `FormDiagramData.hierarchicalEnforcement` field is unused pending relocation when the feature is built. The underlying data is unchanged either way — the schema always supports overlapping spans.
+Hierarchical enforcement is redefined as a **cross-layer nesting** constraint scoped to the **form-diagram widget type**: when enabled, a span must nest within the boundaries a coarser layer has established (each layer's boundary set must be a superset of the layer above it; bottom = finest, top = coarsest; coextensive spans allowed). It is therefore not a per-layer flag; the per-layer `FormDiagramData.hierarchicalEnforcement` field, never used, was removed in file format 2, and the setting will get its own home if the feature is built. The underlying data is unchanged either way — the schema always supports overlapping spans.
 
 Activation requires user confirmation (warning about what is being given up). The warning is presented by the editor shell, not by the widget. The constraint is intentionally strict and off by default — the default is the theoretical statement.

@@ -14,7 +14,6 @@
     "duration",
     "source",
     "vocabulary",
-    "sharedTimePoints",
     "layers",
     "pointMarkers"
   ],
@@ -28,7 +27,7 @@
     "fileFormatVersion": {
       "type": "integer",
       "minimum": 1,
-      "description": "Schema version number. Starts at 1. Increment when the schema changes incompatibly. The app uses this to decide whether to run a migration before loading."
+      "description": "Version of this file format (2 at present). It goes up when a change means older files must be upgraded to be read correctly; the app upgrades an older file when it opens it (src/lib/migrations.ts)."
     },
     "createdAt": {
       "type": "string",
@@ -53,7 +52,7 @@
     "context": {
       "type": ["string", "null"],
       "enum": ["recording", "performance", null],
-      "description": "Nature of the artifact. 'recording' = studio recording; 'performance' = live performance of a composed work. Optional — null if unspecified. Controls which additional fields (composer, work) are surfaced in the UI. Encourage analysts to set this before cross-corpus comparison."
+      "description": "Nature of the artifact. 'recording' = studio recording; 'performance' = live performance of a composed work. Null if unspecified. 'performance' shows the composer field in the app."
     },
     "duration": {
       "type": "number",
@@ -63,11 +62,11 @@
 
     "composer": {
       "type": ["string", "null"],
-      "description": "Composer of the work. Surfaced in UI when context = 'performance'."
+      "description": "Composer of the work. Shown in the app when context = 'performance'."
     },
     "work": {
       "type": ["string", "null"],
-      "description": "Composition identifier — e.g. 'Piano Sonata Op. 13'. Enables cross-file corpus comparison of different performances of the same work."
+      "description": "Composition identifier — e.g. 'Piano Sonata Op. 13'. Lets different performances of the same work be compared across files."
     },
     "derivativeOf": {
       "$ref": "#/$defs/DerivativeReference"
@@ -75,12 +74,12 @@
 
     "notes": {
       "type": ["string", "null"],
-      "description": "Document-level free text. Methodological notes, analytical caveats, summary of findings. Distinct from the Written Analysis widget (timestamped, structured prose) — this is a simple overview field."
+      "description": "Document-level free text: methodological notes, analytical caveats, a summary of findings. Distinct from commentary (a written-analysis layer), which is tied to the timeline."
     },
     "bpm": {
       "type": ["number", "null"],
       "minimum": 0,
-      "description": "Beats per minute of the track: the default tempo for a new beatGrid segment. Null if not applicable or not set."
+      "description": "Starting tempo in beats per minute: what a new beatGrid segment starts from, and what quick setup uses before there is a grid. Once the track has a grid, its segments hold the tempo, and this value is not kept in step with them. Null if not set."
     },
     "timeSignature": {
       "$ref": "#/$defs/TimeSignature"
@@ -99,7 +98,7 @@
     },
     "project": {
       "type": ["string", "null"],
-      "description": "Corpus or collection tag. Used by the Corpus Builder to group related analysis files — e.g. 'anthemics-edm-corpus'."
+      "description": "Corpus or collection tag, for grouping related files in whatever tool gathers them — e.g. 'anthemics-edm-corpus'. The app stores it and does nothing else with it."
     },
     "analysisAuthor": {
       "type": ["string", "null"],
@@ -109,20 +108,15 @@
     "vocabulary": {
       "$ref": "#/$defs/Vocabulary"
     },
-    "sharedTimePoints": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/SharedTimePoint" },
-      "description": "Document-level time point pool. Any widget layer can contribute timestamps here; any widget can snap to or reference any point in the pool regardless of what created it."
-    },
     "layers": {
       "type": "array",
       "items": { "$ref": "#/$defs/Layer" },
-      "description": "Ordered array of widget layer instances."
+      "description": "The analytical layers, each a widget instance. Drawing order comes from each layer's displayOrder, not from its place in this list."
     },
     "pointMarkers": {
       "type": "array",
       "items": { "$ref": "#/$defs/PointMarker" },
-      "description": "Document-level point markers. Events in the recording (medial caesura, energy peak, flagged observation). Stored at the document level so they are visible across all layers without duplication."
+      "description": "Single-moment events in the recording (a medial caesura, an energy peak, a flagged observation). Stored once for the document, so they show across all layers."
     },
     "showCadenceCaptions": {
       "type": "boolean",
@@ -134,7 +128,7 @@
   "$defs": {
 
     "DerivativeReference": {
-      "description": "When this track is derived from another (remix, cover, re-recording, etc.), this field records the relationship. Null for original recordings.",
+      "description": "When this track is derived from another (remix, cover, re-recording, etc.), this field records the relationship. Null for original recordings. The app keeps it but has no control to set it yet.",
       "oneOf": [
         { "type": "null" },
         {
@@ -171,7 +165,7 @@
       }
     },
     "TimeSignature": {
-      "description": "Time signature of the track: the default meter for a new beatGrid segment. Null if not set.",
+      "description": "Starting meter: what a new beatGrid segment starts from, in the same way as bpm. Once the track has a grid, its segments hold the meter. Null if not set.",
       "oneOf": [
         { "type": "null" },
         {
@@ -248,7 +242,7 @@
       "type": "object",
       "required": ["spanTypes", "pointMarkerTypes", "modes"],
       "additionalProperties": false,
-      "description": "Project-level custom vocabulary terms. pointMarkerTypes has v1 UI (required for classical scholars); spanTypes UI deferred to v2.",
+      "description": "Vocabulary terms defined in this file, beyond the built-in libraries that ship with the app: custom span types (including form letters), point marker types and modes.",
       "properties": {
         "spanTypes": {
           "type": "array",
@@ -288,7 +282,7 @@
         "color": {
           "type": ["string", "null"],
           "pattern": "^#[0-9A-Fa-f]{6}$",
-          "description": "Optional default hex color for items of this type."
+          "description": "Optional default colour for items of this type. The app keeps it but does not draw with it yet."
         },
         "kind": {
           "type": "string",
@@ -307,54 +301,30 @@
       }
     },
 
-    "SharedTimePoint": {
-      "type": "object",
-      "required": ["id", "timestamp"],
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "timestamp": {
-          "type": "number",
-          "minimum": 0,
-          "description": "Recording time, seconds (float)."
-        },
-        "label": {
-          "type": ["string", "null"]
-        },
-        "sourceLayerId": {
-          "type": ["string", "null"],
-          "description": "ID of the layer that contributed this time point, for provenance."
-        }
-      }
-    },
-
     "LayerRenderingConfig": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Layer-level defaults for text rendering within span shapes. All spans in the layer inherit these settings. No per-span text rendering overrides in v1. Defaults: label above/center, annotation inside/left.",
+      "description": "Where this layer's span text sits. All spans in the layer share these settings; there are no per-span overrides. The app draws them when a file sets them, but has no control to set them yet. Defaults: label above/center, annotation inside/left.",
       "properties": {
         "labelPosition": {
           "type": "string",
           "enum": ["above", "inside"],
-          "description": "Where span labels render relative to the arc shape. 'above' = label floats above the arc peak (default); 'inside' = label renders inside the shape body. Applies to all spans in this layer."
+          "description": "Where span labels sit: 'above' the bracket (default) or 'inside' it."
         },
         "labelJustification": {
           "type": "string",
           "enum": ["left", "center", "right"],
-          "description": "Horizontal alignment of label text. Default: 'center'. Natural for section names above brackets."
+          "description": "Horizontal alignment of label text. Default: 'center'."
         },
         "annotationPosition": {
           "type": "string",
           "enum": ["above", "inside"],
-          "description": "Where span annotation text renders relative to the arc shape. 'inside' = renders inside the shape body (default); 'above' = floats above the arc peak. Applies to all spans in this layer."
+          "description": "Where annotation text sits: 'inside' the bracket (default) or 'above' it."
         },
         "annotationJustification": {
           "type": "string",
           "enum": ["left", "center", "right"],
-          "description": "Horizontal alignment of annotation text. Default: 'left'. Natural for analytical text inside brackets."
+          "description": "Horizontal alignment of annotation text. Default: 'left'."
         }
       }
     },
@@ -363,7 +333,7 @@
       "type": "object",
       "required": ["id", "type", "label", "visibility", "locked", "fillColorDefault", "strokeColorDefault", "displayOrder", "data"],
       "additionalProperties": false,
-      "description": "A widget layer instance. The typed envelope pattern: the core schema enforces all fields except data; the data field shape is defined by the widget type.",
+      "description": "One analytical layer. Every layer carries the same envelope fields; the shape of data depends on its type.",
       "properties": {
         "id": {
           "type": "string",
@@ -372,7 +342,7 @@
         "type": {
           "type": "string",
           "enum": ["form-diagram", "written-analysis"],
-          "description": "Widget type: 'form-diagram' (spans on a timeline) or 'written-analysis' (commentary anchored to spans or times). Future types: 'energy-contour', 'instrumentation'. A reader that meets a type it doesn't know should keep the layer unchanged."
+          "description": "Widget type: 'form-diagram' (spans on a timeline) or 'written-analysis' (commentary anchored to spans or times). Possible future types: 'energy-contour', 'instrumentation'. A reader that meets a type it doesn't know should keep the layer unchanged."
         },
         "label": {
           "type": "string",
@@ -381,11 +351,11 @@
         },
         "description": {
           "type": ["string", "null"],
-          "description": "Optional longer description of this layer's analytical purpose or framework — e.g. 'Hepokoski/Darcy exposition analysis' or 'Phrase-level hypermeter, 4-bar units'. Distinct from label. Togglable visibility in the UI."
+          "description": "Optional longer description of this layer's analytical purpose or framework — e.g. 'Hepokoski/Darcy exposition analysis' or 'Phrase-level hypermeter, 4-bar units'. Distinct from label."
         },
         "visibility": {
           "type": "boolean",
-          "description": "Hidden layers are excluded from exports."
+          "description": "Whether the layer is shown. Hidden layers are left out of exports."
         },
         "locked": {
           "type": "boolean",
@@ -393,23 +363,23 @@
         },
         "fillColorDefault": {
           "type": "string",
-          "pattern": "^#[0-9A-Fa-f]{6}$",
-          "description": "Fallback fill color for spans with no per-span fillColor override."
+          "pattern": "^(#[0-9A-Fa-f]{6}|none)$",
+          "description": "Fill for spans in this layer that have no fillColor of their own: a hex colour, or 'none' for no fill."
         },
         "strokeColorDefault": {
           "type": "string",
-          "pattern": "^#[0-9A-Fa-f]{6}$",
-          "description": "Fallback stroke color for spans with no per-span strokeColor override."
+          "pattern": "^(#[0-9A-Fa-f]{6}|none)$",
+          "description": "Outline for spans in this layer that have no strokeColor of their own: a hex colour, or 'none' for no outline."
         },
         "displayOrder": {
           "type": "integer",
           "minimum": 0,
-          "description": "Render order. Lower numbers render first (bottom of the visual stack). Gaps are allowed."
+          "description": "Drawing order. Lower numbers are drawn first, at the bottom of the stack. Gaps are allowed."
         },
         "position": {
           "type": "string",
           "enum": ["above", "below"],
-          "description": "Position of this layer relative to the timeline ruler. Absent = use the widget type's defaultPosition from the WidgetDefinition. Absent widget default = 'above'. Set by the analyst per-layer in the layer settings popover."
+          "description": "Reserved: where this layer sits relative to the timeline ruler. The app always draws layers above the ruler and has no control for this yet."
         },
         "rendering": {
           "$ref": "#/$defs/LayerRenderingConfig",
@@ -418,7 +388,7 @@
         "spanShape": {
           "type": "string",
           "enum": ["bracket", "bar"],
-          "description": "Visual style for this layer's spans. Absent/'bracket' = today's rendering (analytical bracket/arc shapes). 'bar' draws thin flat rects instead — intended for key-area layers (Span.keyArea captions), but the field is generic, not key-area-specific. A layer setting, buried in layer settings, not surfaced in the main add-layer flow. Purely visual; the same Span data model and interactions (spacebar, drag, merge) apply either way."
+          "description": "How this layer's spans are drawn. Absent or 'bracket' = brackets. 'bar' draws thin flat bars instead — meant for key-area layers (Span.keyArea captions), though any layer may use it. Purely visual; the same span data and editing apply either way."
         },
         "fillGaps": {
           "type": "boolean",
@@ -426,7 +396,7 @@
         },
         "library": {
           "type": ["string", "null"],
-          "description": "The vocabulary library this layer draws its types from (an id such as 'pop-rock' or 'caplin', or 'letters'). The type picker and quick entry lead with it. A working preference for the editor; it does not restrict which types the layer may use."
+          "description": "The vocabulary library this layer draws its types from (an id such as 'pop-rock' or 'caplin', or 'letters'). The Type picker and Quick pick lead with it. A working preference for the editor; it does not restrict which types the layer may use. Absent = guessed from the types already in the layer."
         },
         "fontScale": {
           "type": "string",
@@ -492,21 +462,17 @@
         },
         "text": {
           "type": "string",
-          "description": "The commentary. Paragraphs are separated by a blank line; **bold** and *italic* are allowed; [[slug]] links to the span with that slug."
+          "description": "The commentary, in Markdown: paragraphs, **bold**, *italic*, code, headings, lists, quotes and web links. [[slug]] (or [[slug|shown text]]) links to the span or point marker with that slug. Raw HTML is shown as typed, never rendered; images are dropped."
         }
       }
     },
 
     "FormDiagramData": {
       "type": "object",
-      "required": ["hierarchicalEnforcement", "spans"],
+      "required": ["spans"],
       "additionalProperties": false,
       "description": "Data payload for a form-diagram layer.",
       "properties": {
-        "hierarchicalEnforcement": {
-          "type": "boolean",
-          "description": "STALE — unused by the UI, kept for file compatibility. Hierarchical enforcement was redefined (2026-06-22) as a cross-layer nesting constraint scoped to the form-diagram widget type; this field will be relocated when that feature is built (see docs/decisions.md). The schema always allows overlapping spans regardless."
-        },
         "spans": {
           "type": "array",
           "items": { "$ref": "#/$defs/Span" }
@@ -518,25 +484,25 @@
       "type": "object",
       "required": ["id", "startTime", "endTime"],
       "additionalProperties": false,
-      "description": "A time span representing a formal section. The universal primitive of the Strata system.",
+      "description": "A time range representing a formal section: the core analytical record.",
       "properties": {
         "id": {
           "type": "string",
           "format": "uuid",
-          "description": "Auto-generated UUID. Never changes. Never shown to the user. Used for all inter-widget references and merge tracking."
+          "description": "Auto-generated UUID. Never changes and is never shown to the analyst. Used for references between spans, commentary and merges."
         },
         "label": {
           "type": ["string", "null"],
-          "description": "Display name set by the analyst. Optional — null for unlabeled spans (e.g. bar-level hypermeter spans where the type carries the analytical meaning). Empty string is valid for a newly placed span awaiting a label."
+          "description": "Display name set by the analyst. Null for unlabelled spans (e.g. bar-level hypermeter spans, where the type carries the meaning). An empty string is valid for a newly placed span awaiting a label."
         },
         "shortLabel": {
           "type": ["string", "null"],
-          "description": "Optional analyst-authored abbreviation of label (e.g. 'Verse 1' -> 'V1'). Shown above the shape in place of the full label when the full label doesn't fit at the current zoom; never itself truncated further. No algorithmic abbreviation is attempted for above-shape labels — if neither label nor shortLabel fits, nothing renders (the UI shows a small marker indicating a hidden label)."
+          "description": "Optional abbreviation of label, written by the analyst (e.g. 'Verse 1' -> 'V1'). Shown above the shape in place of the full label when that doesn't fit at the current zoom; never itself truncated. If neither fits, nothing is drawn there, and the editor shows the label when the span is hovered or selected."
         },
         "slug": {
           "type": ["string", "null"],
           "pattern": "^[a-z0-9][a-z0-9-]*$",
-          "description": "Auto-generated from label — e.g. 'Drop 1' → 'drop-1'. Stable human-readable reference key for embeds and inter-widget links. Null if no label. Uniqueness is enforced by chronological position (startTime order) within the document, not by creation order."
+          "description": "Generated from the label — e.g. 'Drop 1' → 'drop-1'. The readable reference name used by commentary links ([[drop-1]]) and embeds. Unique across the document, in one namespace with point-marker slugs: a repeat gets a suffix (verse, verse-2, …) in time order. Frozen once saved, so relabelling keeps it. Null if there is no label."
         },
         "startTime": {
           "type": "number",
@@ -550,73 +516,68 @@
         },
         "type": {
           "type": ["string", "null"],
-          "description": "Controlled vocabulary term ID. The corpus-queryable classification of this section. Separate from label by design."
+          "description": "Vocabulary term id: the queryable classification of this section, from the built-in libraries or vocabulary.spanTypes. Separate from label by design."
         },
         "fillColor": {
           "type": ["string", "null"],
-          "pattern": "^#[0-9A-Fa-f]{6}$",
-          "description": "Per-span hex fill color override. Null = use layer fillColorDefault."
+          "pattern": "^(#[0-9A-Fa-f]{6}|none)$",
+          "description": "This span's fill: a hex colour, or 'none' for no fill. Null = the layer's fillColorDefault."
         },
         "strokeColor": {
           "type": ["string", "null"],
-          "pattern": "^#[0-9A-Fa-f]{6}$",
-          "description": "Per-span hex stroke color override. Null = use layer strokeColorDefault."
+          "pattern": "^(#[0-9A-Fa-f]{6}|none)$",
+          "description": "This span's outline: a hex colour, or 'none' for no outline. Null = the layer's strokeColorDefault."
         },
         "annotation": {
           "type": ["string", "null"],
-          "description": "Diagram-visible text displayed on the span body alongside the label. For analytical observations that should appear on the diagram — e.g. 'filter sweep → snare roll', '+Kick', 'Anthem gradually emerges'. Distinct from notes (tooltip only) and from label (the section name). Feeds into the Written Analysis widget when built."
+          "description": "Text drawn on the span alongside the label, for observations that belong on the diagram — e.g. 'filter sweep → snare roll', '+Kick'. Also shown with the span in the commentary panel. Distinct from notes (never shown on the diagram) and from label (the section name)."
         },
         "notes": {
           "type": ["string", "null"],
-          "description": "Short freetext observation. Tooltip-level only — not rendered on the diagram."
+          "description": "The analyst's working note. Shown only in the Inspector: not drawn on the diagram and not shown in the reading view, embeds or exports."
         },
         "lyrics": {
           "type": ["string", "null"],
-          "description": "Lyric text occurring during this span. Not displayed on the form diagram by default. Corpus-queryable. Feeds into the Written Analysis widget."
+          "description": "Lyric text sung during this span. Shown with the span in the commentary panel, not on the diagram. Queryable."
         },
         "keyArea": {
           "type": ["string", "null"],
-          "description": "Free text, conventionally a Roman numeral relative to StrataDocument.homeKey (e.g. 'vi', 'V/V'). Corpus-queryable independently of label/type. Renders as a caption spanning the span — most naturally on a layer with spanShape = 'bar', but the field applies to any span."
-        },
-        "confidence": {
-          "type": "string",
-          "enum": ["definite", "approximate", "speculative"],
-          "description": "Analyst's confidence in the placement of this span's boundaries. Optional — omit for 'definite' (default). Only set explicitly when marking a span as approximate or speculative."
+          "description": "Free text, conventionally a Roman numeral relative to StrataDocument.homeKey (e.g. 'vi', 'V/V'); accidentals are stored as ♭/♯. Queryable independently of label and type. Drawn as a caption across the span — most naturally on a layer with spanShape = 'bar', but any span may carry it."
         },
         "startBoundaryType": {
           "type": ["string", "null"],
           "enum": ["definite", "gradual", "elided", null],
-          "description": "Character of the formal transition at the start of this span. 'definite' = hard, precise cut; 'gradual' = inherently processual transition (a buildup that gradually becomes the section); 'elided' = this span's start is formally simultaneous with the end of the preceding span. Null or omit for 'definite'. Distinct from confidence: this describes the music's formal behavior, not the analyst's certainty about placement."
+          "description": "Character of the formal transition at the start of this span. 'definite' = a clean cut; 'gradual' = a processual transition (a buildup that gradually becomes the section); 'elided' = this span's start is formally simultaneous with the end of the one before. Null or omit for 'definite'. An analytical claim; how the end is drawn is startCap."
         },
         "endBoundaryType": {
           "type": ["string", "null"],
           "enum": ["definite", "gradual", "elided", null],
-          "description": "Character of the formal transition at the end of this span. 'elided' pairs with startBoundaryType = 'elided' on the following span to mark a reciprocal elision. When two adjacent spans share elided endpoints and their timestamps overlap, the renderer draws the elision visual (overlapping bracket)."
+          "description": "Character of the formal transition at the end of this span; same values as startBoundaryType. Elision is marked per side: this span can claim it whether or not the next span does. Spans in a layer never overlap in the data; an elided end is drawn reaching past the boundary."
         },
         "parentId": {
           "type": ["string", "null"],
-          "description": "Optional UUID reference to a parent span. Expresses hierarchical relationship without enforcing it in the data model."
+          "description": "Id of the span this one belongs to, on another layer — e.g. this phrase belongs to that section. Set by Group (the grouped spans' parent is the new span) and Copy to layer (of a span and its copy, the one on the higher layer is the parent). In the editor, a parent and its children move their shared boundaries together, and unlinking clears this field. Nothing enforces that a child lies inside its parent. Null if this span has no parent."
         },
         "mergedFrom": {
           "type": ["array", "null"],
           "items": { "type": "string", "format": "uuid" },
           "minItems": 2,
-          "description": "UUIDs of source spans when created by a merge. Enables reference resolution for inter-widget links that pointed to deprecated span IDs. Null for spans not produced by a merge. Always contains at least two IDs when present."
+          "description": "Ids of the spans a merge made this one from, in time order: a record of origin, used when the merge carries their commentary over. At least two when present. Null for spans not produced by a merge."
         },
         "startCap": {
           "type": "string",
           "enum": ["rounded", "square", "angled", "open", "elision"],
-          "description": "Visual cap (end-tail) style at the start of the bracket — the analyst's drawing choice, decoupled from startBoundaryType (which is analytical data). 'rounded' = vertical tail with a rounded corner; 'square' = sharp corner; 'angled' = diagonal tail; 'open' = no tail; 'elision' = vertical tail plus a lighter inner overlap line. The top line is always flat (domes/arcs are retired). Absent = 'rounded' (falls back from startBoundaryType for files authored before this field)."
+          "description": "How the start of the bracket is drawn — the analyst's drawing choice, separate from startBoundaryType (the analytical claim). 'rounded' = vertical tail with a rounded corner; 'square' = sharp corner; 'angled' = diagonal tail; 'open' = no tail; 'elision' = a tail reaching past the boundary so it overlaps the neighbour. Absent = follows startBoundaryType ('elided' → 'elision', otherwise 'rounded')."
         },
         "endCap": {
           "type": "string",
           "enum": ["rounded", "square", "angled", "open", "elision"],
-          "description": "Visual cap style at the end of the bracket. Same values and defaulting as startCap; falls back from endBoundaryType when absent."
+          "description": "How the end of the bracket is drawn. Same values as startCap; absent = follows endBoundaryType."
         },
         "lineStyle": {
           "type": "string",
           "enum": ["solid", "dashed"],
-          "description": "Visual stroke style of the whole bracket — the analyst's choice, decoupled from confidence. Whole-shape uniform; solid and dashed are never mixed at a shared edge. Absent = 'solid'."
+          "description": "Stroke of the whole bracket, the analyst's drawing choice. Solid and dashed are never mixed within one shape. Absent = 'solid'."
         },
         "fillPattern": {
           "type": "string",
@@ -634,7 +595,7 @@
       "type": "object",
       "required": ["id", "timestamp"],
       "additionalProperties": false,
-      "description": "A single-timestamp analytical event. Document-level — not per-layer.",
+      "description": "A single-moment analytical event. Belongs to the document, not to a layer.",
       "properties": {
         "id": {
           "type": "string",
@@ -655,32 +616,27 @@
         },
         "type": {
           "type": ["string", "null"],
-          "description": "Controlled vocabulary term ID. Corpus-queryable."
+          "description": "Vocabulary term id, from the built-in lists or vocabulary.pointMarkerTypes. Queryable."
         },
         "notes": {
           "type": ["string", "null"]
         },
         "flagged": {
           "type": "boolean",
-          "description": "'Come back to this.' Simple bookmark for moments the analyst wants to revisit. Distinct from confidence — flagged means I want to return here, not I am uncertain about this. Optional — omit for false (default)."
+          "description": "'Come back to this.' A bookmark for moments the analyst wants to revisit. Omit for false."
         },
         "absent": {
           "type": "boolean",
-          "description": "'This expected event was explicitly determined to be absent.' Analytically significant in H/D and similar frameworks where a missing event has formal consequences. No v1 UI — stored and preserved but not settable from the interface in v1. Optional — omit for false (default)."
+          "description": "'This expected event does not occur here.' Significant in Hepokoski/Darcy and similar frameworks, where a missing event has formal consequences. Set with the Absent switch in the marker's panel; the caption is then drawn struck through. Omit for false."
         },
         "harmonicContext": {
           "type": ["string", "null"],
-          "description": "Free text, conventionally a Roman numeral relative to StrataDocument.homeKey (e.g. 'V' for a half cadence in the dominant). Rendered as its own text near the marker — never force-concatenated with type. Corpus-queryable independently of the cadence type field."
-        },
-        "confidence": {
-          "type": "string",
-          "enum": ["definite", "approximate", "speculative"],
-          "description": "Analyst's confidence in the identification and placement of this event. Optional — omit for 'definite' (default)."
+          "description": "Free text, conventionally a Roman numeral relative to StrataDocument.homeKey (e.g. 'V' for a half cadence in the dominant). Captioned with the type as 'V:PAC', or alone without one, but stored separately. Queryable independently of type."
         },
         "kind": {
           "type": "string",
           "enum": ["cadence", "key-change", "tempo-change", "flag", "other"],
-          "description": "Soft UI preset — picks which fields the Inspector panel leads with. Never restricts what data a marker can carry; every field remains reachable via 'more fields' regardless of kind. Omit/absent behaves like 'other'."
+          "description": "A preset for the editor: picks which fields the marker's panel leads with. Never restricts what a marker can carry; every field stays reachable. Absent behaves like 'other'."
         }
       }
     }

@@ -1,3 +1,4 @@
+import { FILE_FORMAT_VERSION } from '@/lib/migrations'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useDocumentStore } from '@/store/documentStore'
 import { makeDoc, makeLayer, makeSpan } from './fixtures'
@@ -14,14 +15,14 @@ function layer(id: string, displayOrder: number, visibility = true): Layer {
     fillColorDefault: '#ffffff',
     strokeColorDefault: '#475569',
     displayOrder,
-    data: { hierarchicalEnforcement: false, spans: [] },
+    data: { spans: [] },
   }
 }
 
 function doc(layers: Layer[]): StrataDocument {
   return {
     strataVersion: '0.1.0',
-    fileFormatVersion: 1,
+    fileFormatVersion: FILE_FORMAT_VERSION,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     title: 'Test',
@@ -29,7 +30,6 @@ function doc(layers: Layer[]): StrataDocument {
     duration: 100,
     source: { type: 'youtube', url: 'https://youtu.be/x', sourceOffset: 0 },
     vocabulary: { spanTypes: [], pointMarkerTypes: [], modes: [] },
-    sharedTimePoints: [],
     layers,
     pointMarkers: [],
   }
@@ -99,7 +99,7 @@ describe('loadId (re-fit-on-load signal)', () => {
 
 describe('updateSpans (bulk edit)', () => {
   function spanLayer(id: string, spans: Span[]): Layer {
-    return { ...layer(id, 0), type: 'form-diagram', data: { hierarchicalEnforcement: false, spans } }
+    return { ...layer(id, 0), type: 'form-diagram', data: { spans } }
   }
   function spansOf(layerId: string): Span[] {
     const l = useDocumentStore.getState().document!.layers.find((x) => x.id === layerId)!
@@ -126,10 +126,10 @@ describe('updateSpans (bulk edit)', () => {
   })
 
   it('is a single undo step for the whole bulk edit', () => {
-    useDocumentStore.getState().updateSpans(['a', 'b', 'c'], { confidence: 'approximate' })
-    expect(spansOf('L1').every((s) => s.confidence === 'approximate')).toBe(true)
+    useDocumentStore.getState().updateSpans(['a', 'b', 'c'], { lineStyle: 'dashed' })
+    expect(spansOf('L1').every((s) => s.lineStyle === 'dashed')).toBe(true)
     useDocumentStore.temporal.getState().undo()
-    expect(spansOf('L1').every((s) => s.confidence === undefined)).toBe(true)
+    expect(spansOf('L1').every((s) => s.lineStyle === undefined)).toBe(true)
   })
 })
 

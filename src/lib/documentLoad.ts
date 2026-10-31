@@ -97,7 +97,6 @@ export function readDocument(raw: unknown): LoadResult {
       pointMarkerTypes: Array.isArray(vocab.pointMarkerTypes) ? vocab.pointMarkerTypes : [],
       modes: Array.isArray(vocab.modes) ? vocab.modes : [],
     },
-    sharedTimePoints: Array.isArray(input.sharedTimePoints) ? input.sharedTimePoints : [],
     pointMarkers: readPointMarkers(input.pointMarkers),
     layers,
   } as StrataDocument
@@ -185,11 +184,7 @@ function readLayer(raw: unknown, index: number, spanIds: Set<string>, notices: s
     )
   }
 
-  const formData: FormDiagramData = {
-    ...data,
-    hierarchicalEnforcement: data.hierarchicalEnforcement === true,
-    spans,
-  }
+  const formData: FormDiagramData = { ...data, spans }
   return { ...base, type: 'form-diagram', data: formData } as Layer
 }
 

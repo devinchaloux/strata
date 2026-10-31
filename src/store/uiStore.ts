@@ -3,6 +3,7 @@ import type { YTPlayerState } from '@/lib/youtube'
 import type { Span } from '@/types/strata'
 import type { MergeConflict } from '@/lib/mergeSpans'
 import type { SnapMode } from '@/lib/beatGrid'
+import { COPY_FIELDS, DEFAULT_COPY_FIELDS, type CopyField } from '@/lib/groupSpans'
 
 export type InspectorTab = 'describe' | 'shape' | 'more'
 /** What the quick-entry bar on the diagram sets, or off. */
@@ -142,6 +143,10 @@ export interface UIState {
    * tab switches with it), takes it up then, and clears it.
    */
   fillPickerPending: boolean
+  /** Set to open the Inspector's Copy to layer picker (the span's right-click menu). A flag, like fillPickerPending. */
+  copyPickerPending: boolean
+  /** What Copy to layer takes along (lib/groupSpans.ts COPY_FIELDS), remembered in the browser. */
+  copyFields: CopyField[]
   /** The span Inspector's open tab, kept as the selection moves. */
   inspectorTab: InspectorTab
   /** The quick-entry bar's mode, remembered in the browser. */
@@ -214,6 +219,9 @@ export interface UIState {
   /** Shape & color tab, with the Fill picker open. */
   requestFillPicker: () => void
   clearFillPickerRequest: () => void
+  requestCopyPicker: () => void
+  clearCopyPickerRequest: () => void
+  setCopyFields: (fields: CopyField[]) => void
   setInspectorTab: (tab: InspectorTab) => void
   setReadingView: (on: boolean) => void
   setReadingShow: (part: 'commentary' | 'diagram', on: boolean) => void
@@ -284,7 +292,15 @@ function readClickVolume(): number {
   return readPreference(CLICK_VOLUME_KEY) != null && Number.isFinite(v) && v >= 0 && v <= 1 ? v : 0.6
 }
 
-const NO_PICKER_REQUEST = { typePickerPending: false, fillPickerPending: false }
+const COPY_FIELDS_KEY = 'strata:copyFields'
+/** The remembered Copy to layer choice; the defaults (lyrics, notes and commentary off) for a first visit. */
+function readCopyFields(): CopyField[] {
+  const raw = readPreference(COPY_FIELDS_KEY)
+  if (raw == null) return DEFAULT_COPY_FIELDS
+  return raw.split(',').filter((f): f is CopyField => COPY_FIELDS.some((c) => c.id === f))
+}
+
+const NO_PICKER_REQUEST = { typePickerPending: false, fillPickerPending: false, copyPickerPending: false }
 
 const useUIStore = create<UIState>()((set) => ({
   currentTime: 0,
@@ -328,6 +344,8 @@ const useUIStore = create<UIState>()((set) => ({
   librariesOpen: false,
   typePickerPending: false,
   fillPickerPending: false,
+  copyPickerPending: false,
+  copyFields: readCopyFields(),
   inspectorTab: 'describe',
   quickEntry: (['off', 'type', 'shape', 'fill'] as const).find((m) => m === readPreference(QUICK_KEY)) ?? 'type',
   setQuickEntry: (mode) => {
@@ -432,6 +450,12 @@ const useUIStore = create<UIState>()((set) => ({
   clearTypePickerRequest: () => set({ typePickerPending: false }),
   requestFillPicker: () => set({ fillPickerPending: true, inspectorTab: 'shape' }),
   clearFillPickerRequest: () => set({ fillPickerPending: false }),
+  requestCopyPicker: () => set({ copyPickerPending: true }),
+  clearCopyPickerRequest: () => set({ copyPickerPending: false }),
+  setCopyFields: (fields) => {
+    writePreference(COPY_FIELDS_KEY, fields.join(','))
+    set({ copyFields: fields })
+  },
   setInspectorTab: (tab) => set({ inspectorTab: tab }),
   setReadingView: (on) => set({ readingView: on, selectedSpanIds: [], selectionAnchorId: null, selectedPointMarkerId: null }),
   setReadingShow: (part, on) => set((s) => ({ readingShow: { ...s.readingShow, [part]: on } })),

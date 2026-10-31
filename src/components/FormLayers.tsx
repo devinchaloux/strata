@@ -18,6 +18,7 @@ import { useUIStore } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
 import { computePps, totalContentWidth, snapTime } from '@/lib/timeline'
 import { groupUpTarget } from '@/lib/groupSpans'
+import { formSpans } from '@/lib/layers'
 import { stackHeight, shapeTopY, layerBodyHeight, layerIndexAtY, layerFonts, estimateTextWidth, layerLabelLayout, LABEL_RISE } from '@/lib/formShape'
 import { layoutMarkerBand, BAND_TOP_GAP, BAND_ROW_HEIGHT, GLYPH_HALF, type MarkerPlacement } from '@/lib/markerBand'
 import { MIN_SPAN_WIDTH, MIN_BOUNDARY_DRAG_PX } from '@/lib/spanEdit'
@@ -73,10 +74,22 @@ function SpanContextMenuContent({ span, layer }: { span: Span; layer: Layer }) {
   )
 }
 
-/** Copy up / Group into the layer above, greyed out with the reason when blocked. */
+/** Group into the layer above, greyed out with the reason when blocked. */
 function GroupUpItem({ label, target, onSelect }: { label: string; target: { blocked: string | null }; onSelect: () => void }) {
   return (
-    <ContextMenuItem disabled={!!target.blocked} onClick={target.blocked ? undefined : onSelect}>
+    // stopPropagation: the click would otherwise reach the diagram, which clears
+    // the selection the action has just made.
+    <ContextMenuItem
+      disabled={!!target.blocked}
+      onClick={
+        target.blocked
+          ? undefined
+          : (e) => {
+              e.stopPropagation()
+              onSelect()
+            }
+      }
+    >
       <span className="flex flex-col">
         {label}
         {target.blocked && <span className="text-[11px]">{target.blocked}</span>}
@@ -93,10 +106,11 @@ function SpanMenuItems({ span, layer }: { span: Span; layer: Layer }) {
   const placeBoundary = useDocumentStore((s) => s.placeBoundary)
   const groupIntoLayerAbove = useDocumentStore((s) => s.groupIntoLayerAbove)
   const extendToEnd = useDocumentStore((s) => s.extendToEnd)
+  const requestCopyPicker = useUIStore((s) => s.requestCopyPicker)
   const { eligibility, performMerge, neighborId } = useMerge()
 
-  // Group into (several) or copy to (one) the layer above, then select the
-  // result; offered only where it cuts nothing (groupUpTarget).
+  // Group several spans into the layer above, then select the result;
+  // offered only where it cuts nothing (groupUpTarget).
   const doc = useDocumentStore.getState().document
   const upTarget = (ids: string[]) => (doc ? groupUpTarget(doc, ids) : { above: null, blocked: 'No document' })
   function groupUp(ids: string[]) {
@@ -166,7 +180,18 @@ function SpanMenuItems({ span, layer }: { span: Span; layer: Layer }) {
       >
         Merge with next
       </ContextMenuItem>
-      <GroupUpItem label="Copy up a layer" target={upTarget([span.id])} onSelect={() => groupUp([span.id])} />
+      <ContextMenuItem
+        onClick={(e) => {
+          // Opens the Inspector's picker, which shows what copying to each layer
+          // would do. The click mustn't reach the diagram, which would clear the
+          // selection (React events bubble out of the menu's portal).
+          e.stopPropagation()
+          selectSpan(span.id)
+          requestCopyPicker()
+        }}
+      >
+        Copy to layer…
+      </ContextMenuItem>
       <ContextMenuItem onClick={() => extendToEnd(layer.id, span.id)}>Extend to the end</ContextMenuItem>
       <ContextMenuSeparator />
       <ContextMenuItem
@@ -688,9 +713,10 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   // pointerdown does not stop the click that follows.
   const pointerDownOnMarkerRef = useRef(false)
 
+  // Span boundaries in every visible form layer, and the other markers.
   function markerSnapCandidates(excludeId?: string): number[] {
     return [
-      ...(doc?.sharedTimePoints ?? []).map((p) => p.timestamp),
+      ...layers.filter((l) => l.visibility).flatMap((l) => formSpans(l).flatMap((s) => [s.startTime, s.endTime])),
       ...pointMarkers.filter((m) => m.id !== excludeId).map((m) => m.timestamp),
     ]
   }

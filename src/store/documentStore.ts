@@ -1,9 +1,9 @@
 import { create } from 'zustand'
 import { temporal } from 'zundo'
-import type { StrataDocument, Layer, LayerBase, Span, PointMarker, SharedTimePoint, GridSegment, VocabTerm } from '@/types/strata'
+import type { StrataDocument, Layer, LayerBase, Span, PointMarker, GridSegment, VocabTerm } from '@/types/strata'
 import { formSpans, newFormLayer } from '@/lib/layers'
-import { groupUpTarget, placeSpan } from '@/lib/groupSpans'
-import { boundaryMoves, followLinks } from '@/lib/linkedBoundaries'
+import { groupUpTarget, placeSpan, copyOfSpan, DEFAULT_COPY_FIELDS, type CopyField } from '@/lib/groupSpans'
+import { boundaryMoves, followLinks, repairParentLinks, splitTimeNearChildren, relinkToPieces } from '@/lib/linkedBoundaries'
 import { sortedSegments, segmentAt, segmentEnd, extendBack, snapToGrid, barTiling, barLength } from '@/lib/beatGrid'
 import { roundTempo, segmentForAdjusting, tempoThroughDownbeat } from '@/lib/metronome'
 import type { FormDiagramData } from '@/types/strata'
@@ -16,6 +16,7 @@ import {
   setRangeCommentary as withRangeCommentary,
   setBlockText as withBlockText,
   reanchorOrphans,
+  blockForSpan,
 } from '@/widgets/written-analysis/commentary'
 
 // ---------------------------------------------------------------------------
@@ -40,6 +41,9 @@ type DocumentMeta = Pick<
   | 'analysisAuthor'
   | 'showCadenceCaptions'
 >
+
+/** Where groupSpans puts its span: an existing layer, or a new one above (or below) the sources. */
+export type GroupTarget = { layerId: string } | { newLayer: string; below?: boolean }
 
 interface DocumentState {
   document: StrataDocument | null
@@ -97,7 +101,9 @@ interface DocumentState {
   mergeSpans: (layerId: string, spanIds: string[], result: Span) => void
   // B (boundary) / Split: place a boundary at `time`, splitting the containing span
   // (or filling the gap it falls in — an empty layer is one gap). No-op if the
-  // cut isn't valid.
+  // cut isn't valid. Splitting a parent moves the cut onto a boundary between
+  // its children within half a second, and each child then belongs to the half
+  // that holds most of it.
   placeBoundary: (layerId: string, time: number) => void
   // A span run on to the end of the track, the later spans in its layer
   // removed (lib/spanEdit.ts, extendSpanToEnd). One undo step.
@@ -117,12 +123,16 @@ interface DocumentState {
   // layer moving with it (lib/spanEdit.ts, rippleSpanEnd).
   resizeSpanByBars: (layerId: string, spanId: string, bars: number) => void
   // Group spans into one span on another layer, covering them all; one span
-  // is copied there whole (lib/groupSpans.ts). The new span becomes their
-  // parent (parentId), so boundaries they share move together. The target is a form layer
-  // (not one of theirs, not locked) or a new layer, named, made just above
-  // the highest of theirs. Spans already in that stretch are cut back or
-  // replaced. One undo step; returns the new span's id, or null.
-  groupSpans: (spanIds: string[], target: { layerId: string } | { newLayer: string }) => string | null
+  // is copied there whole (Copy to layer; lib/groupSpans.ts). Grouped spans
+  // become the new span's children (parentId); of a span and its copy, the
+  // one on the higher layer is the parent. Either way their shared boundaries
+  // move together. The target is a form layer (not one of theirs, not locked)
+  // or a new layer, named, made just above the highest of theirs (or, with
+  // `below`, just below the lowest). Spans already in that stretch are cut
+  // back or replaced. A copy takes only the chosen parts (`fields`; lyrics,
+  // notes and commentary are off unless chosen). One undo step; returns the
+  // new span's id, or null.
+  groupSpans: (spanIds: string[], target: GroupTarget, fields?: CopyField[]) => string | null
   // groupSpans into the layer just above theirs, or a new one there if none;
   // null, doing nothing, if that layer has spans in the way (groupUpTarget).
   groupIntoLayerAbove: (spanIds: string[]) => string | null
@@ -173,11 +183,6 @@ interface DocumentState {
   stepGridTempo: (time: number, deltaBpm: number) => void
   nudgeGrid: (time: number, seconds: number) => void
   pinDownbeat: (time: number) => { bpm: number; bars: number } | null
-
-  // Shared time point pool
-  // Replaces all pool entries contributed by layerId with the given points.
-  // Called by each widget's contributeTimePoints on any data change.
-  syncLayerTimePoints: (layerId: string, points: SharedTimePoint[]) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -298,7 +303,18 @@ function rippleByBars(
   if (!hit) return null
   const next = rippleSpanEnd(formSpans(layer), spanId, delta(barLength(hit.seg), span), doc.duration)
   if (!next) return null
-  return withLinks(doc, { ...doc, layers: mapLayer(doc.layers, layerId, (l) => mapFormDiagramSpans(l, () => next)), updatedAt: now() }, layerId)
+  const moved = withLinks(doc, { ...doc, layers: mapLayer(doc.layers, layerId, (l) => mapFormDiagramSpans(l, () => next)), updatedAt: now() }, layerId)
+  // A span pushed past the layer's end is dropped.
+  return afterRemoval(doc, moved)
+}
+
+/**
+ * The tidy-up after an edit that may have removed spans: their commentary is
+ * kept (re-anchored to a merged span or to their old times), and their
+ * children are handed to the merged span or unlinked (lib/linkedBoundaries.ts).
+ */
+function afterRemoval(prev: StrataDocument, next: StrataDocument): StrataDocument {
+  return repairParentLinks(reanchorOrphans(prev, next))
 }
 
 // ---------------------------------------------------------------------------
@@ -367,10 +383,9 @@ const useDocumentStore = create<DocumentState>()(
         const next = {
           ...doc,
           layers: doc.layers.filter((l) => l.id !== id),
-          sharedTimePoints: doc.sharedTimePoints.filter((p) => p.sourceLayerId !== id),
           updatedAt: now(),
         }
-        set({ document: reanchorOrphans(doc, next) })
+        set({ document: afterRemoval(doc, next) })
       },
 
       reorderLayers: (idsTopToBottom) => {
@@ -501,7 +516,7 @@ const useDocumentStore = create<DocumentState>()(
         )
         if (!changed) return
         // Removed spans' commentary survives, anchored to their old times.
-        set({ document: reanchorOrphans(doc, { ...doc, layers, updatedAt: now() }) })
+        set({ document: afterRemoval(doc, { ...doc, layers, updatedAt: now() }) })
       },
 
       removeSpan: (layerId, spanId) => {
@@ -515,7 +530,7 @@ const useDocumentStore = create<DocumentState>()(
           updatedAt: now(),
         }
         // The span's commentary survives, anchored to the span's old times.
-        set({ document: reanchorOrphans(doc, next) })
+        set({ document: afterRemoval(doc, next) })
       },
 
       mergeSpans: (layerId, spanIds, result) => {
@@ -543,8 +558,9 @@ const useDocumentStore = create<DocumentState>()(
           ),
           updatedAt: now(),
         }
-        // The sources' commentary moves to the merged span (combined).
-        set({ document: reanchorOrphans(doc, next) })
+        // The sources' commentary moves to the merged span (combined), and
+        // so do their children.
+        set({ document: afterRemoval(doc, next) })
       },
 
       setSpanCommentary: (spanId, text) => {
@@ -568,9 +584,14 @@ const useDocumentStore = create<DocumentState>()(
         if (next !== doc) set({ document: { ...next, updatedAt: now() } })
       },
 
-      placeBoundary: (layerId, time) => {
+      placeBoundary: (layerId, at) => {
         const doc = get().document
         if (!doc) return
+        // Splitting a parent: a split near a boundary between its children
+        // moves onto it, so no child straddles the split (lib/linkedBoundaries.ts).
+        const target = doc.layers.find((l) => l.id === layerId)
+        const parent = target && formSpans(target).find((x) => x.startTime < at && at < x.endTime)
+        const time = parent ? splitTimeNearChildren(doc, parent, at) : at
         let changed = false
         const layers = mapLayer(doc.layers, layerId, (l) => {
           if (l.type !== 'form-diagram') return l
@@ -589,9 +610,16 @@ const useDocumentStore = create<DocumentState>()(
           return { ...l, data: { ...data, spans: next } }
         })
         if (!changed) return
+        let next: StrataDocument = { ...doc, layers, updatedAt: now() }
+        // The left half keeps the span's id; its children under the new right
+        // half move to it.
+        if (parent) {
+          const right = formSpans(next.layers.find((l) => l.id === layerId)!).find((x) => x.id !== parent.id && Math.abs(x.startTime - time) < 1e-9)
+          if (right) next = relinkToPieces(next, parent.id, [parent.id, right.id])
+        }
         // A split copies the label (and so the slug) into the new right half;
         // the original span keeps its slug and the new half gets the next free one.
-        set({ document: resolveSlugCollisions(doc, { ...doc, layers, updatedAt: now() }) })
+        set({ document: resolveSlugCollisions(doc, next) })
       },
 
       endSpanAt: (layerId, time) => {
@@ -663,13 +691,13 @@ const useDocumentStore = create<DocumentState>()(
         if (next) set({ document: next })
       },
 
-      groupSpans: (spanIds, target) => {
+      groupSpans: (spanIds, target, fields = DEFAULT_COPY_FIELDS) => {
         const doc = get().document
         if (!doc) return null
         const picked = doc.layers.flatMap((l) => formSpans(l).filter((x) => spanIds.includes(x.id)).map((span) => ({ span, layer: l })))
         if (!picked.length) return null
         const sources = new Set(picked.map((p) => p.layer.id))
-        const top = picked.map((p) => p.layer).sort((a, b) => b.displayOrder - a.displayOrder)[0]
+        const byOrder = picked.map((p) => p.layer).sort((a, b) => b.displayOrder - a.displayOrder)
         let layers = doc.layers
         let targetId: string
         if ('layerId' in target) {
@@ -677,26 +705,59 @@ const useDocumentStore = create<DocumentState>()(
           if (!t || t.type !== 'form-diagram' || t.locked || sources.has(t.id)) return null
           targetId = t.id
         } else {
-          // Made just above the highest source layer; those above it move up one.
-          const made = newFormLayer(target.newLayer.trim() || 'New layer', top.displayOrder + 1)
-          layers = [...layers.map((l) => (l.displayOrder > top.displayOrder ? { ...l, displayOrder: l.displayOrder + 1 } : l)), made]
+          // Made just above the highest source layer, or just below the
+          // lowest; the layers from there up move up one.
+          const at = target.below ? byOrder[byOrder.length - 1].displayOrder : byOrder[0].displayOrder + 1
+          const made = newFormLayer(target.newLayer.trim() || 'New layer', at)
+          layers = [...layers.map((l) => (l.displayOrder >= at ? { ...l, displayOrder: l.displayOrder + 1 } : l)), made]
           targetId = made.id
         }
         const start = Math.min(...picked.map((p) => p.span.startTime))
         const end = Math.max(...picked.map((p) => p.span.endTime))
         const id = crypto.randomUUID()
-        // One span is copied whole (label, type, look; its slug resolved
-        // below); several make a new, blank span over their stretch.
-        const span: Span = picked.length === 1 ? { ...picked[0].span, id } : { id, startTime: start, endTime: end }
+        const order = (layerId: string) => layers.find((l) => l.id === layerId)!.displayOrder
+        let span: Span
+        let parentOfSources = true
+        if (picked.length === 1) {
+          // Only the chosen parts (its slug resolved below), never its merge
+          // record: the copy wasn't made by a merge. Copied up, it keeps the
+          // original's own place in the hierarchy.
+          const original = picked[0]
+          span = copyOfSpan(original.span, id, fields)
+          if (original.span.parentId != null) span.parentId = original.span.parentId
+          if (order(targetId) < order(original.layer.id)) {
+            // Copied down: the original, on the higher layer, is the parent.
+            span.parentId = original.span.id
+            parentOfSources = false
+          }
+        } else {
+          // Several make a new, blank span over their stretch.
+          span = { id, startTime: start, endTime: end }
+        }
+        const before = layers.find((l) => l.id === targetId)!
         layers = mapLayer(layers, targetId, (l) => mapFormDiagramSpans(l, (spans) => placeSpan(spans, span, () => crypto.randomUUID())))
+        // Spans there that the new one cuts back (or cuts in two) keep the
+        // children still under what is left of them, as a split does.
+        const after = formSpans(layers.find((l) => l.id === targetId)!)
+        const cut = formSpans(before).filter((x) => x.endTime > start && x.startTime < end && after.some((y) => y.id === x.id))
+        const kept = new Set(formSpans(before).map((x) => x.id))
         // The new span is their parent, which ties their outer boundaries to
         // its edges (lib/linkedBoundaries.ts).
-        layers = layers.map((l) =>
-          sources.has(l.id) ? mapFormDiagramSpans(l, (spans) => spans.map((x) => (spanIds.includes(x.id) ? { ...x, parentId: id } : x))) : l,
-        )
-        const next = { ...doc, layers, updatedAt: now() }
-        // Replaced spans' commentary survives, anchored to their old times.
-        set({ document: resolveSlugCollisions(doc, reanchorOrphans(doc, next)) })
+        if (parentOfSources)
+          layers = layers.map((l) =>
+            sources.has(l.id) ? mapFormDiagramSpans(l, (spans) => spans.map((x) => (spanIds.includes(x.id) ? { ...x, parentId: id } : x))) : l,
+          )
+        let next: StrataDocument = { ...doc, layers, updatedAt: now() }
+        for (const x of cut) {
+          const pieces = after.filter((y) => y.id === x.id || (!kept.has(y.id) && y.id !== id && y.startTime >= x.startTime && y.endTime <= x.endTime))
+          next = relinkToPieces(next, x.id, pieces.map((y) => y.id))
+        }
+        // Replaced spans' commentary survives, anchored to their old times,
+        // and their children are unlinked.
+        next = afterRemoval(doc, next)
+        const commentary = picked.length === 1 && fields.includes('commentary') ? blockForSpan(doc, picked[0].span.id)?.text : undefined
+        if (commentary) next = withSpanCommentary(next, id, commentary, () => crypto.randomUUID())
+        set({ document: resolveSlugCollisions(doc, next) })
         return id
       },
 
@@ -938,23 +999,6 @@ const useDocumentStore = create<DocumentState>()(
           document: {
             ...doc,
             pointMarkers: doc.pointMarkers.filter((m) => m.id !== id),
-            updatedAt: now(),
-          },
-        })
-      },
-
-      // --- Shared Time Point Pool ---
-
-      syncLayerTimePoints: (layerId, points) => {
-        const doc = get().document
-        if (!doc) return
-        const existing = doc.sharedTimePoints.filter((p) => p.sourceLayerId !== layerId)
-        set({
-          document: {
-            ...doc,
-            sharedTimePoints: [...existing, ...points].sort(
-              (a, b) => a.timestamp - b.timestamp
-            ),
             updatedAt: now(),
           },
         })

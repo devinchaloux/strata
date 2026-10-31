@@ -78,17 +78,19 @@ A render component that triggers mutations or changes state outside itself viola
 
 ### 1.3 The Shared Time Point Pool
 
-`StrataDocument.sharedTimePoints` is a document-level collection of timestamps that any widget can contribute to and any widget can snap to. It is the explicit inversion of siloed per-widget timelines.
+The time points of every layer are available to every other layer as snap targets. It is the explicit inversion of siloed per-widget timelines.
 
 When the form diagram analyst places a span boundary at 94.5 seconds, that timestamp is immediately available to the energy contour widget as a snap target — without any manual import step, without either widget knowing about the other. When the energy contour analyst adds a control point at 103.0 seconds, the form diagram can snap to that too.
 
-Widgets do not write to the pool directly. Each widget definition exposes a pure function called `contributeTimePoints` that returns the full set of timestamps this widget layer currently owns. The document store calls this function after every data change and syncs the result into the pool — adding new entries, updating moved ones, removing deleted ones. Widgets declare what they contribute; the store handles synchronization.
+The pool is **computed, not stored**. Each widget definition exposes a pure function called `contributeTimePoints` that returns the timestamps a layer of its type holds; the editor gathers them from every layer when it needs snap targets. Nothing is written to the file: the points are already in each layer's own data, and a stored copy could only fall out of step with it. (Format version 1 had a stored pool, `sharedTimePoints`, which the app never filled; version 2 removed it. See `docs/decisions.md`, "Schema Review: Three Fields Cut".)
+
+Until widgets are registered through this contract, the form diagram's point markers snap to the span boundaries of every visible layer directly (`components/FormLayers.tsx`).
 
 ---
 
 ## 2. TypeScript Interface Specification
 
-These interfaces are defined here as the source of truth and will be ported to `src/types/widget.ts` in Phase 1.2. They reference types from `src/types/strata.ts` — `Layer`, `LayerData`, `LayerType`, `SharedTimePoint`, `StrataDocument`.
+These interfaces are defined here as the source of truth and will be ported to `src/types/widget.ts` in Phase 1.2. They reference types from `src/types/strata.ts` — `Layer`, `LayerData`, `LayerType`, `StrataDocument`.
 
 Each subsection below begins with a plain-English description before the code. Non-technical readers can read the descriptions and skip the code blocks; the description and the code cover the same ground.
 
@@ -160,7 +162,7 @@ export interface WidgetRenderProps<TData> {
   data: TData;            // Typed widget payload; same object as layer.data
 
   // Document context (read-only)
-  // Provides duration, vocabulary, sharedTimePoints, pointMarkers, all layers.
+  // Provides duration, vocabulary, beat grid, pointMarkers, all layers.
   // Widget accesses what it needs; the store handles memoization.
   document: StrataDocument;
 
@@ -274,7 +276,7 @@ The five sections:
 1. **Identity** — what type is this, what is it called?
 2. **Components** — the three components: display (viewer-safe), edit (editor-only), ruler marks (optional)
 3. **Data** — a function that returns a blank starting dataset for new layers
-4. **Pool** — a function that declares which timestamps this layer contributes to the shared time point pool
+4. **Pool** — a function that declares which timestamps this layer offers other layers as snap targets
 5. **Export** — the `WidgetExporter` declared in 2.5
 
 ```typescript
@@ -351,16 +353,13 @@ export interface WidgetDefinition<TData extends LayerData> {
   // -------------------------------------------------------------------------
 
   /**
-   * Returns the SharedTimePoint entries this layer instance should own in the
-   * document-level shared time point pool.
+   * Returns the timestamps (recording seconds) this layer offers other layers
+   * as snap targets.
    *
-   * Pure function — no side effects. The document store calls this after every
-   * data change and syncs the result into StrataDocument.sharedTimePoints,
-   * replacing all existing entries where sourceLayerId === layerId.
-   *
-   * Returning an empty array removes this layer's contributions from the pool.
+   * Pure function — no side effects. The editor calls it on every layer when
+   * it needs snap targets; the result is never stored in the file.
    */
-  contributeTimePoints: (data: TData, layerId: string) => SharedTimePoint[];
+  contributeTimePoints: (data: TData) => number[];
 
   // -------------------------------------------------------------------------
   // Export
@@ -374,17 +373,15 @@ export interface WidgetDefinition<TData extends LayerData> {
 
 ## 3. Shared Time Point Pool — Participation Rules
 
-The document store enforces these invariants. These rules matter most to implementers, but non-technical readers may want to understand the ownership model — it explains why pool entries can't step on each other.
+These rules matter most to implementers, but non-technical readers may want to understand them — they explain why one layer's points can't step on another's.
 
-**Ownership by layer.** Every entry in `sharedTimePoints` carries a `sourceLayerId`. When a layer's data changes, the store calls `contributeTimePoints` for that layer and replaces all pool entries that belong to it. No layer can affect another layer's pool entries.
+**Computed from the layers.** The pool is the union of every layer's `contributeTimePoints(data)`, worked out when it is needed. A layer's points change exactly when its data does, and a deleted layer's points are gone with it. There is nothing to synchronise and nothing in the file.
 
-**Global read, owner write.** Any component anywhere in the application can read the full pool via `document.sharedTimePoints`. But pool entries are only written by the store, acting on the return value of `contributeTimePoints`. Nothing writes to the pool directly.
+**Global read, owner write.** Any widget can snap to any layer's points, but a layer's points come only from its own data. Moving another layer's point means editing that layer.
 
-**Deletion propagates.** When a layer is deleted, all pool entries that belong to it — where `sourceLayerId` matches — are removed automatically.
+**The beat grid is not in the pool.** The grid is stored as segments on the document (`StrataDocument.beatGrid`) and its beats are computed by `lib/beatGrid.ts`; snapping to it goes through `store/snap.ts`. A widget that wants grid snap targets reads them from there.
 
-**The beat grid is not in the pool.** The grid is stored as segments on the document (`StrataDocument.beatGrid`) and its beats are computed by `lib/beatGrid.ts`; snapping to it goes through `store/snap.ts`. A widget that wants grid snap targets reads them from there, not from `sharedTimePoints`. (An earlier plan wrote bar-level time points into the pool with `sourceLayerId: null`; see `docs/decisions.md`, "Beat Grid".)
-
-**Snapping.** Snapping to pool entries is handled inside each widget's `EditComponent`. The widget reads `document.sharedTimePoints`, finds entries within a configurable snap distance of the current cursor or boundary, and snaps to the nearest one. There is no shared snap utility at the contract level — each widget implements the snap behavior appropriate to its interaction model.
+**Snapping.** Snapping to pool entries is handled inside each widget's `EditComponent`, which finds the points within a snap distance of the cursor or boundary and snaps to the nearest one. There is no shared snap utility at the contract level — each widget implements the snap behavior appropriate to its interaction model.
 
 ---
 
@@ -442,7 +439,7 @@ For each new widget type, in order:
 - [ ] Implement `EditComponent` — extends render; wires all interactions to `onDataChange`
 - [ ] Implement `TimelinePresenceComponent` or set to `null`
 - [ ] Implement `createDefaultData()`
-- [ ] Implement `contributeTimePoints()` — pure function; covers all temporal boundaries the layer owns
+- [ ] Implement `contributeTimePoints()` — pure function; returns all temporal boundaries the layer holds
 - [ ] Implement `WidgetExporter` with all supported formats
 - [ ] Register the `WidgetDefinition` in the widget registry
 - [ ] Add `widgets/<type>.md` with widget-specific documentation

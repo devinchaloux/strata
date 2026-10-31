@@ -16,7 +16,6 @@ function marker(id: string, timestamp: number, patch: Partial<PointMarker> = {})
     type: 'half-cadence',
     notes: null,
     flagged: false,
-    confidence: 'definite',
     harmonicContext: null,
     ...patch,
   } as PointMarker

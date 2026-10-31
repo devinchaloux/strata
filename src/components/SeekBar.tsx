@@ -1,11 +1,9 @@
 import { useRef, useState } from 'react'
 import { formatTime } from '@/lib/youtube'
-import type { SharedTimePoint } from '@/types/strata'
 
 interface SeekBarProps {
   currentTime: number
   duration: number
-  sharedTimePoints: SharedTimePoint[]
   disabled?: boolean
   onSeek: (time: number) => void
 }
@@ -13,7 +11,6 @@ interface SeekBarProps {
 export function SeekBar({
   currentTime,
   duration,
-  sharedTimePoints,
   disabled,
   onSeek,
 }: SeekBarProps) {
@@ -22,11 +19,6 @@ export function SeekBar({
   const [hoverPercent, setHoverPercent] = useState<number | null>(null)
 
   const progress = duration > 0 ? Math.min(1, currentTime / duration) : 0
-
-  // Only labeled, widget-contributed entries — no BPM grid ticks (sourceLayerId: null)
-  const ticks = sharedTimePoints.filter(
-    (tp) => tp.label != null && tp.label !== '' && duration > 0,
-  )
 
   function fractionFromPointer(e: React.PointerEvent | React.MouseEvent): number {
     const bar = barRef.current
@@ -95,21 +87,6 @@ export function SeekBar({
           backgroundColor: 'hsl(var(--primary))',
         }}
       />
-
-      {/* Tick marks — labeled shared time points only */}
-      {ticks.map((tp) => (
-        <div
-          key={tp.id}
-          className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-          style={{
-            left: `${(tp.timestamp / duration) * 100}%`,
-            width: 2,
-            height: 8,
-            backgroundColor: 'hsl(var(--border))',
-            opacity: 0.6,
-          }}
-        />
-      ))}
 
       {/* Thumb */}
       <div

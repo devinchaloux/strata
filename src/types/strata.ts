@@ -12,8 +12,6 @@
 // Primitives
 // ---------------------------------------------------------------------------
 
-export type ConfidenceLevel = 'definite' | 'approximate' | 'speculative'
-
 export type AnalysisContext = 'recording' | 'performance'
 
 export type SourceType = 'youtube' | 'local'
@@ -27,7 +25,7 @@ export type BoundaryType = 'definite' | 'gradual' | 'elided'
  */
 export type CapStyle = 'rounded' | 'square' | 'angled' | 'open' | 'elision'
 
-/** Visual stroke style of a bracket; whole-shape uniform. Decoupled from confidence. */
+/** Visual stroke style of a bracket; whole-shape uniform. */
 export type LineStyle = 'solid' | 'dashed'
 /** A faint texture over a span's fill, in a darker shade of it (lib/patterns.ts). */
 export type FillPattern = 'hatch' | 'cross' | 'dots' | 'lines'
@@ -123,17 +121,6 @@ export interface Vocabulary {
 }
 
 // ---------------------------------------------------------------------------
-// Shared Time Point Pool
-// ---------------------------------------------------------------------------
-
-export interface SharedTimePoint {
-  id: string
-  timestamp: number           // Recording time, seconds (float)
-  label?: string | null
-  sourceLayerId?: string | null // Provenance; null = contributed by BPM grid utility
-}
-
-// ---------------------------------------------------------------------------
 // Span
 // ---------------------------------------------------------------------------
 
@@ -159,19 +146,19 @@ export interface Span {
   startTime: number              // Recording time, seconds (float)
   endTime: number                // Must exceed startTime
   type?: string | null           // Vocabulary term ID; corpus-queryable
-  fillColor?: string | null      // Hex fill override; null = use layer fillColorDefault
-  strokeColor?: string | null    // Hex stroke override; null = use layer strokeColorDefault
+  fillColor?: string | null      // Hex fill override, or 'none' for no fill; null = use layer fillColorDefault
+  strokeColor?: string | null    // Hex stroke override, or 'none' for no outline; null = use layer strokeColorDefault
   annotation?: string | null     // Diagram-visible analytical text (on span body)
-  notes?: string | null          // Tooltip-only; not rendered on diagram
+  notes?: string | null          // The analyst's working note; shown only in the Inspector
   lyrics?: string | null         // Lyric text; corpus-queryable
   keyArea?: string | null        // A Roman numeral relative to StrataDocument.homeKey
                                   // (e.g. "vi", "V/V"); accidentals stored as ♭/♯. Corpus-queryable.
                                   // Renders as a caption spanning the span (see Layer.spanShape).
-  confidence?: ConfidenceLevel   // Queryable data; omit for "definite". Does NOT affect rendering.
   startBoundaryType?: BoundaryType | null // Queryable data. Choosing one in the UI resets that
   endBoundaryType?: BoundaryType | null   // side's cap to match; the drawing reads the cap.
-  parentId?: string | null       // UUID of parent span; hierarchical ref without enforcement
-  mergedFrom?: string[] | null   // Always >= 2 UUIDs when present
+  parentId?: string | null       // Id of the span this one belongs to, on another layer (Group, Copy to layer).
+                                  // A parent and its children move their shared boundaries together (lib/linkedBoundaries.ts)
+  mergedFrom?: string[] | null   // The spans a merge made this from (>= 2 ids); a record of origin only
   // Visual style — the analyst's drawing choice (decoupled from the data above).
   startCap?: CapStyle            // Default 'rounded' (falls back from startBoundaryType for old files)
   endCap?: CapStyle              // Default 'rounded' (falls back from endBoundaryType for old files)
@@ -205,7 +192,6 @@ export interface PointMarker {
   notes?: string | null
   flagged?: boolean            // "Come back to this." Omit for false (default)
   absent?: boolean             // "Expected event explicitly absent." Caption renders struck through. Omit for false.
-  confidence?: ConfidenceLevel // Omit for "definite" (default)
   harmonicContext?: string | null // A Roman numeral relative to StrataDocument.homeKey (e.g. "V"
                                    // for a half cadence in the dominant). UI label "In key".
                                    // Captioned as `V:PAC` with the type, or alone without one.
@@ -227,8 +213,8 @@ export interface PointMarker {
 
 /**
  * Layer-level defaults for text rendering within span shapes.
- * All spans in the layer inherit these settings.
- * No per-span text rendering overrides in v1.
+ * All spans in the layer inherit these settings; there are no per-span
+ * overrides. The renderer reads them, but the app has no control to set them.
  *
  * Defaults:
  *   labelPosition:           'above'   — section names float above the arc peak
@@ -236,7 +222,7 @@ export interface PointMarker {
  *   annotationPosition:      'inside'  — analytical detail inside the shape body
  *   annotationJustification: 'left'    — left-aligned inside the shape
  *
- * fontSize: deferred to Phase 0.7 visual design session.
+ * Text size is a separate layer setting, LayerBase.fontScale.
  */
 export interface LayerRenderingConfig {
   labelPosition?: 'above' | 'inside'
@@ -250,14 +236,6 @@ export interface LayerRenderingConfig {
 // ---------------------------------------------------------------------------
 
 export interface FormDiagramData {
-  /**
-   * STALE — unused by the UI, kept for file compatibility. Hierarchical
-   * enforcement was redefined (2026-06-22) as a CROSS-LAYER nesting constraint
-   * scoped to the form-diagram widget type, so it cannot live on one layer's
-   * data. This field will be relocated when that feature is built. See
-   * docs/decisions.md → the hierarchical enforcement reversal entry.
-   */
-  hierarchicalEnforcement: boolean
   spans: Span[]
 }
 
@@ -280,7 +258,7 @@ export type BlockAnchor = { spanId: string } | { start: number; end: number }
 export interface AnalysisBlock {
   id: string
   anchor: BlockAnchor
-  /** Paragraphs separated by a blank line; **bold**, *italic*, and [[slug]] span links. */
+  /** Markdown (paragraphs, emphasis, code, headings, lists, quotes, web links) plus [[slug]] links to spans and markers. */
   text: string
 }
 
@@ -302,13 +280,12 @@ export interface LayerBase {
   description?: string | null
   visibility: boolean
   locked: boolean
-  fillColorDefault: string   // Hex fill fallback for spans with no per-span fillColor override
-  strokeColorDefault: string // Hex stroke fallback for spans with no per-span strokeColor override
+  fillColorDefault: string   // Fill for spans with no fillColor of their own: hex, or 'none'
+  strokeColorDefault: string // Outline for spans with no strokeColor of their own: hex, or 'none'
   displayOrder: number   // Lower = renders first (bottom); gaps allowed
   /**
-   * Position relative to the timeline ruler.
-   * Absent = use the widget's defaultPosition from the WidgetDefinition.
-   * Absent widget default = 'above'.
+   * Position relative to the timeline ruler. Reserved: the app always draws
+   * layers above the ruler and has no control for this yet.
    */
   position?: 'above' | 'below'
   /** Text rendering defaults for spans in this layer. */
@@ -373,8 +350,9 @@ export interface StrataDocument {
   derivativeOf?: DerivativeReference | null
 
   notes?: string | null
-  bpm?: number | null                  // Default tempo for a new beat-grid segment
-  timeSignature?: TimeSignature | null // Default meter for a new beat-grid segment
+  bpm?: number | null                  // Starting tempo: what a new beat-grid segment starts from.
+                                       // Once there is a grid, its segments hold the tempo; this isn't kept in step
+  timeSignature?: TimeSignature | null // Starting meter, in the same way
   /** Bars and beats, laid down by ear in segments; gaps are freeform (lib/beatGrid.ts). */
   beatGrid?: GridSegment[]
   homeKey?: HomeKey | null
@@ -385,7 +363,6 @@ export interface StrataDocument {
   analysisAuthor?: string | null
 
   vocabulary: Vocabulary
-  sharedTimePoints: SharedTimePoint[]
   layers: Layer[]
   pointMarkers: PointMarker[]
 
