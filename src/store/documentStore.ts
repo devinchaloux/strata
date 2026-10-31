@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { temporal } from 'zundo'
 import type { StrataDocument, Layer, LayerBase, Span, PointMarker, GridSegment, VocabTerm } from '@/types/strata'
 import { formSpans, newFormLayer } from '@/lib/layers'
-import { groupUpTarget, placeSpan } from '@/lib/groupSpans'
+import { groupUpTarget, placeSpan, copyOfSpan, DEFAULT_COPY_FIELDS, type CopyField } from '@/lib/groupSpans'
 import { boundaryMoves, followLinks, repairParentLinks, splitTimeNearChildren, relinkToPieces } from '@/lib/linkedBoundaries'
 import { sortedSegments, segmentAt, segmentEnd, extendBack, snapToGrid, barTiling, barLength } from '@/lib/beatGrid'
 import { roundTempo, segmentForAdjusting, tempoThroughDownbeat } from '@/lib/metronome'
@@ -16,6 +16,7 @@ import {
   setRangeCommentary as withRangeCommentary,
   setBlockText as withBlockText,
   reanchorOrphans,
+  blockForSpan,
 } from '@/widgets/written-analysis/commentary'
 
 // ---------------------------------------------------------------------------
@@ -128,8 +129,10 @@ interface DocumentState {
   // move together. The target is a form layer (not one of theirs, not locked)
   // or a new layer, named, made just above the highest of theirs (or, with
   // `below`, just below the lowest). Spans already in that stretch are cut
-  // back or replaced. One undo step; returns the new span's id, or null.
-  groupSpans: (spanIds: string[], target: GroupTarget) => string | null
+  // back or replaced. A copy takes only the chosen parts (`fields`; lyrics,
+  // notes and commentary are off unless chosen). One undo step; returns the
+  // new span's id, or null.
+  groupSpans: (spanIds: string[], target: GroupTarget, fields?: CopyField[]) => string | null
   // groupSpans into the layer just above theirs, or a new one there if none;
   // null, doing nothing, if that layer has spans in the way (groupUpTarget).
   groupIntoLayerAbove: (spanIds: string[]) => string | null
@@ -688,7 +691,7 @@ const useDocumentStore = create<DocumentState>()(
         if (next) set({ document: next })
       },
 
-      groupSpans: (spanIds, target) => {
+      groupSpans: (spanIds, target, fields = DEFAULT_COPY_FIELDS) => {
         const doc = get().document
         if (!doc) return null
         const picked = doc.layers.flatMap((l) => formSpans(l).filter((x) => spanIds.includes(x.id)).map((span) => ({ span, layer: l })))
@@ -716,11 +719,12 @@ const useDocumentStore = create<DocumentState>()(
         let span: Span
         let parentOfSources = true
         if (picked.length === 1) {
-          // Copied whole (label, type, look; its slug resolved below), but not
-          // its merge record: the copy wasn't made by a merge.
+          // Only the chosen parts (its slug resolved below), never its merge
+          // record: the copy wasn't made by a merge. Copied up, it keeps the
+          // original's own place in the hierarchy.
           const original = picked[0]
-          span = { ...original.span, id }
-          delete span.mergedFrom
+          span = copyOfSpan(original.span, id, fields)
+          if (original.span.parentId != null) span.parentId = original.span.parentId
           if (order(targetId) < order(original.layer.id)) {
             // Copied down: the original, on the higher layer, is the parent.
             span.parentId = original.span.id
@@ -750,7 +754,10 @@ const useDocumentStore = create<DocumentState>()(
         }
         // Replaced spans' commentary survives, anchored to their old times,
         // and their children are unlinked.
-        set({ document: resolveSlugCollisions(doc, afterRemoval(doc, next)) })
+        next = afterRemoval(doc, next)
+        const commentary = picked.length === 1 && fields.includes('commentary') ? blockForSpan(doc, picked[0].span.id)?.text : undefined
+        if (commentary) next = withSpanCommentary(next, id, commentary, () => crypto.randomUUID())
+        set({ document: resolveSlugCollisions(doc, next) })
         return id
       },
 

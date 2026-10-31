@@ -16,7 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useDocumentStore, type GroupTarget } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { formSpans } from '@/lib/layers'
-import { groupPreview, layerAbove } from '@/lib/groupSpans'
+import { groupPreview, layerAbove, COPY_FIELDS, type CopyField } from '@/lib/groupSpans'
 import type { Span } from '@/types/strata'
 
 function effect(p: { replaced: number; cut: number }): string {
@@ -54,8 +54,8 @@ function useTargets(spans: Span[], copy: boolean) {
       where: copy ? (top && l.displayOrder > top.displayOrder ? 'above' : 'below') : l.id === above?.id ? 'just above' : null,
     }))
   /** Place the span; true when it was made (and is now selected). */
-  const place = (target: GroupTarget) => {
-    const id = groupSpans(ids, target)
+  const place = (target: GroupTarget, fields?: CopyField[]) => {
+    const id = groupSpans(ids, target, fields)
     if (id) selectSpan(id)
     return !!id
   }
@@ -134,14 +134,17 @@ export function GroupPopover({ spans }: { spans: Span[] }) {
 }
 
 /**
- * Copy one span, whole, to any other form layer or a new one above or below.
- * The span's right-click menu opens it here (copyPickerPending).
+ * Copy one span to any other form layer or a new one above or below, taking
+ * the parts ticked under "What to copy" (lyrics, notes and commentary start
+ * off). The span's right-click menu opens it here (copyPickerPending).
  */
 export function CopyToLayerPopover({ span }: { span: Span }) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const pending = useUIStore((s) => s.copyPickerPending)
   const clearRequest = useUIStore((s) => s.clearCopyPickerRequest)
+  const fields = useUIStore((s) => s.copyFields)
+  const setFields = useUIStore((s) => s.setCopyFields)
   // A request opens it, noticed during render, then is cleared (as ColorPicker's).
   if (pending && !open) setOpen(true)
   useEffect(() => {
@@ -151,7 +154,7 @@ export function CopyToLayerPopover({ span }: { span: Span }) {
   if (!t) return null
 
   function copy(target: GroupTarget) {
-    if (!t!.place(target)) return
+    if (!t!.place(target, fields)) return
     setOpen(false)
     setName('')
   }
@@ -160,7 +163,7 @@ export function CopyToLayerPopover({ span }: { span: Span }) {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
-          title="Copy this span, whole, to another layer"
+          title="Copy this span to another layer"
           className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent"
         >
           Copy to layer…
@@ -169,6 +172,22 @@ export function CopyToLayerPopover({ span }: { span: Span }) {
       <PopoverContent align="start" className="w-72 p-2 text-xs">
         <p className="px-1 pb-1.5 font-medium text-foreground">Copy to</p>
         <TargetList targets={t.targets} onPick={copy} />
+        <fieldset className="mt-1.5 border-t border-border px-1 pt-2">
+          <legend className="sr-only">What to copy</legend>
+          <p className="pb-1 text-[11px] text-muted-foreground">What to copy</p>
+          <div className="grid grid-cols-2 gap-x-2">
+            {COPY_FIELDS.map((f) => (
+              <label key={f.id} className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 hover:bg-accent">
+                <input
+                  type="checkbox"
+                  checked={fields.includes(f.id)}
+                  onChange={(e) => setFields(e.target.checked ? [...fields, f.id] : fields.filter((x) => x !== f.id))}
+                />
+                {f.name}
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <div className="mt-1.5 flex items-center gap-1.5 border-t border-border px-1 pt-2">
           <input
             aria-label="New layer name"

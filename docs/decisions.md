@@ -24,7 +24,7 @@ By area, in the order the entries were made:
 
 **Drawing and editing the form diagram:** [Merge UX (Phase 0.5)](#merge-ux-phase-05) · [Hierarchical Enforcement](#hierarchical-enforcement) · [Form Diagram Editor — Interaction Model](#form-diagram-editor--interaction-model) · [Merge](#merge) · [Form Diagram Editor (Phase 0.4)](#form-diagram-editor-phase-04) · [Phase 2 Implementation (Form Diagram — Milestone A)](#phase-2-implementation-form-diagram--milestone-a) · [Merge Implementation (Phase 2.5)](#merge-implementation-phase-25) · [Form Diagram Shape Model — Adjoin Rework (2026-06-27)](#form-diagram-shape-model--adjoin-rework-2026-06-27) · [Label Collision Strategy (2026-06-27)](#label-collision-strategy-2026-06-27) · [Phase 2.5 Merge — Interaction Completion (2026-06-30)](#phase-25-merge--interaction-completion-2026-06-30) · [Elision Rendering & Boundary-First Shape Control (2026-07-25)](#elision-rendering--boundary-first-shape-control-2026-07-25) · [Keyboard Navigation of Spans (2026-09-27)](#keyboard-navigation-of-spans-2026-09-27) · [Space Plays, B Marks a Boundary (2026-10-01)](#space-plays-b-marks-a-boundary-2026-10-01) · [Paused Clicks Stay Paused; Open Caps Fill and Join; Issue Links (2026-10-01)](#paused-clicks-stay-paused-open-caps-fill-and-join-issue-links-2026-10-01) · [Quick Type (2026-10-01)](#quick-type-2026-10-01) · [Quick Entry (2026-10-02)](#quick-entry-2026-10-02) · [B in an Empty Stretch; Shift+B; Fit to the Grid (2026-10-02)](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02) · [Hidden Labels Show on Hover and Selection (2026-10-02)](#hidden-labels-show-on-hover-and-selection-2026-10-02) · [Inside Text Keeps Clear of Rounded and Angled Ends (2026-10-02)](#inside-text-keeps-clear-of-rounded-and-angled-ends-2026-10-02) · [Quick Setup From the Tempo; a Plainer Grid Menu and Quick Pick (2026-10-24)](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24) · [Typed Phrase Lengths; Quick Pick Fixes and Drawn Shapes (2026-10-24)](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24) · [Muted Fills; Same Label, Same Fill; Legible Text on Any Fill (2026-10-24)](#muted-fills-same-label-same-fill-legible-text-on-any-fill-2026-10-24) · [To End (2026-10-24)](#to-end-2026-10-24) · [Quick Pick Colours, and a Colour-Blind Safe Switch (2026-10-24)](#quick-pick-colours-and-a-colour-blind-safe-switch-2026-10-24) · [Fill Patterns (2026-10-24)](#fill-patterns-2026-10-24) · [Backspace No Longer Deletes Spans (2026-10-24)](#backspace-no-longer-deletes-spans-2026-10-24) · [Copy and Paste Between Spans (2026-10-24)](#copy-and-paste-between-spans-2026-10-24) · [Copy and Paste Several Spans (2026-10-24)](#copy-and-paste-several-spans-2026-10-24) · [Splitting a Parent (2026-10-31)](#splitting-a-parent-2026-10-31)
 
-**Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01) · [Group Spans Into Another Layer (2026-10-24)](#group-spans-into-another-layer-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31)
+**Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01) · [Group Spans Into Another Layer (2026-10-24)](#group-spans-into-another-layer-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Choosing What Copy to Layer Takes (2026-10-31)](#choosing-what-copy-to-layer-takes-2026-10-31)
 
 **Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24)
 
@@ -40,7 +40,7 @@ By area, in the order the entries were made:
 
 **The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03) · [A Shorter New Analysis Dialog; Darker Interface Greys (2026-10-24)](#a-shorter-new-analysis-dialog-darker-interface-greys-2026-10-24)
 
-**Architecture, scope and process:** [Architecture](#architecture) · [Widgets](#widgets) · [Architecture](#architecture-1) · [Launch](#launch) · [Corpus Builder](#corpus-builder) · [v1 Feature Scope (Phase 0.6)](#v1-feature-scope-phase-06) · [Energy Contour Widget](#energy-contour-widget) · [EDM as Origin — Product Claim Reframe](#edm-as-origin--product-claim-reframe) · [Tech Stack](#tech-stack) · [v1 Scope](#v1-scope) · [Widget Contract (Phase 0.2)](#widget-contract-phase-02) · [Correctness Pass (post-Phase 2 polish)](#correctness-pass-post-phase-2-polish) · [Improvement Backlog Batch 1 (2026-07-03)](#improvement-backlog-batch-1-2026-07-03) · [Improvement Backlog Batch 2 (2026-07-03)](#improvement-backlog-batch-2-2026-07-03) · [Render / Edit Split (2026-09-27)](#render--edit-split-2026-09-27) · [Large-Analysis Performance (2026-09-27)](#large-analysis-performance-2026-09-27) · [Safari and Firefox Read-Through (2026-09-27)](#safari-and-firefox-read-through-2026-09-27) · [Beta Launch Pass (2026-10-01)](#beta-launch-pass-2026-10-01) · [Releases and Open Tabs (2026-10-02)](#releases-and-open-tabs-2026-10-02) · [Faster Checks: Tests in Node, a Weekly Audit (2026-10-05)](#faster-checks-tests-in-node-a-weekly-audit-2026-10-05) · [Development Tools Upgraded (2026-10-07)](#development-tools-upgraded-2026-10-07) · [No Corpus Builder: Strata Stays a One-File Tool (2026-10-16)](#no-corpus-builder-strata-stays-a-one-file-tool-2026-10-16) · [React's Newer Checks On (2026-10-16)](#reacts-newer-checks-on-2026-10-16)
+**Architecture, scope and process:** [Architecture](#architecture) · [Widgets](#widgets) · [Architecture](#architecture-1) · [Launch](#launch) · [Corpus Builder](#corpus-builder) · [v1 Feature Scope (Phase 0.6)](#v1-feature-scope-phase-06) · [Energy Contour Widget](#energy-contour-widget) · [EDM as Origin — Product Claim Reframe](#edm-as-origin--product-claim-reframe) · [Tech Stack](#tech-stack) · [v1 Scope](#v1-scope) · [Widget Contract (Phase 0.2)](#widget-contract-phase-02) · [Correctness Pass (post-Phase 2 polish)](#correctness-pass-post-phase-2-polish) · [Improvement Backlog Batch 1 (2026-07-03)](#improvement-backlog-batch-1-2026-07-03) · [Improvement Backlog Batch 2 (2026-07-03)](#improvement-backlog-batch-2-2026-07-03) · [Render / Edit Split (2026-09-27)](#render--edit-split-2026-09-27) · [Large-Analysis Performance (2026-09-27)](#large-analysis-performance-2026-09-27) · [Safari and Firefox Read-Through (2026-09-27)](#safari-and-firefox-read-through-2026-09-27) · [Beta Launch Pass (2026-10-01)](#beta-launch-pass-2026-10-01) · [Releases and Open Tabs (2026-10-02)](#releases-and-open-tabs-2026-10-02) · [Faster Checks: Tests in Node, a Weekly Audit (2026-10-05)](#faster-checks-tests-in-node-a-weekly-audit-2026-10-05) · [Development Tools Upgraded (2026-10-07)](#development-tools-upgraded-2026-10-07) · [No Corpus Builder: Strata Stays a One-File Tool (2026-10-16)](#no-corpus-builder-strata-stays-a-one-file-tool-2026-10-16) · [React's Newer Checks On (2026-10-16)](#reacts-newer-checks-on-2026-10-16) · [The Corpus Builder Is Planned for Version 2 (2026-10-31)](#the-corpus-builder-is-planned-for-version-2-2026-10-31)
 
 ---
 
@@ -219,7 +219,7 @@ By area, in the order the entries were made:
 **Decision:** The Corpus Builder is a separate companion application, not a mode of the Analysis Tool.
 **Rationale:** Its scope — MEI support, Supabase backend, extensibility surface for external analysis tools — is architecturally distinct from the single-file Analysis Tool. A shared codebase is an open question, but the product boundary is clear.
 
-*Superseded 2026-10-16 by "No Corpus Builder: Strata Stays a One-File Tool".*
+*2026-10-16: marked superseded by "No Corpus Builder: Strata Stays a One-File Tool". That entry was withdrawn on 2026-10-31 ("The Corpus Builder Is Planned for Version 2"), so this one stands.*
 
 ---
 
@@ -227,7 +227,7 @@ By area, in the order the entries were made:
 **Rationale:** Scholars own their data. Technical collaborators can query the Supabase database directly. The extensibility surface is Supabase itself — external tools access it via API. No backend infrastructure cost for the tool's developer.
 **Counter-argument:** A local-only approach (SQLite, no accounts, no internet dependency) is more consistent with the Analysis Tool's no-backend philosophy and imposes zero onboarding friction. A local-first with optional sync model may be the right resolution. See vision.md Section 9.3 for full tradeoff analysis. **Resolve before Corpus Builder development begins.**
 
-*Superseded 2026-10-16 by "No Corpus Builder: Strata Stays a One-File Tool": no Corpus Builder will be built, so there is no backend to choose.*
+*2026-10-16: marked superseded by "No Corpus Builder: Strata Stays a One-File Tool". That entry was withdrawn on 2026-10-31, so this one stands, still provisional.*
 
 ---
 
@@ -3938,6 +3938,8 @@ change it is empty.
 
 ## No Corpus Builder: Strata Stays a One-File Tool (2026-10-16)
 
+*Withdrawn 2026-10-31 by "The Corpus Builder Is Planned for Version 2".*
+
 **Decision.** The Corpus Builder, the companion app planned in the early
 design sessions, won't be built. Strata stays what it is: a tool for
 analysing one recording at a time, with everything about that analysis in
@@ -4544,3 +4546,35 @@ split). Before, every child stayed with the left half, so phrases under the
 right half claimed a section that no longer covered them. Half a second is
 about the slack in pressing B by ear; a split deliberately inside a phrase
 still works, the phrase going with the larger part.
+
+---
+
+## Choosing What Copy to Layer Takes (2026-10-31)
+
+**Decision.** Copy to layer… has a **What to copy** checklist under its list
+of layers: label (with short label and link name), type, annotation, key
+area, colours, pattern, shape and line (end shapes, boundary types, line,
+drawing order), lyrics, notes and commentary. Lyrics, notes and commentary
+start unticked; everything else starts ticked. The choice is remembered in the
+browser, like the Paste menu's. A copy never takes the original's merge
+record, and its parent link is set by the layer it goes to.
+**Why.** Devin: what copies should be a choice, with lyrics and notes off by
+default, since a copied span shows them a second time at the same moment. The
+copy's parts follow the Paste menu's, so the two read alike.
+
+---
+
+## The Corpus Builder Is Planned for Version 2 (2026-10-31)
+
+**Decision.** "No Corpus Builder: Strata Stays a One-File Tool" (2026-10-16) is
+withdrawn. A Corpus Builder, for gathering many `.strata` analyses and asking
+questions across them, is planned for **version 2**. The beta stays a
+one-recording-at-a-time tool.
+- **The earlier Corpus Builder entries stand** as recorded: the backend choice
+  is still provisional, and whether it is a separate app or part of Strata is
+  open until the work is taken up.
+- **Nothing in the format changes.** `work` and `project` stay the fields a
+  corpus groups files by, which is why the schema review kept them.
+**Why.** Devin, 2026-10-31: "corpus builder is still planned but that's a v2
+and I'm in beta". An unmerged entry of 2026-10-17 on another branch said the
+same without a version; this one replaces it.

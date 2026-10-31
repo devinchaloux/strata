@@ -4,11 +4,12 @@
  * layer, and keeping parent links sound when spans go.
  */
 import { describe, it, expect } from 'vitest'
-import { groupPreview, placeSpan, layerAbove } from '@/lib/groupSpans'
+import { groupPreview, placeSpan, layerAbove, copyOfSpan, DEFAULT_COPY_FIELDS } from '@/lib/groupSpans'
 import { formSpans } from '@/lib/layers'
 import { useDocumentStore } from '@/store/documentStore'
 import { makeDoc, makeLayer, makeSpan } from './fixtures'
 import { resolveMerge } from '@/lib/mergeSpans'
+import { blockForSpan } from '@/widgets/written-analysis/commentary'
 
 const times = (spans: { startTime: number; endTime: number }[]) => spans.map((s) => [s.startTime, s.endTime])
 let n = 0
@@ -287,5 +288,41 @@ describe('splitting a parent', () => {
     const [left, middle, right] = spansOf('sections')
     expect([left.id, times([left, middle, right])]).toEqual([s, [[0, 8], [8, 16], [16, 32]]])
     expect(spansOf('phrases').map((p) => p.parentId)).toEqual([s, middle.id, right.id, right.id])
+  })
+})
+
+describe('what Copy to layer takes', () => {
+  const store = () => useDocumentStore.getState()
+  const full = makeSpan('v', 0, 16, {
+    label: 'Verse', type: 'verse', annotation: '+Kick', keyArea: 'vi', fillColor: '#ff0000', strokeColor: 'none',
+    fillPattern: 'dots', lineStyle: 'dashed', endCap: 'angled', lyrics: 'la la', notes: 'check the bass',
+  })
+
+  it('leaves lyrics and notes behind by default', () => {
+    const copy = copyOfSpan(full, 'c', DEFAULT_COPY_FIELDS)
+    expect(copy).toMatchObject({ label: 'Verse', type: 'verse', annotation: '+Kick', keyArea: 'vi', fillColor: '#ff0000', fillPattern: 'dots', lineStyle: 'dashed', endCap: 'angled' })
+    expect(copy.lyrics).toBeUndefined()
+    expect(copy.notes).toBeUndefined()
+  })
+
+  it('takes only what is ticked', () => {
+    expect(copyOfSpan(full, 'c', ['type', 'lyrics'])).toEqual({ id: 'c', startTime: 0, endTime: 16, type: 'verse', lyrics: 'la la' })
+  })
+
+  it('copies through the store with the chosen parts, and commentary when asked', () => {
+    store().loadDocument(makeDoc([makeLayer('phrases', [full], 0), makeLayer('sections', [], 1)]))
+    store().setSpanCommentary('v', 'The verse **returns**.')
+    const id = store().groupSpans(['v'], { layerId: 'sections' }, ['label', 'commentary'])!
+    const copy = formSpans(store().document!.layers.find((l) => l.id === 'sections')!)[0]
+    expect(copy).toMatchObject({ id, label: 'Verse' })
+    expect(copy.type).toBeUndefined()
+    expect(blockForSpan(store().document!, id)?.text).toBe('The verse **returns**.')
+  })
+
+  it('copies no commentary unless asked', () => {
+    store().loadDocument(makeDoc([makeLayer('phrases', [full], 0), makeLayer('sections', [], 1)]))
+    store().setSpanCommentary('v', 'The verse returns.')
+    const id = store().groupSpans(['v'], { layerId: 'sections' })!
+    expect(blockForSpan(store().document!, id)).toBeUndefined()
   })
 })
