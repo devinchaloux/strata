@@ -5,7 +5,7 @@
  * heading, bulleted and numbered lists, a quote, a link to a span or marker
  * (picked by name, written [[slug]]), and the symbol palette. Ctrl/⌘+B and
  * Ctrl/⌘+I format; Esc or Ctrl/⌘+Enter finishes. Every change writes through
- * at once (the same text the Inspector shows), and toolbar edits go in as
+ * at once (the Inspector shows a preview that opens here), and toolbar edits go in as
  * input events, so a session's typing and formatting undo together.
  * docs/decisions.md, "Commentary in Markdown, Edited in Place".
  */

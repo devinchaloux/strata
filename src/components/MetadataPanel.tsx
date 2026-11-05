@@ -318,14 +318,45 @@ function OverlapFields({ layer, span }: { layer: Layer; span: Span }) {
 }
 
 /**
- * Open a span's commentary in the editor above the diagram: show the
- * commentary if it was hidden, and hold the stack at a moment inside the span
- * so its level is there to edit (uiStore.commentaryEdit).
+ * Open commentary in the editor above the diagram: a span's ("span:<id>") or
+ * a stretch's ("range:<start>:<end>"). Shows the commentary if it was hidden,
+ * and holds the stack at `at` so what's being edited stays in view
+ * (uiStore.commentaryEdit).
  */
-function openCommentary(span: Span) {
+function openCommentary(key: string, at: number) {
   const { document: doc, updateLayer } = useDocumentStore.getState()
   for (const l of doc ? analysisLayers(doc) : []) if (!l.visibility) updateLayer(l.id, { visibility: true })
-  useUIStore.getState().setCommentaryEdit({ key: `span:${span.id}`, at: (span.startTime + span.endTime) / 2 })
+  useUIStore.getState().setCommentaryEdit({ key, at })
+}
+
+/**
+ * Commentary in the Inspector: the first lines, read-only, and a button (or a
+ * click on the text) that opens it in the editor above the diagram.
+ */
+function CommentaryPreview({ label, text, onOpen }: { label: string; text: string; onOpen: () => void }) {
+  return (
+    <div className="mb-3">
+      <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      {text.trim() && (
+        <button
+          type="button"
+          onClick={onOpen}
+          title="Edit above the diagram"
+          className="mb-1.5 w-full rounded border border-border bg-muted/40 px-2 py-1.5 text-left text-[13px] text-foreground hover:bg-accent"
+        >
+          <span className="line-clamp-3 whitespace-pre-line">{text}</span>
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={onOpen}
+        title="Write above the diagram, with formatting and links to other spans"
+        className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent"
+      >
+        {text.trim() ? 'Edit in the commentary editor' : 'Write commentary'}
+      </button>
+    </div>
+  )
 }
 
 /**
@@ -487,7 +518,6 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   const shownFill = useUIStore((s) => (s.colorblindSafe ? safeFill : sameColor))
   const setSpanLabels = useDocumentStore((s) => s.setSpanLabels)
   const regenerateSlug = useDocumentStore((s) => s.regenerateSlug)
-  const setSpanCommentary = useDocumentStore((s) => s.setSpanCommentary)
   const commentary = useDocumentStore((s) => (s.document ? blockForSpan(s.document, span.id)?.text ?? '' : ''))
   // What the closed Describe section holds, so you can tell without opening it.
   const written = [span.annotation && 'annotation', commentary && 'commentary', span.lyrics && 'lyrics'].filter(Boolean)
@@ -726,29 +756,14 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             {/* Written analysis: prose about this span, shown above the diagram
                 while it plays. Stored in the document's commentary layer, not on
                 the span, so it can outlive the span (see widgets/written-analysis). */}
-            <Field
+            {/* Commentary is written in one place, the editor above the
+                diagram (toolbar, link picker); here it's a preview that opens
+                there (docs/decisions.md, "One Commentary Editor"). */}
+            <CommentaryPreview
               label="Commentary"
-              symbols
-              tooltip="Shows above the diagram while this span plays. Markdown works: **bold**, *italic*, - lists, ## headings, > quotes. Link to a span or marker with [[its-slug|your words]]."
-            >
-              <textarea
-                className={`${inputClass} resize-y`}
-                rows={6}
-                value={commentary}
-                placeholder="Write about this passage."
-                onChange={(e) => setSpanCommentary(span.id, e.target.value)}
-              />
-            </Field>
-            {/* The commentary editor above the diagram has the toolbar and the
-                link picker; this opens this span's commentary there. */}
-            <button
-              type="button"
-              onClick={() => openCommentary(span)}
-              title="Edit this commentary above the diagram, with formatting and links"
-              className="-mt-2 mb-3 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-            >
-              Open in the commentary editor
-            </button>
+              text={commentary}
+              onOpen={() => openCommentary(`span:${span.id}`, (span.startTime + span.endTime) / 2)}
+            />
 
             <Field label="Lyrics">
               <textarea
@@ -1008,7 +1023,6 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
 
   // Commentary on the whole stretch the selection covers (a time-range block),
   // as opposed to the per-span commentary each span has on its own.
-  const setRangeCommentary = useDocumentStore((s) => s.setRangeCommentary)
   const rangeStart = Math.min(...spans.map((s) => s.startTime))
   const rangeEnd = Math.max(...spans.map((s) => s.endTime))
   const rangeText = doc ? (blockForRange(doc, rangeStart, rangeEnd)?.text ?? '') : ''
@@ -1039,19 +1053,11 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
           <PasteHint spanIds={ids} />
         </div>
 
-        <Field
+        <CommentaryPreview
           label={`Commentary, ${formatClock(rangeStart)}–${formatClock(rangeEnd)}`}
-          tooltip="About the whole stretch these spans cover. Shows above the diagram while it plays."
-          symbols
-        >
-          <textarea
-            className={`${inputClass} resize-y`}
-            rows={3}
-            value={rangeText}
-            placeholder="Write about this stretch."
-            onChange={(e) => setRangeCommentary(rangeStart, rangeEnd, e.target.value)}
-          />
-        </Field>
+          text={rangeText}
+          onOpen={() => openCommentary(`range:${rangeStart}:${rangeEnd}`, (rangeStart + rangeEnd) / 2)}
+        />
 
         <div className="mb-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
           Apply to all selected

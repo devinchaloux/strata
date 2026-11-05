@@ -41,10 +41,16 @@ lookup, re-anchoring, the text format, HTML export) and `CommentaryPanel.tsx`
   `[[slug|selected text]]`, or `[[slug|Label]]` with the label selected to
   type over), and the symbol palette. Ctrl/⌘+B
   and Ctrl/⌘+I format; Esc, Ctrl/⌘+Enter or **Done** finishes. Changes write
-  through at once to the same text the Inspector shows, and one session's
-  typing and formatting undo together. While a box is open the stack holds at
-  the moment editing began (`uiStore.commentaryEdit`), so playback can't swap
-  it away. Passage commentary is edited only here.
+  through at once, and one session's typing and formatting undo together.
+  While a box is open the stack holds at the moment editing began
+  (`uiStore.commentaryEdit`), so playback can't swap it away.
+- **The only editor.** This is the one place commentary is written. The
+  Inspector shows a span's commentary as a short preview, with **Write
+  commentary** or **Edit in the commentary editor**, which opens it here
+  (key `span:<id>`). With several spans selected, it offers the same for the
+  stretch they cover (key `range:<start>:<end>`): this panel then shows an
+  editor for that stretch at the top, which makes its commentary on the first
+  keystroke.
 - The moment is the playhead during playback. Paused with spans selected, it
   is where the selection begins: a selected rotation shows the rotation and
   what opens it; a selected phrase, the phrase and everything it sits inside.
