@@ -44,7 +44,7 @@ function ToolButton({ label, onPress, children }: { label: string; onPress: () =
 }
 
 /** Spans and markers that can be linked to (they have a slug), searchable by name. */
-function LinkPicker({ doc, onPick }: { doc: StrataDocument; onPick: (slug: string) => void }) {
+function LinkPicker({ doc, onPick }: { doc: StrataDocument; onPick: (slug: string, name: string) => void }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const targets = useMemo(() => {
@@ -84,7 +84,7 @@ function LinkPicker({ doc, onPick }: { doc: StrataDocument; onPick: (slug: strin
             if (e.key === 'Enter' && shown[0]) {
               e.preventDefault()
               setOpen(false)
-              onPick(shown[0].slug)
+              onPick(shown[0].slug, shown[0].name)
             }
           }}
           className="mb-1.5 w-full rounded border border-border bg-card px-1.5 py-1 text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
@@ -98,7 +98,7 @@ function LinkPicker({ doc, onPick }: { doc: StrataDocument; onPick: (slug: strin
                 aria-selected={false}
                 onClick={() => {
                   setOpen(false)
-                  onPick(t.slug)
+                  onPick(t.slug, t.name)
                 }}
                 className="flex w-full items-baseline justify-between gap-2 rounded px-1.5 py-1 text-left hover:bg-accent"
               >
@@ -159,10 +159,17 @@ export function CommentaryEditor({
         <ToolButton label="Numbered list" onPress={() => lines('number')}><ListOrdered size={13} aria-hidden /></ToolButton>
         <ToolButton label="Quote" onPress={() => lines('quote')}><Quote size={13} aria-hidden /></ToolButton>
         <span aria-hidden className="mx-0.5 h-4 w-px bg-border" />
+        {/* The link shows your selected words, or else the span's label,
+            selected so you can type your own over it: [[slug|words]]. */}
         <LinkPicker
           doc={doc}
-          onPick={(slug) =>
-            format((t, a, b) => replaceSelection(t, a, b, a === b ? `[[${slug}]]` : `[[${slug}|${t.slice(a, b)}]]`))
+          onPick={(slug, name) =>
+            format((t, a, b) => {
+              const words = a === b ? name.replace(/[\]|]/g, '') : t.slice(a, b)
+              const edit = replaceSelection(t, a, b, `[[${slug}|${words}]]`)
+              const from = a + `[[${slug}|`.length
+              return a === b ? { ...edit, start: from, end: from + words.length } : edit
+            })
           }
         />
         <ToolButton label="Insert a symbol" onPress={() => setSymbols((v) => !v)}>♭♯</ToolButton>

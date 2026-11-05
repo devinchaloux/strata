@@ -22,8 +22,11 @@ export function CommentaryMarkdown({
   exists,
   onFollow,
   exportTargets,
+  nameOf,
 }: {
   text: string
+  /** What a bare [[slug]] link shows: the name of what it points to. */
+  nameOf?: (slug: string) => string | undefined
   /** The reading view's larger type. */
   large?: boolean
   /** Whether a slug names a span or marker; a link to one that doesn't reads as plain text. */
@@ -75,7 +78,7 @@ export function CommentaryMarkdown({
   }
   return (
     <Markdown allowedElements={ALLOWED} unwrapDisallowed skipHtml components={components}>
-      {slugLinksToMarkdown(escapeAngles(text))}
+      {slugLinksToMarkdown(escapeAngles(text), nameOf)}
     </Markdown>
   )
 }

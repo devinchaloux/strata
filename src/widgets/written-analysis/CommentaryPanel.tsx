@@ -27,6 +27,7 @@ import {
   allBlocks,
   passagesAt,
   spanBySlug,
+  slugName,
   markerBySlug,
   stackAt,
   type StackRow,
@@ -88,6 +89,7 @@ function CommentaryText({ doc, text }: { doc: StrataDocument; text: string }) {
         text={text}
         large={reading}
         exists={(slug) => !!spanBySlug(doc, slug) || !!markerBySlug(doc, slug)}
+        nameOf={(slug) => slugName(doc, slug)}
         onFollow={follow}
       />
     </div>

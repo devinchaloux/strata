@@ -38,7 +38,8 @@ lookup, re-anchoring, the text format, HTML export) and `CommentaryPanel.tsx`
   double-clicking its text does the same. The text becomes a box with a
   Markdown toolbar: bold, italic, code, heading, bulleted and numbered lists,
   quote, a link picker (spans and markers with a slug, found by name, written
-  `[[slug]]`, or `[[slug|selected text]]`), and the symbol palette. Ctrl/⌘+B
+  `[[slug|selected text]]`, or `[[slug|Label]]` with the label selected to
+  type over), and the symbol palette. Ctrl/⌘+B
   and Ctrl/⌘+I format; Esc, Ctrl/⌘+Enter or **Done** finishes. Changes write
   through at once to the same text the Inspector shows, and one session's
   typing and formatting undo together. While a box is open the stack holds at
@@ -72,7 +73,7 @@ Strata's own links:
 | `- ` or `* `, `1. ` at a line's start | a bulleted or numbered list |
 | `> ` at a line's start | a quote |
 | `[text](https://…)` | a link, opening in a new tab |
-| `[[slug]]` | a link to the span or point marker with that slug, showing the slug |
+| `[[slug]]` | a link to the span or point marker with that slug, showing its label (the slug if it has none) |
 | `[[slug\|shown text]]` | the same link, showing the text |
 
 Commentary comes from shared files, so only those elements are drawn (plus

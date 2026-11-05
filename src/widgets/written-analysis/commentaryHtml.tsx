@@ -5,6 +5,11 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { CommentaryMarkdown } from './CommentaryMarkdown'
 
-export function commentaryMarkdownHtml(text: string, exists: (slug: string) => boolean, targets: Set<string>): string {
-  return renderToStaticMarkup(<CommentaryMarkdown text={text} exists={exists} exportTargets={targets} />)
+export function commentaryMarkdownHtml(
+  text: string,
+  exists: (slug: string) => boolean,
+  targets: Set<string>,
+  nameOf?: (slug: string) => string | undefined,
+): string {
+  return renderToStaticMarkup(<CommentaryMarkdown text={text} exists={exists} exportTargets={targets} nameOf={nameOf} />)
 }
