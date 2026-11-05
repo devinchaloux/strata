@@ -4583,7 +4583,7 @@ same without a version; this one replaces it.
 
 ## People Do Things in Strata's Text (2026-11-05)
 
-**Decision.** In the README, the docs and the app's own text, a person does
+**Decision.** In the README, the docs, and the app's own text, a person does
 what happens, usually "you". This extends "How the App's Text Reads".
 - **A person is the subject.** "Search for `verse` to find both", not "a
   search for `verse` finds both"; "see the Roadmap for what's planned", not
@@ -4596,9 +4596,13 @@ what happens, usually "you". This extends "How the App's Text Reads".
   ("Number the bars."), never a claim ("Times are exact.").
 - **No contrast taglines** ("Other tools do X. Strata does Y."). Say plainly
   what Strata does and who it is for.
+- **No tacked-on "and" clauses.** When a sentence keeps going with ", and …"
+  after its point is made, end it and start a new sentence.
+- **The Oxford comma, always:** "share, cite, and compare".
 - **Clear beats short.** A sentence with a person in it is worth the extra
   words.
-**Why.** Devin, reviewing the README: the text should be clear and direct and
-give the reader agency, "more humanistic", even when it is longer. Sentences
-where a feature or a search does the acting, and lines written to be quoted,
-read as marketing copy, and analysts discount text that reads that way.
+**Why.** Devin, reviewing the README: the text should be clear and direct. It
+should give the reader agency and read "more humanistic", even when it is
+longer. Sentences where a feature or a search does the acting read as
+marketing copy. So do lines written to be quoted, and sentences that run on
+with one more "and". Analysts discount text that reads that way.
