@@ -22,7 +22,7 @@ export const PASTE_FIELDS: { id: PasteField; name: string }[] = [
   { id: 'annotation', name: 'Annotation' },
   { id: 'commentary', name: 'Commentary' },
   { id: 'lyrics', name: 'Lyrics' },
-  { id: 'fill', name: 'Fill colour' },
+  { id: 'fill', name: 'Fill color' },
   { id: 'pattern', name: 'Pattern' },
   { id: 'shape', name: 'Shape and line' },
 ]

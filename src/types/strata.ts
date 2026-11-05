@@ -12,7 +12,7 @@
 // Primitives
 // ---------------------------------------------------------------------------
 
-export type AnalysisContext = 'recording' | 'performance'
+export type AnalysisContext = 'recording' | 'performance' // Studio recording, or live performance
 
 export type SourceType = 'youtube' | 'local'
 
