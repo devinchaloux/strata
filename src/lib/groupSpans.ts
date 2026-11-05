@@ -117,7 +117,7 @@ export const COPY_FIELDS: { id: CopyField; name: string }[] = [
   { id: 'type', name: 'Type' },
   { id: 'annotation', name: 'Annotation' },
   { id: 'keyArea', name: 'Key area' },
-  { id: 'colours', name: 'Colours' },
+  { id: 'colours', name: 'Colors' },
   { id: 'pattern', name: 'Pattern' },
   { id: 'shape', name: 'Shape and line' },
   { id: 'lyrics', name: 'Lyrics' },

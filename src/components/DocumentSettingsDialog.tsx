@@ -359,13 +359,13 @@ export function DocumentSettingsDialog({
           {!isNew && (
             <label className="mb-3 flex cursor-pointer items-center justify-between gap-3 rounded border border-border px-2 py-1.5">
               <span className="flex flex-col">
-                <span className="text-xs text-foreground">Colour-blind safe colours</span>
+                <span className="text-xs text-foreground">Color-blind safe colors</span>
                 <span className="text-[11px] text-muted-foreground">
-                  Shows the quick colours in a set that stays distinct for colour blindness. In this browser only;
-                  the file keeps its colours.
+                  Shows the quick colors in a set that stays distinct for color blindness. In this browser only;
+                  the file keeps its colors.
                 </span>
               </span>
-              <Switch checked={colorblindSafe} onCheckedChange={setColorblindSafe} aria-label="Colour-blind safe colours" />
+              <Switch checked={colorblindSafe} onCheckedChange={setColorblindSafe} aria-label="Color-blind safe colors" />
             </label>
           )}
 

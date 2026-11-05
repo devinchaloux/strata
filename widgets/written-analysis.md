@@ -5,8 +5,7 @@ Prose commentary tied to the timeline. It surfaces while its passage plays, and
 it can link to other spans by slug. Hierarchy lives in the writing, not the data
 (`docs/decisions.md`, "Widgets" and "Written Analysis Widget").
 
-**Data model reference:** `schema/strata-schema-reference.md`, "Written
-Analysis Layer Data".
+**Data model reference:** `schema/strata-schema-reference.md`, "Commentary".
 
 **Code:** `src/widgets/written-analysis/` — `commentary.ts` (pure logic: anchors,
 lookup, re-anchoring, the text format, HTML export) and `CommentaryPanel.tsx`

@@ -316,7 +316,7 @@ export function QuickEntryBar({
         <button
           type="button"
           onClick={more}
-          title={mode === 'type' ? 'Every type, with search' : mode === 'fill' ? 'Every colour' : 'Every shape setting, in the Inspector'}
+          title={mode === 'type' ? 'Every type, with search' : mode === 'fill' ? 'Every color' : 'Every shape setting, in the Inspector'}
           className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           More… <kbd className="font-sans text-[11px]">/</kbd>

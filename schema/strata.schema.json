@@ -52,7 +52,7 @@
     "context": {
       "type": ["string", "null"],
       "enum": ["recording", "performance", null],
-      "description": "Nature of the artifact. 'recording' = studio recording; 'performance' = live performance of a composed work. Null if unspecified. 'performance' shows the composer field in the app."
+      "description": "Nature of the artifact. 'recording' = studio recording; 'performance' = live performance. Null if unspecified. 'performance' shows the composer field in the app."
     },
     "duration": {
       "type": "number",
@@ -282,7 +282,7 @@
         "color": {
           "type": ["string", "null"],
           "pattern": "^#[0-9A-Fa-f]{6}$",
-          "description": "Optional default colour for items of this type. The app keeps it but does not draw with it yet."
+          "description": "Optional default color for items of this type. The app keeps it but does not draw with it yet."
         },
         "kind": {
           "type": "string",
@@ -364,12 +364,12 @@
         "fillColorDefault": {
           "type": "string",
           "pattern": "^(#[0-9A-Fa-f]{6}|none)$",
-          "description": "Fill for spans in this layer that have no fillColor of their own: a hex colour, or 'none' for no fill."
+          "description": "Fill for spans in this layer that have no fillColor of their own: a hex color, or 'none' for no fill."
         },
         "strokeColorDefault": {
           "type": "string",
           "pattern": "^(#[0-9A-Fa-f]{6}|none)$",
-          "description": "Outline for spans in this layer that have no strokeColor of their own: a hex colour, or 'none' for no outline."
+          "description": "Outline for spans in this layer that have no strokeColor of their own: a hex color, or 'none' for no outline."
         },
         "displayOrder": {
           "type": "integer",
@@ -392,7 +392,7 @@
         },
         "fillGaps": {
           "type": "boolean",
-          "description": "Editing behaviour: whether a boundary placed in an empty stretch of this layer fills it on both sides (true, the default when absent) or starts a span there and leaves the stretch before it empty (false)."
+          "description": "Editing behavior: whether a boundary placed in an empty stretch of this layer fills it on both sides (true, the default when absent) or starts a span there and leaves the stretch before it empty (false)."
         },
         "library": {
           "type": ["string", "null"],
@@ -521,12 +521,12 @@
         "fillColor": {
           "type": ["string", "null"],
           "pattern": "^(#[0-9A-Fa-f]{6}|none)$",
-          "description": "This span's fill: a hex colour, or 'none' for no fill. Null = the layer's fillColorDefault."
+          "description": "This span's fill: a hex color, or 'none' for no fill. Null = the layer's fillColorDefault."
         },
         "strokeColor": {
           "type": ["string", "null"],
           "pattern": "^(#[0-9A-Fa-f]{6}|none)$",
-          "description": "This span's outline: a hex colour, or 'none' for no outline. Null = the layer's strokeColorDefault."
+          "description": "This span's outline: a hex color, or 'none' for no outline. Null = the layer's strokeColorDefault."
         },
         "annotation": {
           "type": ["string", "null"],
@@ -567,7 +567,7 @@
         "startCap": {
           "type": "string",
           "enum": ["rounded", "square", "angled", "open", "elision"],
-          "description": "How the start of the bracket is drawn — the analyst's drawing choice, separate from startBoundaryType (the analytical claim). 'rounded' = vertical tail with a rounded corner; 'square' = sharp corner; 'angled' = diagonal tail; 'open' = no tail; 'elision' = a tail reaching past the boundary so it overlaps the neighbour. Absent = follows startBoundaryType ('elided' → 'elision', otherwise 'rounded')."
+          "description": "How the start of the bracket is drawn — the analyst's drawing choice, separate from startBoundaryType (the analytical claim). 'rounded' = vertical tail with a rounded corner; 'square' = sharp corner; 'angled' = diagonal tail; 'open' = no tail; 'elision' = a tail reaching past the boundary so it overlaps the neighbor. Absent = follows startBoundaryType ('elided' → 'elision', otherwise 'rounded')."
         },
         "endCap": {
           "type": "string",
@@ -582,7 +582,7 @@
         "fillPattern": {
           "type": "string",
           "enum": ["hatch", "cross", "dots", "lines"],
-          "description": "A faint texture drawn over the fill, in a darker shade of the fill colour: diagonal hatching, cross-hatching, dots or horizontal lines. A second cue besides colour (for colour-blind readers, or print in grey). Visual only; carries no analytical claim. Absent = no pattern."
+          "description": "A faint texture drawn over the fill, in a darker shade of the fill color: diagonal hatching, cross-hatching, dots or horizontal lines. A second cue besides color (for color-blind readers, or print in grey). Visual only; carries no analytical claim. Absent = no pattern."
         },
         "endOnTop": {
           "type": "boolean",

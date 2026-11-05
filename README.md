@@ -1,140 +1,74 @@
 # Strata
 
-**Existing music analysis tools produce display artifacts. Strata produces queryable scholarly data.**
+Strata is a free, open-source web app for marking points and spans of time in a recording and saving them as structured, queryable data. Music theorists, musicologists, teachers, and students use it to build analyses they can share, cite, and compare across a corpus.
 
-Strata is a free, open-source web app for analysing the form of a recording: you
-mark sections while it plays, stack several layers of form, and save the whole
-analysis as one portable file. It's for music theorists, teachers, students and
-scholars of popular music who want their analyses to be data they can share,
-cite and query.
+When you keep your analyses as data, you can ask questions across many recordings at once. For example: across a hundred recordings, how long does the opening section last, and what kind of section usually follows it?
 
-**Open it at [strata.devinchaloux.com](https://strata.devinchaloux.com).** It runs
-in the browser on a laptop or desktop; there's nothing to install and no account.
+**Open it at [strata.devinchaloux.com](https://strata.devinchaloux.com).** Strata runs in your browser on a laptop or desktop. You don't need to install anything and do not need an account.
 
-Strata is in **beta**: it works end to end, the file format may still change, and
-files from older versions are upgraded when opened. Save often.
+> **Strata is in beta.** You can use it from start to finish, but the file format may still change. When you open a file made by an older version, Strata upgrades it. Save often.
 
-## Try an example
+## Points, spans, and widgets
 
-On Strata's first screen, under **Or explore an example**, open **Alive**
-(Krewella). It opens in the reading view; **Edit a copy** lets you change it. The
-example analyses are in [`public/demos/`](public/demos/).
+You build an analysis in Strata from **points** (a cadence at 1:04, a key change, a new instrument entering) and **spans** (a verse from 0:30 to 1:00, a four-bar phrase, a development section). You see and work with them through **widgets**. You add the widgets each analysis needs.
 
-## Your first analysis
+Strata has two widgets today. Start with the **form diagram**: you draw spans as brackets and arrange them in layers. You can give each layer its own focus, its own framework, or its own vocabulary. You keep all of them in the same analysis. You don't have to fit every observation into one hierarchy. If you hear a passage one way in one framework and another way in a second, you can record both readings side by side.
 
-1. Click **New analysis**, name the track, and link a YouTube video or an audio
-   file on your computer.
-2. Press **Space** to play, and **B** at each boundary you hear. Each boundary
-   splits the timeline into **spans**: a span is a stretch of the recording with a
-   label, such as "Verse 1" or "Drop".
-3. Click a span to give it a **type** and a label in the Inspector, the panel on
-   the right. A type is the span's analytical category from a shared vocabulary
-   (for example `chorus`); the label is free text. Types are what make analyses
-   comparable across files.
-4. Add a **layer** for another level of form (large-scale form, sections, phrases)
-   or another framework: **+** above the layer names. Each layer is one reading of
-   the timeline, and layers may disagree.
-5. Write **Commentary** on a span; it shows above the diagram while that passage
-   plays.
-6. Save. In Chrome or Edge, **Save As** picks a file and **Save** then writes back
-   to it. Other browsers download a copy of the `.strata` file each time.
+With **commentary**, you write about a passage. Strata shows your writing while that passage plays.
+
+You'll be able to add more widgets later. An energy contour, for example, will let you trace how intensity rises and falls across the same stretch of music. You'll add it only to the analyses that need it. See the [Roadmap](docs/roadmap.md) for what's planned.
+
+## What you can do with the data
+
+Because each analysis is data, you can ask questions across many of them:
+
+- You can call a section whatever you like ("Verse 1", "First verse") and give it a type from the vocabulary (`verse`). When you search for `verse`, you find both.
+- You can measure where things happen as well as what they are, because Strata records every point and span in seconds from the start of the music.
+- You can mark an expected event as absent, such as an evaded cadence. Then you can search for absences too.
+- You can read a folder of `.strata` files with a short script or import them into a spreadsheet. In version 2, the Corpus Builder will let you gather and query analyses inside Strata.
+
+## See one first
+
+On Strata's first screen, under **Or explore an example**, open **Alive** by Krewella. Strata opens it in the reading view, the way your readers will see it. Click **Edit a copy** to make your own version.
+
+## What you can do
+
+- **Mark spans and points as it plays.** Press Space to play, B at each boundary you hear, and M at each moment you want to mark. Or set the tempo, let Strata lay out a span every four or eight bars, and then fix the exceptions.
+- **Link the levels.** Group phrases into a section on the layer above, or copy a span to another layer. Once you've linked spans, you move their shared boundaries together in one go.
+- **Name what each span is.** Give it a free-text label ("Verse 1") and a type from the vocabulary (verse, exposition, presentation).
+- **Use the vocabulary of your field.** Choose from built-in libraries for general terms, pop and rock, song form, EDM, common practice, jazz, and form letters. Add packs for Caplin's formal functions, Sonata Theory, and more. Add your own terms and share them as packs.
+- **Number the bars.** Tap along to the beat or type the tempo, then check it against a click track that plays over the recording. Stop the grid for a free passage and pick it up again after.
+- **Write about the music.** Attach commentary to a span to read it while that passage plays. Link to any span or point by name.
+- **Share and publish.** Share a link that opens your analysis in the reading view, embed it in a web page, or export the diagram as an SVG or PNG figure. Export the commentary as a web page or Markdown.
 
 Press **?** in the app for a short guide and every keyboard shortcut.
 
-## Common tasks
+## Your first analysis
 
-- **Mark events.** **M** places a point marker, a single moment such as a
-  cadence, at the playhead.
-- **Choose types.** Built-in libraries (General, Pop/Rock, Song form, EDM, Common
-  practice, Jazz, form letters) and optional packs (Caplin, Sonata Theory,
-  Schenkerian and more), searchable from one picker. Add your own types, and
-  import or share vocabulary packs (`.vocab.json` files). The built-in list is a
-  draft under review.
-- **Number bars.** Tap **T** along with the beat, or type a tempo in the **Grid**
-  menu, to number bars and snap boundaries to beats, with free passages where
-  there's no beat.
-- **Write about a passage.** Commentary can link to any span or point marker by
-  its **slug**, a short name made from its label: `[[drop]]`. Spans can carry
-  lyrics too.
-- **Read or teach from it.** **Reading view** lays the analysis out with editing
-  off.
-- **Share it.** Put the `.strata` file online (Dropbox, OneDrive, GitHub or your
-  own site) and use **Share…** to make a link that opens it in Strata's reading
-  view.
-- **Embed it in a web page.** Strata has an embed mode for an iframe that can
-  focus on one span:
-  `https://strata.devinchaloux.com/?embed&src=<file address>&focus=<slug>`.
-  See [`docs/decisions.md`](docs/decisions.md), "Embedding an Analysis".
-- **Start from a link.** Another tool can open a new analysis with its setup
-  filled in: `https://strata.devinchaloux.com/?new&title=…&artist=…&video=…&bpm=…`.
-  See [`docs/decisions.md`](docs/decisions.md), "Starting an Analysis from a
-  Link".
-- **Export.** The diagram as an SVG or PNG figure; the commentary as one HTML
-  page or Markdown.
+For a step-by-step walkthrough, read [Getting started](docs/getting-started.md). In short:
 
-## Words used in these docs
+1. Click **New analysis**, name the track, and link a YouTube video or an audio file on your computer.
+2. Press Space to play and B at each boundary you hear.
+3. Click a span. In the Inspector, the panel on the right, give it a label and a type.
+4. Click **+** to add a layer for another level of form.
+5. Save. In Chrome or Edge, click **Save As** to choose a file, then **Save** to write back to it. In other browsers, click **Download** to save a new copy each time.
 
-| Term | Meaning | Example |
-|---|---|---|
-| **span** | a stretch of the recording with a label and a type | "Drop", 1:45–2:15 |
-| **layer** | one reading of the timeline, made of spans that don't overlap | "Sections" |
-| **type** | a span's or marker's category from the vocabulary, used for queries | `chorus` |
-| **point marker** | a single moment rather than a stretch | a perfect authentic cadence at 1:04 |
-| **slug** | the short name links and embeds use for a span or marker | `drop-2` |
-| **widget** | a kind of layer; today the form diagram and the written analysis | `form-diagram` |
-| **`.strata` file** | the whole analysis as one JSON file | `alive.strata` |
+## Your analysis is one file
 
-The file format is documented field by field in
-[`schema/strata-schema-reference.md`](schema/strata-schema-reference.md).
+You save each analysis as a single `.strata` file. It holds the link to the recording; every layer, span, and point; the beat grid; your commentary; and the vocabulary you used. Strata stores nothing on a server, so the file is yours.
 
-## The design bets
+To learn the format, read [The Strata file, explained](schema/strata-schema-reference.md). For its structure as JSON, read [How the JSON is structured](docs/json-structure.md).
 
-- **Analysis is data.** Formal annotations are structured, queryable records — not
-  just display artifacts.
-- **Overlapping frameworks are valid.** Several analytical frameworks can apply
-  to the same passage at once, each on its own layer.
-- **The file format is the invention.** The editor UI is downstream of getting the
-  schema right.
+## Status and plans
 
-EDM scholarship is the origin and stress test for the architecture; the broader
-music-theory community is the intended audience.
+Strata is in beta. See the [Roadmap](docs/roadmap.md) for what comes next, including the energy contour and the Corpus Builder in version 2. The [FAQ](docs/faq.md) answers the questions analysts ask most.
 
-## For contributors
+Found a problem, or have an idea? Click **Report an issue** in the app, or open an issue on GitHub.
 
-Strata needs Node 24 (what CI uses).
+## For developers
 
-```bash
-npm ci           # install exactly what package-lock.json pins
-npm run dev      # start the dev server at http://localhost:5173
-npm run lint     # ESLint
-npm run test:run # the Vitest suite, once
-npm run build    # typecheck + production build
-```
-
-CI runs lint, the test suite and the build on every push and pull request, and
-fails on any comment marked `TEMPORARY`. Before pushing, run
-`npm run publish-check`: this repository is public, and the check stops new
-content files, secrets and personal data from being published by accident.
-[`CLAUDE.md`](CLAUDE.md) explains the workflow; it doubles as the instructions
-for Claude Code.
-
-**Tech stack:** React 18 · Vite · TypeScript · Zustand + zundo (undo/redo) ·
-Tailwind CSS · Radix · lucide-react · dnd-kit · Vitest · Ajv (tests only) · File
-System Access API.
-
-### Documentation
-
-- [`schema/`](schema) — the `.strata` JSON Schema, a plain-language field
-  reference, and an example file.
-- [`widgets/`](widgets) — the widget contract and each widget's spec.
-- [`docs/decisions.md`](docs/decisions.md) — every design decision and its reason.
-  It's binding: when another doc disagrees, the decisions log wins.
-- [`docs/vision.md`](docs/vision.md) — the project's vision, written before the
-  code.
+Strata is a React, TypeScript, and Vite app. To run it locally, contribute a change, or embed Strata in a page, read [For developers](docs/developers.md).
 
 ## License
 
-The code is MIT. See [`LICENSE`](LICENSE).
-
-The example analyses in [`public/demos/`](public/demos/) are
-[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); see that folder's README.
+You can use the code under the [MIT License](LICENSE). You can use the example analyses in [`public/demos/`](public/demos/) under CC BY 4.0.

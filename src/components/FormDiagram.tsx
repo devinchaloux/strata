@@ -518,7 +518,7 @@ function WidgetTopBar({
 const QUICK_PICK: [QuickEntry, string, string][] = [
   ['type', 'Types', 'The layer’s span types, such as Verse or Chorus.'],
   ['shape', 'Shapes', 'How each end is drawn, and the line.'],
-  ['fill', 'Fills', 'A fill colour.'],
+  ['fill', 'Fills', 'A fill color.'],
   ['off', 'Off', 'Nothing pops up.'],
 ]
 

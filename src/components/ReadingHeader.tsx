@@ -51,7 +51,7 @@ export function ReadingHeader() {
         {hasCommentary && <Chip on={show.commentary} label="Commentary" onClick={() => setShow('commentary', !show.commentary)} />}
         <Chip on={show.diagram} label="Form diagram" onClick={() => setShow('diagram', !show.diagram)} />
         {hasLyrics && <Chip on={showLyrics} label="Lyrics" onClick={() => setShowLyrics(!showLyrics)} />}
-        <Chip on={colorblindSafe} label="Colour-blind safe" onClick={() => setColorblindSafe(!colorblindSafe)} />
+        <Chip on={colorblindSafe} label="Color-blind safe" onClick={() => setColorblindSafe(!colorblindSafe)} />
       </div>
       <button
         type="button"
