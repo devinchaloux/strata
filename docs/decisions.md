@@ -4682,15 +4682,31 @@ pinned while you scroll through its section. A closed section shows a short
 summary: the times and bars, what's written, or the fill. Strata remembers
 in your browser which sections you keep open; Timing and Describe start open. Copy and
 Paste join the actions at the foot, which stay in reach. More… in Quick pick
-opens Shape & color and scrolls to it. This replaces the header and three
-tabs of 2026-10-01.
+opens Shape & color and scrolls to it. Double-click a header to open that
+section alone: Strata closes the others and scrolls back to the top, so the
+section sits right under the type. The label and type keep their box sizes
+with less space around them. This replaces the header and three tabs of
+2026-10-01.
 **Why.** Devin: on a smaller screen the tabs' contents scrolled in the bottom
 third of the panel, under a fixed header that took the rest. One column puts
 all the height to use. He found the tabs easier to tell apart than the
 earlier plain headings, so the section headers keep that weight.
+Devin also asked about dragging sections into a new order, so the one you're
+working on comes first. Double-click covers that in one gesture. Dragging in
+a narrow panel with pinned headers is fiddly, and it would be a second way to
+arrange the same panel.
 
 **Decision.** The reading view shows the diagram's zoom controls (−, +, Fit,
 and 100%) in a slim bar above the layers. An embed still has none: the page
 that embeds it sets its view.
 **Why.** Devin: a reader needs to look closely at a passage and then see the
 whole track again.
+
+**Decision.** Explanations leave the panels they crowded. The Inspector's
+Length hint, the Quick pick option descriptions, and the Metronome's and Grid's
+descriptions become tooltips. Quick pick's explanation and the Metronome's
+how-to (matching the grid by ear, setting the exact tempo) move to Help (?),
+under Describe and Grid. A popover keeps a line only when you can't act
+without it, such as "No grid yet".
+**Why.** Devin: some recent additions were too wordy. Instructions that matter
+belong in the help menu, not in the way of the controls.

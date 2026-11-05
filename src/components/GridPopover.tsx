@@ -130,8 +130,7 @@ function GridSetup() {
 
       <p className="mt-4 font-medium text-foreground">Or tap it in</p>
       <p className="mt-0.5 leading-relaxed text-muted-foreground">
-        While it plays, tap <kbd className="rounded border border-border px-1">T</kbd> on each beat, starting on a
-        downbeat. After four taps the grid appears, and every further tap fine-tunes the tempo.
+        While it plays, tap <kbd className="rounded border border-border px-1">T</kbd> on each beat from a downbeat.
       </p>
     </>
   )
@@ -169,9 +168,6 @@ export function GridPopover() {
       </PopoverTrigger>
       <PopoverContent align="start" className="w-104 p-3 text-xs">
         <p className="text-[13px] font-semibold text-foreground">Beat grid</p>
-        <p className="mt-0.5 leading-relaxed text-muted-foreground">
-          Bar and beat lines behind the diagram, so boundaries can line up with the music.
-        </p>
 
         {segs.length === 0 ? (
           <GridSetup />

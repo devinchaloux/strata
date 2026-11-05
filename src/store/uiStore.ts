@@ -229,6 +229,8 @@ export interface UIState {
   toggleInspectorSection: (section: InspectorSection) => void
   /** Open a section and scroll it into view. */
   openInspectorSection: (section: InspectorSection) => void
+  /** Open this section alone, closing the others. */
+  soloInspectorSection: (section: InspectorSection) => void
   setReadingView: (on: boolean) => void
   setReadingShow: (part: 'commentary' | 'diagram', on: boolean) => void
   setShowLyrics: (show: boolean) => void
@@ -482,6 +484,12 @@ const useUIStore = create<UIState>()((set) => ({
   toggleInspectorSection: (section) =>
     set((s) => {
       const inspectorOpen = { ...s.inspectorOpen, [section]: !s.inspectorOpen[section] }
+      writeInspectorOpen(inspectorOpen)
+      return { inspectorOpen }
+    }),
+  soloInspectorSection: (section) =>
+    set(() => {
+      const inspectorOpen = Object.fromEntries(INSPECTOR_SECTIONS.map((id) => [id, id === section])) as Record<InspectorSection, boolean>
       writeInspectorOpen(inspectorOpen)
       return { inspectorOpen }
     }),

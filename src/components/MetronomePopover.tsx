@@ -63,11 +63,8 @@ export function MetronomePopover({ disabled }: { disabled: boolean }) {
       <PopoverContent align="end" side="top" className="w-96 p-3 text-xs">
         <div className="flex items-center justify-between">
           <p className="text-[13px] font-semibold text-foreground">Metronome</p>
-          <Switch checked={clickOn} onCheckedChange={setClickOn} aria-label="Metronome on" />
+          <Switch checked={clickOn} onCheckedChange={setClickOn} aria-label="Metronome on" title="Click every beat of the grid while it plays, louder on the downbeat" />
         </div>
-        <p className="mt-0.5 leading-relaxed text-muted-foreground">
-          Clicks on every beat of the grid while it plays, louder on the downbeat.
-        </p>
         <label className="mt-2 flex items-center gap-2 text-muted-foreground">
           Volume
           <input
@@ -84,16 +81,12 @@ export function MetronomePopover({ disabled }: { disabled: boolean }) {
 
         {!row ? (
           <p className="mt-3 leading-relaxed text-muted-foreground">
-            There’s no grid to click yet. Set one up from the Grid menu above the diagram, or tap{' '}
-            <kbd className={kbd}>T</kbd> on the beat while it plays.
+            No grid yet. Set one in the Grid menu, or tap <kbd className={kbd}>T</kbd> on the beat.
           </p>
         ) : (
           <>
+            {/* How to match the grid by ear is in Help (?). */}
             <p className="mt-3 font-medium text-foreground">Match the grid to the track</p>
-            <p className="leading-relaxed text-muted-foreground">
-              Line up the first beats, then listen further in. If the click pulls ahead, lower the tempo; if it lags,
-              raise it.
-            </p>
 
             <div className="mt-2 grid grid-cols-[auto_1fr_auto] items-center gap-x-2 gap-y-2">
               <span className="text-muted-foreground">Tempo</span>
@@ -121,10 +114,11 @@ export function MetronomePopover({ disabled }: { disabled: boolean }) {
               <span><kbd className={kbd}>D</kbd></span>
             </div>
 
-            <p className="mt-2 leading-relaxed text-muted-foreground" role="status">
-              {status ??
-                'For the exact tempo, pause on a downbeat far into the track and press Downbeat is here. Shift with a key takes a bigger step.'}
-            </p>
+            {status && (
+              <p className="mt-2 leading-relaxed text-muted-foreground" role="status">
+                {status}
+              </p>
+            )}
           </>
         )}
       </PopoverContent>

@@ -279,8 +279,9 @@ function OverlapFields({ layer, span }: { layer: Layer; span: Span }) {
 
 /**
  * One of the span Inspector's sections: a header you click to open or close
- * it, pinned to the top while you scroll through it, with a short summary of
- * what's inside while it's closed. Which are open is remembered in the
+ * it (double-click: this one alone, closing the rest, so what you're working
+ * on sits right under the type), pinned to the top while you scroll through
+ * it, with a short summary of what's inside while it's closed. Which are open is remembered in the
  * browser (uiStore.inspectorOpen); More… from Quick pick opens one and
  * scrolls it into view (inspectorReveal).
  */
@@ -297,6 +298,7 @@ function InspectorBlock({
 }) {
   const open = useUIStore((s) => s.inspectorOpen[id])
   const toggle = useUIStore((s) => s.toggleInspectorSection)
+  const solo = useUIStore((s) => s.soloInspectorSection)
   const reveal = useUIStore((s) => s.inspectorReveal)
   const ref = useRef<HTMLElement>(null)
   const bodyId = `inspector-${id}`
@@ -309,8 +311,14 @@ function InspectorBlock({
         type="button"
         aria-expanded={open}
         aria-controls={bodyId}
-        onClick={() => toggle(id)}
-        className="sticky top-0 z-10 flex w-full items-center gap-2 bg-muted px-3 py-2 text-left text-[13px] font-semibold text-foreground transition-colors hover:bg-accent"
+        onClick={(e) => e.detail < 2 && toggle(id)}
+        onDoubleClick={() => {
+          solo(id)
+          // Back to the top of the panel, so this section sits under the type.
+          requestAnimationFrame(() => ref.current?.parentElement?.scrollTo({ top: 0 }))
+        }}
+        title="Click to open or close. Double-click to open this one alone."
+        className="sticky top-0 z-10 flex w-full select-none items-center gap-2 bg-muted px-3 py-2 text-left text-[13px] font-semibold text-foreground transition-colors hover:bg-accent"
       >
         <ChevronRight aria-hidden size={14} className={`shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-90' : ''}`} />
         {title}
@@ -516,7 +524,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           opened or closed on its own (InspectorBlock). Only the actions stay
           fixed, so a short screen scrolls the whole panel rather than a sliver. */}
       <div className="min-h-0 flex-1 overflow-y-auto">
-      <div className="flex flex-col gap-2 px-3 pb-3 pt-3">
+      <div className="flex flex-col gap-1.5 px-3 pb-2.5 pt-2">
         {/* Where this span is, and stepping to its neighbours. */}
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>
@@ -543,7 +551,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         </div>
 
         {/* Label, as the panel's title */}
-        <Field label="Label" symbols>
+        <Field label="Label" symbols compact>
           <input
             data-inspector-label
             className={`${inputClass} text-lg! font-semibold`}
@@ -555,7 +563,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
 
         {/* Type — the label follows it while the label is empty or still the
             one the old type gave (lib/vocabulary.ts, labelFollowsType). */}
-        <Field label="Type">
+        <Field label="Type" compact>
           <TypePicker
             kind="span"
             layerId={layer.id}
@@ -601,8 +609,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         {/* A phrase a bar long or short: change it by whole bars, and every
             later boundary in the layer moves with it (resizeSpanByBars). */}
         {barsLong !== null && (
-          <div className="flex flex-col gap-0.5">
-          <div className="flex items-center gap-1.5 text-xs">
+          <div className="flex items-center gap-1.5 text-xs" title="Type a length or step it by a bar. Later spans move with it.">
             <span className="text-muted-foreground">Length</span>
             <button
               aria-label="One bar shorter"
@@ -636,8 +643,6 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             >
               +
             </button>
-          </div>
-          <p className="text-[11px] text-muted-foreground">Type a length or step it by a bar. Later spans move with it.</p>
           </div>
         )}
 
@@ -777,7 +782,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             )}
         </InspectorBlock>
 
-        <InspectorBlock id="more" title="More" summary="Short label, slug, boundaries, notes">
+        <InspectorBlock id="more" title="More" summary="Slug, boundaries, notes">
             {/* Short label — shown in place of the full label when the diagram is
                 too zoomed out to fit it; never abbreviated further by the app. */}
             <Field label="Short label" tooltip="Shown when the full label doesn't fit." symbols>
