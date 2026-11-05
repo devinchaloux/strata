@@ -279,7 +279,7 @@ export function CommentaryPanel() {
   // A string key of what the stack holds now: equal strings mean no re-render.
   const momentKey = useUIStore((s) => {
     if (!doc) return ''
-    const t = heldMoment(doc, s.commentaryEdit) ?? momentOf(doc, s.currentTime, s.selectedSpanIds, s.playbackState === 'playing')
+    const t = (s.readingView ? null : heldMoment(doc, s.commentaryEdit)) ?? momentOf(doc, s.currentTime, s.selectedSpanIds, s.playbackState === 'playing')
     return [...passagesAt(doc, t).map((b) => b.id), ...stackAt(doc, t).map((r) => r.span.id)].join(',')
   })
   if (!doc) return null
@@ -300,7 +300,7 @@ export function CommentaryPanel() {
   void momentKey
   const ui = useUIStore.getState()
   // While commentary is being edited, the stack holds at the moment editing began.
-  const t = heldMoment(doc, ui.commentaryEdit) ?? momentOf(doc, ui.currentTime, ui.selectedSpanIds, ui.playbackState === 'playing')
+  const t = (ui.readingView ? null : heldMoment(doc, ui.commentaryEdit)) ?? momentOf(doc, ui.currentTime, ui.selectedSpanIds, ui.playbackState === 'playing')
   // A stretch being written about from the Inspector has its own editor, so
   // its block (once there is one) isn't listed a second time.
   const range = reading ? null : editedRange(editKey)

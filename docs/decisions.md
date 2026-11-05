@@ -4757,3 +4757,10 @@ top, and the stretch's commentary is made on the first keystroke.
 link picker, and two editors for the same text was one too many. Before, the
 Inspector's box was a second, plainer editor, so writers missed the
 formatting and the links.
+
+**Decision.** Switching to or from the reading view closes any open
+commentary editor, and the reading view never holds the commentary at one
+moment.
+**Why.** Devin: commentary stopped following playback in the reading view.
+An editor left open (easy now that the Inspector opens one) held the stack at
+the moment editing began, and switching views didn't close it.
