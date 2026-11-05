@@ -9,8 +9,10 @@
  * boundary placement — slice 3).
  */
 
+import { useEffect, useRef } from 'react'
+import { ChevronRight } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
-import { useUIStore, type InspectorTab } from '@/store/uiStore'
+import { useUIStore, type InspectorSection } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
 import { GroupPopover, CopyToLayerPopover } from '@/components/GroupPopover'
 import { PatternPicker } from '@/components/PatternPicker'
@@ -19,7 +21,7 @@ import { safeFill } from '@/lib/palette'
 import { formatTime, formatClock } from '@/lib/youtube'
 import { TimeInput } from './TimeInput'
 import { TypePicker } from './TypePicker'
-import { labelFollowsType } from '@/lib/vocabulary'
+import { labelFollowsType, letterFamily, familyLabels } from '@/lib/vocabulary'
 import { blockForSpan, blockForRange } from '@/widgets/written-analysis/commentary'
 import { capFromBoundaryType } from '@/lib/formShape'
 import { slugify } from '@/lib/slug'
@@ -275,12 +277,61 @@ function OverlapFields({ layer, span }: { layer: Layer; span: Span }) {
   )
 }
 
-// The Inspector's tabs (remembered across spans in uiStore.inspectorTab).
-const INSPECTOR_TABS: [InspectorTab, string][] = [
-  ['describe', 'Describe'],
-  ['shape', 'Shape & color'],
-  ['more', 'More'],
-]
+/**
+ * One of the span Inspector's sections: a header you click to open or close
+ * it (double-click: this one alone, closing the rest, so what you're working
+ * on sits right under the type), pinned to the top while you scroll through
+ * it, with a short summary of what's inside while it's closed. Which are open is remembered in the
+ * browser (uiStore.inspectorOpen); More… from Quick pick opens one and
+ * scrolls it into view (inspectorReveal).
+ */
+function InspectorBlock({
+  id,
+  title,
+  summary,
+  children,
+}: {
+  id: InspectorSection
+  title: string
+  summary?: React.ReactNode
+  children: React.ReactNode
+}) {
+  const open = useUIStore((s) => s.inspectorOpen[id])
+  const toggle = useUIStore((s) => s.toggleInspectorSection)
+  const solo = useUIStore((s) => s.soloInspectorSection)
+  const reveal = useUIStore((s) => s.inspectorReveal)
+  const ref = useRef<HTMLElement>(null)
+  const bodyId = `inspector-${id}`
+  useEffect(() => {
+    if (reveal?.section === id) ref.current?.scrollIntoView({ block: 'start' })
+  }, [reveal, id])
+  return (
+    <section ref={ref} className="border-t" style={{ borderColor: 'var(--hairline)' }}>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={bodyId}
+        onClick={(e) => e.detail < 2 && toggle(id)}
+        onDoubleClick={() => {
+          solo(id)
+          // Back to the top of the panel, so this section sits under the type.
+          requestAnimationFrame(() => ref.current?.parentElement?.scrollTo({ top: 0 }))
+        }}
+        title="Click to open or close. Double-click to open this one alone."
+        className="sticky top-0 z-10 flex w-full select-none items-center gap-2 bg-muted px-3 py-2 text-left text-[13px] font-semibold text-foreground transition-colors hover:bg-accent"
+      >
+        <ChevronRight aria-hidden size={14} className={`shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-90' : ''}`} />
+        {title}
+        {!open && summary && <span className="ml-auto min-w-0 truncate text-xs font-normal text-muted-foreground">{summary}</span>}
+      </button>
+      {open && (
+        <div id={bodyId} className="px-3 pb-1 pt-3">
+          {children}
+        </div>
+      )}
+    </section>
+  )
+}
 
 /** The five shapes for one end of a bracket, as pictures. */
 function CapRow({ side, value, onChange }: { side: 'start' | 'end'; value: CapStyle; onChange: (c: CapStyle) => void }) {
@@ -387,6 +438,9 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   const regenerateSlug = useDocumentStore((s) => s.regenerateSlug)
   const setSpanCommentary = useDocumentStore((s) => s.setSpanCommentary)
   const commentary = useDocumentStore((s) => (s.document ? blockForSpan(s.document, span.id)?.text ?? '' : ''))
+  // What the closed Describe section holds, so you can tell without opening it.
+  const written = [span.annotation && 'annotation', commentary && 'commentary', span.lyrics && 'lyrics'].filter(Boolean)
+  const describeSummary = written.length ? `Has ${written.join(', ')}` : 'Nothing written yet'
   // A frozen slug that no longer matches its label (the span was renamed after
   // a save). The suffix match lets "verse-2" still count as matching "Verse".
   const expectedBase = span.label ? slugify(span.label) : null
@@ -414,8 +468,6 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   // visual choice, and still applies to a key area's transition character.
   const isBar = layer.spanShape === 'bar'
   const doc = useDocumentStore((s) => s.document)
-  const tab = useUIStore((s) => s.inspectorTab)
-  const setTab = useUIStore((s) => s.setInspectorTab)
 
   function handleDelete() {
     removeSpan(layer.id, span.id)
@@ -456,12 +508,23 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   const isLast = !after && Math.abs(span.endTime - (doc?.duration ?? span.endTime)) < 1e-6
   // Fills already used in this level, for one-click reuse.
   const usedFills = [...new Set(siblings.map((s) => s.fillColor).filter((c): c is string => !!c && c !== 'none'))].slice(0, 8)
-  // Spans in this layer with this span's label (itself included).
-  const sameLabel = span.label?.trim() ? siblings.filter((s) => s.label?.trim() === span.label!.trim()) : []
+  // Spans in this layer with this span's label (itself included). For a form
+  // letter, its whole family: A reaches A′ and A″ too.
+  const letter = letterFamily(span)
+  const sameLabel = letter
+    ? siblings.filter((s) => letterFamily(s) === letter)
+    : span.label?.trim()
+      ? siblings.filter((s) => s.label?.trim() === span.label!.trim())
+      : []
+  const sameName = letter ? familyLabels(sameLabel) : (span.label ?? '')
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex flex-col gap-2 border-b px-3 pb-2 pt-3" style={{ borderColor: 'var(--hairline)' }}>
+      {/* One scrolling column: the label and type, then the sections, each
+          opened or closed on its own (InspectorBlock). Only the actions stay
+          fixed, so a short screen scrolls the whole panel rather than a sliver. */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="flex flex-col gap-1.5 px-3 pb-2.5 pt-2">
         {/* Where this span is, and stepping to its neighbours. */}
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>
@@ -488,7 +551,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         </div>
 
         {/* Label, as the panel's title */}
-        <Field label="Label" symbols>
+        <Field label="Label" symbols compact>
           <input
             data-inspector-label
             className={`${inputClass} text-lg! font-semibold`}
@@ -500,7 +563,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
 
         {/* Type — the label follows it while the label is empty or still the
             one the old type gave (lib/vocabulary.ts, labelFollowsType). */}
-        <Field label="Type">
+        <Field label="Type" compact>
           <TypePicker
             kind="span"
             layerId={layer.id}
@@ -513,7 +576,14 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             }}
           />
         </Field>
+      </div>
 
+      <InspectorBlock
+        id="timing"
+        title="Timing"
+        summary={`${formatTime(span.startTime)}–${formatTime(span.endTime)}${firstBar !== null && lastBar !== null ? ` · bar${firstBar === lastBar ? ` ${firstBar}` : `s ${firstBar}–${lastBar}`}` : ''}`}
+      >
+        <div className="flex flex-col gap-2">
         {/* Time range (editable), duration and bars */}
         <div className="flex flex-wrap items-center gap-1.5">
           <TimeInput value={span.startTime} onCommit={commitStart} title="Start time" />
@@ -539,8 +609,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         {/* A phrase a bar long or short: change it by whole bars, and every
             later boundary in the layer moves with it (resizeSpanByBars). */}
         {barsLong !== null && (
-          <div className="flex flex-col gap-0.5">
-          <div className="flex items-center gap-1.5 text-xs">
+          <div className="flex items-center gap-1.5 text-xs" title="Type a length or step it by a bar. Later spans move with it.">
             <span className="text-muted-foreground">Length</span>
             <button
               aria-label="One bar shorter"
@@ -575,45 +644,15 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
               +
             </button>
           </div>
-          <p className="text-[11px] text-muted-foreground">Type a length or step it by a bar. Later spans move with it.</p>
-          </div>
         )}
 
         {/* Linked to a parent or children (Group, Copy to layer): boundaries they
             share move together (lib/linkedBoundaries.ts). Unlink frees them. */}
         <SpanLinks span={span} />
-
-        {/* Copy this span; paste the chosen parts of a copied one here. */}
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-1.5">
-            <CopyButton spanIds={[span.id]} />
-            <PasteButton spanIds={[span.id]} />
-          </div>
-          <PasteHint spanIds={[span.id]} />
         </div>
+      </InspectorBlock>
 
-        {/* The three tabs as one segmented control, so they read as the way
-            into the rest of the span's fields. */}
-        <div className="mt-1 flex gap-1 rounded-lg bg-muted p-1" role="tablist" aria-label="Span fields">
-          {INSPECTOR_TABS.map(([id, name]) => (
-            <button
-              key={id}
-              role="tab"
-              aria-selected={tab === id}
-              onClick={() => setTab(id)}
-              className={`flex-auto whitespace-nowrap rounded-md px-2 py-1.5 text-[13px] font-medium transition-colors ${
-                tab === id ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:bg-card/60 hover:text-foreground'
-              }`}
-            >
-              {name}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-3 py-3" role="tabpanel">
-        {tab === 'describe' && (
-          <>
+        <InspectorBlock id="describe" title="Describe" summary={describeSummary}>
             {/* Key area leads on a key-area (bar) level, the point of the level. */}
             {isBar && (
               <Field label="Key area" tooltip={KEY_AREA_TIP}>
@@ -660,11 +699,19 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
                 onChange={(e) => update({ lyrics: e.target.value || null })}
               />
             </Field>
-          </>
-        )}
+        </InspectorBlock>
 
-        {tab === 'shape' && (
-          <>
+        <InspectorBlock
+          id="shape"
+          title="Shape & color"
+          summary={
+            <span
+              aria-hidden
+              className="inline-block h-3.5 w-3.5 rounded-sm border border-border align-middle"
+              style={{ background: shownFill(span.fillColor ?? layer.fillColorDefault) }}
+            />
+          }
+        >
             {/* Each end its own shape (a flat key-area bar has none). */}
             {!isBar && (
               <div className="mb-3 flex flex-col gap-2">
@@ -711,11 +758,11 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
                 disabled={sameLabel.every((s) => (s.fillColor ?? null) === (span.fillColor ?? null))}
                 onClick={() => updateSpans(sameLabel.map((s) => s.id), { fillColor: span.fillColor ?? null })}
                 className="mb-3 w-full rounded border border-border px-2 py-1 text-left text-xs text-foreground hover:bg-accent disabled:opacity-50"
-                title="Every span in this layer with this label gets this span's fill"
+                title={letter ? `Every ${sameName} span in this layer gets this span's fill` : "Every span in this layer with this label gets this span's fill"}
               >
                 {sameLabel.every((s) => (s.fillColor ?? null) === (span.fillColor ?? null))
-                  ? `All ${sameLabel.length} “${span.label}” spans share this fill`
-                  : `Use this fill on all ${sameLabel.length} “${span.label}” spans`}
+                  ? `All ${sameLabel.length} “${sameName}” spans share this fill`
+                  : `Use this fill on all ${sameLabel.length} “${sameName}” spans`}
               </button>
             )}
             {usedFills.length > 0 && (
@@ -733,11 +780,9 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
                 ))}
               </div>
             )}
-          </>
-        )}
+        </InspectorBlock>
 
-        {tab === 'more' && (
-          <>
+        <InspectorBlock id="more" title="More" summary="Slug, boundaries, notes">
             {/* Short label — shown in place of the full label when the diagram is
                 too zoomed out to fit it; never abbreviated further by the app. */}
             <Field label="Short label" tooltip="Shown when the full label doesn't fit." symbols>
@@ -808,12 +853,17 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
                 <span className="ml-1 shrink-0 text-[11px] text-muted-foreground">copy</span>
               </button>
             </Field>
-          </>
-        )}
+        </InspectorBlock>
       </div>
 
-      {/* Actions, always in reach */}
+      {/* Actions, always in reach. Copy and Paste sit here too, beside the
+          other things you do to a span. */}
+      <div className="px-3">
+        <PasteHint spanIds={[span.id]} />
+      </div>
       <div className="flex flex-wrap gap-1.5 whitespace-nowrap border-t px-3 py-2" style={{ borderColor: 'var(--hairline)' }}>
+        <CopyButton spanIds={[span.id]} />
+        <PasteButton spanIds={[span.id]} />
         <button
           onClick={handleSplit}
           disabled={!canSplit}

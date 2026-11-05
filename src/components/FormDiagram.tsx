@@ -526,8 +526,11 @@ function QuickEntrySwitch() {
   const mode = useUIStore((s) => s.quickEntry)
   const setMode = useUIStore((s) => s.setQuickEntry)
   const current = QUICK_PICK.find(([m]) => m === mode)
+  // Controlled, so a pick closes the menu: otherwise the only way out was a
+  // click outside it, which on the diagram also cleared the selection.
+  const [open, setOpen] = useState(false)
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
@@ -538,22 +541,22 @@ function QuickEntrySwitch() {
           <span className="rounded bg-accent px-1 text-[11px] text-foreground">{mode === 'off' ? 'off' : current?.[1].toLowerCase()}</span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-72 p-3 text-xs">
-        <p className="text-[13px] font-semibold text-foreground">Quick pick</p>
-        <p className="mt-0.5 leading-relaxed text-muted-foreground">
-          When you select spans, a row of choices appears above them. Click one, or press its number key.
-        </p>
-        <div className="mt-2 flex flex-col gap-0.5" role="radiogroup" aria-label="Quick pick offers">
+      <PopoverContent align="start" className="w-44 p-2 text-xs">
+        {/* How Quick pick works is in Help (?), so the menu is just the choice. */}
+        <div className="flex flex-col gap-0.5" role="radiogroup" aria-label="Quick pick offers">
           {QUICK_PICK.map(([m, label, what]) => (
             <button
               key={m}
               role="radio"
               aria-checked={mode === m}
-              onClick={() => setMode(m)}
-              className={`flex flex-col rounded px-2 py-1 text-left ${mode === m ? 'bg-accent' : 'hover:bg-accent/60'}`}
+              onClick={() => {
+                setMode(m)
+                setOpen(false)
+              }}
+              title={what}
+              className={`rounded px-2 py-1 text-left ${mode === m ? 'bg-accent font-medium text-foreground' : 'text-foreground hover:bg-accent/60'}`}
             >
-              <span className={mode === m ? 'font-medium text-foreground' : 'text-foreground'}>{label}</span>
-              <span className="text-[11px] text-muted-foreground">{what}</span>
+              {label}
             </button>
           ))}
         </div>
@@ -574,6 +577,7 @@ export function FormDiagram() {
   // bar while the ruler (TimelineAxis) renders below. One shared instance.
   const timeline = useTimeline()
   const reading = useUIStore((s) => s.readingView)
+  const embed = useUIStore((s) => s.embed)
   const videoMini = useUIStore((s) => s.videoMini)
   const activeLayerId = useUIStore((s) => s.activeLayerId)
   const showDiagram = useUIStore((s) => !s.readingView || s.readingShow.diagram)
@@ -657,7 +661,9 @@ export function FormDiagram() {
         className="relative shrink-0 overflow-hidden rounded-md bg-(--canvas)"
         style={{ marginBottom: 4 }}
       >
-        {/* Editing controls are off while reading. */}
+        {/* Editing controls are off while reading. The reading view keeps
+            zoom, so a reader can look closely at a passage and fit the whole
+            track again; an embed has none (its page sets the view). */}
         {!reading && (
           <WidgetTopBar
             collapsed={collapsed}
@@ -665,6 +671,11 @@ export function FormDiagram() {
             hidden={hidden}
             zoom={zoomProps}
           />
+        )}
+        {reading && !embed && (
+          <div className="flex shrink-0 items-center justify-end border-b px-2" style={{ height: 26, borderColor: 'var(--hairline)' }}>
+            <ZoomControls {...zoomProps} />
+          </div>
         )}
         <div className="flex w-full" style={{ height: stackH }}>
           <LayerHeaders layers={visible} collapsed={collapsed} />

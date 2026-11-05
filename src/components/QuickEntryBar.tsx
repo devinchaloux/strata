@@ -11,9 +11,12 @@
  *     file, no library), it shows the library chooser and More… alone.
  *   - Shape: drawn, in groups: the whole shape (1–3) and the line, solid or
  *     dashed (4–5), on number keys; then each end on its own, by click.
- *   - Fill: the layer default and eight muted colours (lib/palette.ts).
+ *   - Fill: the layer default and eight muted colors (lib/palette.ts). A
+ *     lettered selection first offers its whole family (every A, A′, A″ in
+ *     the layer), selected in one click so the next fill reaches them all.
  *   Shape and Fill end with More…, which opens the Inspector's Shape & color
- *   tab (with the Fill picker open, for fills), as Type's opens the Type list.
+ *   section and scrolls to it (with the Fill picker open, for fills), as
+ *   Type's opens the Type list.
  * Picking applies to every selected span in one undo step, with labels
  * following a new type as in the Inspector (store/typeActions.ts).
  * docs/decisions.md, "Quick Entry".
@@ -31,7 +34,7 @@ import { applySpanType } from '@/store/typeActions'
 import { formSpans } from '@/lib/layers'
 import { capFromBoundaryType, shapeTopY, layerBodyHeight } from '@/lib/formShape'
 import { quickTypes } from '@/lib/typeSuggestions'
-import { LIBRARIES } from '@/lib/vocabulary'
+import { LIBRARIES, letterFamily, familyLabels } from '@/lib/vocabulary'
 import { isInputFocused } from '@/lib/youtube'
 import type { Layer, Span } from '@/types/strata'
 import { CAP_ICONS, WHOLE_ICONS } from '@/lib/capIcons'
@@ -105,13 +108,13 @@ export function QuickEntryBar({
   const shown = useCallback((c: string) => (colorblindSafe ? safeFill(c) : c), [colorblindSafe])
   const requestTypePicker = useUIStore((s) => s.requestTypePicker)
   const requestFillPicker = useUIStore((s) => s.requestFillPicker)
-  const setInspectorTab = useUIStore((s) => s.setInspectorTab)
+  const openInspectorSection = useUIStore((s) => s.openInspectorSection)
   // More… (or "/"): the full list in the Inspector for whatever this offers.
   const more = useCallback(() => {
     if (mode === 'type') requestTypePicker()
     else if (mode === 'fill') requestFillPicker()
-    else setInspectorTab('shape')
-  }, [mode, requestTypePicker, requestFillPicker, setInspectorTab])
+    else openInspectorSection('shape')
+  }, [mode, requestTypePicker, requestFillPicker, openInspectorSection])
   const barRef = useRef<HTMLDivElement>(null)
 
   // The selection, if it all sits in one visible layer.
@@ -184,7 +187,26 @@ export function QuickEntryBar({
         }))
       return [...whole, ...line, ...ends('start'), ...ends('end')]
     }
+    // A lettered selection can reach its whole family first: every A, A′ and
+    // A″ in the layer, so the next fill colors them all in one step.
+    const letter = letterFamily(target.spans[0])
+    const family =
+      letter && target.spans.every((s) => letterFamily(s) === letter)
+        ? formSpans(target.layer).filter((s) => letterFamily(s) === letter)
+        : []
+    const selectFamily: Option[] =
+      family.length > target.spans.length
+        ? [
+            {
+              key: 'family',
+              label: `Every ${familyLabels(family)} (${family.length})`,
+              title: `Select every ${familyLabels(family)} span in this layer, then pick a fill for them all`,
+              apply: () => useUIStore.getState().setSelection(family.map((s) => s.id), target.spans[0].id),
+            },
+          ]
+        : []
     return [
+      ...selectFamily,
       { key: 'default', label: 'Layer default', hotkey: 1, swatch: target.layer.fillColorDefault, apply: () => updateSpans(ids, { fillColor: null }) },
       ...QUICK_FILLS.map((c, i) => ({ key: c, label: '', title: c, hotkey: i + 2, swatch: c, apply: () => updateSpans(ids, { fillColor: c }) })),
       // Patterns after the colours, by click (the colours have every number key).

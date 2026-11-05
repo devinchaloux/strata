@@ -32,12 +32,15 @@ export function Field({
   helper,
   tooltip,
   symbols,
+  compact,
   children,
 }: {
   label: string
   helper?: string
   tooltip?: string
   symbols?: boolean
+  /** Less space above and below: the Inspector's label and type, at the top. */
+  compact?: boolean
   children: React.ReactNode
 }) {
   const box = React.useRef<HTMLDivElement>(null)
@@ -54,8 +57,8 @@ export function Field({
       ? React.cloneElement(children, { 'aria-labelledby': labelId })
       : children
   return (
-    <div className="group mb-3" ref={box}>
-      <div className="mb-1 flex items-center gap-1">
+    <div className={`group ${compact ? '' : 'mb-3'}`} ref={box}>
+      <div className={`${compact ? 'mb-0.5' : 'mb-1'} flex items-center gap-1`}>
         <label id={labelId} className="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
           {label}
         </label>

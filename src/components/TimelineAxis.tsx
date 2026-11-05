@@ -104,6 +104,16 @@ export function TimelineAxis({
                 fill="hsl(var(--background))"
               />
 
+              {/* Past the end of the track: shaded, with a line at the end. */}
+              <rect
+                x={duration * pps}
+                y={0}
+                width={Math.max(0, svgWidth - duration * pps)}
+                height={height}
+                fill="hsl(var(--muted))"
+              />
+              <line x1={duration * pps} y1={0} x2={duration * pps} y2={height} stroke="hsl(var(--border))" />
+
               {/* Bar-number strip: segment bands, then bar numbers */}
               {strip > 0 &&
                 segs.map((g, i) => (

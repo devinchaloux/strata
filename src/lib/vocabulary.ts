@@ -540,6 +540,26 @@ export function isLetterId(id: string): boolean {
   return /^[a-z]-(section|prime|double-prime|triple-prime)$/.test(id)
 }
 
+/**
+ * The form letter a span belongs to, primes aside: A, A′, and A″ are all "A".
+ * Read from a letter type when it has one, else from the label. Null for a
+ * span that isn't lettered ("Verse 1", or no label).
+ */
+export function letterFamily(span: { label?: string | null; type?: string | null }): string | null {
+  if (span.type && isLetterId(span.type)) return span.type[0].toUpperCase()
+  return span.label ? (parseLetter(span.label)?.letter ?? null) : null
+}
+
+/**
+ * The family as its members are labelled, plainest first: "A, A′, A″". Used
+ * to name the spans an action will reach.
+ */
+export function familyLabels(spans: { label?: string | null; type?: string | null }[]): string {
+  const labels = [...new Set(spans.map((s) => s.label?.trim()).filter((l): l is string => !!l))]
+  const primes = (l: string) => parseLetter(l)?.primes ?? 9
+  return labels.sort((a, b) => primes(a) - primes(b) || a.localeCompare(b)).join(', ')
+}
+
 // ── Search ──
 
 export interface SearchHit {

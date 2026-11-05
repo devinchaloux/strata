@@ -15,7 +15,7 @@ import { FormDiagram } from '@/components/FormDiagram'
 import { PlayerDock } from '@/components/PlayerDock'
 import { fetchSharedAnalysis, shareUrl } from '@/lib/shareLink'
 import { onlyLayers, readCommand, resolveFocus, viewAround, type EmbedEvent, type EmbedParams } from '@/lib/embed'
-import { clampScrollOffset, totalContentWidth } from '@/lib/timeline'
+import { clampScrollOffset, scrollableWidth } from '@/lib/timeline'
 
 // Narrower than this, the embed stacks video over diagram, collapses the
 // layer names to a rail and opens at a readable scale that scrolls.
@@ -155,7 +155,7 @@ export function EmbedApp({ params }: { params: EmbedParams }) {
     p.moved = true
     const ui = useUIStore.getState()
     const duration = useDocumentStore.getState().document?.duration ?? 0
-    ui.setScrollOffset(clampScrollOffset(p.offset - dx, totalContentWidth(duration, ui.zoom), ui.viewportWidth))
+    ui.setScrollOffset(clampScrollOffset(p.offset - dx, scrollableWidth(duration, ui.zoom), ui.viewportWidth))
     ui.holdFollow(PAN_HOLD_MS)
   }
   function onPointerEnd() {

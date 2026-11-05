@@ -22,7 +22,7 @@ By area, in the order the entries were made:
 
 **File format and schema:** [File Format](#file-format) · [Span Data Model](#span-data-model) · [File-Level Metadata](#file-level-metadata) · [Schema](#schema) · [Shared Time Point Pool](#shared-time-point-pool) · [Source References](#source-references) · [Schema Finalization (Phase 0.1)](#schema-finalization-phase-01) · [Schema Revision (Phase 0.1 — Session 2)](#schema-revision-phase-01--session-2) · [Schema Changes (Phase 2 prep, 2026-06-20)](#schema-changes-phase-2-prep-2026-06-20) · [Trust and Format Integrity, Round 1 (2026-09-27)](#trust-and-format-integrity-round-1-2026-09-27) · [File Format Integrity, Round 2 (2026-09-27)](#file-format-integrity-round-2-2026-09-27) · [Fill Patterns (2026-10-24)](#fill-patterns-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05)
 
-**Drawing and editing the form diagram:** [Merge UX (Phase 0.5)](#merge-ux-phase-05) · [Hierarchical Enforcement](#hierarchical-enforcement) · [Form Diagram Editor — Interaction Model](#form-diagram-editor--interaction-model) · [Merge](#merge) · [Form Diagram Editor (Phase 0.4)](#form-diagram-editor-phase-04) · [Phase 2 Implementation (Form Diagram — Milestone A)](#phase-2-implementation-form-diagram--milestone-a) · [Merge Implementation (Phase 2.5)](#merge-implementation-phase-25) · [Form Diagram Shape Model — Adjoin Rework (2026-06-27)](#form-diagram-shape-model--adjoin-rework-2026-06-27) · [Label Collision Strategy (2026-06-27)](#label-collision-strategy-2026-06-27) · [Phase 2.5 Merge — Interaction Completion (2026-06-30)](#phase-25-merge--interaction-completion-2026-06-30) · [Elision Rendering & Boundary-First Shape Control (2026-07-25)](#elision-rendering--boundary-first-shape-control-2026-07-25) · [Keyboard Navigation of Spans (2026-09-27)](#keyboard-navigation-of-spans-2026-09-27) · [Space Plays, B Marks a Boundary (2026-10-01)](#space-plays-b-marks-a-boundary-2026-10-01) · [Paused Clicks Stay Paused; Open Caps Fill and Join; Issue Links (2026-10-01)](#paused-clicks-stay-paused-open-caps-fill-and-join-issue-links-2026-10-01) · [Quick Type (2026-10-01)](#quick-type-2026-10-01) · [Quick Entry (2026-10-02)](#quick-entry-2026-10-02) · [B in an Empty Stretch; Shift+B; Fit to the Grid (2026-10-02)](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02) · [Hidden Labels Show on Hover and Selection (2026-10-02)](#hidden-labels-show-on-hover-and-selection-2026-10-02) · [Inside Text Keeps Clear of Rounded and Angled Ends (2026-10-02)](#inside-text-keeps-clear-of-rounded-and-angled-ends-2026-10-02) · [Quick Setup From the Tempo; a Plainer Grid Menu and Quick Pick (2026-10-24)](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24) · [Typed Phrase Lengths; Quick Pick Fixes and Drawn Shapes (2026-10-24)](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24) · [Muted Fills; Same Label, Same Fill; Legible Text on Any Fill (2026-10-24)](#muted-fills-same-label-same-fill-legible-text-on-any-fill-2026-10-24) · [To End (2026-10-24)](#to-end-2026-10-24) · [Quick Pick Colours, and a Colour-Blind Safe Switch (2026-10-24)](#quick-pick-colours-and-a-colour-blind-safe-switch-2026-10-24) · [Fill Patterns (2026-10-24)](#fill-patterns-2026-10-24) · [Backspace No Longer Deletes Spans (2026-10-24)](#backspace-no-longer-deletes-spans-2026-10-24) · [Copy and Paste Between Spans (2026-10-24)](#copy-and-paste-between-spans-2026-10-24) · [Copy and Paste Several Spans (2026-10-24)](#copy-and-paste-several-spans-2026-10-24) · [Splitting a Parent (2026-10-31)](#splitting-a-parent-2026-10-31)
+**Drawing and editing the form diagram:** [Merge UX (Phase 0.5)](#merge-ux-phase-05) · [Hierarchical Enforcement](#hierarchical-enforcement) · [Form Diagram Editor — Interaction Model](#form-diagram-editor--interaction-model) · [Merge](#merge) · [Form Diagram Editor (Phase 0.4)](#form-diagram-editor-phase-04) · [Phase 2 Implementation (Form Diagram — Milestone A)](#phase-2-implementation-form-diagram--milestone-a) · [Merge Implementation (Phase 2.5)](#merge-implementation-phase-25) · [Form Diagram Shape Model — Adjoin Rework (2026-06-27)](#form-diagram-shape-model--adjoin-rework-2026-06-27) · [Label Collision Strategy (2026-06-27)](#label-collision-strategy-2026-06-27) · [Phase 2.5 Merge — Interaction Completion (2026-06-30)](#phase-25-merge--interaction-completion-2026-06-30) · [Elision Rendering & Boundary-First Shape Control (2026-07-25)](#elision-rendering--boundary-first-shape-control-2026-07-25) · [Keyboard Navigation of Spans (2026-09-27)](#keyboard-navigation-of-spans-2026-09-27) · [Space Plays, B Marks a Boundary (2026-10-01)](#space-plays-b-marks-a-boundary-2026-10-01) · [Paused Clicks Stay Paused; Open Caps Fill and Join; Issue Links (2026-10-01)](#paused-clicks-stay-paused-open-caps-fill-and-join-issue-links-2026-10-01) · [Quick Type (2026-10-01)](#quick-type-2026-10-01) · [Quick Entry (2026-10-02)](#quick-entry-2026-10-02) · [B in an Empty Stretch; Shift+B; Fit to the Grid (2026-10-02)](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02) · [Hidden Labels Show on Hover and Selection (2026-10-02)](#hidden-labels-show-on-hover-and-selection-2026-10-02) · [Inside Text Keeps Clear of Rounded and Angled Ends (2026-10-02)](#inside-text-keeps-clear-of-rounded-and-angled-ends-2026-10-02) · [Quick Setup From the Tempo; a Plainer Grid Menu and Quick Pick (2026-10-24)](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24) · [Typed Phrase Lengths; Quick Pick Fixes and Drawn Shapes (2026-10-24)](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24) · [Muted Fills; Same Label, Same Fill; Legible Text on Any Fill (2026-10-24)](#muted-fills-same-label-same-fill-legible-text-on-any-fill-2026-10-24) · [To End (2026-10-24)](#to-end-2026-10-24) · [Quick Pick Colours, and a Colour-Blind Safe Switch (2026-10-24)](#quick-pick-colours-and-a-colour-blind-safe-switch-2026-10-24) · [Fill Patterns (2026-10-24)](#fill-patterns-2026-10-24) · [Backspace No Longer Deletes Spans (2026-10-24)](#backspace-no-longer-deletes-spans-2026-10-24) · [Copy and Paste Between Spans (2026-10-24)](#copy-and-paste-between-spans-2026-10-24) · [Copy and Paste Several Spans (2026-10-24)](#copy-and-paste-several-spans-2026-10-24) · [Splitting a Parent (2026-10-31)](#splitting-a-parent-2026-10-31) · [The Track's End Shows; Quick Pick Closes; Filling a Letter Family (2026-11-05)](#the-tracks-end-shows-quick-pick-closes-filling-a-letter-family-2026-11-05)
 
 **Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01) · [Group Spans Into Another Layer (2026-10-24)](#group-spans-into-another-layer-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Choosing What Copy to Layer Takes (2026-10-31)](#choosing-what-copy-to-layer-takes-2026-10-31)
 
@@ -38,7 +38,7 @@ By area, in the order the entries were made:
 
 **Reading, sharing, embedding and export:** [Sharing](#sharing) · [Embeddable Viewer](#embeddable-viewer) · [Export (2026-09-27)](#export-2026-09-27) · [The Reading View (2026-10-01)](#the-reading-view-2026-10-01) · [Sharing by Link (2026-10-01)](#sharing-by-link-2026-10-01) · [Export: Choose Layers, Cut Spans at the Range (2026-10-02)](#export-choose-layers-cut-spans-at-the-range-2026-10-02) · [Share From the Toolbar; Dropbox and OneDrive Links (2026-10-02)](#share-from-the-toolbar-dropbox-and-onedrive-links-2026-10-02) · [Example Analyses (2026-10-02)](#example-analyses-2026-10-02) · [Embedding an Analysis (2026-10-03)](#embedding-an-analysis-2026-10-03) · [Starting an Analysis from a Link (2026-10-03)](#starting-an-analysis-from-a-link-2026-10-03)
 
-**The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03) · [A Shorter New Analysis Dialog; Darker Interface Greys (2026-10-24)](#a-shorter-new-analysis-dialog-darker-interface-greys-2026-10-24) · [People Do Things in Strata's Text (2026-11-05)](#people-do-things-in-stratas-text-2026-11-05) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05)
+**The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03) · [A Shorter New Analysis Dialog; Darker Interface Greys (2026-10-24)](#a-shorter-new-analysis-dialog-darker-interface-greys-2026-10-24) · [People Do Things in Strata's Text (2026-11-05)](#people-do-things-in-stratas-text-2026-11-05) · [The Inspector as Sections; Zoom in the Reading View (2026-11-05)](#the-inspector-as-sections-zoom-in-the-reading-view-2026-11-05) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05)
 
 **Architecture, scope and process:** [Architecture](#architecture) · [Widgets](#widgets) · [Architecture](#architecture-1) · [Launch](#launch) · [Corpus Builder](#corpus-builder) · [v1 Feature Scope (Phase 0.6)](#v1-feature-scope-phase-06) · [Energy Contour Widget](#energy-contour-widget) · [EDM as Origin — Product Claim Reframe](#edm-as-origin--product-claim-reframe) · [Tech Stack](#tech-stack) · [v1 Scope](#v1-scope) · [Widget Contract (Phase 0.2)](#widget-contract-phase-02) · [Correctness Pass (post-Phase 2 polish)](#correctness-pass-post-phase-2-polish) · [Improvement Backlog Batch 1 (2026-07-03)](#improvement-backlog-batch-1-2026-07-03) · [Improvement Backlog Batch 2 (2026-07-03)](#improvement-backlog-batch-2-2026-07-03) · [Render / Edit Split (2026-09-27)](#render--edit-split-2026-09-27) · [Large-Analysis Performance (2026-09-27)](#large-analysis-performance-2026-09-27) · [Safari and Firefox Read-Through (2026-09-27)](#safari-and-firefox-read-through-2026-09-27) · [Beta Launch Pass (2026-10-01)](#beta-launch-pass-2026-10-01) · [Releases and Open Tabs (2026-10-02)](#releases-and-open-tabs-2026-10-02) · [Faster Checks: Tests in Node, a Weekly Audit (2026-10-05)](#faster-checks-tests-in-node-a-weekly-audit-2026-10-05) · [Development Tools Upgraded (2026-10-07)](#development-tools-upgraded-2026-10-07) · [No Corpus Builder: Strata Stays a One-File Tool (2026-10-16)](#no-corpus-builder-strata-stays-a-one-file-tool-2026-10-16) · [React's Newer Checks On (2026-10-16)](#reacts-newer-checks-on-2026-10-16) · [The Corpus Builder Is Planned for Version 2 (2026-10-31)](#the-corpus-builder-is-planned-for-version-2-2026-10-31)
 
@@ -4642,3 +4642,71 @@ says, in their own terms. The positioning follows Devin's framing: what sets
 Strata apart is that each analysis is data you can query across many
 recordings. On context, Devin approved dropping "of a composed work": the
 distinction the field records is studio against live.
+
+---
+
+## The Track's End Shows; Quick Pick Closes; Filling a Letter Family (2026-11-05)
+
+**Decision.** The timeline keeps a 24px margin after the end of the track.
+Fit leaves it on the right, and the ruler and canvas past the end are shaded,
+with a line at the end.
+**Why.** Devin, on a finished analysis: the drawing ran past the end of the
+track. At Fit the end of the track sat on the diagram's right edge. Each
+layer's last span had an open end, which draws no closing line, so the
+brackets looked as if they ran on. With the end shown, an open end visibly
+stops at the track's end.
+
+**Decision.** Choosing an option in the Quick pick menu closes the menu.
+**Why.** Devin: the menu stayed open after a choice, and the only way to close
+it was a click outside, which on the diagram also cleared the selection.
+
+**Decision.** A form letter's family is the letter, primes aside: A, A′, and
+A″. With a lettered selection, Quick pick's Fills row first offers **Every A,
+A′ (N)**, which selects the whole family in the layer. The next fill then
+colors them all in one step. The Inspector's same-fill button ("Use this fill
+on all N spans") now reaches the family for a lettered span, and stays
+same-label for any other.
+**Why.** Devin asked for one fill to reach A and every A′. Selecting the family
+first, rather than filling it automatically, keeps a single A free to take
+its own color. The family is read from a letter type, or else from the label.
+
+---
+
+## The Inspector as Sections; Zoom in the Reading View (2026-11-05)
+
+**Decision.** The span Inspector scrolls as one column. The label and type
+sit at the top. Below them are four sections you open and close on their own:
+**Timing** (times, length in bars, links to other levels), **Describe**,
+**Shape & color**, and **More**. Each header is a tinted bar that stays
+pinned while you scroll through its section. A closed section shows a short
+summary: the times and bars, what's written, or the fill. Strata remembers
+in your browser which sections you keep open; Timing and Describe start open. Copy and
+Paste join the actions at the foot, which stay in reach. More… in Quick pick
+opens Shape & color and scrolls to it. Double-click a header to open that
+section alone: Strata closes the others and scrolls back to the top, so the
+section sits right under the type. The label and type keep their box sizes
+with less space around them. This replaces the header and three tabs of
+2026-10-01.
+**Why.** Devin: on a smaller screen the tabs' contents scrolled in the bottom
+third of the panel, under a fixed header that took the rest. One column puts
+all the height to use. He found the tabs easier to tell apart than the
+earlier plain headings, so the section headers keep that weight.
+Devin also asked about dragging sections into a new order, so the one you're
+working on comes first. Double-click covers that in one gesture. Dragging in
+a narrow panel with pinned headers is fiddly, and it would be a second way to
+arrange the same panel.
+
+**Decision.** The reading view shows the diagram's zoom controls (−, +, Fit,
+and 100%) in a slim bar above the layers. An embed still has none: the page
+that embeds it sets its view.
+**Why.** Devin: a reader needs to look closely at a passage and then see the
+whole track again.
+
+**Decision.** Explanations leave the panels they crowded. The Inspector's
+Length hint, the Quick pick option descriptions, and the Metronome's and Grid's
+descriptions become tooltips. Quick pick's explanation and the Metronome's
+how-to (matching the grid by ear, setting the exact tempo) move to Help (?),
+under Describe and Grid. A popover keeps a line only when you can't act
+without it, such as "No grid yet".
+**Why.** Devin: some recent additions were too wordy. Instructions that matter
+belong in the help menu, not in the way of the controls.
