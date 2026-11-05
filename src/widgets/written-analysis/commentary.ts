@@ -194,6 +194,11 @@ export function spanBySlug(doc: StrataDocument, slug: string): Span | undefined 
   return allSpans(doc).find((s) => s.slug === slug)
 }
 
+/** What a bare [[slug]] link shows: the span's or marker's label, if it has one. */
+export function slugName(doc: StrataDocument, slug: string): string | undefined {
+  return spanBySlug(doc, slug)?.label || markerBySlug(doc, slug)?.label || undefined
+}
+
 /** The point marker a [[slug]] link names, if it exists (spans and markers share slugs). */
 export function markerBySlug(doc: StrataDocument, slug: string): PointMarker | undefined {
   return doc.pointMarkers.find((m) => m.slug === slug)
@@ -240,7 +245,7 @@ export async function commentaryToHtml(doc: StrataDocument): Promise<string> {
     .map(({ block, span, range, heading }) => {
       const id = span?.slug ? ` id="${esc(span.slug)}"` : ''
       const exists = (slug: string) => !!spanBySlug(doc, slug) || !!markerBySlug(doc, slug)
-      const paras = commentaryMarkdownHtml(block.text, exists, targets)
+      const paras = commentaryMarkdownHtml(block.text, exists, targets, (slug) => slugName(doc, slug))
       return `<section${id}>\n<h2>${heading ? `${esc(heading)} ` : ''}<span class="time">${mmss(range[0])}–${mmss(range[1])}</span></h2>\n${paras}\n</section>`
     })
     .join('\n')
@@ -291,7 +296,7 @@ export function commentaryToMarkdown(doc: StrataDocument): string {
     if (span?.slug) out.push(`<a id="${span.slug}"></a>`, '')
     out.push(`## ${heading ? `${heading} ` : ''}(${mmss(range[0])}–${mmss(range[1])})`)
     // The commentary is Markdown already; only its [[slug]] links change.
-    out.push('', slugLinksForExport(block.text.trim(), targets))
+    out.push('', slugLinksForExport(block.text.trim(), targets, (slug) => slugName(doc, slug)))
   }
   return out.join('\n') + '\n'
 }

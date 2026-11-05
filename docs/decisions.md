@@ -32,13 +32,13 @@ By area, in the order the entries were made:
 
 **Vocabulary and types:** [Vocabulary](#vocabulary) · [UI Copy Pass & Point Marker Vocabulary (2026-07-24)](#ui-copy-pass--point-marker-vocabulary-2026-07-24) · [Vocabulary Libraries (2026-10-01)](#vocabulary-libraries-2026-10-01) · [A Span's Label Follows Its Type (2026-10-01)](#a-spans-label-follows-its-type-2026-10-01) · [Vocabulary Packs (2026-10-01)](#vocabulary-packs-2026-10-01) · [The Libraries Dialog (2026-10-01)](#the-libraries-dialog-2026-10-01) · [The Type Picker Follows the Layer (2026-10-01)](#the-type-picker-follows-the-layer-2026-10-01) · [Sound Layers Come From a Shared List (2026-10-01)](#sound-layers-come-from-a-shared-list-2026-10-01)
 
-**Commentary and lyrics:** [Written Analysis Widget (2026-09-27)](#written-analysis-widget-2026-09-27) · [Commentary Links to Point Markers (2026-09-27)](#commentary-links-to-point-markers-2026-09-27) · [Commentary on a Stretch of Time (2026-09-27)](#commentary-on-a-stretch-of-time-2026-09-27) · [Hiding Commentary (2026-09-27)](#hiding-commentary-2026-09-27) · [The Commentary Stack (2026-10-01)](#the-commentary-stack-2026-10-01) · [Lyrics Stay in the File; Shared Views Leave Them Out by Default (2026-10-01)](#lyrics-stay-in-the-file-shared-views-leave-them-out-by-default-2026-10-01) · [Shared Links Treat Lyrics Like Any Other View (2026-10-03)](#shared-links-treat-lyrics-like-any-other-view-2026-10-03) · [Lyrics Show in the Editor (2026-10-24)](#lyrics-show-in-the-editor-2026-10-24) · [Fixes From a Real Analysis: Stray Type List, Bar Over the Inspector, Untitled Spans (2026-10-24)](#fixes-from-a-real-analysis-stray-type-list-bar-over-the-inspector-untitled-spans-2026-10-24) · [Commentary in Markdown, Edited in Place (2026-10-24)](#commentary-in-markdown-edited-in-place-2026-10-24)
+**Commentary and lyrics:** [Written Analysis Widget (2026-09-27)](#written-analysis-widget-2026-09-27) · [Commentary Links to Point Markers (2026-09-27)](#commentary-links-to-point-markers-2026-09-27) · [Commentary on a Stretch of Time (2026-09-27)](#commentary-on-a-stretch-of-time-2026-09-27) · [Hiding Commentary (2026-09-27)](#hiding-commentary-2026-09-27) · [The Commentary Stack (2026-10-01)](#the-commentary-stack-2026-10-01) · [Lyrics Stay in the File; Shared Views Leave Them Out by Default (2026-10-01)](#lyrics-stay-in-the-file-shared-views-leave-them-out-by-default-2026-10-01) · [Shared Links Treat Lyrics Like Any Other View (2026-10-03)](#shared-links-treat-lyrics-like-any-other-view-2026-10-03) · [Lyrics Show in the Editor (2026-10-24)](#lyrics-show-in-the-editor-2026-10-24) · [Fixes From a Real Analysis: Stray Type List, Bar Over the Inspector, Untitled Spans (2026-10-24)](#fixes-from-a-real-analysis-stray-type-list-bar-over-the-inspector-untitled-spans-2026-10-24) · [Commentary in Markdown, Edited in Place (2026-10-24)](#commentary-in-markdown-edited-in-place-2026-10-24) · [One Commentary Editor (2026-11-05)](#one-commentary-editor-2026-11-05)
 
 **The player and the source:** [Player Chrome (Phase 0.3)](#player-chrome-phase-03) · [Source Linking (2026-07-02)](#source-linking-2026-07-02) · [Video Curtain Covers Every Dialog (2026-09-27)](#video-curtain-covers-every-dialog-2026-09-27) · [Dialogs Stay Clear of the Player (2026-09-27)](#dialogs-stay-clear-of-the-player-2026-09-27) · [Video Below the Fold (2026-09-27)](#video-below-the-fold-2026-09-27) · [Menus Keep Clear of the Player (2026-10-02)](#menus-keep-clear-of-the-player-2026-10-02) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24)
 
 **Reading, sharing, embedding and export:** [Sharing](#sharing) · [Embeddable Viewer](#embeddable-viewer) · [Export (2026-09-27)](#export-2026-09-27) · [The Reading View (2026-10-01)](#the-reading-view-2026-10-01) · [Sharing by Link (2026-10-01)](#sharing-by-link-2026-10-01) · [Export: Choose Layers, Cut Spans at the Range (2026-10-02)](#export-choose-layers-cut-spans-at-the-range-2026-10-02) · [Share From the Toolbar; Dropbox and OneDrive Links (2026-10-02)](#share-from-the-toolbar-dropbox-and-onedrive-links-2026-10-02) · [Example Analyses (2026-10-02)](#example-analyses-2026-10-02) · [Embedding an Analysis (2026-10-03)](#embedding-an-analysis-2026-10-03) · [Starting an Analysis from a Link (2026-10-03)](#starting-an-analysis-from-a-link-2026-10-03)
 
-**The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03) · [A Shorter New Analysis Dialog; Darker Interface Greys (2026-10-24)](#a-shorter-new-analysis-dialog-darker-interface-greys-2026-10-24) · [People Do Things in Strata's Text (2026-11-05)](#people-do-things-in-stratas-text-2026-11-05) · [The Inspector as Sections; Zoom in the Reading View (2026-11-05)](#the-inspector-as-sections-zoom-in-the-reading-view-2026-11-05) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05)
+**The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03) · [A Shorter New Analysis Dialog; Darker Interface Greys (2026-10-24)](#a-shorter-new-analysis-dialog-darker-interface-greys-2026-10-24) · [People Do Things in Strata's Text (2026-11-05)](#people-do-things-in-stratas-text-2026-11-05) · [The Inspector as Sections; Zoom in the Reading View (2026-11-05)](#the-inspector-as-sections-zoom-in-the-reading-view-2026-11-05) · [Quick Pick Types on Typed Spans; Timing With Boundaries; Commentary Links (2026-11-05)](#quick-pick-types-on-typed-spans-timing-with-boundaries-commentary-links-2026-11-05) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05)
 
 **Architecture, scope and process:** [Architecture](#architecture) · [Widgets](#widgets) · [Architecture](#architecture-1) · [Launch](#launch) · [Corpus Builder](#corpus-builder) · [v1 Feature Scope (Phase 0.6)](#v1-feature-scope-phase-06) · [Energy Contour Widget](#energy-contour-widget) · [EDM as Origin — Product Claim Reframe](#edm-as-origin--product-claim-reframe) · [Tech Stack](#tech-stack) · [v1 Scope](#v1-scope) · [Widget Contract (Phase 0.2)](#widget-contract-phase-02) · [Correctness Pass (post-Phase 2 polish)](#correctness-pass-post-phase-2-polish) · [Improvement Backlog Batch 1 (2026-07-03)](#improvement-backlog-batch-1-2026-07-03) · [Improvement Backlog Batch 2 (2026-07-03)](#improvement-backlog-batch-2-2026-07-03) · [Render / Edit Split (2026-09-27)](#render--edit-split-2026-09-27) · [Large-Analysis Performance (2026-09-27)](#large-analysis-performance-2026-09-27) · [Safari and Firefox Read-Through (2026-09-27)](#safari-and-firefox-read-through-2026-09-27) · [Beta Launch Pass (2026-10-01)](#beta-launch-pass-2026-10-01) · [Releases and Open Tabs (2026-10-02)](#releases-and-open-tabs-2026-10-02) · [Faster Checks: Tests in Node, a Weekly Audit (2026-10-05)](#faster-checks-tests-in-node-a-weekly-audit-2026-10-05) · [Development Tools Upgraded (2026-10-07)](#development-tools-upgraded-2026-10-07) · [No Corpus Builder: Strata Stays a One-File Tool (2026-10-16)](#no-corpus-builder-strata-stays-a-one-file-tool-2026-10-16) · [React's Newer Checks On (2026-10-16)](#reacts-newer-checks-on-2026-10-16) · [The Corpus Builder Is Planned for Version 2 (2026-10-31)](#the-corpus-builder-is-planned-for-version-2-2026-10-31)
 
@@ -4710,3 +4710,50 @@ under Describe and Grid. A popover keeps a line only when you can't act
 without it, such as "No grid yet".
 **Why.** Devin: some recent additions were too wordy. Instructions that matter
 belong in the help menu, not in the way of the controls.
+
+---
+
+## Quick Pick Types on Typed Spans; Timing With Boundaries; Commentary Links (2026-11-05)
+
+**Decision.** Quick pick's Types row shows for typed spans too, with the
+current type marked. Its buttons are named by the type's name, with the
+definition on hover.
+**Why.** Devin found Types broken. The row hid once every selected span had a
+type, so on a finished analysis it never appeared, and changing A to A′ meant
+opening the Inspector.
+
+**Decision.** The Inspector's Timing section lays each end out as a row, Start
+and End, with its time and its boundary type (Clean, Gradual, or Elided). A
+Lasts row follows with the duration, the bars, and To end. Boundary types move
+here from More.
+**Why.** Devin found Timing sparse. A boundary type is a claim about what
+happens at one of those times, so it belongs beside the time.
+
+**Decision.** A bare `[[slug]]` link in commentary shows the span's or
+marker's label, not the slug. The commentary editor's link picker inserts
+`[[slug|Label]]` with the label selected, so you can type your own words over
+it. The Inspector's Commentary box gains **Open in the commentary editor**,
+which opens that span's commentary above the diagram with the toolbar.
+**Why.** Devin: links showed lowercase slugs, and he needs to name them
+himself. The `[[slug|text]]` form already existed but nothing in the editor
+offered it.
+
+**Decision.** The layer menu keeps each setting to one line, with what it does
+on hover: Thin bars (key areas), B fills gaps, and Fit to grid.
+**Why.** Devin: the menu's language needed tightening, with tooltips in place
+of explanations.
+
+---
+
+## One Commentary Editor (2026-11-05)
+
+**Decision.** You write commentary in one place: the editor above the
+diagram. The Inspector shows a span's commentary as a short preview with
+**Write commentary** or **Edit in the commentary editor**, which opens it
+there. With several spans selected, the Inspector offers the same for the
+stretch they cover. The panel then shows an editor for that stretch at the
+top, and the stretch's commentary is made on the first keystroke.
+**Why.** Devin chose the widget as the only editor. It has the toolbar and the
+link picker, and two editors for the same text was one too many. Before, the
+Inspector's box was a second, plainer editor, so writers missed the
+formatting and the links.

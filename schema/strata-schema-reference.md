@@ -210,7 +210,7 @@ When you import a pack, Strata leaves out and names any term whose id the app al
 Commentary is your written analysis, tied to the timeline (`blocks`, inside the commentary layer). You write each piece about one span or about a stretch of time. Strata shows it above the diagram while that passage plays. A span carries at most one piece.
 
 - You write in Markdown: paragraphs, bold, italic, headings, lists, quotes, code, and web links. If you don't know the syntax, use the toolbar.
-- To link to a span or marker, put its link name in double brackets: `[[drop-2]]`, or `[[drop-2|the second drop]]` to show other words. Click a link to jump to that moment. If you link to a name that no longer exists, Strata shows the words as plain text.
+- To link to a span or marker, put its link name in double brackets: `[[drop-2]]` shows the span's label, and `[[drop-2|the second drop]]` shows your own words. The link button in the commentary editor writes the second form for you. Click a link to jump to that moment. If you link to a name that no longer exists, Strata shows the words as plain text.
 - You don't lose writing when you edit elsewhere. When you merge two spans, Strata combines their commentary on the merged span. When you delete a span, its commentary stays, attached to the stretch of time the span covered.
 
 For safety, Strata never runs code or loads anything from elsewhere in shared commentary. It shows HTML as typed and leaves out images.

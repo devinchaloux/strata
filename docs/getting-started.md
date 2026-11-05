@@ -33,7 +33,7 @@ If the music is regular, you can lay out the sections from the tempo instead. Wi
 ## 5. Mark moments and write
 
 - Press **M** to place a **point marker** at the playhead: a cadence, a key change, or anything you want to come back to.
-- Write **commentary** on a span, in the Inspector or directly above the diagram. Strata shows it while that passage plays.
+- Write **commentary** on a span: press **Write commentary** in the Inspector, or hover the span's level above the diagram and press **Edit**. You write above the diagram, where the toolbar can link to other spans. Strata shows it while that passage plays.
 
 ## 6. Save and share
 

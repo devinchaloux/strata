@@ -38,12 +38,19 @@ lookup, re-anchoring, the text format, HTML export) and `CommentaryPanel.tsx`
   double-clicking its text does the same. The text becomes a box with a
   Markdown toolbar: bold, italic, code, heading, bulleted and numbered lists,
   quote, a link picker (spans and markers with a slug, found by name, written
-  `[[slug]]`, or `[[slug|selected text]]`), and the symbol palette. Ctrl/⌘+B
+  `[[slug|selected text]]`, or `[[slug|Label]]` with the label selected to
+  type over), and the symbol palette. Ctrl/⌘+B
   and Ctrl/⌘+I format; Esc, Ctrl/⌘+Enter or **Done** finishes. Changes write
-  through at once to the same text the Inspector shows, and one session's
-  typing and formatting undo together. While a box is open the stack holds at
-  the moment editing began (`uiStore.commentaryEdit`), so playback can't swap
-  it away. Passage commentary is edited only here.
+  through at once, and one session's typing and formatting undo together.
+  While a box is open the stack holds at the moment editing began
+  (`uiStore.commentaryEdit`), so playback can't swap it away.
+- **The only editor.** This is the one place commentary is written. The
+  Inspector shows a span's commentary as a short preview, with **Write
+  commentary** or **Edit in the commentary editor**, which opens it here
+  (key `span:<id>`). With several spans selected, it offers the same for the
+  stretch they cover (key `range:<start>:<end>`): this panel then shows an
+  editor for that stretch at the top, which makes its commentary on the first
+  keystroke.
 - The moment is the playhead during playback. Paused with spans selected, it
   is where the selection begins: a selected rotation shows the rotation and
   what opens it; a selected phrase, the phrase and everything it sits inside.
@@ -72,7 +79,7 @@ Strata's own links:
 | `- ` or `* `, `1. ` at a line's start | a bulleted or numbered list |
 | `> ` at a line's start | a quote |
 | `[text](https://…)` | a link, opening in a new tab |
-| `[[slug]]` | a link to the span or point marker with that slug, showing the slug |
+| `[[slug]]` | a link to the span or point marker with that slug, showing its label (the slug if it has none) |
 | `[[slug\|shown text]]` | the same link, showing the text |
 
 Commentary comes from shared files, so only those elements are drawn (plus

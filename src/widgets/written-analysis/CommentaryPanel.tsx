@@ -26,7 +26,9 @@ import {
   anchorRange,
   allBlocks,
   passagesAt,
+  blockForRange,
   spanBySlug,
+  slugName,
   markerBySlug,
   stackAt,
   type StackRow,
@@ -55,6 +57,8 @@ function momentOf(doc: StrataDocument, time: number, selected: string[], playing
 function heldMoment(doc: StrataDocument, edit: { key: string; at: number } | null): number | null {
   if (!edit) return null
   const [kind, id] = edit.key.split(':')
+  // A stretch being written about ("range:start:end") holds the stack too.
+  if (kind === 'range') return edit.at
   const exists = kind === 'span' ? doc.layers.some((l) => formSpans(l).some((s) => s.id === id)) : allBlocks(doc).some((b) => b.block.id === id)
   return exists ? edit.at : null
 }
@@ -88,10 +92,46 @@ function CommentaryText({ doc, text }: { doc: StrataDocument; text: string }) {
         text={text}
         large={reading}
         exists={(slug) => !!spanBySlug(doc, slug) || !!markerBySlug(doc, slug)}
+        nameOf={(slug) => slugName(doc, slug)}
         onFollow={follow}
       />
     </div>
   )
+}
+
+/**
+ * Commentary on a stretch the Inspector asked to write about (several spans
+ * selected; uiStore.commentaryEdit key "range:start:end"). The stretch may
+ * have no commentary yet: the first keystroke makes it, and this editor stays
+ * in place while it does, rather than handing over to PassageBlock mid-word.
+ */
+function RangeEditor({ doc, start, end }: { doc: StrataDocument; start: number; end: number }) {
+  const setRangeCommentary = useDocumentStore((s) => s.setRangeCommentary)
+  const setCommentaryEdit = useUIStore((s) => s.setCommentaryEdit)
+  return (
+    <article className="flex flex-col gap-2">
+      <header className="flex items-baseline gap-2">
+        <h2 className="text-sm font-semibold text-foreground">Passage</h2>
+        <span className="text-xs tabular-nums text-muted-foreground">
+          {mmss(start)}–{mmss(end)}
+        </span>
+      </header>
+      <CommentaryEditor
+        doc={doc}
+        value={blockForRange(doc, start, end)?.text ?? ''}
+        label="Commentary on this passage"
+        onChange={(text) => setRangeCommentary(start, end, text)}
+        onDone={() => setCommentaryEdit(null)}
+      />
+    </article>
+  )
+}
+
+/** The stretch a "range:start:end" editing key names, if it is one. */
+function editedRange(key: string | undefined): [number, number] | null {
+  if (!key?.startsWith('range:')) return null
+  const [start, end] = key.slice('range:'.length).split(':').map(Number)
+  return Number.isFinite(start) && Number.isFinite(end) ? [start, end] : null
 }
 
 /**
@@ -233,6 +273,9 @@ export function CommentaryPanel() {
   const selectedIds = useUIStore((s) => s.selectedSpanIds)
   const reading = useUIStore((s) => s.readingView)
   const showInReading = useUIStore((s) => s.readingShow.commentary)
+  // What's being edited: a new stretch's editor must appear even when the
+  // stack itself doesn't change.
+  const editKey = useUIStore((s) => s.commentaryEdit?.key)
   // A string key of what the stack holds now: equal strings mean no re-render.
   const momentKey = useUIStore((s) => {
     if (!doc) return ''
@@ -258,7 +301,11 @@ export function CommentaryPanel() {
   const ui = useUIStore.getState()
   // While commentary is being edited, the stack holds at the moment editing began.
   const t = heldMoment(doc, ui.commentaryEdit) ?? momentOf(doc, ui.currentTime, ui.selectedSpanIds, ui.playbackState === 'playing')
-  const passages = passagesAt(doc, t)
+  // A stretch being written about from the Inspector has its own editor, so
+  // its block (once there is one) isn't listed a second time.
+  const range = reading ? null : editedRange(editKey)
+  const rangeBlock = range ? blockForRange(doc, range[0], range[1]) : undefined
+  const passages = passagesAt(doc, t).filter((b) => b !== rangeBlock)
   const rows = stackAt(doc, t)
   const anyLyrics = doc.layers.some((l) => formSpans(l).some((s) => s.lyrics))
 
@@ -293,7 +340,7 @@ export function CommentaryPanel() {
     </div>
   )
 
-  if (!rows.length && !passages.length)
+  if (!rows.length && !passages.length && !range)
     return (
       <div className="flex flex-col items-center gap-2">
         {controls}
@@ -307,6 +354,7 @@ export function CommentaryPanel() {
       aria-live="polite"
     >
       {controls}
+      {range && <RangeEditor doc={doc} start={range[0]} end={range[1]} />}
       {passages.map((b) => (
         <PassageBlock key={b.id} doc={doc} block={b} moment={t} />
       ))}

@@ -6,8 +6,8 @@
  * diagram's top bar (uiStore.quickEntry):
  *   - Type: the layer's own types, then its library's (chosen here, saved as
  *     Layer.library, or guessed); on a lettered layer its letters and the next
- *     one. "/" or More… opens the full Type list. Hidden once every selected
- *     span has a type, so it never nags. With nothing to offer yet (a new
+ *     one, the current type marked, so a typed span can change type in one
+ *     click. "/" or More… opens the full Type list. With nothing to offer yet (a new
  *     file, no library), it shows the library chooser and More… alone.
  *   - Shape: drawn, in groups: the whole shape (1–3) and the line, solid or
  *     dashed (4–5), on number keys; then each end on its own, by click.
@@ -131,7 +131,6 @@ export function QuickEntryBar({
       start: Math.min(...spans.map((s) => s.startTime)),
       end: Math.max(...spans.map((s) => s.endTime)),
       current: spans.every((s) => s.type === spans[0].type) ? spans[0].type ?? null : null,
-      allTyped: spans.every((s) => !!s.type),
     }
   }, [selected, layers])
 
@@ -140,7 +139,6 @@ export function QuickEntryBar({
     const ids = target.spans.map((s) => s.id)
     const updateSpans = useDocumentStore.getState().updateSpans
     if (mode === 'type') {
-      if (target.allTyped) return []
       return quickTypes(doc, target.layer.id, MAX_TYPES).map((o, i) => ({
         key: o.term.id,
         hotkey: i + 1,
@@ -223,7 +221,7 @@ export function QuickEntryBar({
 
   // Types show even with nothing to offer yet (a new file, no library chosen):
   // the bar is where the library is chosen, and More… opens every type.
-  const showing = !!target && (options.length > 0 || (mode === 'type' && !target.allTyped))
+  const showing = !!target && (options.length > 0 || mode === 'type')
 
   // 1–9 pick; "/" opens the full Type list. Only while the bar shows and no
   // field has the keyboard.
@@ -322,7 +320,7 @@ export function QuickEntryBar({
             type="button"
             onClick={o.apply}
             title={o.title ?? o.label}
-            aria-label={o.title ?? o.label}
+            aria-label={o.label || o.title}
             aria-pressed={o.on}
             className={`flex h-7 items-center gap-1.5 rounded-md border hover:bg-accent ${o.icon ? 'px-1' : 'px-2'} text-[13px] ${
               o.isNew ? 'border-dashed border-muted-foreground text-muted-foreground' : o.on ? 'border-foreground font-medium text-foreground' : 'border-border text-foreground'

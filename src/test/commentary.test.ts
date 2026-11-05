@@ -126,7 +126,7 @@ describe('commentary text', () => {
     const html = await commentaryToHtml(doc())
     expect(html.indexOf('Drop')).toBeLessThan(html.indexOf('Outro'))
     expect(html).toContain('<section id="drop">')
-    expect(html).toContain('<a href="#drop">drop</a>')
+    expect(html).toContain('<a href="#drop">Drop</a>')  // a bare link shows the span's label
     expect(html).toContain('Loud &lt;and&gt; proud.')
   })
 
@@ -135,7 +135,7 @@ describe('commentary text', () => {
     store().setSpanCommentary('b', 'A **big** drop.')
     const md = commentaryToMarkdown(doc())
     expect(md).toContain('<a id="drop"></a>\n\n## Drop (0:30–1:00)\n\nA **big** drop.')
-    expect(md).toContain('Echoes [drop](#drop) and nowhere.')
+    expect(md).toContain('Echoes [Drop](#drop) and nowhere.')
     expect(md.indexOf('## Drop')).toBeLessThan(md.indexOf('## Outro'))
   })
 })
@@ -195,7 +195,7 @@ describe('links to point markers', () => {
     store().addPointMarker({ id: 'mk', timestamp: 44, label: 'MC' })
     expect(markerBySlug(doc(), 'mc')?.id).toBe('mk')
     store().setSpanCommentary('b', 'After the [[mc]].')
-    expect(await commentaryToHtml(doc())).toContain('After the mc.')
+    expect(await commentaryToHtml(doc())).toContain('After the MC.')
   })
 })
 

@@ -30,7 +30,7 @@ import { Field, inputClass } from '@/components/Field'
 import { toAccidentals } from '@/lib/musicSymbols'
 import { barAt, barLength, segmentAt, sortedSegments } from '@/lib/beatGrid'
 import { CAP_ICONS } from '@/lib/capIcons'
-import { formSpans } from '@/lib/layers'
+import { formSpans, analysisLayers } from '@/lib/layers'
 import type {
   Span,
   Layer,
@@ -187,41 +187,81 @@ function EndsGrid({
   )
 }
 
-/** A single span's ends, in the grid above. A new boundary type clears that
- *  side's cap override so the drawing follows the claim. */
-function SpanEnds({
+/**
+ * The Inspector's Timing rows: Start and End, each with its time and its
+ * boundary type, under small column heads; then how long it lasts, with To
+ * end when the span doesn't already end the track.
+ */
+function TimingGrid({
   span,
   update,
-  showCaps,
+  onStart,
+  onEnd,
+  toEnd,
+  bars,
 }: {
   span: Span
   update: (patch: Partial<Omit<Span, 'id'>>) => void
-  showCaps: boolean
+  onStart: (t: number) => void
+  onEnd: (t: number) => void
+  toEnd: { run: () => void; title: string } | null
+  /** "bars 9–12", when a beat grid covers the span. */
+  bars: string | null
 }) {
-  const side = (which: 'start' | 'end'): [EndSelect, EndSelect] => {
-    const bt = which === 'start' ? span.startBoundaryType : span.endBoundaryType
-    const cap = which === 'start' ? span.startCap : span.endCap
-    return [
-      {
-        label: `${which === 'start' ? 'Start' : 'End'} boundary`,
-        value: bt ?? 'definite',
-        options: BOUNDARY_OPTS,
-        onChange: (v) =>
+  const head = 'text-[11px] font-medium uppercase tracking-wide text-muted-foreground'
+  const boundary = (which: 'start' | 'end') => {
+    const value = (which === 'start' ? span.startBoundaryType : span.endBoundaryType) ?? 'definite'
+    return (
+      <select
+        aria-label={`${which === 'start' ? 'Start' : 'End'} boundary`}
+        title="What happens at this end: a clean cut, a gradual arrival, or an elision"
+        className={`${inputClass} py-0.5 text-xs`}
+        value={value}
+        onChange={(e) =>
           update(
             which === 'start'
-              ? { startBoundaryType: v as BoundaryType, startCap: undefined }
-              : { endBoundaryType: v as BoundaryType, endCap: undefined },
-          ),
-      },
-      {
-        label: `${which === 'start' ? 'Start' : 'End'} cap`,
-        value: cap ?? capFromBoundaryType(bt),
-        options: CAP_OPTS,
-        onChange: (v) => update(which === 'start' ? { startCap: v as CapStyle } : { endCap: v as CapStyle }),
-      },
-    ]
+              ? { startBoundaryType: e.target.value as BoundaryType, startCap: undefined }
+              : { endBoundaryType: e.target.value as BoundaryType, endCap: undefined },
+          )
+        }
+      >
+        {BOUNDARY_OPTS.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    )
   }
-  return <EndsGrid start={side('start')} end={side('end')} showCaps={showCaps} />
+  return (
+    <div className="grid items-center gap-x-2 gap-y-1.5" style={{ gridTemplateColumns: '2.5rem auto 1fr' }}>
+      <span />
+      <span className={head}>Time</span>
+      <span className={head}>Boundary</span>
+      <span className="text-xs text-muted-foreground">Start</span>
+      <TimeInput value={span.startTime} onCommit={onStart} title="Start time" />
+      {boundary('start')}
+      <span className="text-xs text-muted-foreground">End</span>
+      <TimeInput value={span.endTime} onCommit={onEnd} title="End time" />
+      {boundary('end')}
+      <span className="text-xs text-muted-foreground">Lasts</span>
+      <span className="col-span-2 flex items-center gap-2 text-xs">
+        <span className="tabular-nums text-foreground">
+          {formatTime(span.endTime - span.startTime)}
+          {bars && <span className="text-muted-foreground">{` · ${bars}`}</span>}
+        </span>
+        {toEnd && (
+          <button
+            onClick={toEnd.run}
+            title={toEnd.title}
+            className="ml-auto shrink-0 rounded border border-border px-1.5 py-0.5 text-xs text-foreground hover:bg-accent"
+          >
+            To end
+          </button>
+        )}
+      </span>
+    </div>
+  )
 }
 
 /**
@@ -273,6 +313,48 @@ function OverlapFields({ layer, span }: { layer: Layer; span: Span }) {
           </Field>
         )}
       </div>
+    </div>
+  )
+}
+
+/**
+ * Open commentary in the editor above the diagram: a span's ("span:<id>") or
+ * a stretch's ("range:<start>:<end>"). Shows the commentary if it was hidden,
+ * and holds the stack at `at` so what's being edited stays in view
+ * (uiStore.commentaryEdit).
+ */
+function openCommentary(key: string, at: number) {
+  const { document: doc, updateLayer } = useDocumentStore.getState()
+  for (const l of doc ? analysisLayers(doc) : []) if (!l.visibility) updateLayer(l.id, { visibility: true })
+  useUIStore.getState().setCommentaryEdit({ key, at })
+}
+
+/**
+ * Commentary in the Inspector: the first lines, read-only, and a button (or a
+ * click on the text) that opens it in the editor above the diagram.
+ */
+function CommentaryPreview({ label, text, onOpen }: { label: string; text: string; onOpen: () => void }) {
+  return (
+    <div className="mb-3">
+      <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      {text.trim() && (
+        <button
+          type="button"
+          onClick={onOpen}
+          title="Edit above the diagram"
+          className="mb-1.5 w-full rounded border border-border bg-muted/40 px-2 py-1.5 text-left text-[13px] text-foreground hover:bg-accent"
+        >
+          <span className="line-clamp-3 whitespace-pre-line">{text}</span>
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={onOpen}
+        title="Write above the diagram, with formatting and links to other spans"
+        className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent"
+      >
+        {text.trim() ? 'Edit in the commentary editor' : 'Write commentary'}
+      </button>
     </div>
   )
 }
@@ -436,7 +518,6 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   const shownFill = useUIStore((s) => (s.colorblindSafe ? safeFill : sameColor))
   const setSpanLabels = useDocumentStore((s) => s.setSpanLabels)
   const regenerateSlug = useDocumentStore((s) => s.regenerateSlug)
-  const setSpanCommentary = useDocumentStore((s) => s.setSpanCommentary)
   const commentary = useDocumentStore((s) => (s.document ? blockForSpan(s.document, span.id)?.text ?? '' : ''))
   // What the closed Describe section holds, so you can tell without opening it.
   const written = [span.annotation && 'annotation', commentary && 'commentary', span.lyrics && 'lyrics'].filter(Boolean)
@@ -584,33 +665,31 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         summary={`${formatTime(span.startTime)}–${formatTime(span.endTime)}${firstBar !== null && lastBar !== null ? ` · bar${firstBar === lastBar ? ` ${firstBar}` : `s ${firstBar}–${lastBar}`}` : ''}`}
       >
         <div className="flex flex-col gap-2">
-        {/* Time range (editable), duration and bars */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <TimeInput value={span.startTime} onCommit={commitStart} title="Start time" />
-          <span className="text-muted-foreground">→</span>
-          <TimeInput value={span.endTime} onCommit={commitEnd} title="End time" />
-          {/* An unmetered ending: run this span to the end, dropping the
-              spans a regular layout put after it (extendToEnd). */}
-          {!isLast && (
-            <button
-              onClick={() => extendToEnd(layer.id, span.id)}
-              title={`Run this span to the end of the track${after ? `, removing the ${after} span${after === 1 ? '' : 's'} after it` : ''}`}
-              className="rounded border border-border px-1.5 py-0.5 text-xs text-foreground hover:bg-accent"
-            >
-              To end
-            </button>
-          )}
-          <span className="text-xs text-muted-foreground">
-            {formatTime(duration)}
-            {firstBar !== null && lastBar !== null && ` · bar${firstBar === lastBar ? ` ${firstBar}` : `s ${firstBar}–${lastBar}`}`}
-          </span>
-        </div>
+        {/* Each end on its own row: its time (editable) and its boundary type,
+            the claim about what happens there. Choosing a boundary type also
+            resets that end's shape to match (SpanEnds). Then the duration and
+            bars, read-only. */}
+        <TimingGrid
+          span={span}
+          update={update}
+          onStart={commitStart}
+          onEnd={commitEnd}
+          toEnd={
+            isLast
+              ? null
+              : {
+                  run: () => extendToEnd(layer.id, span.id),
+                  title: `Run this span to the end of the track${after ? `, removing the ${after} span${after === 1 ? '' : 's'} after it` : ''}`,
+                }
+          }
+          bars={firstBar !== null && lastBar !== null ? `bar${firstBar === lastBar ? ` ${firstBar}` : `s ${firstBar}–${lastBar}`}` : null}
+        />
 
         {/* A phrase a bar long or short: change it by whole bars, and every
             later boundary in the layer moves with it (resizeSpanByBars). */}
         {barsLong !== null && (
           <div className="flex items-center gap-1.5 text-xs" title="Type a length or step it by a bar. Later spans move with it.">
-            <span className="text-muted-foreground">Length</span>
+            <span className="w-10 shrink-0 text-muted-foreground">Length</span>
             <button
               aria-label="One bar shorter"
               title="One bar shorter; the spans after it move earlier"
@@ -677,19 +756,14 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             {/* Written analysis: prose about this span, shown above the diagram
                 while it plays. Stored in the document's commentary layer, not on
                 the span, so it can outlive the span (see widgets/written-analysis). */}
-            <Field
+            {/* Commentary is written in one place, the editor above the
+                diagram (toolbar, link picker); here it's a preview that opens
+                there (docs/decisions.md, "One Commentary Editor"). */}
+            <CommentaryPreview
               label="Commentary"
-              symbols
-              tooltip="Shows above the diagram while this span plays, where it can be edited too. Markdown works: **bold**, *italic*, - lists, ## headings, > quotes. Link to a span or point marker with [[its-slug]]."
-            >
-              <textarea
-                className={`${inputClass} resize-y`}
-                rows={6}
-                value={commentary}
-                placeholder="Write about this passage."
-                onChange={(e) => setSpanCommentary(span.id, e.target.value)}
-              />
-            </Field>
+              text={commentary}
+              onOpen={() => openCommentary(`span:${span.id}`, (span.startTime + span.endTime) / 2)}
+            />
 
             <Field label="Lyrics">
               <textarea
@@ -782,7 +856,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
             )}
         </InspectorBlock>
 
-        <InspectorBlock id="more" title="More" summary="Slug, boundaries, notes">
+        <InspectorBlock id="more" title="More" summary="Slug, notes, ID">
             {/* Short label — shown in place of the full label when the diagram is
                 too zoomed out to fit it; never abbreviated further by the app. */}
             <Field label="Short label" tooltip="Shown when the full label doesn't fit." symbols>
@@ -818,10 +892,6 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
                 </button>
               )}
             </Field>
-
-            {/* Boundary types: the analytical claim about each end (choosing one
-                also resets that end's shape to match). */}
-            <SpanEnds span={span} update={update} showCaps={false} />
 
             {!isBar && (
               <Field label="Key area" tooltip={KEY_AREA_TIP}>
@@ -953,7 +1023,6 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
 
   // Commentary on the whole stretch the selection covers (a time-range block),
   // as opposed to the per-span commentary each span has on its own.
-  const setRangeCommentary = useDocumentStore((s) => s.setRangeCommentary)
   const rangeStart = Math.min(...spans.map((s) => s.startTime))
   const rangeEnd = Math.max(...spans.map((s) => s.endTime))
   const rangeText = doc ? (blockForRange(doc, rangeStart, rangeEnd)?.text ?? '') : ''
@@ -984,19 +1053,11 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
           <PasteHint spanIds={ids} />
         </div>
 
-        <Field
+        <CommentaryPreview
           label={`Commentary, ${formatClock(rangeStart)}–${formatClock(rangeEnd)}`}
-          tooltip="About the whole stretch these spans cover. Shows above the diagram while it plays."
-          symbols
-        >
-          <textarea
-            className={`${inputClass} resize-y`}
-            rows={3}
-            value={rangeText}
-            placeholder="Write about this stretch."
-            onChange={(e) => setRangeCommentary(rangeStart, rangeEnd, e.target.value)}
-          />
-        </Field>
+          text={rangeText}
+          onOpen={() => openCommentary(`range:${rangeStart}:${rangeEnd}`, (rangeStart + rangeEnd) / 2)}
+        />
 
         <div className="mb-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
           Apply to all selected
