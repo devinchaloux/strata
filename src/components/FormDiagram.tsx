@@ -580,6 +580,7 @@ export function FormDiagram() {
   // bar while the ruler (TimelineAxis) renders below. One shared instance.
   const timeline = useTimeline()
   const reading = useUIStore((s) => s.readingView)
+  const embed = useUIStore((s) => s.embed)
   const videoMini = useUIStore((s) => s.videoMini)
   const activeLayerId = useUIStore((s) => s.activeLayerId)
   const showDiagram = useUIStore((s) => !s.readingView || s.readingShow.diagram)
@@ -663,7 +664,9 @@ export function FormDiagram() {
         className="relative shrink-0 overflow-hidden rounded-md bg-(--canvas)"
         style={{ marginBottom: 4 }}
       >
-        {/* Editing controls are off while reading. */}
+        {/* Editing controls are off while reading. The reading view keeps
+            zoom, so a reader can look closely at a passage and fit the whole
+            track again; an embed has none (its page sets the view). */}
         {!reading && (
           <WidgetTopBar
             collapsed={collapsed}
@@ -671,6 +674,11 @@ export function FormDiagram() {
             hidden={hidden}
             zoom={zoomProps}
           />
+        )}
+        {reading && !embed && (
+          <div className="flex shrink-0 items-center justify-end border-b px-2" style={{ height: 26, borderColor: 'var(--hairline)' }}>
+            <ZoomControls {...zoomProps} />
+          </div>
         )}
         <div className="flex w-full" style={{ height: stackH }}>
           <LayerHeaders layers={visible} collapsed={collapsed} />

@@ -5,7 +5,9 @@ import type { MergeConflict } from '@/lib/mergeSpans'
 import type { SnapMode } from '@/lib/beatGrid'
 import { COPY_FIELDS, DEFAULT_COPY_FIELDS, type CopyField } from '@/lib/groupSpans'
 
-export type InspectorTab = 'describe' | 'shape' | 'more'
+/** The span Inspector's collapsible sections, top to bottom. */
+export type InspectorSection = 'timing' | 'describe' | 'shape' | 'more'
+export const INSPECTOR_SECTIONS: InspectorSection[] = ['timing', 'describe', 'shape', 'more']
 /** What the quick-entry bar on the diagram sets, or off. */
 export type QuickEntry = 'off' | 'type' | 'shape' | 'fill'
 
@@ -147,8 +149,10 @@ export interface UIState {
   copyPickerPending: boolean
   /** What Copy to layer takes along (lib/groupSpans.ts COPY_FIELDS), remembered in the browser. */
   copyFields: CopyField[]
-  /** The span Inspector's open tab, kept as the selection moves. */
-  inspectorTab: InspectorTab
+  /** Which of the span Inspector's sections are open, remembered in the browser. */
+  inspectorOpen: Record<InspectorSection, boolean>
+  /** Set to scroll an opened section into view (More… from Quick pick); the count makes a repeat request new. */
+  inspectorReveal: { section: InspectorSection; n: number } | null
   /** The quick-entry bar's mode, remembered in the browser. */
   quickEntry: QuickEntry
   setQuickEntry: (mode: QuickEntry) => void
@@ -222,7 +226,9 @@ export interface UIState {
   requestCopyPicker: () => void
   clearCopyPickerRequest: () => void
   setCopyFields: (fields: CopyField[]) => void
-  setInspectorTab: (tab: InspectorTab) => void
+  toggleInspectorSection: (section: InspectorSection) => void
+  /** Open a section and scroll it into view. */
+  openInspectorSection: (section: InspectorSection) => void
   setReadingView: (on: boolean) => void
   setReadingShow: (part: 'commentary' | 'diagram', on: boolean) => void
   setShowLyrics: (show: boolean) => void
@@ -292,6 +298,17 @@ function readClickVolume(): number {
   return readPreference(CLICK_VOLUME_KEY) != null && Number.isFinite(v) && v >= 0 && v <= 1 ? v : 0.6
 }
 
+const INSPECTOR_KEY = 'strata:inspectorOpen'
+/** The remembered open sections; Timing and Describe open for a first visit. */
+function readInspectorOpen(): Record<InspectorSection, boolean> {
+  const raw = readPreference(INSPECTOR_KEY)
+  const open = raw == null ? ['timing', 'describe'] : raw.split(',')
+  return Object.fromEntries(INSPECTOR_SECTIONS.map((id) => [id, open.includes(id)])) as Record<InspectorSection, boolean>
+}
+function writeInspectorOpen(open: Record<InspectorSection, boolean>) {
+  writePreference(INSPECTOR_KEY, INSPECTOR_SECTIONS.filter((id) => open[id]).join(','))
+}
+
 const COPY_FIELDS_KEY = 'strata:copyFields'
 /** The remembered Copy to layer choice; the defaults (lyrics, notes and commentary off) for a first visit. */
 function readCopyFields(): CopyField[] {
@@ -346,7 +363,8 @@ const useUIStore = create<UIState>()((set) => ({
   fillPickerPending: false,
   copyPickerPending: false,
   copyFields: readCopyFields(),
-  inspectorTab: 'describe',
+  inspectorOpen: readInspectorOpen(),
+  inspectorReveal: null,
   quickEntry: (['off', 'type', 'shape', 'fill'] as const).find((m) => m === readPreference(QUICK_KEY)) ?? 'type',
   setQuickEntry: (mode) => {
     writePreference(QUICK_KEY, mode)
@@ -448,7 +466,12 @@ const useUIStore = create<UIState>()((set) => ({
   setLibrariesOpen: (open) => set({ librariesOpen: open }),
   requestTypePicker: () => set({ typePickerPending: true }),
   clearTypePickerRequest: () => set({ typePickerPending: false }),
-  requestFillPicker: () => set({ fillPickerPending: true, inspectorTab: 'shape' }),
+  requestFillPicker: () =>
+    set((s) => {
+      const inspectorOpen = { ...s.inspectorOpen, shape: true }
+      writeInspectorOpen(inspectorOpen)
+      return { fillPickerPending: true, inspectorOpen, inspectorReveal: { section: 'shape', n: (s.inspectorReveal?.n ?? 0) + 1 } }
+    }),
   clearFillPickerRequest: () => set({ fillPickerPending: false }),
   requestCopyPicker: () => set({ copyPickerPending: true }),
   clearCopyPickerRequest: () => set({ copyPickerPending: false }),
@@ -456,7 +479,18 @@ const useUIStore = create<UIState>()((set) => ({
     writePreference(COPY_FIELDS_KEY, fields.join(','))
     set({ copyFields: fields })
   },
-  setInspectorTab: (tab) => set({ inspectorTab: tab }),
+  toggleInspectorSection: (section) =>
+    set((s) => {
+      const inspectorOpen = { ...s.inspectorOpen, [section]: !s.inspectorOpen[section] }
+      writeInspectorOpen(inspectorOpen)
+      return { inspectorOpen }
+    }),
+  openInspectorSection: (section) =>
+    set((s) => {
+      const inspectorOpen = { ...s.inspectorOpen, [section]: true }
+      writeInspectorOpen(inspectorOpen)
+      return { inspectorOpen, inspectorReveal: { section, n: (s.inspectorReveal?.n ?? 0) + 1 } }
+    }),
   setReadingView: (on) => set({ readingView: on, selectedSpanIds: [], selectionAnchorId: null, selectedPointMarkerId: null }),
   setReadingShow: (part, on) => set((s) => ({ readingShow: { ...s.readingShow, [part]: on } })),
   requestSeek: (time, play) => set((s) => ({ seekRequest: { time, n: (s.seekRequest?.n ?? 0) + 1, play } })),

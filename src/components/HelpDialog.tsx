@@ -23,7 +23,7 @@ const STEPS: [string, string][] = [
   ['Layers', 'Add a layer (+ above the layer names) for another level of form, or another framework. Group into… (several spans) builds the level above from the one below; Copy to layer… (one span) copies it to any other layer, up or down. Their shared boundaries then move together.'],
   ['Write', 'Write in a span’s Commentary box, or in place above the diagram (hover a span’s level for Edit). Markdown works, with a toolbar for bold, lists, headings and links. It appears while that passage plays.'],
   ['Keep', 'Save a .strata file. Export makes a figure (SVG or PNG) or a commentary page (HTML).'],
-  ['Read', 'Reading view shows the video, commentary and diagram for reading or teaching, with editing off. Share… makes a link to a copy you’ve put online (Dropbox, OneDrive, GitHub or your own site). Esc goes back.'],
+  ['Read', 'Reading view shows the video, commentary, and diagram for reading or teaching, with editing off. Zoom the diagram with − and +, or press Fit to see the whole track. Share… makes a link to a copy you’ve put online (Dropbox, OneDrive, GitHub, or your own site). Esc goes back.'],
 ]
 
 const KEYS: [string, [string, string][]][] = [

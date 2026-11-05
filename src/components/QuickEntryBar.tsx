@@ -15,7 +15,8 @@
  *     lettered selection first offers its whole family (every A, A′, A″ in
  *     the layer), selected in one click so the next fill reaches them all.
  *   Shape and Fill end with More…, which opens the Inspector's Shape & color
- *   tab (with the Fill picker open, for fills), as Type's opens the Type list.
+ *   section and scrolls to it (with the Fill picker open, for fills), as
+ *   Type's opens the Type list.
  * Picking applies to every selected span in one undo step, with labels
  * following a new type as in the Inspector (store/typeActions.ts).
  * docs/decisions.md, "Quick Entry".
@@ -107,13 +108,13 @@ export function QuickEntryBar({
   const shown = useCallback((c: string) => (colorblindSafe ? safeFill(c) : c), [colorblindSafe])
   const requestTypePicker = useUIStore((s) => s.requestTypePicker)
   const requestFillPicker = useUIStore((s) => s.requestFillPicker)
-  const setInspectorTab = useUIStore((s) => s.setInspectorTab)
+  const openInspectorSection = useUIStore((s) => s.openInspectorSection)
   // More… (or "/"): the full list in the Inspector for whatever this offers.
   const more = useCallback(() => {
     if (mode === 'type') requestTypePicker()
     else if (mode === 'fill') requestFillPicker()
-    else setInspectorTab('shape')
-  }, [mode, requestTypePicker, requestFillPicker, setInspectorTab])
+    else openInspectorSection('shape')
+  }, [mode, requestTypePicker, requestFillPicker, openInspectorSection])
   const barRef = useRef<HTMLDivElement>(null)
 
   // The selection, if it all sits in one visible layer.
