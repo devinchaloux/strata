@@ -4,7 +4,7 @@
 
 The form diagram is the v1 widget and the proof of concept for the Strata widget system. It is the data spine of the analysis: the layer all other widgets reference for span boundaries and section identity.
 
-**Data model reference:** `schema/strata-schema-reference.md` — field-by-field documentation of `FormDiagramData` and `Span`.
+**Data model reference:** `schema/strata-schema-reference.md`, "Layers" and "Spans".
 
 **Contract reference:** `widgets/_contract.md` — the `WidgetDefinition` interface this document implements.
 

@@ -1,391 +1,246 @@
-# Strata File Format — Schema Reference
+# The Strata file, explained
 
-> This document explains what's inside a `.strata` file and what each field means.
-> It is written for analysts and collaborators, not for programmers.
-> The technical specification lives in `strata.schema.json`, mirrored by the TypeScript types in `src/types/strata.ts`.
+A `.strata` file holds one complete analysis of one recording: every layer, section, moment, comment, and term you used. You can keep it, send it, or publish it. This guide explains what the file records and what each part means, in the terms an analyst would use. You never need to open the file to use Strata. Read this when you want to know exactly what your analysis says as data.
 
----
+The file is plain text in a common format called JSON. You can open it in any text editor. A programmer can read it from any programming language. Where a part has a technical name inside the file, this guide shows it `like this` for anyone who needs it. For the structure as JSON, with a complete example, read [How the JSON is structured](../docs/json-structure.md).
 
-## What is a `.strata` file?
+## At a glance
 
-A `.strata` file is a plain text file in JSON format — the same format used by many web applications to store data. You can open it in any text editor and read it, though the Strata application is what makes it interactive.
-
-Every `.strata` file contains everything needed to reproduce a complete music analysis: the link to the audio source, all formal sections (spans), all analytical events (point markers), all layer settings, and the vocabulary terms used. **The file is the analysis.** Nothing is stored on a server.
-
----
-
-## File Structure Overview
-
-A `.strata` file is organized into these main sections, in order:
-
-```
-.strata file
-│
-├── File metadata          (version numbers, timestamps)
-├── Track identity         (title, artist, context, duration)
-├── Derivative info        (when the track is a remix, cover, etc.)
-├── Overview + grid        (notes, BPM, time signature)
-├── Source reference       (YouTube URL or local filename + offset)
-├── Corpus / author info   (project tag, analysis author)
-├── Vocabulary             (custom type terms for this document)
-├── Layers                 (one or more analytical layers, each with spans)
-└── Point markers          (`pointMarkers`: single-moment events — flagged observations, MC, EEC, etc.)
+```mermaid
+flowchart TB
+  F[".strata file"] --> A["About the track<br/>title, artist, work, home key, tempo"]
+  F --> R["The recording<br/>YouTube or audio file, sync offset"]
+  F --> G["Bars and beats<br/>grid in stretches, free passages"]
+  F --> V["Vocabulary<br/>your own terms, imported packs"]
+  F --> L["Layers"]
+  F --> P["Point markers<br/>single moments, seen by every layer"]
+  L --> FD["Form diagram layer<br/>spans: label, type, boundaries, part of"]
+  L --> C["Commentary layer<br/>writing about a span or a stretch of time"]
 ```
 
----
+The details about the track, its timing, and its vocabulary sit at the top. The analysis itself lives in the layers, mostly as spans. Commentary sits alongside the spans. Point markers belong to the whole analysis, so every layer sees them. The sections below explain each part.
 
-## 1. Top-Level Document
+## About the recording
 
-These fields appear at the root of every `.strata` file.
+The top of the file says what you analyzed and who analyzed it. Only the title and artist are always present. You fill in the rest when you know it, mostly in **Document settings**.
 
-### File Metadata
+| Detail | What it records | Example | In the file |
+| --- | --- | --- | --- |
+| Title | The track or recording | Alive | `title` |
+| Artist | Performers, as a list, so collaborations stay clean | Krewella | `artist` |
+| Context | Studio recording, or live performance | performance | `context` |
+| Composer | Strata asks for it when the context is a performance | Beethoven | `composer` |
+| Work | The composition, so you can compare performances of it across files | Piano Sonata Op. 13 | `work` |
+| Derived from | A remix, cover, or re-recording of another analyzed track, and the relationship. Strata keeps it in the file but has no control for it yet | remix of heroes-original.strata | `derivativeOf` |
+| Home key | Tonic and mode. You write key areas and harmonic labels relative to it | A minor | `homeKey` |
+| Starting tempo and meter | Where the beat grid starts. Once you have a grid, the grid holds the real tempo, including any changes | 128 BPM, 4/4 | `bpm`, `timeSignature` |
+| Length | The recording's length in seconds. Strata fills it in from the media | 300.5 | `duration` |
+| Notes | Your overview: method, caveats, or a summary of findings | — | `notes` |
+| Project | A tag for a collection of analyses that belong together. Strata keeps it for corpus tools and does nothing else with it yet | edm-corpus | `project` |
+| Analysis by | Who made the analysis | — | `analysisAuthor` |
+| Cadence captions | Whether Strata draws cadence details on the diagram. They stay on until you turn them off | on | `showCadenceCaptions` |
 
-| Field | Type | Required | What it means |
-|---|---|---|---|
-| `strataVersion` | text | Yes | The version of the Strata app that created the file. Used for diagnosing compatibility issues. |
-| `fileFormatVersion` | whole number | Yes | The version of this file format, now 2. It goes up when a change means older files need upgrading; the app upgrades an older file when it opens it, and saves it at the new version. See [Format versions](#8-format-versions) below. |
-| `createdAt` | timestamp | Yes | When the file was first saved. Set once; never updated. |
-| `updatedAt` | timestamp | Yes | When the file was last saved. Updated on every save. |
+The file also records when you created it, when you last saved it, which version of Strata wrote it, and which version of the format it uses (`createdAt`, `updatedAt`, `strataVersion`, `fileFormatVersion`).
 
-### Track Identity
+**Derived from** (`derivativeOf`) holds two things: `sourceTrack`, the file name of the other analysis, and `relationship`. You can write any relationship, but these are the suggested ones: `remix`, `cover` (a cover performance of the same composition), `rerecording` (the original artist recorded the track again), and `arrangement` (for different instruments or a different setting). Strata keeps this apart from the context, so you can ask about either one on its own.
 
-| Field | Type | Required | What it means |
-|---|---|---|---|
-| `title` | text | Yes | Display title of the track or recording. |
-| `artist` | list of text | Yes | Performer or artist name(s). A list so that multi-artist tracks are stored cleanly — e.g. `["The Chainsmokers", "Halsey"]`. Single-artist tracks use a one-item list: `["Avicii"]`. The list may be empty while an analysis is in progress. |
-| `context` | one of two values or null | No | `recording` (studio recording) or `performance` (live performance of a composed work). Optional — null if unspecified. A `performance` context shows the `composer` field in the app. |
-| `duration` | decimal number | Yes | Track duration in seconds. Stored explicitly so span timestamps can be validated against the total length. |
-| `composer` | text or null | No | Composer of the work. Only relevant when `context = performance`. Hidden in the UI for other contexts. |
-| `work` | text or null | No | Composition identifier — e.g. `Piano Sonata Op. 13`. Enables cross-file corpus comparison of different performances of the same work. |
+## The recording and its timing
 
-### Derivative Works
+Strata measures every time in seconds from the true start of the music. Strata calls this **recording time**. The file links to the recording but never contains it.
 
-| Field | Type | Required | What it means |
-|---|---|---|---|
-| `derivativeOf` | object or null | No | When this track is derived from another (remix, cover, re-recording, arrangement), this field records the relationship. Null for original recordings. Contains two sub-fields: `sourceTrack` (the filename of the source analysis file, e.g. `heroes-original.strata`) and `relationship` (the nature of the connection). The app keeps it but has no control for setting it yet. |
+- **The source** (`source`) is either a YouTube video (`type: "youtube"` with its `url`) or an audio file on your own computer (`type: "local"` with only its `filename`). Anyone can open a YouTube analysis. To open an audio-file analysis, a reader needs the same file.
+- **The sync offset** (`sourceOffset`) is how far into the video the music actually starts. If a video has a 3-second intro, the offset is 3. Strata then plays a section at 1:34 of the music from 1:37 of the video.
 
-**`derivativeOf.relationship`** accepts any text, but suggested values are:
-- `remix` — a remix of the source track
-- `cover` — a cover performance of the same composition
-- `rerecording` — the original artist re-recorded the same track
-- `arrangement` — an arrangement for different instrumentation or context
+Because the music keeps its own clock, you can replace a broken upload with a better one. Change the link and the offset. Every section, marker, and comment stays where it was.
 
-> **Why not just a `remix` field?** Because the remix/cover/rerecording distinction belongs on a different dimension than `context`. `context` describes the nature of the artifact (studio recording, live performance). `derivativeOf` describes the relationship to another work. Separating them keeps both queryable independently.
+## Bars and beats
 
-### Overview and Grid Utility
+The beat grid (`beatGrid`) gives the recording bar numbers. It is optional. You lay it down by ear: tap along, type a tempo, or match a click track to the recording.
 
-| Field | Type | Required | What it means |
-|---|---|---|---|
-| `notes` | text or null | No | Document-level free text for the analyst. Methodological notes, analytical caveats, summary of findings. Not the same as the Written Analysis widget — this is a simple overview field, not timestamped prose. |
-| `bpm` | decimal number or null | No | The starting tempo in beats per minute: what a new beat-grid segment starts with, and what quick setup uses before there is a grid. **Once there is a grid, its segments hold the tempo**; `bpm` is not kept in step with them (matching the click track changes the grid, not this). Null if not set. |
-| `timeSignature` | object or null | No | The starting meter, in the same way: what a new beat-grid segment starts with. Contains `numerator` (beats per measure, e.g. 4) and `denominator` (note value per beat, e.g. 4 for a quarter note). Null if not set. |
-| `beatGrid` | list of Grid Segments | No | Bars and beats, laid down by the analyst — see [Beat Grid](#beat-grid) below. Omit when there is no grid. |
-| `homeKey` | object or null | No | The document's tonic and mode — see [Home Key](#home-key) below. Null if not set. |
-| `showCadenceCaptions` | true/false | No | Whether cadence-related point marker detail (type abbreviation, harmonic context) renders on the diagram. Point markers aren't owned by any layer, so this is a document-wide switch rather than a per-layer one. Omit for `true` (shown) — the default. |
+Strata stores the grid as a few **stretches** rather than as individual beats. Each stretch starts on a downbeat and keeps one tempo and one meter. You start a new stretch to mark a tempo or meter change. Between two stretches there can be no grid at all. That is how you record a rubato introduction or an unmetered breakdown.
 
-### Beat Grid
+| Part of a stretch | What it means | In the file |
+| --- | --- | --- |
+| Identity | A permanent internal code | `id` |
+| Start | The time of its first downbeat | `start` |
+| End | Where the beat stops and a free passage begins. Leave it out to run the stretch to the next one or to the end of the track | `end` |
+| Tempo | Beats per minute, to a thousandth if the track needs it (158.9) | `bpm` |
+| Beats in a bar | The meter's top number | `beatsPerBar` |
+| Beat unit | The meter's bottom number, for display. Leave it out for 4 | `beatUnit` |
+| First bar number | The bar number at the start. Leave it out to keep counting from the stretch before, across any free passage. Set it to renumber | `firstBar` |
 
-The grid is laid down by ear in **segments**. Each starts on a downbeat and
-keeps one tempo and meter until its own `end`, the next segment, or the end of
-the track. The time between segments has no grid: a freeform breakdown, a
-rubato passage. Beats and bar lines are computed from the segments; they are
-never stored. A new segment picks the grid up after a free passage, and also
-marks a tempo or meter change, or a renumbering.
+Strata works out every beat and bar line from these few numbers. When you correct a tempo, you change one number. Every bar line after it moves with it.
 
-| Field | Type | Required | What it means |
-|---|---|---|---|
-| `id` | text | Yes | Identifier. |
-| `start` | decimal number | Yes | Recording time of the segment's first downbeat, seconds. |
-| `end` | decimal number or null | No | Where the grid stops and a free stretch begins. Omit to run on to the next segment or the end of the track. |
-| `bpm` | decimal number | Yes | Tempo in beats per minute. |
-| `beatsPerBar` | whole number | Yes | Beats in a bar (the time signature's numerator). |
-| `beatUnit` | whole number | No | The note value of a beat (the denominator). Display only. Omit for 4. |
-| `firstBar` | whole number or null | No | The bar number at `start`. Omit to continue counting from the previous segment, across any free stretch between them; set it to renumber (for example after a hypermetric reinterpretation). |
+## Layers
 
-### Home Key
+A layer (`layers`) holds one reading of the timeline: large-scale form, sections, phrases, or one framework's view of the piece. A file can hold as many layers as your analysis needs. You can give your layers different focuses, frameworks, and vocabularies within the same analysis.
 
-| Field | Type | Required | What it means |
-|---|---|---|---|
-| `tonic` | text | Yes (within the object) | Free text — e.g. `A`, `F#`, `Bb`. Spelling (sharp vs. flat) is the analyst's call, not enum-constrained. |
-| `mode` | vocabulary term ID or null | No (within the object) | A term ID resolved against `vocabulary.modes` plus the built-in modes list shipped with the app (major, minor, and the church modes — Dorian, Phrygian, Lydian, Mixolydian, Locrian). Project-level custom modes (e.g. Renaissance 8-mode or 12-mode systems) live in `vocabulary.modes`. |
+There are two kinds today:
 
-> **Why this exists:** `Span.keyArea` and `PointMarker.harmonicContext` store a Roman-numeral *relationship* to the home key (e.g. `vi`, `V/V`) rather than an absolute key name. That relationship is what's corpus-queryable across a corpus of pieces in different keys — "how many B sections tonicize vi" is answerable without knowing or caring what the absolute pitch is in any given file. `homeKey` is what makes the numeral interpretable at all, and it's itself a useful corpus field on its own (e.g. major vs. minor across a corpus).
+- **Form diagram layers** (`type: "form-diagram"`) hold spans, the sections drawn as brackets.
+- **A commentary layer** (`type: "written-analysis"`) holds your written commentary. Strata makes one the first time you write commentary. You never manage it directly.
 
-### Corpus / Author
+Within one form layer, spans never overlap. You lay a layer's sections end to end, with gaps where you make no claim. When two readings overlap, put them on two layers.
 
-| Field | Type | Required | What it means |
-|---|---|---|---|
-| `project` | text or null | No | A collection or corpus tag, for grouping related files in whatever tool gathers them — e.g. `anthemics-edm-corpus`. The app stores it and does nothing else with it. |
-| `analysisAuthor` | text or null | No | Who created this analysis. |
+Each layer also carries its own settings:
 
----
+| Setting | What it does | In the file |
+| --- | --- | --- |
+| Identity | A permanent internal code | `id` |
+| Kind | Form diagram or commentary | `type` |
+| Content | The layer's spans or commentary | `data` |
+| Name and description | The name beside the layer, and an optional longer note on its framework ("Phrase-level hypermeter, 4-bar units") | `label`, `description` |
+| Shown or hidden | Strata leaves hidden layers out of exports | `visibility` |
+| Locked | You can view a locked layer but not edit it | `locked` |
+| Place in the stack | Which layer sits above which. When you group or copy spans, Strata uses it to decide which span is the parent | `displayOrder` |
+| Default colors | Fill and outline for spans that have no color of their own, or no color at all (`"none"`) | `fillColorDefault`, `strokeColorDefault` |
+| Shape | Brackets, or thin flat bars (suited to a layer of key areas) | `spanShape` |
+| Library | The vocabulary you usually draw this layer's types from. It's a preference only: you can use any type | `library` |
+| Filling gaps | Whether a boundary in an empty stretch fills the stretch on both sides or starts a span there, for a layer that begins partway through | `fillGaps` |
+| Text size | Small, medium, or large labels | `fontScale` |
 
-## 2. Source Reference
+Two more settings have no control in the app yet. When a file sets where a layer's labels and annotations sit (`rendering`), Strata draws them there. Strata reserves `position`, above or below the time ruler, for later.
 
-The `source` field describes where the audio comes from and how to align it with the analysis timestamps.
+Strata keeps a layer of a kind it doesn't know unchanged in the file, so a file made by a newer version loses nothing.
 
-| Field | Type | Required | What it means |
-|---|---|---|---|
-| `type` | `youtube` or `local` | Yes | Whether this is a YouTube video or a local audio file. |
-| `url` | text | When `type = youtube` | Full YouTube video URL. |
-| `filename` | text | When `type = local` | Audio filename only (no folder path). The file must be present on the viewer's machine — local files cannot be shared. |
-| `sourceOffset` | decimal number | Yes | The number of seconds between the start of the YouTube video (or audio file) and the true start of the recording. **All span timestamps are stored in recording time, not video time.** The app adds this offset automatically when seeking. Zero if the video starts exactly when the track starts. Positive if the video has a silent intro before the music begins. |
+## Spans
 
-> **Example:** If a YouTube video has a 3-second intro before the track begins, `sourceOffset = 3.0`. A span at recording time 94.0s will seek the player to 97.0s. If the video is later replaced with a cleaner upload, only the URL and offset need to change — all span data is untouched.
+A span (`spans`) is a stretch of the recording that you claim as a section: a verse, a drop, an exposition, or a four-bar phrase. Apart from its start and end, everything on a span is optional.
 
----
+| On a span | What it records | Example | In the file |
+| --- | --- | --- | --- |
+| Start and end | Where the section begins and ends, in recording time | 94.5 to 125.0 | `startTime`, `endTime` |
+| Label | Your name for it, in your words | THE DROP | `label` |
+| Short label | A shorter form Strata draws when the full label doesn't fit | Dr | `shortLabel` |
+| Type | What kind of section it is, from the vocabulary | drop | `type` |
+| Annotation | A short observation Strata draws on the span itself | filter sweep → snare roll | `annotation` |
+| Notes | Your own working note. Strata shows it only in the Inspector and never exports it. You save it in the file with everything else, so anyone you send the file to can read it | check the bass entry | `notes` |
+| Lyrics | The words sung in this stretch, which Strata shows with it in the commentary panel | — | `lyrics` |
+| Key area | A Roman numeral relative to the home key, which Strata draws as a caption across the span | ♭VI | `keyArea` |
+| Start and end boundary | What kind of transition happens at each end (below) | Gradual | `startBoundaryType`, `endBoundaryType` |
+| Part of | The span on another layer this one belongs to (below) | Verse 2 in Sections | `parentId` |
+| Made by merging | The spans you merged into this one | — | `mergedFrom` |
+| Link name | A short name made from the label, for commentary links and embeds | drop-2 | `slug` |
+| Identity | A permanent internal code you never see | — | `id` |
 
-## 3. Vocabulary
+### Label, type, and link name are different on purpose
 
-The `vocabulary` field stores custom type terms defined specifically for this document. All spans and point markers have a `type` field that draws from a controlled vocabulary — these custom terms extend the global built-in list.
+The **label** is yours: "THE DROP", "Main Drop", and "Drop 1" are all fine. The **type** is the shared category, `drop`. With it, someone can count every drop across a hundred analyses, whatever each analyst called them. Commentary and embeds point at a span by its **link name**. Strata makes it from the label. Once you save the file, the link name stays fixed even if you rename the span, so your links keep working.
 
-The built-in list ships with the app, not in the file, organised into **libraries**: General, Pop/Rock, Song form, EDM, Common practice, Jazz and Form letters, plus optional packs such as Caplin formal functions and Sonata Theory. A library only groups terms for the picker; a term has one id whichever library it was picked from, so a file never records the library. Form letters (`a-section`, `a-prime`, `b-double-prime` …) are made on demand and stored here as custom terms.
+### What the music does, and how you draw it
 
-The vocabulary is split into three lists:
+Strata keeps your analytical claim about a boundary separate from the way you draw the bracket.
 
-| Field | What it contains | v1 UI? |
-|---|---|---|
-| `spanTypes` | Custom terms for span types: letters made in the picker, and types the analyst adds by name | Yes |
-| `pointMarkerTypes` | Custom terms for point marker types (e.g. `energy-peak`) | Yes |
-| `modes` | Custom mode terms beyond the built-in major/minor/church-mode starter list (e.g. Renaissance 8-mode or 12-mode systems) | Yes — a minimal picker; same mechanism as the other two lists |
+The **boundary type** is the claim. You make it for each end of a span:
 
-### Vocabulary Term
+| Boundary | Meaning | Example |
+| --- | --- | --- |
+| Clean (the default) | A clear cut at one moment | A drop hit; a downbeat attack |
+| Gradual | The new section emerges through a process. The boundary marks where it has arrived | A riser that becomes the drop; a fade-in |
+| Elided | The end of one section is also the start of the next | A cadence that begins the next phrase; a drop that also starts the outro |
 
-Each term in either list has these fields:
+In the file, a clean boundary is `definite`, and the other two are `gradual` and `elided`. You mark an elision on each side separately, so one span can claim it while its neighbor does not. The two spans still meet at one exact moment. The overlap you see is only drawn.
 
-| Field | Type | Required | What it means |
-|---|---|---|---|
-| `id` | text | Yes | The stable identifier used as the `type` value on spans and markers. Lowercase letters, numbers, and hyphens only. **Changing this ID breaks corpus queries against existing files.** |
-| `label` | text | Yes | Human-readable display name shown in the type picker and UI. |
-| `description` | text | No | Explanation of what this term means. Shown as a tooltip when the analyst is choosing a type. |
-| `color` | hex color or null | No | Optional default color for spans or markers of this type. The app keeps it but does not draw with it yet. |
-| `kind` | text | No | `span`, `point-marker` or `mode`: which list the term belongs in when a pack is imported. |
-| `source` | text | No | Which pack the term came from, e.g. `My Pack v1.0.0`. Absent for terms made in this file. |
-| `broader` | list of term IDs | No | The more general terms this one counts as in a query. A `caplin-transition` with `broader: ["transition"]` is found by a search for all transitions, alongside Sonata Theory's `hd-tr-zone`. The built-in terms carry their own links in the app. |
+The **drawing** is your visual choice: the shape of each end (rounded, square, angled, open, or an elision end that reaches past the boundary), a solid or dashed line, fill and outline colors (or none), a faint pattern over the fill (hatching, cross-hatching, dots, or lines), and which of two elided brackets sits on top. In the file, these are `startCap`, `endCap`, `lineStyle`, `fillColor`, `strokeColor`, `fillPattern`, and `endOnTop`. When you choose a boundary type, Strata suggests a matching end shape. You can then change it. None of these drawing choices records anything about the music.
 
-> **Example:** A Hepokoski/Darcy analyst would define `{ "id": "medial-caesura", "label": "Medial Caesura", "description": "The HC that divides the exposition..." }` in `pointMarkerTypes`. Every point marker in this document typed `medial-caesura` draws from this definition — including its display name and tooltip.
+### Linking the levels
 
+A span can belong to a span on another layer: a phrase to its section, or a section to a rotation. Strata records this as **part of** (`parentId`). Strata sets it when you group spans into a span on another layer or copy a span to another layer. Of a span and its copy, the one on the higher layer is the parent.
+
+When you drag a section's end, Strata moves the phrase that ends there with it. Unlink the spans to stop that. When you split a parent, each child goes with the half that holds most of it. When you merge parents, their children move to the merged span. When you delete a parent, Strata unlinks its children. Strata doesn't check that a phrase sits inside its section.
+
+## Point markers
+
+A point marker (`pointMarkers`) marks a single moment rather than a stretch: a cadence, a key change, a medial caesura, an energy peak, or simply a moment to come back to. Markers belong to the whole analysis rather than to one layer, because the event happens once in the recording. Every layer can see it.
+
+| On a marker | What it records | Example | In the file |
+| --- | --- | --- | --- |
+| Time | The moment, in recording time | 64.2 | `timestamp` |
+| Label | Your name for it | MC | `label` |
+| Type | What kind of event, from the vocabulary | medial caesura | `type` |
+| In key | A Roman numeral relative to the home key, which Strata captions with the type | V (drawn as V:HC) | `harmonicContext` |
+| Absent | The event was expected here and doesn't happen. Strata strikes through the caption | an evaded cadence | `absent` |
+| Flagged | A bookmark for a moment you want to come back to | — | `flagged` |
+| Notes | A longer observation about the event | — | `notes` |
+| Kind | Cadence, key change, tempo change, flag, or other. It decides only which fields the marker's panel shows first. Any marker can carry any field | cadence | `kind` |
+| Link name | The name you use to link to it from commentary | mc | `slug` |
+| Identity | A permanent internal code you never see | — | `id` |
+
+You can use one structure for two purposes. For a quick flag, you usually leave out the type and set the bookmark. For a precise analytical event, such as a medial caesura or an essential expositional closure, you give the marker a type. Then you can count it across analyses like any span type. Because you can mark an event as absent, a missing event becomes data too.
+
+## Vocabulary
+
+Your types come from a vocabulary: a list of terms, each with a permanent id, a readable name, and a short explanation. When analysts use the same terms, you can compare their analyses.
+
+- Strata ships its built-in libraries with the app rather than in the file: General, Pop/Rock, Song form, EDM, Common practice, Jazz, and Form letters, plus optional packs such as Caplin's formal functions and Sonata Theory. A file refers to a built-in term by its id alone.
+- You save your own terms in the file (`vocabulary`), in three lists: span types (`spanTypes`), point marker types (`pointMarkerTypes`), and modes (`modes`, for home keys beyond major, minor, and the church modes). Strata saves the form letters you make (A, A′, B″) there too.
+- You share a set of terms with other analysts as a pack (a `.vocab.json` file). When you import one, Strata copies its terms into the file and marks them with the pack's name and version. The analysis still opens for someone who doesn't have the pack.
+- You can link a specific term to a general one as a **broader** term. A Caplin transition counts as a transition, so when you search for all transitions, you find it alongside Sonata Theory's TR zone.
+
+A term's id never changes meaning inside a file, because a corpus query looks for the id. You can reword a term's name and explanation freely.
+
+### The parts of a term
+
+| Part | What it records | In the file |
+| --- | --- | --- |
+| Id | The permanent name a span or marker uses as its type: lowercase letters, numbers, and hyphens. If you change it, you break queries against existing files | `id` |
+| Name | What the Type picker shows | `label` |
+| Explanation | The tooltip you see while choosing a type | `description` |
+| Color | An optional default color. Strata keeps it but doesn't draw with it yet | `color` |
+| List | `span`, `point-marker`, or `mode`: which list the term goes in when you import a pack | `kind` |
+| Pack | The pack it came from, such as `My Pack v1.0.0`. Terms you made in this file have none | `source` |
+| Broader terms | The more general terms it counts as in a query, such as `["transition"]` on a Caplin transition | `broader` |
 
 ### Vocabulary packs
 
-A vocabulary pack is a separate `.vocab.json` file (schema: `strata-vocab.schema.json`) for sharing types between analyses and analysts. It is not part of a `.strata` file: importing a pack copies its terms into the file's `vocabulary`, each with `source` set to `"{name} v{version}"`, so the analysis still opens without the pack.
+A pack is a separate `.vocab.json` file, described by [`strata-vocab.schema.json`](strata-vocab.schema.json). It isn't part of a `.strata` file.
 
-| Field | Type | Required | What it means |
-|---|---|---|---|
-| `strataVocabPack` | the number 1 | No | Marks the file as a Strata pack. Written on export. |
-| `name` | text | Yes | The pack's name, shown as a group in the Type picker. |
-| `version` | text | No | The pack's version, e.g. `1.0.0`. |
-| `author`, `description` | text | No | Who made it and what it covers. |
-| `terms` | list | Yes | Vocabulary terms as above, each with a `kind` (`span`, `point-marker` or `mode`). |
+| Part | What it records | In the file |
+| --- | --- | --- |
+| Pack marker | Marks the file as a Strata pack. Strata writes it when you export | `strataVocabPack` (the number 1) |
+| Name | The pack's name, which the Type picker shows as a group | `name` |
+| Version | The pack's version, such as `1.0.0` | `version` |
+| Author and description | Who made it and what it covers | `author`, `description` |
+| Terms | The terms, each with its list (`kind`) | `terms` |
 
-On import, a term whose id the app already ships, or that the file already defines, is left out and named, so an id never changes meaning inside a file. Importing the same pack again (any version) replaces its earlier terms. Exporting ("Save your types as a pack" in the Libraries dialog, opened from the Type picker) writes the file's own types, leaving out letters (made on demand) and terms from other packs.
----
+When you import a pack, Strata leaves out and names any term whose id the app already ships or the file already defines, so an id never changes meaning inside a file. When you import the same pack again, in any version, Strata replaces its earlier terms. To export your own terms as a pack, use **Save your types as a pack** in the Libraries dialog, which you open from the Type picker. Strata leaves out form letters and terms from other packs.
 
-## 4. Layers
+## Commentary
 
-The `layers` field is an ordered list of analytical layers. Each layer is one analytical view of the track — for example, one form diagram layer for large-scale form and a second for phrase-level form. A file can have multiple layers of the same type.
+Commentary is your written analysis, tied to the timeline (`blocks`, inside the commentary layer). You write each piece about one span or about a stretch of time. Strata shows it above the diagram while that passage plays. A span carries at most one piece.
 
-### Layer Envelope
+- You write in Markdown: paragraphs, bold, italic, headings, lists, quotes, code, and web links. If you don't know the syntax, use the toolbar.
+- To link to a span or marker, put its link name in double brackets: `[[drop-2]]`, or `[[drop-2|the second drop]]` to show other words. Click a link to jump to that moment. If you link to a name that no longer exists, Strata shows the words as plain text.
+- You don't lose writing when you edit elsewhere. When you merge two spans, Strata combines their commentary on the merged span. When you delete a span, its commentary stays, attached to the stretch of time the span covered.
 
-Every layer, regardless of type, has these fields:
+For safety, Strata never runs code or loads anything from elsewhere in shared commentary. It shows HTML as typed and leaves out images.
 
-| Field | Type | Required | What it means |
-|---|---|---|---|
-| `id` | UUID | Yes | Auto-generated unique identifier. Never changes. |
-| `type` | text | Yes | Widget type: `form-diagram` or `written-analysis`. Future types: `energy-contour`, `instrumentation`. |
-| `label` | text | Yes | Short human-readable name set by the analyst. Displayed in the layer panel. |
-| `description` | text or null | No | Optional longer description of this layer's analytical purpose or framework — e.g. `Hepokoski/Darcy exposition analysis` or `Phrase-level hypermeter, 4-bar units`. Distinct from label: the label is the tab name; the description is the analytical context note shown on demand. |
-| `visibility` | true/false | Yes | Whether this layer is shown in the editor and included in exports. |
-| `locked` | true/false | Yes | When true, the layer cannot be edited — only viewed and exported. |
-| `fillColorDefault` / `strokeColorDefault` | hex color or `"none"` | Yes | Fill and outline for spans in this layer that have no colour of their own; `"none"` means no fill or no outline. Required on every layer; a written-analysis layer carries them but doesn't draw with them. |
-| `displayOrder` | whole number | Yes | Rendering order. Lower numbers render first (at the bottom of the stack). |
-| `spanShape` | `bracket` or `bar` | No | Visual style for this layer's spans. Omit or `bracket` = today's rendering (the analytical bracket/arc shapes). `bar` draws thin flat rects instead — intended for key-area layers (spans carrying a `keyArea` caption), though the field itself is generic. A setting buried in layer settings, not offered when first creating a layer. Purely visual: the same span data model and interactions (placement, drag, merge) work identically either way. |
-| `library` | text or null | No | The vocabulary library this layer draws its types from (`pop-rock`, `caplin`, `letters` …). The type picker and quick entry lead with its types. A working preference only: any type can still be used. Omit to let the app guess from the types already in the layer. |
-| `fillGaps` | true/false | No | How a boundary placed in an empty stretch behaves: `true` (the default when absent) fills the stretch with a span on each side; `false` starts a span at the boundary and leaves the stretch before it empty, for a layer that begins partway through. Shift+B ends a span at the playhead either way. |
-| `fontScale` | `sm`, `md` or `lg` | No | Text size for this layer's labels and annotations: `sm` (label 9.5px, annotation 8.5px), `md` (11 / 9), `lg` (13 / 11). Omit for `md`. Uniform within a layer; there is no per-span font size. Purely visual. |
-| `rendering` | object | No | Where this layer's span text sits. Four optional settings: `labelPosition` (`above` the shape, the default, or `inside` it), `labelJustification` (`left`, `center` (default) or `right`), `annotationPosition` (`inside`, the default, or `above`) and `annotationJustification` (`left` (default), `center` or `right`). Purely visual. The app draws these when a file sets them, but has no control for them yet. |
-| `position` | `above` or `below` | No | Reserved: where the layer sits relative to the timeline ruler. **Not used yet:** the app always draws layers above the ruler, whatever this says, and has no control for it. |
-| `data` | object | Yes | The layer's actual analytical data. Its structure depends on the `type` field — see below. |
+| On a piece of commentary | What it records | In the file |
+| --- | --- | --- |
+| Identity | A permanent internal code | `id` |
+| Anchor | What the piece is about: a span, by its identity (`{ "spanId": … }`), or a stretch of time (`{ "start": …, "end": … }`) | `anchor` |
+| Text | Your writing, in Markdown | `text` |
 
-### Form Diagram Layer Data (`type = "form-diagram"`)
+## What the format takes a stand on
 
-The `data` field for a form-diagram layer contains:
+These commitments shape everything above. They are theoretical positions as much as technical ones.
 
-| Field | Type | Required | What it means |
-|---|---|---|---|
-| `spans` | list of Span objects | Yes | All formal sections in this layer. See [Spans](#5-spans) below. |
+- **Hold several frameworks at once.** Put two readings of the same passage on two layers, side by side. Within a layer, you lay sections end to end, so each layer stays one consistent reading.
+- **Compare analyses by type.** You use labels for people and types for questions across many analyses, such as how long a typical verse lasts.
+- **Keep the music and the drawing separate.** A boundary type is a claim about the music. A dashed line or an angled end is a choice about the picture. You can change one without touching the other.
+- **Write down only what differs from the ordinary case.** If you leave out a boundary type, Strata reads it as a clean cut. If you leave out a flag, Strata reads the marker as not flagged.
+- **Measure time from the music.** Every time counts from the start of the music, so your analysis survives a change of video.
+- **Keep everything in one file:** vocabulary, layers, spans, markers, and commentary. There is no server, no account, and nothing else to keep in step.
 
-### Written Analysis Layer Data (`type = "written-analysis"`)
+### Format versions
 
-Prose commentary tied to the timeline. Each block surfaces in the editor while
-its passage plays. The app creates a written-analysis layer the first time an
-analyst writes commentary on a span; a file needs at most one, but more are
-allowed.
-
-| Field | Type | Required | What it means |
-|---|---|---|---|
-| `blocks` | list of Analysis Blocks | Yes | The commentary, in any order. |
-
-**Analysis Block**
-
-| Field | Type | Required | What it means |
-|---|---|---|---|
-| `id` | UUID | Yes | Auto-generated unique identifier. |
-| `anchor` | object | Yes | What the block is about: `{ "spanId": "<uuid>" }` for a span (in any form-diagram layer; `spanId` is the span's `id`), or `{ "start": <seconds>, "end": <seconds> }` for a stretch of time. |
-| `text` | text | Yes | The commentary, written in Markdown: paragraphs, `**bold**`, `*italic*`, code, headings, lists, quotes and web links. `[[slug]]` (or `[[slug\|shown text]]`) links to the span or point marker with that slug. Raw HTML is shown as typed, never run; images are dropped. |
-
-> **Why anchors can be times:** commentary is never deleted by an edit
-> elsewhere. When a span with commentary is merged, the commentary moves to the
-> merged span (two pieces are combined); when it is deleted, the block keeps
-> the time range the span covered. A span carries at most one block.
-
-> **Why links use slugs, not ids:** a slug is readable in the text the analyst
-> writes, and it is frozen once the file is saved, so a link keeps working when
-> the span is relabelled. A link to a slug that no longer exists shows as plain
-> text.
-
----
-
-## 5. Spans
-
-A **span** is a time range that represents a formal section: a verse, a drop, a chorus, an exposition, a breakdown. Spans are the core analytical primitive of the entire system.
-
-| Field | Type | Required | What it means |
-|---|---|---|---|
-| `id` | UUID | Yes | Auto-generated unique identifier. **Never changes, never shown to the user.** Used internally for merge tracking, inter-widget links, and the embeddable viewer. |
-| `label` | text or null | No | Free text display name set by the analyst — what they call this section. Optional: null for unlabeled spans (e.g. bar-level hypermeter spans where the `type` field carries all the analytical meaning). Empty string is valid for a newly placed span awaiting a label. Examples: `Drop 1`, `THE DROP`, `Exposition`. |
-| `shortLabel` | text or null | No | Optional analyst-authored abbreviation of `label` — e.g. `Verse 1` → `V1`, `Breakdown` → `Br`. Shown above the shape in place of the full label when the full label doesn't fit at the current zoom; never truncated further itself. There is no algorithmic abbreviation of above-shape labels — if neither `label` nor `shortLabel` fits, nothing renders there; the editor shows the label when the span is hovered or selected. |
-| `slug` | text or null | No | Generated from the label — e.g. `Drop 1` becomes `drop-1`, `A′` becomes `a-prime`. The reference key the embeddable viewer uses (`focus="drop-1"`) and commentary links (`[[drop-1]]`) use. **Unique across the document**: a repeat gets a suffix (`verse`, `verse-2`, …) in time order. **Stable once saved**: until the file is saved the slug follows label edits; after that, renaming the span leaves the slug unchanged so links to it keep working, and the analyst can regenerate it on purpose. Null when no label is set. |
-| `startTime` | decimal number | Yes | Start of the span in recording time, seconds. |
-| `endTime` | decimal number | Yes | End of the span in recording time, seconds. Must be greater than `startTime`. |
-| `type` | vocabulary term ID or null | No | The corpus-queryable classification of this section — drawn from the global built-in list or from this document's `vocabulary.spanTypes`. Separate from `label` by design: an analyst can call a section `THE DROP` (label) while typing it as `drop` (type). The `type` field is what makes cross-corpus comparison possible. Null if no type has been assigned. |
-| `fillColor` / `strokeColor` | hex color, `"none"`, or null | No | This span's own fill and outline. Null means use the layer's `fillColorDefault` / `strokeColorDefault`; `"none"` means no fill or no outline ("No color" in the colour picker). |
-| `annotation` | text or null | No | **Diagram-visible** text displayed on the span body alongside the label. For analytical observations the analyst wants to appear on the diagram itself — e.g. `filter sweep → snare roll`, `+Kick`, `Anthem gradually emerges`. Also shown with the span in the commentary panel. Distinct from `notes` (never on the diagram) and from `label` (the section name). |
-| `notes` | text or null | No | The analyst's own working note about this span. **Shown only in the Inspector**: not drawn on the diagram, and not shown in the reading view, embeds or exports. |
-| `lyrics` | text or null | No | Lyric text sung during this span. Shown with the span in the commentary panel, not on the diagram. Corpus-queryable. |
-| `keyArea` | text or null | No | A Roman numeral relative to the document's `homeKey` (e.g. `vi`, `V/V`, `♭VI`); accidentals are stored as `♭`/`♯`. Corpus-queryable independently of `label`/`type`. Renders as a caption spanning the span — most naturally on a layer with `spanShape = "bar"`, but the field applies to any span. |
-| `startBoundaryType` | one of three values or null | No | The **character** of the formal transition at the start of this span. `definite` = hard, precise cut; `gradual` = the transition is inherently processual (a buildup that gradually becomes the section); `elided` = this span's start is formally simultaneous with the end of the preceding span. Null or omit to mean `definite`. See [Boundary Types](#7-boundary-types) below. |
-| `endBoundaryType` | one of three values or null | No | The **character** of the formal transition at the end of this span. Null or omit to mean `definite`. Elision is marked per side: this span can claim it whether or not the following span does (see [How elision works](#how-elision-works)). |
-| `startCap` / `endCap` | `rounded`, `square`, `angled`, `open` or `elision` | No | How each end of the bracket is **drawn** — the analyst's visual choice, separate from the analytical boundary type. Choosing a boundary type in the app sets the matching cap, which can then be changed. Absent means the cap follows the boundary type (`elided` → `elision`, otherwise `rounded`). An `elision` cap reaches 8px past the boundary so the bracket overlaps its neighbour. |
-| `lineStyle` | `solid` or `dashed` | No | The bracket's stroke. Absent means `solid`. |
-| `fillPattern` | `hatch`, `cross`, `dots` or `lines` | No | A faint texture over the fill, drawn in a darker shade of the fill colour: a second cue besides colour, for colour-blind readers or grey print. Visual only. Absent means no pattern. |
-| `endOnTop` | true / false | No | Where this span's bracket overlaps the next one (an elision), whether this span is **drawn on top**. Absent or false means the next span is drawn on top. A drawing choice only; it records nothing about the music. |
-| `parentId` | UUID or null | No | The span this one belongs to, on another layer — e.g. this phrase belongs to that section. Set by **Group** (the grouped spans' parent is the new span) and **Copy to layer** (of the original and its copy, the one on the higher layer is the parent). In the editor, a parent and its children move their shared boundaries together; unlinking clears this field. Splitting a parent gives each child to the half that holds most of it; merging a parent moves its children to the merged span; deleting it unlinks them. Nothing requires a child to lie inside its parent. Null if this span has no parent. |
-| `mergedFrom` | list of UUIDs or null | No | When this span was made by merging two or more spans, the IDs of those spans, in time order: a record of where it came from, which the merge also uses to carry their commentary over. Not copied by Copy to layer. Null for spans not produced by a merge. Always contains at least two IDs when present. |
-
-### Why `id`, `label`, `slug`, and `type` are four separate fields
-
-This is one of the most important design decisions in the schema:
-
-| Field | Purpose | Who uses it |
-|---|---|---|
-| `id` | Internal, machine-readable identity | The app, internally. Never visible to the analyst. |
-| `label` | Human-readable display name | The analyst sets this. Shown on the diagram. Can be anything. |
-| `slug` | Stable human-readable reference key | The embeddable viewer (`focus="drop-1"`), commentary links (`[[drop-1]]`). Unique per document; frozen once saved. |
-| `type` | Corpus-queryable classification | The database, queries, and comparisons across files. Comes from a controlled vocabulary. |
-
-An analyst can call a section `"THE DROP"` and classify it as type `drop`. Another analyst can call the same formal event `"Main Drop"` and classify it as type `drop`. Because both use the same `type`, a corpus query for `drop` sections finds both — even though the labels differ. **The `type` field is what makes Strata a corpus tool rather than a diagramming tool.**
-
-### Why `annotation` and `notes` are two separate fields
-
-| Field | Appears on | Appropriate for |
-|---|---|---|
-| `annotation` | The diagram, on the span body | Analytical observations important enough to appear in the diagram itself — process descriptions, textural notes, technique markers |
-| `notes` | The Inspector only | Working notes, provisional observations, things to revisit |
-
-The analyst controls which observations are diagram-level claims and which are working notes. Both are analytical; the difference is presentation.
-
----
-
-## 6. Point Markers
-
-A **point marker** is a single timestamp in the recording — a moment rather than a range. Point markers are stored at the document level, not inside any particular layer, because they represent events in the music itself. A medial caesura happens once in the recording and is relevant to every analytical framework that recognizes it.
-
-| Field | Type | Required | What it means |
-|---|---|---|---|
-| `id` | UUID | Yes | Auto-generated unique identifier. Never shown to the user. |
-| `timestamp` | decimal number | Yes | Position in recording time, seconds. |
-| `label` | text or null | No | Free text display name. Shown on the timeline and in the metadata panel. |
-| `slug` | text or null | No | Reference name for commentary links (`[[mc]]`), generated from the label. Spans and point markers share one namespace, so a slug names one thing in the document. Stable once saved, like a span's slug. Null when there is no label. |
-| `type` | vocabulary term ID or null | No | Corpus-queryable classification. Drawn from global built-in point marker types or this document's `vocabulary.pointMarkerTypes`. For theoretically precise events, this is the key field — not the label. Examples: `medial-caesura`, `EEC`, `energy-peak`. Null for untyped observations. |
-| `notes` | text or null | No | Longer freetext observation. Appropriate for analytical prose about a specific event. |
-| `flagged` | true/false | No | `true` = "come back to this." A simple bookmark for moments the analyst wants to revisit. Omit for false (default). |
-| `absent` | true/false | No | `true` = "this event was expected here and did not occur." Analytically significant in Hepokoski/Darcy and similar frameworks where a missing medial caesura or EEC has specific formal consequences. Set with the **Absent** switch in the point marker's panel; its caption is then drawn struck through. Omit for false (default). |
-| `harmonicContext` | text or null | No | Free text, conventionally a Roman numeral relative to the document's `homeKey` (e.g. `V` for a half cadence in the dominant). Captioned with the type (`V:PAC`), or alone without one, but always stored apart from `type`. Corpus-queryable independently of `type`. |
-| `kind` | one of five values or absent | No | `cadence`, `key-change`, `tempo-change`, `flag`, or `other`. A **soft UI preset** only — it picks which fields the Inspector panel leads with, but never restricts what a marker can actually store; every field stays reachable. Omit to behave like `other` (today's full field set). |
-
-### Two kinds of point markers
-
-Point markers serve two distinct purposes that share a single data structure:
-
-| Kind | Examples | How to identify |
-|---|---|---|
-| **Observational / personal flag** | "Something interesting happens here." "Come back to this." "Weird texture shift." | Usually has `type = null` and/or `flagged = true`. Low structure, high capture speed. |
-| **Theoretically precise analytical event** | Medial caesura (MC), Essential Expositional Closure (EEC), energy peak, loop point | Has a specific `type` from the vocabulary. Corpus-queryable in the same rigorous sense as span types. The `absent` field makes these markers uniquely powerful — absence can be recorded, not just presence. |
-
----
-
-## 7. Boundary Types
-
-`startBoundaryType` and `endBoundaryType` on a span describe the **character of the formal transition** at that boundary — the kind of event that happens at the section edge in the music itself. It is an analytical claim; how the bracket's end is drawn is a separate choice (`startCap` / `endCap`).
-
-| Value | What it means | Example |
-|---|---|---|
-| `definite` | A hard, precise cut. The section begins or ends at a specific, unambiguous moment. Default — omit the field or set it to null to mean this. | A drop hit, a cutdown, an attack on beat 1 |
-| `gradual` | The transition is inherently processual — the new section gradually emerges from the previous one. The analyst places the boundary where they judge the new section has "arrived," but the transition itself is a process. | A riser/buildup that gradually becomes the drop; a fade-in; a textural transformation |
-| `elided` | This boundary is formally simultaneous with the boundary of the adjacent span. Two sections that would normally be separate are collapsed into one shared moment. | An elision in Hepokoski/Darcy analysis; an EDM drop that also functions as the start of an outro |
-
-### How elision works
-
-*Revised 2026-07-25; the earlier "overlapping timestamps" representation is retired.*
-
-An elision is a claim **about a boundary**, not a duration. The boundary stays a
-single exact timepoint shared by the two spans, and each span marks its own side:
-
-- Span A: `endBoundaryType = "elided"`, `endTime = 96.0`
-- Span B: `startTime = 96.0` (and `startBoundaryType = "elided"` if the analyst
-  claims the elision from that side too)
-
-The marking is **per boundary, not reciprocal**: one side may be elided while its
-neighbour is not, and a different layer may treat the same moment differently.
-The renderer draws an elided side as a bracket end that reaches a little past the
-boundary, so it visibly overlaps its neighbour. The overlap is drawn, never
-stored — spans in a layer never overlap in the data (see §9).
-
----
-
-## 8. Format versions
-
-`fileFormatVersion` says which version of the format a file is written in. Adding an optional field leaves it alone; a change that older files must be upgraded for raises it. The app upgrades an older file step by step when it opens it, and saves it at the current version. A file from a newer version opens with a warning and is never downgraded.
+Each file records the version of the format it uses (`fileFormatVersion`). When Strata adds an optional detail, the version stays the same. When a change means older files need upgrading, the version goes up. Strata upgrades an older file when you open it. If you open a file from a newer version, Strata warns you and never downgrades it.
 
 | Version | What changed |
-|---|---|
+| --- | --- |
+| 2 (October 2026) | Removed three details that were unused or unwanted: a shared pool of time points (`sharedTimePoints`; the beat grid took over its job), a hierarchy setting on each layer that Strata never used (`hierarchicalEnforcement`), and a confidence rating on spans and markers (`confidence`). Strata drops them when it opens a version-1 file. Colors may now be `"none"`. |
 | 1 | The first published format. |
-| 2 (2026-10) | Three fields were removed, and are dropped when a version-1 file is opened: `sharedTimePoints` (a shared pool of time points that the app never filled; the beat grid replaced the bar points it was meant to hold), each form layer's `hierarchicalEnforcement` (never used; a nesting rule, if one is built, will not live on a single layer), and `confidence` on spans and point markers. Colours may also be `"none"`. |
-
-An older copy of Strata can still open a version-2 file: it warns that the file is newer, and fills in the fields it expects.
 
 ---
 
-## 9. Key Design Principles Encoded in the Schema
-
-These are the theoretical commitments that shaped the schema's structure.
-
-**Overlapping frameworks live on separate layers.** Multiple analytical frameworks can apply to the same passage at once, and each gets its own layer, so spans on different layers overlap freely. *Within* one layer, spans never overlap (2026-09-27): a layer is one reading of the timeline, laid end to end, with gaps allowed where the analyst makes no claim. The JSON Schema cannot express this rule; the app enforces it when editing and warns when it opens a file that breaks it.
-
-**The `type` field is the corpus key.** Labels are for humans; types are for queries. A corpus question like "in what percentage of my analyses does the first drop arrive after a build?" requires consistent `type` values across files, not consistent labels.
-
-**Omission implies the default.** For optional fields, omitting the field is equivalent to the documented default: omitting `startBoundaryType` means `definite`; omitting `flagged` means `false`; omitting `lineStyle` means `solid`. This keeps files concise — analysts only write down what differs from the expected case.
-
-**Point markers are document-level.** An MC or EEC is an event in the recording, not a property of one analytical layer. Storing them at the document level means they appear once, are visible across all layers, and don't require duplication.
-
-**What the music does is kept apart from how it is drawn.** A boundary type (`startBoundaryType`) is a claim about the music; a cap, line style, colour or pattern is the analyst's drawing choice. The app links them only as a starting point: choosing a boundary type sets the matching cap, which can then be changed.
-
-**Timestamps are recording time, always.** All `startTime`, `endTime`, and `timestamp` values are seconds from the true start of the recording, regardless of where that falls in the YouTube video. The `sourceOffset` in the source reference handles the translation to player time. This means span data is unchanged if the source video changes.
-
-**The file is self-contained.** Everything needed to reconstruct the analysis — vocabulary definitions, layer settings, span data, point markers — is in the file. No server, no account, no external dependency.
-
----
-
-*File format version 2. Reference last checked against the schema 2026-10-31.*
-*Technical spec: `strata.schema.json` · TypeScript types: `src/types/strata.ts` · Examples: `example.strata` (here) and `public/demos/alive.strata`, both written in version 1 and upgraded when opened*
+*Technical spec: [`strata.schema.json`](strata.schema.json) · TypeScript types: [`src/types/strata.ts`](../src/types/strata.ts) · Examples: [`example.strata`](example.strata) and [`public/demos/alive.strata`](../public/demos/alive.strata), both written in version 1 and upgraded when you open them.*
