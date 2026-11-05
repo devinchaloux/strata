@@ -499,7 +499,10 @@ const useUIStore = create<UIState>()((set) => ({
       writeInspectorOpen(inspectorOpen)
       return { inspectorOpen, inspectorReveal: { section, n: (s.inspectorReveal?.n ?? 0) + 1 } }
     }),
-  setReadingView: (on) => set({ readingView: on, selectedSpanIds: [], selectionAnchorId: null, selectedPointMarkerId: null }),
+  // Switching views also closes any commentary editor: an open one holds the
+  // stack at one moment, which would freeze reading during playback.
+  setReadingView: (on) =>
+    set({ readingView: on, selectedSpanIds: [], selectionAnchorId: null, selectedPointMarkerId: null, commentaryEdit: null }),
   setReadingShow: (part, on) => set((s) => ({ readingShow: { ...s.readingShow, [part]: on } })),
   requestSeek: (time, play) => set((s) => ({ seekRequest: { time, n: (s.seekRequest?.n ?? 0) + 1, play } })),
 }))
