@@ -76,6 +76,12 @@ x   = timestamp * pps - viewState.scrollOffset   // scrollOffset is in pixels
 
 Ticks outside the visible viewport (`x < 0` or `x > viewportWidth`) are not rendered.
 
+**The end of the track.** The timeline scrolls `END_MARGIN_PX` (24px) past the
+track's end, and Fit leaves that margin on the right (lib/timeline.ts
+`scrollableWidth`, `computeFitZoom`). Past the end, the ruler and the canvas
+are shaded, with a line at the end, so a span that ends the track visibly stops
+there, an open end included.
+
 ---
 
 ## 3. Export Formats
@@ -120,8 +126,13 @@ where `pps = BASE_PPS * viewState.zoom`.
   `span.strokeColor ?? layer.strokeColorDefault`. The path is open; fill closes it
   along the baseline, so a white fill reads as an open bracket and a colored fill as
   a solid block.
-  With the viewer's **Colour-blind safe** switch on, a quick fill is drawn as its
+  With the viewer's **Color-blind safe** switch on, a quick fill is drawn as its
   safe counterpart (lib/palette.ts `safeFill`); the file keeps the quick fill.
+- **Filling a letter family:** a form letter's family is the letter, primes aside
+  (A, A′, A″: lib/vocabulary.ts `letterFamily`, from a letter type or else the
+  label). With a lettered selection, Quick pick's Fills row first offers
+  **Every A, A′ (N)**, which selects the whole family in the layer so the next
+  fill reaches them all. The Inspector's same-fill button covers the family too.
 - **Fill pattern:** `span.fillPattern` (hatch, cross, dots, lines) draws a faint
   texture over the fill, in a darker shade of the fill as shown, under the
   outline (lib/patterns.ts).

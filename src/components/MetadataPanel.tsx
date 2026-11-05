@@ -19,7 +19,7 @@ import { safeFill } from '@/lib/palette'
 import { formatTime, formatClock } from '@/lib/youtube'
 import { TimeInput } from './TimeInput'
 import { TypePicker } from './TypePicker'
-import { labelFollowsType } from '@/lib/vocabulary'
+import { labelFollowsType, letterFamily, familyLabels } from '@/lib/vocabulary'
 import { blockForSpan, blockForRange } from '@/widgets/written-analysis/commentary'
 import { capFromBoundaryType } from '@/lib/formShape'
 import { slugify } from '@/lib/slug'
@@ -456,8 +456,15 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   const isLast = !after && Math.abs(span.endTime - (doc?.duration ?? span.endTime)) < 1e-6
   // Fills already used in this level, for one-click reuse.
   const usedFills = [...new Set(siblings.map((s) => s.fillColor).filter((c): c is string => !!c && c !== 'none'))].slice(0, 8)
-  // Spans in this layer with this span's label (itself included).
-  const sameLabel = span.label?.trim() ? siblings.filter((s) => s.label?.trim() === span.label!.trim()) : []
+  // Spans in this layer with this span's label (itself included). For a form
+  // letter, its whole family: A reaches A′ and A″ too.
+  const letter = letterFamily(span)
+  const sameLabel = letter
+    ? siblings.filter((s) => letterFamily(s) === letter)
+    : span.label?.trim()
+      ? siblings.filter((s) => s.label?.trim() === span.label!.trim())
+      : []
+  const sameName = letter ? familyLabels(sameLabel) : (span.label ?? '')
 
   return (
     <div className="flex h-full flex-col">
@@ -711,11 +718,11 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
                 disabled={sameLabel.every((s) => (s.fillColor ?? null) === (span.fillColor ?? null))}
                 onClick={() => updateSpans(sameLabel.map((s) => s.id), { fillColor: span.fillColor ?? null })}
                 className="mb-3 w-full rounded border border-border px-2 py-1 text-left text-xs text-foreground hover:bg-accent disabled:opacity-50"
-                title="Every span in this layer with this label gets this span's fill"
+                title={letter ? `Every ${sameName} span in this layer gets this span's fill` : "Every span in this layer with this label gets this span's fill"}
               >
                 {sameLabel.every((s) => (s.fillColor ?? null) === (span.fillColor ?? null))
-                  ? `All ${sameLabel.length} “${span.label}” spans share this fill`
-                  : `Use this fill on all ${sameLabel.length} “${span.label}” spans`}
+                  ? `All ${sameLabel.length} “${sameName}” spans share this fill`
+                  : `Use this fill on all ${sameLabel.length} “${sameName}” spans`}
               </button>
             )}
             {usedFills.length > 0 && (

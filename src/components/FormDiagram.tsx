@@ -526,8 +526,11 @@ function QuickEntrySwitch() {
   const mode = useUIStore((s) => s.quickEntry)
   const setMode = useUIStore((s) => s.setQuickEntry)
   const current = QUICK_PICK.find(([m]) => m === mode)
+  // Controlled, so a pick closes the menu: otherwise the only way out was a
+  // click outside it, which on the diagram also cleared the selection.
+  const [open, setOpen] = useState(false)
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
@@ -549,7 +552,10 @@ function QuickEntrySwitch() {
               key={m}
               role="radio"
               aria-checked={mode === m}
-              onClick={() => setMode(m)}
+              onClick={() => {
+                setMode(m)
+                setOpen(false)
+              }}
               className={`flex flex-col rounded px-2 py-1 text-left ${mode === m ? 'bg-accent' : 'hover:bg-accent/60'}`}
             >
               <span className={mode === m ? 'font-medium text-foreground' : 'text-foreground'}>{label}</span>
