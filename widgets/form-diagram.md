@@ -224,9 +224,9 @@ Whole-span dragging is not implemented. Span movement is always via boundary adj
 
 1. Determine the span (if any) that contains `currentTime`: `span.startTime ≤ currentTime ≤ span.endTime`
 2. If a containing span exists: split it into `[span.startTime, currentTime]` and `[currentTime, span.endTime]`. The first child inherits the original span's `label`, `type`, and metadata; the second child is created blank.
-3. If no span contains `currentTime`, it falls in an empty stretch (an empty layer is one). By default the stretch fills on both sides: one span from the previous boundary (or 0) to `currentTime`, one from `currentTime` to the next boundary (or the end). With the layer's `fillGaps` set to `false` ("B fills empty space on both sides" off, in layer settings), only the second is made, so a first boundary starts a span rather than closing one. docs/decisions.md, "B in an Empty Stretch".
+3. If no span contains `currentTime`, it falls in an empty stretch (an empty layer is one). By default the stretch fills on both sides: one span from the previous boundary (or 0) to `currentTime`, one from `currentTime` to the next boundary (or the end). With the layer's `fillGaps` set to `false` ("B fills gaps" off, in layer settings), only the second is made, so a first boundary starts a span rather than closing one. docs/decisions.md, "B in an Empty Stretch".
 
-Shift+B ends the span containing `currentTime` there. Layer settings also offer **Fit boundaries to the grid** (Bars or Beats): every boundary moves to its nearest bar or beat in one undo step, a boundary two spans share moving once, and one that would collapse a span or sits in a free stretch staying put.
+Shift+B ends the span containing `currentTime` there. Layer settings also offer **Fit to grid** (Bars or Beats): every boundary moves to its nearest bar or beat in one undo step, a boundary two spans share moving once, and one that would collapse a span or sits in a free stretch staying put.
 
 #### Quick Setup by Tempo, and Resizing by Bars
 

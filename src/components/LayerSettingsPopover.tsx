@@ -2,7 +2,7 @@
  * LayerSettingsPopover — the `⋯` layer settings menu in the expanded track header.
  *
  * Controls: rename, description, library, fill/stroke default colors, size,
- * key-area shape, whether B fills empty stretches, fit to the grid, lock, and
+ * key-area shape (thin bars), whether B fills gaps, fit to the grid, lock, and
  * delete.
  *
  * Hierarchical enforcement is deliberately NOT here: it was redefined as a
@@ -105,7 +105,12 @@ export function LayerSettingsPopover({
 
           {/* Where the Type list and quick entry draw this layer's types from. */}
           <div className="space-y-1">
-            <label className="text-xs font-medium" style={labelStyle} htmlFor={`library-${layer.id}`}>
+            <label
+              className="text-xs font-medium"
+              style={labelStyle}
+              htmlFor={`library-${layer.id}`}
+              title="The vocabulary Quick pick and the Type list offer first for this layer"
+            >
               Library
             </label>
             <select
@@ -185,19 +190,18 @@ export function LayerSettingsPopover({
           {/* Shape — buried here rather than offered when first creating a
               layer (per docs/decisions.md "Key-Area Bar Layers"). Purely
               visual: same Span data model and interactions either way. */}
-          <label className="flex cursor-pointer items-center justify-between">
-            <span className="flex flex-col gap-0.5">
-              <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
-                Key-area layer (thin bars)
-              </span>
-              <span className="text-[11px]" style={{ color: 'var(--ink-muted)' }}>
-                Thin bars instead of brackets, for key areas rather than sections.
-              </span>
+          {/* Each setting is one line; what it does is on hover. */}
+          <label
+            className="flex cursor-pointer items-center justify-between gap-3"
+            title="Draw this layer's spans as thin bars instead of brackets, for key areas"
+          >
+            <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
+              Thin bars (key areas)
             </span>
             <Switch
               checked={layer.spanShape === 'bar'}
               onCheckedChange={(v) => updateLayer(layer.id, { spanShape: v ? 'bar' : 'bracket' })}
-              aria-label="Key-area layer (thin bars)"
+              aria-label="Thin bars (key areas)"
             />
           </label>
 
@@ -205,27 +209,28 @@ export function LayerSettingsPopover({
 
           {/* B in an empty stretch: fill back to the previous boundary too, or
               only start a span (docs/decisions.md, "B in an Empty Stretch"). */}
-          <label className="flex cursor-pointer items-center justify-between gap-3">
-            <span className="flex flex-col gap-0.5">
-              <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
-                B fills empty space on both sides
-              </span>
-              <span className="text-[11px]" style={{ color: 'var(--ink-muted)' }}>
-                Off: a boundary in an empty stretch only starts a span. Shift+B ends one.
-              </span>
+          <label
+            className="flex cursor-pointer items-center justify-between gap-3"
+            title="On: B in an empty stretch makes a span on each side. Off: it only starts one, and Shift+B ends it."
+          >
+            <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
+              B fills gaps
             </span>
             <Switch
               checked={layer.fillGaps !== false}
               onCheckedChange={(v) => updateLayer(layer.id, { fillGaps: v ? undefined : false })}
-              aria-label="B fills empty space on both sides"
+              aria-label="B fills gaps"
             />
           </label>
 
           {/* Fit to grid — retroactive snapping, one undo step. */}
           <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between gap-2">
+            <div
+              className="flex items-center justify-between gap-2"
+              title="Move every boundary in this layer to its nearest bar or beat, in one undo step"
+            >
               <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
-                Fit boundaries to the grid
+                Fit to grid
               </span>
               <span className="flex gap-1">
                 {(['bar', 'beat'] as const).map((unit) => (
@@ -242,9 +247,11 @@ export function LayerSettingsPopover({
                 ))}
               </span>
             </div>
-            <span className="text-[11px]" role="status" style={{ color: 'var(--ink-muted)' }}>
-              {!hasGrid ? 'Set up a beat grid first.' : fitResult ?? 'Moves each boundary to the nearest bar or beat.'}
-            </span>
+            {(!hasGrid || fitResult) && (
+              <span className="text-[11px]" role="status" style={{ color: 'var(--ink-muted)' }}>
+                {!hasGrid ? 'Needs a beat grid.' : fitResult}
+              </span>
+            )}
           </div>
 
           <div className="h-px" style={{ background: 'var(--hairline)' }} />
