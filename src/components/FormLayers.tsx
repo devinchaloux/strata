@@ -16,7 +16,7 @@ import { memo, useCallback, useRef, useState, useLayoutEffect } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
-import { computePps, totalContentWidth, snapTime } from '@/lib/timeline'
+import { computePps, totalContentWidth, scrollableWidth, snapTime } from '@/lib/timeline'
 import { groupUpTarget } from '@/lib/groupSpans'
 import { formSpans } from '@/lib/layers'
 import { stackHeight, shapeTopY, layerBodyHeight, layerIndexAtY, layerFonts, estimateTextWidth, layerLabelLayout, LABEL_RISE } from '@/lib/formShape'
@@ -579,7 +579,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
 
   const pps = computePps(zoom)
   const totalWidth = totalContentWidth(duration, zoom)
-  const svgWidth = Math.max(totalWidth, viewportWidth)
+  const svgWidth = Math.max(scrollableWidth(duration, zoom), viewportWidth)
   // Every layer keeps a slot (hidden ones render empty) so the header column and
   // the canvas stay row-aligned; FormLayerGroup draws nothing for hidden layers.
   const stackH = stackHeight(layers)
@@ -808,6 +808,15 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
 
         {/* The beat grid, behind everything (editor only for now). */}
         <BeatGridLines grid={doc?.beatGrid} duration={duration} pps={pps} height={svgHeight} />
+
+        {/* The end of the track: past it the canvas is shaded and a line marks
+            the end, so a span that ends the track visibly stops there. */}
+        {pps > 0 && duration > 0 && (
+          <g aria-hidden pointerEvents="none">
+            <rect x={totalWidth} y={0} width={Math.max(0, svgWidth - totalWidth)} height={svgHeight} fill="hsl(var(--muted))" />
+            <line x1={totalWidth} y1={0} x2={totalWidth} y2={svgHeight} stroke="hsl(var(--border))" strokeWidth={1} />
+          </g>
+        )}
 
         {/* The drawing itself: the same pure figure that export uses. */}
         {pps > 0 && (

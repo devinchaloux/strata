@@ -36,18 +36,30 @@ export function computePps(zoom: number): number {
   return BASE_PPS * Math.max(zoom, 0)
 }
 
-/** Full pixel width of the track content at the given zoom. */
+/** Full pixel width of the track content at the given zoom: x of the track's end. */
 export function totalContentWidth(duration: number, zoom: number): number {
   return Math.max(0, duration * computePps(zoom))
 }
 
 /**
- * The zoom at which the whole track exactly fills the viewport. Returns 1 when
- * inputs aren't known yet so callers have a safe fallback.
+ * Empty space kept after the end of the track, in pixels. Without it the end of
+ * the track sits on the diagram's right edge at Fit, so a span that ends the
+ * track looks cut off, and an open end looks as if it runs on past the track.
+ */
+export const END_MARGIN_PX = 24
+
+/** How far the timeline scrolls: the track plus the margin after its end. */
+export function scrollableWidth(duration: number, zoom: number): number {
+  return duration > 0 ? totalContentWidth(duration, zoom) + END_MARGIN_PX : 0
+}
+
+/**
+ * The zoom at which the whole track, and the margin after it, exactly fills the
+ * viewport. Returns 1 when inputs aren't known yet so callers have a safe fallback.
  */
 export function computeFitZoom(duration: number, viewportWidth: number): number {
-  if (duration <= 0 || viewportWidth <= 0) return 1
-  return viewportWidth / (duration * BASE_PPS)
+  if (duration <= 0 || viewportWidth <= END_MARGIN_PX) return 1
+  return (viewportWidth - END_MARGIN_PX) / (duration * BASE_PPS)
 }
 
 /**
@@ -93,7 +105,9 @@ export function scrollbarMetrics(
 ): ScrollbarMetrics {
   // `!(x > 0)` rather than `x <= 0` so NaN inputs (possible on a transient render
   // before the viewport is measured) resolve to "hidden" instead of a NaN thumb.
-  if (!(viewportWidth > 0) || !(totalWidth > viewportWidth)) {
+  // The half-pixel allowance absorbs floating-point error at Fit, where the
+  // content is meant to match the viewport exactly.
+  if (!(viewportWidth > 0) || !(totalWidth > viewportWidth + 0.5)) {
     return { visible: false, thumbWidth: 0, thumbX: 0, maxThumbX: 0, maxScroll: 0 }
   }
   const thumbWidth = Math.max(MIN_THUMB_PX, (viewportWidth / totalWidth) * viewportWidth)

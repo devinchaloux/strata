@@ -37,7 +37,7 @@ import { EXAMPLES, exampleFileUrl, exampleLink, type Example } from '@/lib/examp
 import { spanNeighbour, firstSpan, spanRange } from '@/lib/spanNav'
 import { formSpans } from '@/lib/layers'
 import { newGestureKey, withHistoryGroup } from '@/store/history'
-import { computePps, totalContentWidth, clampScrollOffset } from '@/lib/timeline'
+import { computePps, scrollableWidth, clampScrollOffset } from '@/lib/timeline'
 
 // ---------------------------------------------------------------------------
 // Toolbar button
@@ -320,7 +320,7 @@ function reveal(id: string) {
   const left = span.startTime * pps - ui.scrollOffset
   const right = span.endTime * pps - ui.scrollOffset
   if (left >= 0 && right <= ui.viewportWidth) return
-  const total = totalContentWidth(doc.duration, ui.zoom)
+  const total = scrollableWidth(doc.duration, ui.zoom)
   ui.setScrollOffset(clampScrollOffset(span.startTime * pps - ui.viewportWidth * 0.2, total, ui.viewportWidth))
 }
 

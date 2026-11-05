@@ -7,6 +7,8 @@ import {
   MIN_THUMB_PX,
   computePps,
   totalContentWidth,
+  scrollableWidth,
+  END_MARGIN_PX,
   computeFitZoom,
   minZoom,
   clampZoom,
@@ -36,10 +38,11 @@ describe('totalContentWidth', () => {
 })
 
 describe('computeFitZoom', () => {
-  it('is the zoom that makes the track exactly fill the viewport', () => {
-    // 240s track, 1200px viewport → totalWidth at fit must equal viewport
+  it('is the zoom that makes the track and its end margin exactly fill the viewport', () => {
+    // 240s track, 1200px viewport → the track ends END_MARGIN_PX before the edge
     const fit = computeFitZoom(240, 1200)
-    expect(totalContentWidth(240, fit)).toBeCloseTo(1200)
+    expect(totalContentWidth(240, fit)).toBeCloseTo(1200 - END_MARGIN_PX)
+    expect(scrollableWidth(240, fit)).toBeCloseTo(1200)
   })
 
   it('long track on a narrow viewport fits below 100%', () => {

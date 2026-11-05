@@ -4,7 +4,7 @@ import { useDocumentStore } from '@/store/documentStore'
 import {
   computePps,
   clampScrollOffset,
-  totalContentWidth,
+  scrollableWidth,
   computeFitZoom,
   clampZoom,
   minZoom,
@@ -28,7 +28,8 @@ export function useTimeline() {
   const loadId = useDocumentStore((s) => s.loadId)
 
   const pps = computePps(zoom)
-  const totalWidth = totalContentWidth(duration, zoom)
+  // The scrollable width: the track plus the margin after its end.
+  const totalWidth = scrollableWidth(duration, zoom)
   const minZoomValue = minZoom(duration, viewportWidth)
 
   // ---------------------------------------------------------------------------
@@ -109,7 +110,7 @@ export function useTimeline() {
       end == null ? clampZoom(1, duration, viewportWidth) : clampZoom(viewportWidth / ((end - start) * BASE_PPS), duration, viewportWidth)
     const newPps = computePps(newZoom)
     setZoom(newZoom)
-    setScrollOffset(clampScrollOffset(start * newPps, totalContentWidth(duration, newZoom), viewportWidth))
+    setScrollOffset(clampScrollOffset(start * newPps, scrollableWidth(duration, newZoom), viewportWidth))
   }, [viewRequest, duration, viewportWidth, setZoom, setScrollOffset])
 
   // ---------------------------------------------------------------------------
@@ -165,7 +166,7 @@ export function useTimeline() {
         const factor = wheelPixels(e, viewportWidth).dy < 0 ? 1.2 : 1 / 1.2
         const newZoom = clampZoom(zoom * factor, duration, viewportWidth)
         const newPps = computePps(newZoom)
-        const newTotalWidth = totalContentWidth(duration, newZoom)
+        const newTotalWidth = scrollableWidth(duration, newZoom)
         const newOffset = clampScrollOffset(
           timeUnderCursor * newPps - cursorX,
           newTotalWidth,
@@ -198,7 +199,7 @@ export function useTimeline() {
       const anchorTime = pps > 0 ? (scrollOffset + ax) / pps : 0
       const newZoom = clampZoom(targetZoom, duration, viewportWidth)
       const newPps = computePps(newZoom)
-      const newTotalWidth = totalContentWidth(duration, newZoom)
+      const newTotalWidth = scrollableWidth(duration, newZoom)
       const newOffset = clampScrollOffset(anchorTime * newPps - ax, newTotalWidth, viewportWidth)
       setZoom(newZoom)
       setScrollOffset(newOffset)
