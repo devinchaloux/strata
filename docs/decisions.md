@@ -3866,6 +3866,12 @@ this brings its priorities to wider screens while keeping the video beside the
 diagram, so an embed stays short. 200px is the smallest height YouTube allows
 for its player.
 
+*Updated 2026-11-06, later the same day:* the names stay shown on wide
+screens after all. On the rail they were hard to find ("Strata's embed doesn't
+show the name of the layers"). The embed now opens with them shown at 640px
+and wider, folded on narrower screens, and a button at the left of the zoom
+bar shows or hides them, in the embed and in the reading view.
+
 ## Starting an Analysis from a Link (2026-10-03)
 
 **Decision.** An address with `?new` starts a new analysis with its setup

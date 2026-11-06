@@ -671,9 +671,22 @@ export function FormDiagram() {
             zoom={zoomProps}
           />
         )}
+        {/* Reading (and an embed) keeps two controls: the layer names'
+            collapse, so a reader can give the diagram the room, and zoom. */}
         {reading && (
-          <div className="flex shrink-0 items-center justify-end border-b px-2" style={{ height: 26, borderColor: 'var(--hairline)' }}>
-            <ZoomControls {...zoomProps} />
+          <div className="flex shrink-0 items-center border-b px-2" style={{ height: 26, borderColor: 'var(--hairline)' }}>
+            <button
+              onClick={toggleCollapsed}
+              className="rounded p-0.5 hover:bg-accent"
+              style={{ color: 'var(--ink-muted)' }}
+              title={collapsed ? 'Show layer names' : 'Hide layer names'}
+              aria-label={collapsed ? 'Show layer names' : 'Hide layer names'}
+            >
+              {collapsed ? <ChevronsRight size={15} /> : <ChevronsLeft size={15} />}
+            </button>
+            <div className="ml-auto">
+              <ZoomControls {...zoomProps} />
+            </div>
           </div>
         )}
         <div className="flex w-full" style={{ height: stackH }}>
