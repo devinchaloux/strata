@@ -17,9 +17,9 @@ import { fetchSharedAnalysis, shareUrl } from '@/lib/shareLink'
 import { onlyLayers, readCommand, resolveFocus, viewAround, type EmbedEvent, type EmbedParams } from '@/lib/embed'
 import { clampScrollOffset, scrollableWidth } from '@/lib/timeline'
 
-// Narrower than this, the embed stacks video over diagram, collapses the
-// layer names to a rail and opens at a readable scale that scrolls.
-const NARROW_PX = 640
+// The embed stacks video over diagram below 640px wide (index.css). At every
+// width it folds the layer names to a rail and opens at a readable scale that
+// scrolls.
 // After a cue, how long playback may sit outside the focus before the loop
 // lets go (the seek that the cue asked for may not have landed yet).
 const CUE_SETTLE_MS = 1500
@@ -65,8 +65,9 @@ export function EmbedApp({ params }: { params: EmbedParams }) {
     ui.setEmbed(true)
     ui.setReadingView(true)
     ui.setReadingShow('commentary', false)
-    const narrow = window.innerWidth < NARROW_PX
-    useUIStore.setState({ headersCollapsed: narrow })
+    // The rail at every width: the diagram is what a reader came for, and a
+    // name shows on hover (decisions.md, "Embed Layout on Wide Screens").
+    useUIStore.setState({ headersCollapsed: true })
     fetchSharedAnalysis(params.src)
       .then((result) => {
         loadDocument(params.layers ? onlyLayers(result.doc, params.layers) : result.doc)
