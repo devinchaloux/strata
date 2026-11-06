@@ -69,11 +69,9 @@ import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { STACK_TOP_PAD, stackHeight, layerPitch } from '@/lib/formShape'
 import { markerBandHeight } from '@/lib/markerBand'
+import { HEADER_WIDTH_RAIL, layerHeaderWidth, measureLabel } from '@/lib/layerHeader'
 import type { Layer } from '@/types/strata'
 
-// Wide enough for a name like "Large-scale form" without truncating.
-const HEADER_WIDTH_EXPANDED = 176
-const HEADER_WIDTH_RAIL = 34
 const TOP_BAR_HEIGHT = 24
 
 // ---------------------------------------------------------------------------
@@ -263,11 +261,10 @@ function SortableLayerHeaderRow({
   )
 }
 
-function LayerHeaders({ layers, collapsed }: { layers: Layer[]; collapsed: boolean }) {
+function LayerHeaders({ layers, collapsed, width }: { layers: Layer[]; collapsed: boolean; width: number }) {
   const activeLayerId = useUIStore((s) => s.activeLayerId)
   const removeLayer = useDocumentStore((s) => s.removeLayer)
   const reorderLayers = useDocumentStore((s) => s.reorderLayers)
-  const width = collapsed ? HEADER_WIDTH_RAIL : HEADER_WIDTH_EXPANDED
 
   // Delete confirmation is owned here, not inside each layer's settings popover:
   // confirming removes the layer, which would unmount a dialog nested in that row
@@ -612,7 +609,11 @@ export function FormDiagram() {
     doc.vocabulary.pointMarkerTypes,
     timeline.pps,
   )
-  const headerWidth = collapsed ? HEADER_WIDTH_RAIL : HEADER_WIDTH_EXPANDED
+  // As wide as the longest visible name needs (lib/layerHeader.ts). Measuring
+  // a handful of names is cheap, so it runs each render rather than in a memo
+  // (which couldn't sit below the early return above).
+  const expandedWidth = layerHeaderWidth(visible.map((l) => l.label), measureLabel, reading ? 'reading' : 'editing')
+  const headerWidth = collapsed ? HEADER_WIDTH_RAIL : expandedWidth
   const miniVideo = videoMini && !reading && doc.source.type === 'youtube' && !!doc.source.url
   // A linked analysis with no spans yet gets the quick setup (QuickSetup.tsx).
   const linked = !!doc.source.url || (doc.source.type === 'local' && !!doc.source.filename)
@@ -690,7 +691,7 @@ export function FormDiagram() {
           </div>
         )}
         <div className="flex w-full" style={{ height: stackH }}>
-          <LayerHeaders layers={visible} collapsed={collapsed} />
+          <LayerHeaders layers={visible} collapsed={collapsed} width={headerWidth} />
           <FormLayers layers={visible} />
         </div>
         <div
