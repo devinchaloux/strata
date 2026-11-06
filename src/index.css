@@ -158,8 +158,9 @@
 /* ── Embed mode (src/embed/EmbedApp.tsx) ─────────────────────────────────────
    One grid holds the embed's own parts and PlayerDock's two (transport bar,
    video), which place themselves by class. Narrow: video over diagram over
-   play bar. Wide: the video beside the diagram, at YouTube's minimum height,
-   so a docked embed stays short. */
+   play bar. Wide: a small video beside the diagram, at YouTube's minimum
+   height so a docked embed stays short, and the play bar across the full
+   width under both (decisions.md, "Embed Layout on Wide Screens"). */
 .embed-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -174,7 +175,9 @@
 @media (min-width: 640px) {
   .embed-grid {
     grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas: 'head head' 'video diagram' 'video transport';
+    grid-template-areas: 'head head' 'video diagram' 'transport transport';
   }
-  .embed-video { width: 356px; align-self: start; }
+  /* 320 wide keeps most of the width for the diagram; 200 high is YouTube's
+     minimum player size. */
+  .embed-video { width: 320px; align-self: start; }
 }
