@@ -73,9 +73,10 @@ export function EmbedApp({ params }: { params: EmbedParams }) {
         useDocumentStore.temporal.getState().clear()
         ui.setSharedFrom(params.src)
         if (params.focus) applyFocus(params.focus, false)
-        // A whole track on a phone: the standard scale, scrolling, rather than
-        // a fit that makes every span a sliver.
-        else if (narrow) ui.requestView(0, null)
+        // A whole track opens at the standard scale and scrolls, on every
+        // width: fitted, a track's labels are too small to read (decisions.md,
+        // "Embed Zoom"). The reader can fit it with the zoom controls.
+        else ui.requestView(0, null)
         post({ type: 'strata:ready' })
       })
       .catch((err: unknown) => {
