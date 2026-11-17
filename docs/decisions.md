@@ -1,18 +1,215 @@
 # Strata — Architectural Decisions Log
 
-This is a living document. Every significant architectural decision made during
-design or development is recorded here with its rationale. New decisions are
-added at the bottom. Decisions are never deleted — if a decision is reversed,
-a new entry is added noting the reversal and why.
+**Reviewed:** not yet
 
-**When two entries disagree, the later one wins.** A superseded entry usually
-carries a note pointing to what replaced it. This log is binding: where another
-doc in this repository disagrees with it, the log is right and the doc is stale.
+## Now
+
+This log records every significant design decision in Strata, with its
+reason. You add a new entry at the bottom and never rewrite an old one: when
+a decision is reversed, a new entry records the reversal and why. **When two
+entries disagree, the later one wins.** The log is binding: where another doc
+in this repository disagrees with it, the log is right and the doc is stale.
+
+The **Current rulings** below list every decision still in force, one line
+each, linked to the entry that holds its reasoning. They leave out what later
+entries reversed or replaced (Space placing a boundary, domes, point markers
+in the ruler, the video curtain, the build-time viewer, the `confidence`
+field, and others). Read the rulings to learn what holds today; read the
+entries to learn why. When you add an entry, update the rulings in the
+same commit. For what the code does, read the code and the specs in
+`widgets/`. For the file format, read `schema/`.
 
 Some early entries cite working notes by path (`_private/…`). Those notes
 aren't part of this repository.
 
 *Seeded from the v0.1 vision document, May 2026.*
+
+## Current rulings
+
+**The file format**
+
+- [A `.strata` file is plain JSON under its own extension.](#file-format)
+- [Times are seconds, stored as recording time; a source's `sourceOffset` converts them to player time at the player.](#source-references)
+- [A span has a stable `id`, a display `label` and a `slug` for links; `label` and `type` are separate fields.](#span-data-model)
+- [A slug is unique in the file, follows its label until the file is saved, and then stays fixed; opening a file fills in missing slugs.](#trust-and-format-integrity-round-1-2026-09-27)
+- [Spans may overlap across layers, never within one; gaps within a layer are allowed.](#trust-and-format-integrity-round-1-2026-09-27)
+- [Every layer is a typed envelope: the core schema fixes its frame, and the widget type defines its `data`.](#schema)
+- [Point markers belong to the document, not to a layer.](#schema-finalization-phase-01)
+- [`context` is optional: `recording` (studio) or `performance` (live).](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05)
+- [`artist` is a list and may be empty; `derivativeOf` records a remix or cover; `notes` holds document-level text.](#schema-revision-phase-01--session-2)
+- [Lyrics, annotation and notes are separate span fields; lyrics stay in the file.](#shared-links-treat-lyrics-like-any-other-view-2026-10-03)
+- [`fileFormatVersion` changes only when the meaning of existing data changes; files upgrade on load, one step at a time, and are never downgraded.](#file-format-integrity-round-2-2026-09-27)
+- [Format 2 removed `sharedTimePoints`, `hierarchicalEnforcement` and `confidence`.](#schema-review-three-fields-cut-2026-10-31)
+- [The JSON Schema is the published contract; `src/types/strata.ts` mirrors it, and a test checks what the app writes against it.](#file-format-integrity-round-2-2026-09-27)
+- [Every document enters through one reader, which refuses what it can't interpret, names where, and keeps layers it can't draw.](#trust-and-format-integrity-round-1-2026-09-27)
+- [Saved files record the app version that wrote them.](#file-format-integrity-round-2-2026-09-27)
+- [A colour may be `"none"` (no colour) as well as `null` (use the layer default).](#color-picker--layer-defaults-phase-2x-2026-06-30)
+- [A `.strata` file links to an MEI file only by sharing a `work` value.](#corpus-builder)
+
+**How the diagram looks**
+
+- [Light mode only, in Inter, sentence case.](#visual-design-phase-07-2026-06-20)
+- [Layers pack flush at one bracket height; each layer measures one analytical level.](#visual-design-phase-07-2026-06-20)
+- [A span is one path, drawn as an island a hair apart from its neighbours, with a flat top always.](#form-diagram-shape-model--adjoin-rework-2026-06-27)
+- [Each end has a cap (rounded, square, angled, open or elision) and the line is solid or dashed; the drawing is a choice apart from the data.](#form-diagram-shape-model--adjoin-rework-2026-06-27)
+- [Choosing a boundary type resets that end's cap; the caps stay in the open.](#elision-rendering--boundary-first-shape-control-2026-07-25)
+- [An elision is drawn, never stored: the cap reaches 8px past the boundary, one end at a time, and the analyst picks which bracket sits on top.](#trust-and-format-integrity-round-1-2026-09-27)
+- [Two open caps that meet join into one shape.](#paused-clicks-stay-paused-open-caps-fill-and-join-issue-links-2026-10-01)
+- [Grouping is an ordinary span on a higher layer, not a construct of its own.](#form-diagram-shape-model--adjoin-rework-2026-06-27)
+- [The label sits above the shape and the annotation inside, set per layer; text size is per layer (S, M, L).](#layer-text-size-2026-09-27)
+- [The app places labels; an above label never truncates, and falls back to the short label, then to a hover card.](#hidden-labels-show-on-hover-and-selection-2026-10-02)
+- [Inside text keeps clear of rounded and angled ends.](#inside-text-keeps-clear-of-rounded-and-angled-ends-2026-10-02)
+- [A layer can draw thin bars instead of brackets (key areas).](#point-markers--redesign-2026-07-04)
+- [Colour is per span, fill and stroke apart; the layer's default colours are editable.](#color-picker--layer-defaults-phase-2x-2026-06-30)
+- [The palette offers muted shades first; Quick pick offers seven muted hues and a grey.](#quick-pick-colours-and-a-colour-blind-safe-switch-2026-10-24)
+- [Text on a fill meets 4.5:1.](#muted-fills-same-label-same-fill-legible-text-on-any-fill-2026-10-24)
+- [A colour-blind safe switch is the viewer's preference and never changes the file.](#quick-pick-colours-and-a-colour-blind-safe-switch-2026-10-24)
+- [A span can carry one of four faint fill patterns.](#fill-patterns-2026-10-24)
+- [The timeline keeps a shaded margin past the track's end.](#the-tracks-end-shows-quick-pick-closes-filling-a-letter-family-2026-11-05)
+
+**Drawing and editing spans**
+
+- [B places a boundary on the active layer, playing or paused; Space plays and pauses.](#space-plays-b-marks-a-boundary-2026-10-01)
+- [B in an empty stretch fills both sides unless the layer turns that off; Shift+B ends the span there.](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02)
+- [You drag boundaries, never whole spans; a drag stops at the neighbour and at a width you can still see.](#phase-2-implementation-form-diagram--milestone-a)
+- [Typed start and end times keep the layer tiled.](#trust-and-format-integrity-round-1-2026-09-27)
+- [Shift-click selects a range, Ctrl-click toggles, and a drag draws a box, even from a span.](#phase-25-merge--interaction-completion-2026-06-30)
+- [Several selected spans edit together in one undo step.](#merge-implementation-phase-25)
+- [Merge joins consecutive spans in one layer, through a dialog only for real conflicts; the merged span records `mergedFrom`.](#merge)
+- [Merge is on Ctrl+J, right-click and the Inspector.](#ui-review-fixes-and-tighter-chrome-2026-09-27)
+- [Right-click holds every span operation.](#phase-25-merge--interaction-completion-2026-06-30)
+- [Only Delete removes spans or a marker; Backspace doesn't.](#backspace-no-longer-deletes-spans-2026-10-24)
+- [Arrow keys move the selection through spans and layers; Enter edits the label.](#keyboard-navigation-of-spans-2026-09-27)
+- [Undo groups a whole gesture: one drag, one field's typing.](#trust-and-format-integrity-round-1-2026-09-27)
+- [Ctrl/⌘+C and V copy parts of spans onto others, one onto many or run onto run.](#copy-and-paste-several-spans-2026-10-24)
+- [Picking a type replaces a label only when the label came from a type.](#a-spans-label-follows-its-type-2026-10-01)
+- [Quick pick offers types, shapes and fills on number keys above the selection.](#quick-pick-types-on-typed-spans-timing-with-boundaries-commentary-links-2026-11-05)
+- [One fill can reach every span with the same label, or a whole letter family.](#the-tracks-end-shows-quick-pick-closes-filling-a-letter-family-2026-11-05)
+- [To end runs a span to the track's end.](#to-end-2026-10-24)
+- [Inline label editing and Duplicate are dropped.](#improvement-backlog-batch-2-2026-07-03)
+
+**Grouping and linked layers**
+
+- [Group into… makes one span over the selection on another layer; Copy to layer… copies a span up or down.](#schema-review-three-fields-cut-2026-10-31)
+- [The span on the higher layer is the parent (`parentId`), and a parent and child move their shared boundaries together.](#group-spans-into-another-layer-2026-10-24)
+- [The one-click actions never cut or replace a span.](#group-spans-into-another-layer-2026-10-24)
+- [When a parent goes, its children follow or unlink.](#schema-review-three-fields-cut-2026-10-31)
+- [Splitting a parent snaps to a child boundary within half a second, and each child joins the half holding most of it.](#splitting-a-parent-2026-10-31)
+- [You choose what Copy to layer takes; lyrics, notes and commentary start unticked.](#choosing-what-copy-to-layer-takes-2026-10-31)
+- [Hierarchical enforcement, if built, means cross-layer nesting, and stays off unless an analyst turns it on.](#phase-2-implementation-layer-management--24-part-2)
+
+**The timeline, the beat grid and playback**
+
+- [100% is a fixed 10 px a second; the timeline fits the window on every load.](#correctness-pass-post-phase-2-polish)
+- [Zoom runs from the fit (or 100%) to 5000%, with its own scrollbar.](#timeline-zoom--scroll-phase-2-polish)
+- [The view follows the playhead only while it plays.](#shared-timeline-axis-phase-16)
+- [Clicking the ruler seeks; a paused click on a span seeks there; a double-click plays from it; a seek while paused stays paused.](#paused-clicks-stay-paused-open-caps-fill-and-join-issue-links-2026-10-01)
+- [Key presses read the player's exact time.](#getting-around-the-timeline-2026-10-01)
+- [The beat grid is a list of segments, each with one tempo and meter; beats are computed, and a stretch between segments is free.](#beat-grid-2026-09-29)
+- [Bar numbers run on across a free stretch unless a segment sets its first bar.](#beat-grid-2026-09-29)
+- [T taps the grid in, rounded to a whole BPM and reaching back to where the music starts; Shift+T stops it.](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01)
+- [Snapping is off by default and remembered per browser, never in the file.](#snapping-remembered-as-a-preference-2026-09-29)
+- [The Grid menu shows what fits its state, and can start a grid by hand.](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24)
+- [The metronome clicks the grid and tunes it to a thousandth of a BPM.](#click-track-and-beat-matching-2026-10-24)
+- [Quick setup by tempo fills a layer with a span every N bars.](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24)
+- [A span's length in bars can be stepped or typed, and later boundaries move with it.](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24)
+- [Fit boundaries to the grid moves a layer's boundaries to bars or beats.](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02)
+- [Playback rates are 0.5×, 0.75×, 1× and 1.25×; rewind goes to 0:00.](#player-chrome-phase-03)
+- [The play bar's clock reads m:ss; editable times keep milliseconds.](#ui-review-fixes-and-tighter-chrome-2026-09-27)
+
+**The player**
+
+- [Local audio files play as well as YouTube, through one set of controls.](#source-linking-2026-07-02)
+- [A YouTube link is pasted in any shape and stored in one form.](#source-linking-2026-07-02)
+- [Relinking the same media keeps its offset; new media resets it.](#source-linking-2026-07-02)
+- [Nothing is ever drawn over the YouTube player; dialogs and menus move clear of it.](#menus-keep-clear-of-the-player-2026-10-02)
+- [The player is never hidden or under 200×200: it sits docked below the fold or as the corner mini player, which is where it starts.](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24)
+
+**Point markers and keys**
+
+- [M or the Marker button places a marker at the playhead; markers drag and snap to boundaries.](#file-format-integrity-round-2-2026-09-27)
+- [Markers sit in a band at the foot of the form diagram, which takes no space while there are none.](#marker-band-absent-events-and-the-diagram-control-bar-2026-07-24-cont)
+- [Selecting a marker and selecting spans exclude each other.](#point-markers--implementation-2026-07-03)
+- [A marker's `kind` picks which fields lead, and never restricts what it holds.](#point-markers--redesign-2026-07-04)
+- [Built-in marker types (cadences, Sonata Theory, general events) ship in code.](#ui-copy-pass--point-marker-vocabulary-2026-07-24)
+- [A caption reads `V:PAC`, joining key and type only when both are set; the key field is labelled "In key".](#ui-copy-pass--point-marker-vocabulary-2026-07-24)
+- [An absent marker's caption is struck through.](#marker-band-absent-events-and-the-diagram-control-bar-2026-07-24-cont)
+- [A document switch hides cadence captions.](#point-markers--redesign-2026-07-04)
+- [The home key is a tonic and a mode from a vocabulary of modes; Major and Minor lead.](#point-markers--redesign-2026-07-04)
+- [`keyArea` and `harmonicContext` hold Roman numerals; accidentals convert to Unicode by whole token.](#trust-and-format-integrity-round-1-2026-09-27)
+- [A symbol palette inserts symbols into the free-text fields.](#symbol-palette-for-free-text-fields-2026-09-27)
+
+**Vocabulary**
+
+- [Built-in terms ship in code, grouped into libraries and optional packs; files store only ids.](#vocabulary-libraries-2026-10-01)
+- [A term has one id and one meaning wherever it is listed; `broader` lets a query roll terms up.](#vocabulary-libraries-2026-10-01)
+- [Letters are made, not listed: `a-section`, `a-prime`, `a-double-prime`, as queryable types.](#v1-feature-scope-phase-06)
+- [A file can carry types of its own.](#v1-feature-scope-phase-06)
+- [Packs import and export as `.vocab.json`; a clashing id is left out.](#vocabulary-packs-2026-10-01)
+- [The Type picker leads with the layer's types in order of first appearance, then suggests from its library.](#the-type-picker-follows-the-layer-2026-10-01)
+- [A layer can name its library (`Layer.library`).](#quick-entry-2026-10-02)
+- [Packs switch on in the Libraries dialog.](#the-libraries-dialog-2026-10-01)
+
+**Commentary and lyrics**
+
+- [Commentary anchors to a span or to a stretch of time, and survives merges and deletes.](#written-analysis-widget-2026-09-27)
+- [Commentary is Markdown with `[[slug]]` links to spans and markers; raw HTML is never rendered.](#commentary-in-markdown-edited-in-place-2026-10-24)
+- [You write commentary in one editor, above the diagram.](#one-commentary-editor-2026-11-05)
+- [The stack shows each layer's span at the moment, top down.](#the-commentary-stack-2026-10-01)
+- [A bare link shows the label; the link picker inserts `[[slug|Label]]`.](#quick-pick-types-on-typed-spans-timing-with-boundaries-commentary-links-2026-11-05)
+- [Hide commentary turns the layer off; a chip brings it back.](#hiding-commentary-2026-09-27)
+- [Lyrics show by default, in the editor and the reading view.](#lyrics-show-in-the-editor-2026-10-24)
+
+**The interface**
+
+- [The Inspector is a collapsible right-hand column that hosts the selected thing's editor; it starts collapsed and opens on a selection.](#app-shell--inspector-2026-06-27)
+- [The span Inspector is one column of sections (Timing, Describe, Shape & color, More), each folding on its own.](#the-inspector-as-sections-zoom-in-the-reading-view-2026-11-05)
+- [Timing lays out each end with its boundary type.](#quick-pick-types-on-typed-spans-timing-with-boundaries-commentary-links-2026-11-05)
+- [The diagram is anchored to the ruler at the bottom of the work area, with room above it.](#app-shell--inspector-2026-06-27)
+- [Boundary and Marker sit in the diagram's top bar; there is no bottom strip.](#ui-review-fixes-and-tighter-chrome-2026-09-27)
+- [A new analysis asks for title, artist, source, tempo and meter; the rest is under Advanced.](#a-shorter-new-analysis-dialog-darker-interface-greys-2026-10-24)
+- [A new analysis starts with one layer, "Form", and a layer is always active.](#ui-review-fixes-and-tighter-chrome-2026-09-27)
+- [The layer names collapse to a rail, size to fit, and a hidden layer gives up its row.](#layer-names-sized-to-fit-2026-11-06)
+- [Layers reorder by drag; a new layer goes on top.](#phase-2-implementation-layer-management--24-part-2)
+- [The interface says "layers".](#levels-not-layers-in-the-interface-2026-10-01)
+- [Every popover closes on a press outside it.](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24)
+- [Text is at least 11px, muted text is #475569, and every field is named for screen readers.](#space-plays-b-marks-a-boundary-2026-10-01)
+- [A help dialog holds the guide and every shortcut; Report an issue opens a prefilled form.](#help-and-beta-notice-2026-09-27)
+- [The app's text: a person does things, in plain American English, with tooltips that are never the only route.](#people-do-things-in-stratas-text-2026-11-05)
+
+**Reading, sharing, embedding and export**
+
+- [The reading view lays an analysis out for reading, with editing off.](#the-reading-view-2026-10-01)
+- [You share an analysis as a link to its file (`?src=`); Strata reads GitHub, Dropbox and OneDrive links, and declines Google Drive.](#share-from-the-toolbar-dropbox-and-onedrive-links-2026-10-02)
+- [Shared links treat lyrics like any other view.](#shared-links-treat-lyrics-like-any-other-view-2026-10-03)
+- [A page embeds Strata in an iframe (`?embed`), with a focus, layers and window messages.](#embedding-an-analysis-2026-10-03)
+- [An embed shows zoom controls, opens a whole track at 100%, and shows layer names at 640px and wider.](#embed-layout-on-wide-screens-2026-11-06)
+- [A `?new` link starts an analysis with its setup filled in; the tonic is passed as written.](#starting-an-analysis-from-a-link-2026-10-03)
+- [The figure exports as SVG and PNG from the editor's own drawing, with its own layer choice and spans cut at the range.](#export-choose-layers-cut-spans-at-the-range-2026-10-02)
+- [Commentary exports as one HTML page; Markdown is the second option.](#widgets)
+- [Example analyses live in `public/demos/` under CC BY 4.0, and the first screen lists them.](#example-analyses-2026-10-02)
+- [A demo corpus ships with the release.](#launch)
+
+**Architecture, scope and process**
+
+- [React, Vite and TypeScript, client-side, with no backend.](#tech-stack)
+- [Zustand with zundo for state, the UI state outside undo.](#tech-stack)
+- [Tailwind and shadcn/ui on Radix, never a hand-rolled primitive.](#phase-2-implementation-layer-management--24-part-2)
+- [Files save in place where the browser allows, by download elsewhere, with a crash copy every 30 seconds.](#tech-stack)
+- [A widget is a `WidgetDefinition` object whose render component never edits.](#widget-contract-phase-02)
+- [The form diagram's figure is one pure component, shared by the editor, export and embed.](#render--edit-split-2026-09-27)
+- [The time point pool is computed from the layers, never stored.](#schema-review-three-fields-cut-2026-10-31)
+- [The energy contour, when built, uses control points with a 0–1 intensity and stored transitions.](#energy-contour-widget)
+- [A sound-layers widget will name its rows from a shared list.](#sound-layers-come-from-a-shared-list-2026-10-01)
+- [The playhead is the only thing that redraws every frame.](#trust-and-format-integrity-round-1-2026-09-27)
+- [Merging into `main` is a release; an open tab keeps its version.](#releases-and-open-tabs-2026-10-02)
+- [Tests run in Node unless a file needs a DOM; the audit runs weekly.](#faster-checks-tests-in-node-a-weekly-audit-2026-10-05)
+- [Lint runs React's full hooks set; CI fails on a `TEMPORARY` marker.](#reacts-newer-checks-on-2026-10-16)
+- [ESLint's tools take a patched minimatch until ESLint's own range reaches 11.](#lint-tools-use-a-patched-minimatch-2026-11-07)
+- [The beta analyses one recording at a time; a Corpus Builder is planned for version 2, its backend still open.](#the-corpus-builder-is-planned-for-version-2-2026-10-31)
+- [The Library may never be built.](#architecture-1)
+- [Report-building across widgets waits for version 2.](#widgets)
+- [Strata's public docs are written for analysts first.](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05)
 
 ---
 

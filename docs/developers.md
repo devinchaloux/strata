@@ -22,7 +22,7 @@ npm run build    # typecheck + production build
 - **Run `npm run publish-check` before every push.** The repository is public, so every push is a publication. The check stops new content files (analyses, images, audio), secrets, and personal data before you publish them by accident.
 - **Expect CI to run lint, the test suite, and a production build** on every push and pull request. CI fails on any comment marked `TEMPORARY`.
 - **Ask before you add a dependency.** Every dependency is a decision.
-- **Update the docs in the same change.** When you change the format, update the JSON Schema, the TypeScript types, and the plain-language guide together. Record every design decision in `docs/decisions.md` with its reason.
+- **Update the docs in the same change.** When you change the format, update the JSON Schema, the TypeScript types, and the plain-language guide together. Record every design decision in `docs/decisions.md` with its reason, and update the log's "Current rulings" to match.
 - **Write commit messages as Conventional Commits:** `feat(schema): …`, `fix(editor): …`.
 
 [`CLAUDE.md`](../CLAUDE.md) sets out the same workflow. It doubles as the instructions for Claude Code.
