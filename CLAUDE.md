@@ -21,8 +21,9 @@ The core design bets:
 - **The file format is the invention.** The editor UI is downstream of getting
   the schema right.
 
-Read `docs/decisions.md` before changing anything architectural: it is binding,
-and its "Find a decision" index leads to the area you're touching.
+Read `docs/decisions.md` before changing anything architectural: it is binding.
+Its "Current rulings" say what holds today, one line each, and its "Find a
+decision" index leads to the area you're touching.
 `docs/vision.md` is the original statement of intent, written before the code.
 The schema lives in `schema/` (`strata.schema.json`, with a plain-language
 guide in `schema/strata-schema-reference.md`); widget specs live in `widgets/`.
@@ -104,7 +105,8 @@ land in the same commit as the change that invalidates them:
 
 - a format change updates `schema/strata.schema.json`, `src/types/strata.ts` and
   `schema/strata-schema-reference.md` together;
-- every design decision gets an entry in `docs/decisions.md` with its reason;
+- every design decision gets an entry in `docs/decisions.md` with its reason,
+  and its "Current rulings" gain, change or lose the line it affects;
 - a behavior change updates the `widgets/` spec it touches.
 
 Before committing, grep for what the change invalidates:
