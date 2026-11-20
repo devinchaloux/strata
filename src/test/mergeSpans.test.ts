@@ -56,7 +56,7 @@ describe('mergeEligibility', () => {
   it('rejects a non-consecutive selection (gap in the middle)', () => {
     const r = eligibility(['a', 'c']) // b sits between them, unselected
     expect(r.ok).toBe(false)
-    if (!r.ok) expect(r.reason).toMatch(/consecutive/i)
+    if (!r.ok) expect(r.reason).toMatch(/no gaps/i)
   })
 
   it('rejects a cross-layer selection', () => {

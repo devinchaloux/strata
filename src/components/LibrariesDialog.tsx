@@ -122,8 +122,8 @@ export function LibrariesDialog() {
         <DialogHeader>
           <DialogTitle>Libraries</DialogTitle>
           <DialogDescription>
-            Turn on a library to list its types in the Type menu. {builtIns.join(', ')} are always listed. Search finds
-            every type, on or off.
+            Turn on a library to list its types in the Type menu. The menu always lists {builtIns.join(', ')}.
+            Search to find every type, on or off.
           </DialogDescription>
         </DialogHeader>
 
@@ -136,7 +136,7 @@ export function LibrariesDialog() {
         <section className="border-t border-border pt-3">
           <h3 className="text-sm font-medium text-foreground">Packs from a file</h3>
           <p className="text-xs text-muted-foreground">
-            A <code>.vocab.json</code> file someone has shared. Its types are copied into this analysis.
+            A <code>.vocab.json</code> file someone has shared. Strata copies its types into this analysis.
           </p>
           {imported.length > 0 && (
             <ul className="mt-1 text-xs text-foreground">
@@ -149,7 +149,7 @@ export function LibrariesDialog() {
           )}
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <button type="button" className="rounded border border-border px-2.5 py-1 text-xs hover:bg-accent" onClick={importPack}>
-              Import a pack…
+              Import a pack
             </button>
             {ownCount > 0 && (
               <button

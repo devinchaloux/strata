@@ -162,7 +162,7 @@ function EmptyState({
               transition-colors hover:bg-accent
               focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
-            Open file…
+            Open file
           </button>
         </div>
         {/* Each example is a real link, so it can be opened in a new tab or copied. */}
@@ -653,7 +653,7 @@ export default function App() {
           <span className="text-sm font-semibold tracking-tight text-foreground">Strata</span>
           <span
             className="rounded border border-border px-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-            title="Strata is in beta. It is recommended to save often."
+            title="Strata is in beta. Save often."
           >
             Beta
           </span>
@@ -728,7 +728,7 @@ export default function App() {
           className="rounded-md px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-40
             focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
         >
-          Share…
+          Share
         </button>
         {/* A link, not a button: it opens GitHub's issue form in a new tab,
             prefilled with the version and browser (lib/issues.ts). */}
@@ -845,8 +845,8 @@ export default function App() {
           <AlertDialogHeader>
             <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
             <AlertDialogDescription>
-              {pendingDiscard?.label} will discard your unsaved changes. This can't be
-              undone.
+              {pendingDiscard?.label} will discard your unsaved changes. You can't undo
+              this.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

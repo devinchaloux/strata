@@ -103,7 +103,7 @@ export async function fetchSharedAnalysis(url: string): Promise<LoadResult> {
   if (!address) {
     throw new Error(
       host === 'gdrive'
-        ? 'Google Drive doesn’t let other sites read its files, so Strata can’t open Drive links. Dropbox, OneDrive, GitHub and most websites work.'
+        ? 'Google Drive doesn’t let other sites read its files, so Strata can’t open Drive links. Dropbox, OneDrive, GitHub, and most websites work.'
         : 'This doesn’t look like a link to a file.',
     )
   }

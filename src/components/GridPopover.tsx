@@ -174,7 +174,7 @@ export function GridPopover() {
         ) : (
           <>
             <div className="mt-3 flex items-center justify-between">
-              <span className="font-medium text-foreground" title="Remembered in this browser, for every file.">
+              <span className="font-medium text-foreground" title="Strata remembers this in this browser, for every file.">
                 Snap boundaries to
               </span>
               <div className="flex overflow-hidden rounded border border-border" role="radiogroup" aria-label="Snap boundaries to">
@@ -225,7 +225,7 @@ export function GridPopover() {
                     </td>
                     <td className="w-14">
                       <NumberCell
-                        label="First bar number (blank continues the count)"
+                        label="First bar number (leave blank to continue the count)"
                         integer
                         value={g.firstBar}
                         placeholder={String(firsts[i])}
@@ -249,7 +249,7 @@ export function GridPopover() {
             </table>
 
             <p className="mt-1 text-muted-foreground">
-              Check it by ear: turn on the Metronome in the play bar, which can fine-tune the tempo as it plays.
+              Check it by ear with the Metronome in the play bar. You can fine-tune the tempo as it plays.
             </p>
 
             {/* Tempo changes and free passages: rarer, so folded away. */}

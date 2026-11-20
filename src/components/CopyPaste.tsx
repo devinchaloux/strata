@@ -17,7 +17,7 @@ export function CopyButton({ spanIds }: { spanIds: string[] }) {
   return (
     <button
       className={button}
-      title={spanIds.length > 1 ? `Copy these ${spanIds.length} spans (Ctrl/⌘+C), to paste onto ${spanIds.length} others in order` : 'Copy this span (Ctrl/⌘+C), to paste its label and type onto others'}
+      title={spanIds.length > 1 ? `Copy these ${spanIds.length} spans (Ctrl/⌘+C), to paste onto ${spanIds.length} others in order` : 'Copy this span (Ctrl/⌘+C) to paste its label and type onto others'}
       onClick={() => {
         if (!copySpans(spanIds)) return
         setCopied(true)
@@ -68,8 +68,8 @@ export function PasteButton({ spanIds }: { spanIds: string[] }) {
             </label>
           ))}
           <p className="mt-1.5 px-1 text-[11px] text-muted-foreground">
-            {from ? `Copied: ${from}.` : 'Nothing copied yet.'} Ctrl/⌘+C copies the selected spans; Ctrl/⌘+V pastes
-            these. Several copied spans paste onto as many, in time order.
+            {from ? `Copied: ${from}.` : 'Nothing copied yet.'} Press Ctrl/⌘+C to copy the selected spans and Ctrl/⌘+V
+            to paste them. You can paste several spans at once: each lands on one selected span, in time order.
           </p>
         </PopoverContent>
       </Popover>

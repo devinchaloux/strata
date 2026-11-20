@@ -107,7 +107,7 @@ function LinkPicker({ doc, onPick }: { doc: StrataDocument; onPick: (slug: strin
               </button>
             ))
           ) : (
-            <p className="px-1.5 py-1 text-muted-foreground">Nothing to link to. A span needs a label first.</p>
+            <p className="px-1.5 py-1 text-muted-foreground">Nothing to link to. Give a span a label first.</p>
           )}
         </div>
       </PopoverContent>

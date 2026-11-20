@@ -109,7 +109,7 @@ export function LayerSettingsPopover({
               className="text-xs font-medium"
               style={labelStyle}
               htmlFor={`library-${layer.id}`}
-              title="The vocabulary Quick pick and the Type list offer first for this layer"
+              title="The library whose types this layer offers first"
             >
               Library
             </label>
@@ -211,7 +211,7 @@ export function LayerSettingsPopover({
               only start a span (docs/decisions.md, "B in an Empty Stretch"). */}
           <label
             className="flex cursor-pointer items-center justify-between gap-3"
-            title="On: B in an empty stretch makes a span on each side. Off: it only starts one, and Shift+B ends it."
+            title="On: B in an empty stretch makes a span on each side of the playhead. Off: B starts a span and Shift+B ends it, so you can leave gaps."
           >
             <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
               B fills gaps

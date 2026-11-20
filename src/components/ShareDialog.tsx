@@ -37,7 +37,7 @@ export function ShareDialog() {
   const link = valid ? shareUrl(fileUrl, window.location.href) : ''
   const note = hostSupported(host)
     ? HOST_NOTE[host]
-    : 'Google Drive doesn’t let other sites read its files, so Strata can’t open Drive links. Dropbox, OneDrive and GitHub work.'
+    : 'Google Drive doesn’t let other sites read its files, so Strata can’t open Drive links. Dropbox, OneDrive, and GitHub work.'
 
   function copy() {
     navigator.clipboard?.writeText(link)
@@ -57,7 +57,7 @@ export function ShareDialog() {
         <DialogHeader>
           <DialogTitle>Share as a link</DialogTitle>
           <DialogDescription>
-            Put the .strata file online (Dropbox, OneDrive, GitHub or your own site) and paste its share link here. The link below opens it in Strata’s reading view.
+            Put the .strata file online (Dropbox, OneDrive, GitHub, or your own site) and paste its share link here. The link below opens it in Strata’s reading view.
           </DialogDescription>
         </DialogHeader>
 

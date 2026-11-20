@@ -233,7 +233,7 @@ export function SourceLinkForm({
                 if (embedded && file) linkAudio(file)
               }}
             >
-              Choose file…
+              Choose file
             </Button>
             <span className="min-w-0 truncate text-xs text-muted-foreground">
               {pickedFile?.name ??

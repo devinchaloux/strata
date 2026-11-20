@@ -299,7 +299,7 @@ export function QuickEntryBar({
             e.currentTarget.blur()
           }}
         >
-          <option value="">{options.length ? 'Library: guess' : 'Choose a library…'}</option>
+          <option value="">{options.length ? 'Library: guess' : 'Choose a library'}</option>
           {LIBRARIES.map((l) => (
             <option key={l.id} value={l.id}>
               {l.label}

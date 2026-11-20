@@ -132,8 +132,8 @@ export const READING_VIDEO_W = 'min(640px, 46%)'
  * transport controls and keyboard shortcuts.
  *
  * Also owns two pieces of source-linking behavior:
- * - The link affordance: "Link video or audio…" when the document has no
- *   playable source; a swap icon once linked; "Locate…" when a local-source
+ * - The link affordance: "Link video or audio" when the document has no
+ *   playable source; a swap icon once linked; "Locate" when a local-source
  *   document needs its audio file re-picked this session.
  * - Duration adoption: when a document with duration 0 (fresh analysis) gets
  *   a source whose metadata reports a duration, that duration is adopted into
@@ -558,7 +558,7 @@ export function PlayerDock() {
               transition-colors hover:bg-primary/90
               focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card"
           >
-            Link video or audio…
+            Link video or audio
           </button>
         )}
 
@@ -570,7 +570,7 @@ export function PlayerDock() {
               transition-colors hover:bg-accent
               focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card"
           >
-            Locate {source?.filename}…
+            Locate {source?.filename}
           </button>
         )}
 

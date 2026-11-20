@@ -12,7 +12,7 @@ const fixture = (path: string) =>
 describe('readDocument — identifying a file', () => {
   it('refuses something that is not a Strata document', () => {
     expect(() => readDocument([])).toThrow(DocumentError)
-    expect(() => readDocument({ title: 'x' })).toThrow('missing required fields')
+    expect(() => readDocument({ title: 'x' })).toThrow('missing parts every analysis has')
   })
 
   it('reads both bundled fixtures without notices', () => {

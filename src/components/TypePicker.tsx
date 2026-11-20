@@ -356,7 +356,7 @@ export function TypePicker({
                 setLibrariesOpen(true)
               }}
             >
-              More libraries…
+              More libraries
             </button>
           </div>
         )}

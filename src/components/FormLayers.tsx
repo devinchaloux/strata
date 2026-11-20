@@ -190,7 +190,7 @@ function SpanMenuItems({ span, layer }: { span: Span; layer: Layer }) {
           requestCopyPicker()
         }}
       >
-        Copy to layer…
+        Copy to layer
       </ContextMenuItem>
       <ContextMenuItem onClick={() => extendToEnd(layer.id, span.id)}>Extend to the end</ContextMenuItem>
       <ContextMenuSeparator />

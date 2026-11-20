@@ -1,5 +1,5 @@
 /**
- * GroupPopover — "Group into…" (several selected spans) and "Copy to layer…"
+ * GroupPopover — "Group into" (several selected spans) and "Copy to layer"
  * (one span), in the Inspector.
  *
  * Both list the other form layers, each with what placing the span there
@@ -104,7 +104,7 @@ export function GroupPopover({ spans }: { spans: Span[] }) {
           className="mb-4 w-full rounded border border-border px-2 py-1.5 text-xs font-medium text-foreground hover:bg-accent"
           title="One span over all of these, on another layer"
         >
-          Group into…
+          Group into
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-72 p-2 text-xs">
@@ -166,7 +166,7 @@ export function CopyToLayerPopover({ span }: { span: Span }) {
           title="Copy this span to another layer"
           className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent"
         >
-          Copy to layer…
+          Copy to layer
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-72 p-2 text-xs">
@@ -210,7 +210,7 @@ export function CopyToLayerPopover({ span }: { span: Span }) {
           </button>
         </div>
         <p className="px-1 pt-1.5 text-[11px] text-muted-foreground">
-          The span on the higher layer becomes the other’s parent, so the boundaries they share move together.
+          The higher span becomes the parent, so shared boundaries move together.
         </p>
       </PopoverContent>
     </Popover>

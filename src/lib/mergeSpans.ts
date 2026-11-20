@@ -79,7 +79,7 @@ export function mergeEligibility(
   }
   const contiguous = indices[indices.length - 1] - indices[0] === indices.length - 1
   if (!contiguous) {
-    return { ok: false, reason: 'Selected spans must be consecutive (no gaps) to merge.' }
+    return { ok: false, reason: 'To merge, select spans with no gaps between them.' }
   }
 
   const spans = indices.map((i) => sorted[i])

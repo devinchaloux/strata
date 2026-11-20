@@ -214,7 +214,7 @@ export function PointMarkerPanel() {
           <Field
             key="absent"
             label="Absent"
-            tooltip="The event was expected at this point but does not occur. Its caption is drawn struck through."
+            tooltip="Turn on when the event is expected here but doesn’t happen. The diagram strikes through its caption."
           >
             <Segmented
               options={[
@@ -228,7 +228,7 @@ export function PointMarkerPanel() {
         )
       case 'flagged':
         return (
-          <Field key="flagged" label="Flagged" tooltip="Shown in red on the timeline.">
+          <Field key="flagged" label="Flagged" tooltip="Appears in red on the timeline.">
             <Segmented
               options={[
                 { value: 'no', label: 'No' },
@@ -270,7 +270,7 @@ export function PointMarkerPanel() {
         {/* Slug — read-only, click to copy: what commentary types to link here. */}
         <Field
           label="Slug"
-          tooltip="Link to this marker from commentary with [[its-slug]]. It’s fixed once the file is saved."
+          tooltip="Type [[its-slug]] in commentary to link to this marker. The slug stays the same once you save, so your links keep working."
         >
           <button
             className={`${inputClass} flex items-center justify-between text-left`}

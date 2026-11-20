@@ -18,12 +18,12 @@ export const BUILT_IN_MODES: VocabTerm[] = [
   {
     id: 'ionian',
     label: 'Ionian',
-    description: 'Same pitch collection as Major — kept separate for modal-theory terminology.',
+    description: 'Same pitch collection as Major. Strata lists it separately so you can use modal terms.',
   },
   {
     id: 'aeolian',
     label: 'Aeolian',
-    description: 'Same pitch collection as (natural) Minor — kept separate for modal-theory terminology.',
+    description: 'Same pitch collection as (natural) Minor. Strata lists it separately so you can use modal terms.',
   },
 ]
 
