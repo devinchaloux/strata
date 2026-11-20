@@ -113,6 +113,7 @@ aren't part of this repository.
 - [The metronome clicks the grid and tunes it to a thousandth of a BPM.](#click-track-and-beat-matching-2026-10-24)
 - [Quick setup by tempo fills a layer with a span every N bars.](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24)
 - [A span's length in bars can be stepped or typed, and later boundaries move with it.](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24)
+- [Number bars fills an empty layer with one span per bar, counted in groups; selected bars recount from 1, and Elide makes a bar "4=1".](#numbering-hypermeter-2026-11-20)
 - [Fit boundaries to the grid moves a layer's boundaries to bars or beats.](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02)
 - [Playback rates are 0.5×, 0.75×, 1× and 1.25×; rewind goes to 0:00.](#player-chrome-phase-03)
 - [The play bar's clock reads m:ss; editable times keep milliseconds.](#ui-review-fixes-and-tighter-chrome-2026-09-27)
@@ -5035,3 +5036,29 @@ Help text that names a control uses its label as written.
 **Why.** Devin, reviewing the app's text: the ellipsis adds nothing a
 reader acts on. The November text review applied this, together with the
 rules in "People Do Things in Strata's Text", across the editor.
+
+## Numbering Hypermeter (2026-11-20)
+
+*From the maintainer, after annotating real tracks: "I want to be able to put
+1, 2, 3, 4 quickly to show hypermeter, but there are cases where there's
+elision, so it needs to be quickly put in chunks."*
+
+**Decision.** A layer's settings offer **Number bars**: on an empty layer it
+makes one span per bar of the beat grid, labelled 1, 2, 3, 4, 1 … in groups
+of a size the analyst sets (4 by default). With bars selected on one layer,
+the Inspector's **Number from 1** recounts just them, so a three- or six-bar
+phrase among fours is one action. On a single bar whose label is a count,
+**Elide** relabels it with the count it would have had and the 1 it becomes
+("4=1"), and the bars after it count on from 2 until a bar whose label isn't
+a count. Each is one undo step. The counts are ordinary labels: the format
+doesn't change, and the analyst can type over any of them.
+**Rejected.** *A time-range selection to number:* Strata selects spans, not
+stretches of time, and a run of selected bars says the same thing. *Numbering
+over existing spans:* Number bars never writes over a layer's spans; recounting
+is what Number from 1 is for.
+**Why.** Numbering bars by hand, one label at a time, is slow, and the count
+restarts wherever the phrase does. An elided bar is the common exception, so it
+gets one action. How a hypermetric reinterpretation should be written is still
+an open question; an elision often suggests one, but they are not the same
+mark, so Elide doesn't claim to write it.
+`numberBars`, `renumberSpans` and `elideSpan` in the store; `lib/hypermeter.ts`.

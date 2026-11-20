@@ -5,6 +5,7 @@ import { formSpans, newFormLayer } from '@/lib/layers'
 import { groupUpTarget, placeSpan, copyOfSpan, DEFAULT_COPY_FIELDS, type CopyField } from '@/lib/groupSpans'
 import { boundaryMoves, followLinks, repairParentLinks, splitTimeNearChildren, relinkToPieces } from '@/lib/linkedBoundaries'
 import { sortedSegments, segmentAt, segmentEnd, extendBack, snapToGrid, barTiling, barLength } from '@/lib/beatGrid'
+import { countLabels, elideLabels, gridBars } from '@/lib/hypermeter'
 import { roundTempo, segmentForAdjusting, tempoThroughDownbeat } from '@/lib/metronome'
 import type { FormDiagramData } from '@/types/strata'
 import { mergeVocabPack, type MergeResult, type VocabPack } from '@/lib/vocabPack'
@@ -119,6 +120,15 @@ interface DocumentState {
   // meter. One undo step; returns how many spans it made (0 when there is no
   // tempo to go on, or the layer already has spans in that stretch).
   fillLayerWithBars: (layerId: string, start: number, barsPer: number) => number
+  // Hypermeter (lib/hypermeter.ts). Fill an empty layer with one span per bar
+  // of the grid, counted 1 to `group` and round again; returns how many spans
+  // it made (0 when the layer has spans or there is no grid). One undo step.
+  numberBars: (layerId: string, group: number) => number
+  // Recount the given spans of a layer 1 to `group`, in time order.
+  renumberSpans: (layerId: string, spanIds: string[], group: number) => void
+  // Make a span the elided bar ("4=1") and count on from 2 after it, until a
+  // span whose label isn't a count.
+  elideSpan: (layerId: string, spanId: string, group: number) => void
   // A span one or more bars longer or shorter, every later boundary in its
   // layer moving with it (lib/spanEdit.ts, rippleSpanEnd).
   resizeSpanByBars: (layerId: string, spanId: string, bars: number) => void
@@ -250,6 +260,27 @@ function markerSlug(doc: StrataDocument, marker: PointMarker, frozen: Set<string
   if (frozen.has(marker.id) && marker.slug) return marker.slug
   const base = marker.label ? slugify(marker.label) : null
   return base ? uniqueSlug(base, slugsInUse(doc, new Set([marker.id]))) : null
+}
+
+/**
+ * Write labels to spans, each slug following its new label (unless frozen),
+ * unique and assigned in time order, as setSpanLabels does for one label.
+ */
+function relabelSpans(doc: StrataDocument, labels: Map<string, string | null>, frozen: Set<string>): StrataDocument {
+  const taken = slugsInUse(doc, new Set([...labels.keys()].filter((id) => !frozen.has(id))))
+  const slugFor = new Map<string, string | null>()
+  const order = allSpans(doc).filter((s) => labels.has(s.id)).sort((a, b) => a.startTime - b.startTime)
+  for (const s of order) {
+    if (frozen.has(s.id)) continue
+    const label = labels.get(s.id)
+    const base = label ? slugify(label) : null
+    const slug = base ? uniqueSlug(base, taken) : null
+    if (slug) taken.add(slug)
+    slugFor.set(s.id, slug)
+  }
+  return patchSpans(doc, new Set(labels.keys()), (s) =>
+    slugFor.has(s.id) ? { ...s, label: labels.get(s.id), slug: slugFor.get(s.id)! } : { ...s, label: labels.get(s.id) },
+  )
 }
 
 /**
@@ -677,6 +708,48 @@ const useDocumentStore = create<DocumentState>()(
         if (!made) return 0
         set({ document: { ...doc, beatGrid: segs, layers, updatedAt: now() } })
         return made
+      },
+
+      numberBars: (layerId, group) => {
+        const doc = get().document
+        const layer = doc?.layers.find((l) => l.id === layerId)
+        if (!doc || !layer || layer.type !== 'form-diagram' || formSpans(layer).length > 0) return 0
+        const bars = gridBars(sortedSegments(doc.beatGrid), doc.duration)
+        if (!bars.length) return 0
+        const labels = countLabels(bars.length, group)
+        const fresh: Span[] = bars.map(([startTime, endTime]) => ({ id: crypto.randomUUID(), startTime, endTime }))
+        const filled = { ...doc, layers: mapLayer(doc.layers, layerId, (l) => mapFormDiagramSpans(l, () => fresh)) }
+        const next = relabelSpans(filled, new Map(fresh.map((s, k) => [s.id, labels[k]])), get().frozenSlugIds)
+        set({ document: { ...next, updatedAt: now() } })
+        return fresh.length
+      },
+
+      renumberSpans: (layerId, spanIds, group) => {
+        const doc = get().document
+        const layer = doc?.layers.find((l) => l.id === layerId)
+        if (!doc || !layer) return
+        const run = formSpans(layer).filter((s) => spanIds.includes(s.id)).sort((a, b) => a.startTime - b.startTime)
+        if (!run.length) return
+        const labels = countLabels(run.length, group)
+        const next = relabelSpans(doc, new Map(run.map((s, k) => [s.id, labels[k]])), get().frozenSlugIds)
+        set({ document: { ...next, updatedAt: now() } })
+      },
+
+      elideSpan: (layerId, spanId, group) => {
+        const doc = get().document
+        const layer = doc?.layers.find((l) => l.id === layerId)
+        if (!doc || !layer) return
+        const spans = [...formSpans(layer)].sort((a, b) => a.startTime - b.startTime)
+        const at = spans.findIndex((s) => s.id === spanId)
+        if (at < 0) return
+        const after = elideLabels(spans.map((s) => s.label), at, group)
+        const changed = new Map<string, string | null>()
+        spans.forEach((s, k) => {
+          if (k >= at && after[k] !== s.label) changed.set(s.id, after[k] ?? null)
+        })
+        if (!changed.size) return
+        const next = relabelSpans(doc, changed, get().frozenSlugIds)
+        set({ document: { ...next, updatedAt: now() } })
       },
 
       resizeSpanByBars: (layerId, spanId, bars) => {
