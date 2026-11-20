@@ -58,7 +58,7 @@ export function ReadingHeader() {
         onClick={() => setShareOpen(true)}
         className="ml-3 rounded-md border border-border px-3 py-1 text-xs font-medium text-foreground hover:bg-accent"
       >
-        Share…
+        Share
       </button>
       <button
         type="button"

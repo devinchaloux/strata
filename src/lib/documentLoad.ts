@@ -50,7 +50,7 @@ export function readDocument(raw: unknown): LoadResult {
     !Array.isArray(raw.layers)
   ) {
     throw new DocumentError(
-      'This doesn’t look like a Strata analysis: it’s missing required fields (strataVersion, fileFormatVersion, title, layers).',
+      'This doesn’t look like a Strata analysis: it’s missing parts every analysis has (strataVersion, fileFormatVersion, title, layers).',
     )
   }
 
@@ -60,7 +60,7 @@ export function readDocument(raw: unknown): LoadResult {
   if (input.fileFormatVersion > SUPPORTED_FILE_FORMAT_VERSION) {
     notices.push(
       `This file was written by a newer version of Strata (format ${input.fileFormatVersion}). ` +
-        'Anything this version does not understand may not display, and saving from here may lose it.',
+        'This version may not show everything in the file. If you save from here, you may lose what it can’t show.',
     )
   }
 

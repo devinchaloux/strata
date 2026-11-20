@@ -17,13 +17,13 @@ const MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator
 
 const STEPS: [string, string][] = [
   ['Start', 'Click New analysis and link a YouTube video or audio file. The video plays in the corner; its dock button moves it below the play bar.'],
-  ['Mark', 'Play (Space), and press B at each boundary you hear. M places a point marker, such as a cadence. Know the tempo and phrase length? Quick setup by tempo fills a layer with a span every few bars.'],
+  ['Mark', 'Play (Space) and press B at each boundary you hear. Press M to place a point marker, such as a cadence. If you know the tempo and phrase length, use Quick setup by tempo to fill a layer with a span every few bars.'],
   ['Describe', 'Click a span to set its type and details in the Inspector. Drag a boundary to move it. Click a section’s header in the Inspector to open or close it; double-click it to open that section alone. With Quick pick (above the diagram), a row of types, shapes, or fills appears over the spans you select: click one, or press its number key.'],
   ['Grid', 'Optional: tap T on the beat, or set a tempo in the Grid menu, to number bars and snap to beats. After four taps the grid appears; each further tap fine-tunes the tempo. Type a selected span’s length in bars, or step it with − and +: the spans after it move too. The Metronome in the play bar clicks the grid over the track. To match it, line up the first beats, then listen further in. If the click pulls ahead, lower the tempo. If it lags, raise it. For the exact tempo, pause on a downbeat far into the track and press Downbeat is here (D).'],
-  ['Layers', 'Add a layer (+ above the layer names) for another level of form, or another framework. Group into… (several spans) builds the level above from the one below; Copy to layer… (one span) copies it to any other layer, up or down. Their shared boundaries then move together.'],
+  ['Layers', 'Add a layer (+ above the layer names) for another level of form, or another framework. Group into (several spans) builds the level above from the one below; Copy to layer (one span) copies it to any other layer, up or down. Their shared boundaries then move together.'],
   ['Write', 'You write commentary above the diagram: hover a span’s level and press Edit, or press Write commentary in the Inspector. Markdown works, with a toolbar for bold, lists, headings, and links. The link button names a span or marker; type your own words over its label. Commentary appears while that passage plays.'],
-  ['Keep', 'Save a .strata file. Export makes a figure (SVG or PNG) or a commentary page (HTML).'],
-  ['Read', 'Reading view shows the video, commentary, and diagram for reading or teaching, with editing off. Zoom the diagram with − and +, or press Fit to see the whole track. Share… makes a link to a copy you’ve put online (Dropbox, OneDrive, GitHub, or your own site). Esc goes back.'],
+  ['Keep', 'Save a .strata file. Use Export to make a figure (SVG or PNG) or a commentary page (HTML).'],
+  ['Read', 'Open Reading view to read or teach from the video, commentary, and diagram, with editing off. Zoom the diagram with − and +, or press Fit to see the whole track. Use Share to make a link to a copy you’ve put online (Dropbox, OneDrive, GitHub, or your own site). Press Esc to go back.'],
 ]
 
 const KEYS: [string, [string, string][]][] = [
@@ -97,7 +97,7 @@ export function HelpDialog({ open, onOpenChange }: { open: boolean; onOpenChange
         <DialogHeader>
           <DialogTitle>How Strata works</DialogTitle>
           <DialogDescription>
-            Strata is in beta. It is recommended to save often.
+            Strata is in beta. Save often.
           </DialogDescription>
         </DialogHeader>
 

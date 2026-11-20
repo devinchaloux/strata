@@ -73,7 +73,7 @@ function Segmented<T extends string>({
 
 // ---------------------------------------------------------------------------
 // Mode picker — Major/Minor cover ~90% of analyses in one click; a quiet
-// "More modes…" link expands to the full list (built-in church modes +
+// "More modes" link expands to the full list (built-in church modes +
 // project-level custom modes, e.g. Renaissance 8-mode/12-mode systems) via
 // the same VocabTerm mechanism as span/point-marker type pickers.
 // ---------------------------------------------------------------------------
@@ -138,7 +138,7 @@ function ModePicker({
           onClick={() => setExpanded(true)}
           className="text-[11px] text-muted-foreground underline-offset-2 hover:underline"
         >
-          More modes…
+          More modes
         </button>
       )}
     </div>
@@ -316,7 +316,7 @@ export function DocumentSettingsDialog({
           <div className="grid grid-cols-2 gap-3">
             <Field
               label="Tempo (BPM)"
-              tooltip="The beat grid starts at this tempo and meter, so bars line up for faster drawing."
+              tooltip="Starts the beat grid at this tempo and meter, so your spans snap to bars."
             >
               <input
                 className={inputClass}
@@ -361,8 +361,7 @@ export function DocumentSettingsDialog({
               <span className="flex flex-col">
                 <span className="text-xs text-foreground">Color-blind safe colors</span>
                 <span className="text-[11px] text-muted-foreground">
-                  Shows the quick colors in a set that stays distinct for color blindness. In this browser only;
-                  the file keeps its colors.
+                  Turn on for colors that stay distinct with color blindness.
                 </span>
               </span>
               <Switch checked={colorblindSafe} onCheckedChange={setColorblindSafe} aria-label="Color-blind safe colors" />
@@ -402,7 +401,7 @@ export function DocumentSettingsDialog({
             </Field>
           )}
 
-          <Field label="Work" tooltip="Analyses that name the same work can be compared across files.">
+          <Field label="Work" tooltip="Analyses of the same work can be compared across files.">
             <input
               className={inputClass}
               placeholder="e.g. Op. 13"

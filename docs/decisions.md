@@ -5023,3 +5023,15 @@ project gets it.
 for 10. Lint covers the same 159 files with the override, and the suite
 passes. Remove the override once ESLint's own dependency range reaches 11.
 
+
+---
+
+## No Ellipsis on Buttons and Menu Items (2026-11-13)
+
+**Decision.** A button or menu item reads "Copy to layer", not "Copy to
+layer…". An ellipsis stays only where text is unfinished on purpose: a
+loading state ("Loading…") or a placeholder ("Find a span or marker…").
+Help text that names a control uses its label as written.
+**Why.** Devin, reviewing the app's text: the ellipsis adds nothing a
+reader acts on. The November text review applied this, together with the
+rules in "People Do Things in Strata's Text", across the editor.

@@ -48,12 +48,12 @@ describe('parseStrataFile', () => {
 
   it('throws when required fields are missing', () => {
     const broken = { title: 'Hi', layers: [] }
-    expect(() => parseStrataFile(JSON.stringify(broken))).toThrow('missing required fields')
+    expect(() => parseStrataFile(JSON.stringify(broken))).toThrow('missing parts every analysis has')
   })
 
   it('throws when layers is not an array', () => {
     const broken = { strataVersion: '0.1.0', fileFormatVersion: 1, title: 'Hi', layers: 'nope' }
-    expect(() => parseStrataFile(JSON.stringify(broken))).toThrow('missing required fields')
+    expect(() => parseStrataFile(JSON.stringify(broken))).toThrow('missing parts every analysis has')
   })
 })
 

@@ -322,7 +322,7 @@ function LayerHeaders({ layers, collapsed, width }: { layers: Layer[]; collapsed
           <AlertDialogHeader>
             <AlertDialogTitle>Delete “{pendingDelete?.label}”?</AlertDialogTitle>
             <AlertDialogDescription>
-              This deletes the layer and its {pendingSpanCount}{' '} {pendingSpanCount === 1 ? 'span' : 'spans'}. Undo with Ctrl/Cmd+Z.
+              This deletes the layer and its {pendingSpanCount}{' '} {pendingSpanCount === 1 ? 'span' : 'spans'}. Undo with Ctrl/⌘+Z.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -514,7 +514,7 @@ function WidgetTopBar({
  */
 const QUICK_PICK: [QuickEntry, string, string][] = [
   ['type', 'Types', 'The layer’s span types, such as Verse or Chorus.'],
-  ['shape', 'Shapes', 'How each end is drawn, and the line.'],
+  ['shape', 'Shapes', 'How each end and the line look.'],
   ['fill', 'Fills', 'A fill color.'],
   ['off', 'Off', 'Nothing pops up.'],
 ]
@@ -531,7 +531,7 @@ function QuickEntrySwitch() {
       <PopoverTrigger asChild>
         <button
           type="button"
-          title="One-click choices above the spans you select"
+          title="Set a type, shape, or fill in one click"
           className="ml-1 flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           Quick pick

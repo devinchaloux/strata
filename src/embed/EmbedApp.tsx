@@ -175,7 +175,7 @@ export function EmbedApp({ params }: { params: EmbedParams }) {
   if (error)
     return (
       <div ref={rootRef} className="embed-error rounded-md border border-border bg-card p-4 text-sm text-foreground">
-        <p className="font-medium">This analysis couldn’t be opened.</p>
+        <p className="font-medium">Strata couldn’t open this analysis.</p>
         <p className="mt-1 text-muted-foreground">{error}</p>
       </div>
     )

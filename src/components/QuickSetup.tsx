@@ -28,7 +28,7 @@ export function QuickSetup({ doc, layer }: { doc: StrataDocument; layer: Layer }
   if (!open)
     return (
       <Button variant="outline" size="sm" className="mt-3 h-7 text-xs" onClick={() => setOpen(true)}>
-        Quick setup by tempo…
+        Quick setup by tempo
       </Button>
     )
   return <QuickSetupCard doc={doc} layer={layer} onClose={() => setOpen(false)} />

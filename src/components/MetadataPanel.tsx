@@ -287,7 +287,7 @@ function OverlapFields({ layer, span }: { layer: Layer; span: Span }) {
     <div className="flex gap-2">
       <div className="flex-1">
         {startOverlaps && prev && (
-          <Field label="On top at start">
+          <Field label="Overlap at start: on top">
             <Segmented
               options={[
                 { value: 'this', label: 'This' },
@@ -301,7 +301,7 @@ function OverlapFields({ layer, span }: { layer: Layer; span: Span }) {
       </div>
       <div className="flex-1">
         {endOverlaps && next && (
-          <Field label="On top at end">
+          <Field label="Overlap at end: on top">
             <Segmented
               options={[
                 { value: 'this', label: 'This' },
@@ -744,7 +744,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
               </Field>
             )}
 
-            <Field label="Annotation" tooltip="Shown inside the shape on the diagram." symbols>
+            <Field label="Annotation" tooltip="Appears inside the shape on the diagram." symbols>
               <textarea
                 className={`${inputClass} resize-y`}
                 rows={2}
@@ -859,7 +859,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         <InspectorBlock id="more" title="More" summary="Slug, notes, ID">
             {/* Short label — shown in place of the full label when the diagram is
                 too zoomed out to fit it; never abbreviated further by the app. */}
-            <Field label="Short label" tooltip="Shown when the full label doesn't fit." symbols>
+            <Field label="Short label" tooltip="Appears when the full label doesn't fit." symbols>
               <input
                 className={inputClass}
                 value={span.shortLabel ?? ''}
@@ -872,7 +872,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
                 the label (lib/slug.ts), so a rename offers an explicit regenerate. */}
             <Field
               label="Slug"
-              tooltip="Link to this span from commentary with [[its-slug]]. It’s fixed once the file is saved."
+              tooltip="Type [[its-slug]] in commentary to link to this span. The slug stays the same once you save, so your links keep working."
             >
               <button
                 className={`${inputClass} flex items-center justify-between text-left`}
@@ -904,7 +904,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
               </Field>
             )}
 
-            <Field label="Notes" tooltip="For you; not shown on the diagram." symbols>
+            <Field label="Notes" tooltip="For you; the diagram doesn’t show them." symbols>
               <textarea
                 className={`${inputClass} resize-y`}
                 rows={2}
@@ -1090,7 +1090,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
         </Field>
 
         {/* Annotation */}
-        <Field label="Annotation" tooltip="Shown inside the shape on the diagram.">
+        <Field label="Annotation" tooltip="Appears inside the shape on the diagram.">
           <textarea
             className={`${inputClass} resize-y`}
             rows={2}

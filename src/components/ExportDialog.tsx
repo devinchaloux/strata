@@ -125,7 +125,7 @@ export function ExportDialog() {
     try {
       downloadBlob(await svgToPng(svg, 2), `${base}-form-diagram.png`)
     } catch (e) {
-      showAppMessage("Couldn't make the PNG", [e instanceof Error ? e.message : String(e), 'The SVG download still works.'])
+      showAppMessage("Couldn't make the PNG", [e instanceof Error ? e.message : String(e), 'You can still download the SVG.'])
     }
   }
 
