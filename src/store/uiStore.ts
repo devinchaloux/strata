@@ -249,6 +249,9 @@ export interface UIState {
   /** The focused stretch: the rest of the diagram is dimmed and playback loops here. */
   focusRange: { start: number; end: number } | null
   setFocusRange: (range: { start: number; end: number } | null) => void
+  /** Bars in a hypermetric group for Number bars, Number from 1 and Elide (lib/hypermeter.ts). Session only. */
+  barGroup: number
+  setBarGroup: (n: number) => void
   /** Until this time (ms), playback doesn't scroll the timeline: the reader has panned it by hand. */
   followHoldUntil: number
   holdFollow: (ms: number) => void
@@ -439,7 +442,9 @@ const useUIStore = create<UIState>()((set) => ({
   viewRequest: null,
   requestView: (start, end = null) => set((s) => ({ viewRequest: { start, end, n: (s.viewRequest?.n ?? 0) + 1 } })),
   focusRange: null,
+  barGroup: 4,
   setFocusRange: (range) => set({ focusRange: range }),
+  setBarGroup: (n) => set({ barGroup: Math.max(1, Math.min(16, Math.round(n))) }),
   followHoldUntil: 0,
   holdFollow: (ms) => set({ followHoldUntil: Date.now() + ms }),
   playRequest: null,

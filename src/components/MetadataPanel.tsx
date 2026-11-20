@@ -12,6 +12,7 @@
 import { useEffect, useRef } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
+import { countOf } from '@/lib/hypermeter'
 import { useUIStore, type InspectorSection } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
 import { GroupPopover, CopyToLayerPopover } from '@/components/GroupPopover'
@@ -725,6 +726,8 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           </div>
         )}
 
+        <HypermeterRow layerId={layer.id} spans={[span]} />
+
         {/* Linked to a parent or children (Group, Copy to layer): boundaries they
             share move together (lib/linkedBoundaries.ts). Unlink frees them. */}
         <SpanLinks span={span} />
@@ -985,6 +988,56 @@ function commonValue<T>(spans: Span[], get: (s: Span) => T): T | typeof MIXED {
   return spans.every((s) => get(s) === first) ? first : MIXED
 }
 
+/**
+ * Hypermeter (lib/hypermeter.ts): recount a run of selected bars from 1, or
+ * make one bar the elided "4=1" and count on from 2. Elide shows only on a bar
+ * whose label is already a count, so the Inspector stays quiet elsewhere.
+ * The group size is shared with the layer menu's Number bars.
+ */
+function HypermeterRow({ layerId, spans }: { layerId: string; spans: Span[] }) {
+  const renumberSpans = useDocumentStore((s) => s.renumberSpans)
+  const elideSpan = useDocumentStore((s) => s.elideSpan)
+  const barGroup = useUIStore((s) => s.barGroup)
+  const setBarGroup = useUIStore((s) => s.setBarGroup)
+  const single = spans.length === 1
+  if (single && countOf(spans[0].label) === null) return null
+  const button = 'rounded border border-border px-2 py-0.5 text-xs text-foreground hover:bg-accent'
+  return (
+    <div className="flex items-center gap-1.5 text-xs">
+      <span className="w-10 shrink-0 text-muted-foreground">Count</span>
+      {single ? (
+        <button
+          className={button}
+          title="This bar ends one group and begins the next: it becomes 4=1, and the bars after it count on from 2"
+          onClick={() => elideSpan(layerId, spans[0].id, barGroup)}
+        >
+          Elide
+        </button>
+      ) : (
+        <button
+          className={button}
+          title="Count these bars 1, 2, 3 … from the first, in groups"
+          onClick={() => renumberSpans(layerId, spans.map((s) => s.id), barGroup)}
+        >
+          Number from 1
+        </button>
+      )}
+      <span className="text-muted-foreground">in</span>
+      <input
+        type="number"
+        min={1}
+        max={16}
+        value={barGroup}
+        onChange={(e) => setBarGroup(Number(e.target.value) || 1)}
+        aria-label="Bars in a group"
+        title="Bars in a group"
+        className="w-10 rounded border border-border bg-card px-1 py-0.5 text-center text-xs tabular-nums text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
+      />
+      <span className="text-muted-foreground">s</span>
+    </div>
+  )
+}
+
 function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
   const doc = useDocumentStore((s) => s.document)
   const updateSpans = useDocumentStore((s) => s.updateSpans)
@@ -1052,6 +1105,13 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
           </div>
           <PasteHint spanIds={ids} />
         </div>
+
+        {/* Recount a run of bars on one layer (hypermeter). */}
+        {entries.every((e) => e.layer.id === entries[0].layer.id) && (
+          <div className="mb-4">
+            <HypermeterRow layerId={entries[0].layer.id} spans={spans} />
+          </div>
+        )}
 
         <CommentaryPreview
           label={`Commentary, ${formatClock(rangeStart)}–${formatClock(rangeEnd)}`}
