@@ -11,6 +11,9 @@ import {
   ABS_MAX_ZOOM,
   BASE_PPS,
   wheelPixels,
+  followOffset,
+  revealOffset,
+  HAND_SCROLL_HOLD_MS,
 } from '@/lib/timeline'
 
 export function useTimeline() {
@@ -127,19 +130,23 @@ export function useTimeline() {
     () =>
       useUIStore.subscribe((state, prev) => {
         if (state.currentTime === prev.currentTime || state.playbackState !== 'playing') return
-        // The reader panned by hand a moment ago (embed on a phone): leave the view alone.
+        // The reader is scrolling by hand right now: don't fight them.
         if (Date.now() < state.followHoldUntil) return
-        const { pps, viewportWidth, totalWidth, scrollOffset } = snap.current
-        if (pps <= 0 || viewportWidth <= 0) return
-        const t = state.currentTime
-        const cursorPx = t * pps - scrollOffset
-        if (cursorPx < 0) {
-          // Off-screen left — reveal at 20%
-          setScrollOffset(clampScrollOffset(t * pps - viewportWidth * 0.2, totalWidth, viewportWidth))
-        } else if (cursorPx > viewportWidth * 0.8) {
-          // Approaching or past right edge — follow at 80%
-          setScrollOffset(clampScrollOffset(t * pps - viewportWidth * 0.8, totalWidth, viewportWidth))
-        }
+        // Follows a playhead that walks off the view, not one the reader
+        // scrolled away from (lib/timeline, followOffset).
+        const next = followOffset({ time: state.currentTime, prevTime: prev.currentTime, ...snap.current })
+        if (next != null) setScrollOffset(next)
+      }),
+    [setScrollOffset],
+  )
+
+  // A seek shows where it landed, playing or paused (PlayerDock asks).
+  useEffect(
+    () =>
+      useUIStore.subscribe((state, prev) => {
+        if (!state.revealRequest || state.revealRequest === prev.revealRequest) return
+        const next = revealOffset({ time: state.revealRequest.time, ...snap.current })
+        if (next != null) setScrollOffset(next)
       }),
     [setScrollOffset],
   )
@@ -180,6 +187,7 @@ export function useTimeline() {
         const { dx, dy } = wheelPixels(e, viewportWidth)
         const delta = Math.abs(dx) > Math.abs(dy) ? dx : dy
         setScrollOffset(clampScrollOffset(scrollOffset + delta, totalWidth, viewportWidth))
+        useUIStore.getState().holdFollow(HAND_SCROLL_HOLD_MS)
       }
     }
 

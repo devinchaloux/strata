@@ -15,17 +15,15 @@ import { FormDiagram } from '@/components/FormDiagram'
 import { PlayerDock } from '@/components/PlayerDock'
 import { fetchSharedAnalysis, shareUrl } from '@/lib/shareLink'
 import { onlyLayers, readCommand, resolveFocus, viewAround, type EmbedEvent, type EmbedParams } from '@/lib/embed'
-import { clampScrollOffset, scrollableWidth } from '@/lib/timeline'
+import { NARROW_PX } from '@/hooks/usePhone'
+import { useTouchPan } from '@/hooks/useTouchPan'
 
-// Narrower than this, the embed stacks video over diagram (index.css) and
-// opens with the layer names folded to a rail. At every width it opens at a
-// readable scale that scrolls.
-const NARROW_PX = 640
+// Narrower than NARROW_PX, the embed stacks video over diagram (index.css)
+// and opens with the layer names folded to a rail. At every width it opens at
+// a readable scale that scrolls.
 // After a cue, how long playback may sit outside the focus before the loop
 // lets go (the seek that the cue asked for may not have landed yet).
 const CUE_SETTLE_MS = 1500
-// A hand pan holds the playhead-following for this long.
-const PAN_HOLD_MS = 4000
 
 function post(event: EmbedEvent) {
   if (window.parent !== window) window.parent.postMessage(event, '*')
@@ -141,36 +139,8 @@ export function EmbedApp({ params }: { params: EmbedParams }) {
     return () => ro.disconnect()
   }, [loaded, error])
 
-  // ── Touch: drag the diagram sideways ──────────────────────────────────────
-  // Phones have no wheel, and the editor's drag is a box-select; here a drag
-  // pans, and holds the playhead-following for a moment.
-  const pan = useRef<{ x: number; offset: number; moved: boolean } | null>(null)
-  const swallowClick = useRef(false)
-  function onPointerDown(e: React.PointerEvent) {
-    if (e.pointerType !== 'touch') return
-    pan.current = { x: e.clientX, offset: useUIStore.getState().scrollOffset, moved: false }
-  }
-  function onPointerMove(e: React.PointerEvent) {
-    const p = pan.current
-    if (!p) return
-    const dx = e.clientX - p.x
-    if (!p.moved && Math.abs(dx) < 8) return
-    p.moved = true
-    const ui = useUIStore.getState()
-    const duration = useDocumentStore.getState().document?.duration ?? 0
-    ui.setScrollOffset(clampScrollOffset(p.offset - dx, scrollableWidth(duration, ui.zoom), ui.viewportWidth))
-    ui.holdFollow(PAN_HOLD_MS)
-  }
-  function onPointerEnd() {
-    // A pan isn't a tap: the click that follows it mustn't select a span.
-    swallowClick.current = pan.current?.moved ?? false
-    pan.current = null
-  }
-  function onClickCapture(e: React.MouseEvent) {
-    if (!swallowClick.current) return
-    swallowClick.current = false
-    e.stopPropagation()
-  }
+  // ── Touch: drag the diagram sideways (hooks/useTouchPan) ──────────────────
+  const touchPan = useTouchPan()
 
   if (error)
     return (
@@ -206,11 +176,7 @@ export function EmbedApp({ params }: { params: EmbedParams }) {
       <div
         className="embed-diagram flex min-w-0 flex-col"
         style={{ touchAction: 'pan-y' }}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerEnd}
-        onPointerCancel={onPointerEnd}
-        onClickCapture={onClickCapture}
+        {...touchPan}
       >
         {doc && <FormDiagram />}
       </div>

@@ -16,10 +16,11 @@
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import type { AnalysisBlock, StrataDocument } from '@/types/strata'
-import { formSpans, analysisLayers } from '@/lib/layers'
+import { formSpans, analysisLayers, withReadingHidden } from '@/lib/layers'
 import { spanTypeName } from '@/lib/vocabulary'
 import { EyeOff } from 'lucide-react'
 import { READING_VIDEO_W } from '@/components/PlayerDock'
+import { usePhone } from '@/hooks/usePhone'
 import { CommentaryMarkdown } from './CommentaryMarkdown'
 import { CommentaryEditor } from './CommentaryEditor'
 import {
@@ -273,6 +274,8 @@ export function CommentaryPanel() {
   const selectedIds = useUIStore((s) => s.selectedSpanIds)
   const reading = useUIStore((s) => s.readingView)
   const showInReading = useUIStore((s) => s.readingShow.commentary)
+  // On a phone the video sits above the commentary, not beside it.
+  const phone = usePhone()
   // What's being edited: a new stretch's editor must appear even when the
   // stack itself doesn't change.
   const editKey = useUIStore((s) => s.commentaryEdit?.key)
@@ -280,7 +283,8 @@ export function CommentaryPanel() {
   const momentKey = useUIStore((s) => {
     if (!doc) return ''
     const t = (s.readingView ? null : heldMoment(doc, s.commentaryEdit)) ?? momentOf(doc, s.currentTime, s.selectedSpanIds, s.playbackState === 'playing')
-    return [...passagesAt(doc, t).map((b) => b.id), ...stackAt(doc, t).map((r) => r.span.id)].join(',')
+    const shown = s.readingView ? withReadingHidden(doc, s.readingHiddenLayers) : doc
+    return [...passagesAt(doc, t).map((b) => b.id), ...stackAt(shown, t).map((r) => r.span.id)].join(',')
   })
   if (!doc) return null
   if (reading && !showInReading) return null
@@ -306,14 +310,15 @@ export function CommentaryPanel() {
   const range = reading ? null : editedRange(editKey)
   const rangeBlock = range ? blockForRange(doc, range[0], range[1]) : undefined
   const passages = passagesAt(doc, t).filter((b) => b !== rangeBlock)
-  const rows = stackAt(doc, t)
+  // Layers the reader hid in the reading view leave the readout too.
+  const rows = stackAt(reading ? withReadingHidden(doc, ui.readingHiddenLayers) : doc, t)
   const anyLyrics = doc.layers.some((l) => formSpans(l).some((s) => s.lyrics))
 
   // Reading: the video sits top left (PlayerDock, READING_VIDEO_W), so the
   // commentary starts to its right, larger; the header's Show chips replace
   // these controls, and no editing hints show.
   const hasVideo = doc.source.type === 'youtube' && !!doc.source.url
-  const readingStyle = reading && hasVideo ? { marginLeft: `calc(${READING_VIDEO_W} + 40px)` } : undefined
+  const readingStyle = reading && hasVideo && !phone ? { marginLeft: `calc(${READING_VIDEO_W} + 40px)` } : undefined
   // At the top of the stack, not the corner: the corner mini player sits
   // there, and nothing may be drawn over it.
   const controls = reading || (!anyLyrics && !commentaryLayers.length) ? null : (

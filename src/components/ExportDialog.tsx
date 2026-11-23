@@ -7,7 +7,8 @@
  * is already the Exposition; adjust the times to take in an elision or a
  * pickup. Hidden layers are left out, so hiding a layer is how to leave it out
  * of a figure. The preview is the exported SVG itself, so what you see is
- * exactly what you save.
+ * exactly what you save. "Commentary in the PDF" adds, after the figure, the
+ * commentary whose time falls in the range; the SVG and PNG stay figures.
  */
 import { useEffect, useMemo, useState } from 'react'
 import { Download, Printer } from 'lucide-react'
@@ -20,7 +21,7 @@ import { printFigure } from '@/lib/printFigure'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { TimeInput } from './TimeInput'
-import { allBlocks, commentaryToHtml, commentaryToMarkdown } from '@/widgets/written-analysis/commentary'
+import { allBlocks, commentarySectionsHtml, commentaryToHtml, commentaryToMarkdown } from '@/widgets/written-analysis/commentary'
 import type { StrataDocument } from '@/types/strata'
 
 type RangeMode = 'all' | 'selection' | 'custom'
@@ -72,6 +73,9 @@ export function ExportDialog() {
   const [width, setWidth] = useState(1200)
   const [includeMarkers, setIncludeMarkers] = useState(true)
   const [includeAxis, setIncludeAxis] = useState(true)
+  // The PDF only: the SVG and PNG are figures, and the commentary has its
+  // own HTML and Markdown exports.
+  const [includeCommentary, setIncludeCommentary] = useState(false)
   const [svg, setSvg] = useState('')
   // Which layers go in the figure: chosen here, apart from what the editor
   // shows. Starts from the visible ones each time the dialog opens.
@@ -122,6 +126,9 @@ export function ExportDialog() {
   const noLayers = layerIds.length === 0
   const hasCommentary = allBlocks(doc).length > 0
   const base = fileBaseName(doc)
+  // The document as it is now, for the PDF's commentary (a function declared
+  // below doesn't keep the null check above).
+  const current = doc
 
   async function savePng() {
     try {
@@ -133,7 +140,9 @@ export function ExportDialog() {
 
   async function savePdf() {
     try {
-      await printFigure(svg, `${base}-form-diagram`)
+      // Empty when no commentary falls in the range: then the figure prints alone.
+      const commentary = includeCommentary && hasCommentary && range ? await commentarySectionsHtml(current, range) : ''
+      await printFigure(svg, `${base}-form-diagram`, commentary || undefined)
     } catch (e) {
       showAppMessage("Couldn't open the print page", [e instanceof Error ? e.message : String(e), 'You can still download the SVG.'])
     }
@@ -213,6 +222,21 @@ export function ExportDialog() {
               <input id="export-axis" type="checkbox" checked={includeAxis} onChange={(e) => setIncludeAxis(e.target.checked)} />
               Time axis
             </label>
+            {hasCommentary && (
+              <label
+                className="flex items-center gap-1.5 text-xs"
+                htmlFor="export-commentary"
+                title="In the PDF only: the commentary in this range, in time order, after the figure"
+              >
+                <input
+                  id="export-commentary"
+                  type="checkbox"
+                  checked={includeCommentary}
+                  onChange={(e) => setIncludeCommentary(e.target.checked)}
+                />
+                Commentary in the PDF
+              </label>
+            )}
           </div>
 
           <div className="max-h-[50vh] overflow-auto rounded border border-border bg-white p-2">

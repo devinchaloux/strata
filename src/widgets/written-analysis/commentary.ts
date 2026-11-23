@@ -229,27 +229,37 @@ function linkTargets(entries: ReturnType<typeof sections>): Set<string> {
 }
 
 /**
+ * The commentary's sections as HTML, in time order: one `<section>` each,
+ * headed by what it's about and when. With `within`, only the commentary whose
+ * time overlaps that range, so a PDF of the Exposition carries the
+ * Exposition's commentary. [[slug]] links become in-page links only to
+ * sections that are included; the rest read as plain names.
+ */
+export async function commentarySectionsHtml(doc: StrataDocument, within?: [number, number]): Promise<string> {
+  // The renderer (and react-dom/server) loads on demand, as for the figure
+  // export, so the editor's bundle doesn't carry it.
+  const { commentaryMarkdownHtml } = await import('./commentaryHtml')
+  const entries = sections(doc).filter(({ range }) => !within || (range[0] < within[1] && range[1] > within[0]))
+  const targets = linkTargets(entries)
+  const exists = (slug: string) => !!spanBySlug(doc, slug) || !!markerBySlug(doc, slug)
+
+  return entries
+    .map(({ block, span, range, heading }) => {
+      const id = span?.slug ? ` id="${esc(span.slug)}"` : ''
+      const paras = commentaryMarkdownHtml(block.text, exists, targets, (slug) => slugName(doc, slug))
+      return `<section${id}>\n<h2>${heading ? `${esc(heading)} ` : ''}<span class="time">${mmss(range[0])}–${mmss(range[1])}</span></h2>\n${paras}\n</section>`
+    })
+    .join('\n')
+}
+
+/**
  * The whole commentary as one readable HTML page, in time order, each section
  * headed by what it's about and when. [[slug]] links become in-page links to
  * that span's section when it has one. HTML is the default export for this
  * widget (docs/decisions.md): it opens anywhere, no markdown reader needed.
  */
 export async function commentaryToHtml(doc: StrataDocument): Promise<string> {
-  // The renderer (and react-dom/server) loads on demand, as for the figure
-  // export, so the editor's bundle doesn't carry it.
-  const { commentaryMarkdownHtml } = await import('./commentaryHtml')
-  const entries = sections(doc)
-  const targets = linkTargets(entries)
-
-  const body = entries
-    .map(({ block, span, range, heading }) => {
-      const id = span?.slug ? ` id="${esc(span.slug)}"` : ''
-      const exists = (slug: string) => !!spanBySlug(doc, slug) || !!markerBySlug(doc, slug)
-      const paras = commentaryMarkdownHtml(block.text, exists, targets, (slug) => slugName(doc, slug))
-      return `<section${id}>\n<h2>${heading ? `${esc(heading)} ` : ''}<span class="time">${mmss(range[0])}–${mmss(range[1])}</span></h2>\n${paras}\n</section>`
-    })
-    .join('\n')
-
+  const body = await commentarySectionsHtml(doc)
   const title = [doc.title, doc.artist.join(', ')].filter(Boolean).join(' — ')
   return `<!doctype html>
 <html lang="en">

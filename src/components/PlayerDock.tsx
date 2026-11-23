@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback, useLayoutEffect } from 'react'
 import { Link2, CircleAlert, PictureInPicture2, PanelBottom, ArrowDown, ArrowUp } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
+import { usePhone } from '@/hooks/usePhone'
 import { useUIStore } from '@/store/uiStore'
 import { useYouTubePlayer } from '@/hooks/useYouTubePlayer'
 import { useAudioPlayer } from '@/hooks/useAudioPlayer'
@@ -163,6 +164,11 @@ export function PlayerDock() {
     setLinkSourceOpen,
   } = useUIStore()
 
+  // A phone's reading view stacks in one screen (App): the video on top at
+  // full width, the play bar at the foot.
+  const phone = usePhone()
+  const phoneReading = phone && readingView && !embed
+
   const source = doc?.source ?? null
   const sourceOffset = source?.sourceOffset ?? 0
 
@@ -209,7 +215,17 @@ export function PlayerDock() {
   }
   const ytEngine = useYouTubePlayer(containerRef, videoId, sourceOffset)
   const audioEngine = useAudioPlayer(isLocal ? audioFile : null, sourceOffset)
-  const engine = source?.type === 'local' ? audioEngine : ytEngine
+  const sourceEngine = source?.type === 'local' ? audioEngine : ytEngine
+  // Every seek (the seek bar, the keys, a seek request) also asks the timeline
+  // to show where it landed (useTimeline): following during playback leaves a
+  // view the reader scrolled away, so a seek is how the view comes back.
+  const engine = {
+    ...sourceEngine,
+    seek: (t: number) => {
+      sourceEngine.seek(t)
+      useUIStore.getState().requestReveal(t)
+    },
+  }
   const engineRef = useRef(engine)
   // Written once the render commits, not while it runs (react-hooks/refs).
   useLayoutEffect(() => { engineRef.current = engine })
@@ -489,8 +505,8 @@ export function PlayerDock() {
         </TransportButton>
         {/* The key, written out: the shortcut is the quickest way to pause, so
             it shouldn't live only in a tooltip. */}
-        {/* Not in an embed: a reader there clicks, and a phone has no Space. */}
-        {!embed && (
+        {/* Not in an embed or on a phone: a reader there taps, and a phone has no Space. */}
+        {!embed && !phone && (
           <kbd className="-ml-1 shrink-0 rounded border border-border px-1 text-xs leading-4 text-muted-foreground" aria-hidden>
             Space
           </kbd>
@@ -637,6 +653,8 @@ export function PlayerDock() {
           className={
             embed
               ? 'embed-video relative z-60 overflow-hidden bg-black'
+              : phoneReading
+              ? 'relative z-60 overflow-hidden bg-black'
               : readingView
               ? 'absolute left-4 top-4 z-60 overflow-hidden rounded-lg border border-border'
               : videoMini
@@ -648,6 +666,10 @@ export function PlayerDock() {
             // Embed: sized by the embed layout's CSS (index.css), never under VIDEO_MIN.
             ...(embed
               ? { minWidth: VIDEO_MIN, minHeight: VIDEO_MIN }
+              : phoneReading
+              ? // First in the column (CSS order), so it sits above the
+                // commentary without the iframe ever moving in the DOM.
+                { width: '100%', aspectRatio: '16 / 9', minHeight: VIDEO_MIN, order: -1, flexShrink: 0 }
               : readingView
               ? { width: READING_VIDEO_W, aspectRatio: '16 / 9', minWidth: VIDEO_MIN, minHeight: VIDEO_MIN }
               : videoMini

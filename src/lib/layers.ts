@@ -41,3 +41,14 @@ export function newFormLayer(label: string, displayOrder: number): Layer {
     data: { spans: [] },
   }
 }
+
+/**
+ * The document as the reading view shows it: the layers the reader hid there
+ * (uiStore.readingHiddenLayers) drawn as hidden. Only for drawing and the
+ * readout; the file itself is never changed.
+ */
+export function withReadingHidden(doc: StrataDocument, hiddenIds: string[]): StrataDocument {
+  if (hiddenIds.length === 0) return doc
+  const hidden = new Set(hiddenIds)
+  return { ...doc, layers: doc.layers.map((l) => (hidden.has(l.id) ? { ...l, visibility: false } : l)) }
+}

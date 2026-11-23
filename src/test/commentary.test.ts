@@ -9,6 +9,7 @@ import { analysisLayers } from '@/lib/layers'
 import {
   blockForSpan,
   blocksAt,
+  commentarySectionsHtml,
   commentaryToHtml,
   commentaryToMarkdown,
   markerBySlug,
@@ -128,6 +129,21 @@ describe('commentary text', () => {
     expect(html).toContain('<section id="drop">')
     expect(html).toContain('<a href="#drop">Drop</a>')  // a bare link shows the span's label
     expect(html).toContain('Loud &lt;and&gt; proud.')
+  })
+
+  it('limits the sections to a range, linking only to sections that are included', async () => {
+    store().setSpanCommentary('a', 'Intro text, before [[drop]].')
+    store().setSpanCommentary('b', 'Drop text, after [[intro]].')
+    store().setSpanCommentary('c', 'Outro text.')
+    store().setRangeCommentary(50, 70, 'Across the seam.')
+    const html = await commentarySectionsHtml(doc(), [30, 60])
+    expect(html).toContain('Drop text')
+    expect(html).toContain('Across the seam.') // overlaps the range, so it's in
+    expect(html).not.toContain('Intro text') // ends where the range starts
+    expect(html).not.toContain('Outro text')
+    expect(html).not.toContain('href="#intro"') // Intro's section isn't in this export
+    expect(html.indexOf('Drop text')).toBeLessThan(html.indexOf('Across the seam.'))
+    expect(await commentarySectionsHtml(doc())).toContain('Outro text.')
   })
 
   it('exports to Markdown with anchors, links and emphasis', () => {

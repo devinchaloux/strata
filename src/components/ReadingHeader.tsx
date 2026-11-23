@@ -5,6 +5,10 @@
  * The Show chips change only what this view draws (uiStore.readingShow); the
  * file's own layer visibility is untouched, so reading never edits the
  * analysis. docs/decisions.md, "The Reading View".
+ *
+ * On a phone the bar wraps: the piece and Share on the first row, the Show
+ * chips on a second that scrolls sideways. There is no Edit there, since a
+ * phone reads and plays (decisions.md, "Read and Play on a Phone").
  */
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
@@ -16,7 +20,7 @@ function Chip({ on, label, onClick }: { on: boolean; label: string; onClick: () 
       type="button"
       aria-pressed={on}
       onClick={onClick}
-      className={`h-7 rounded-full border px-3 text-xs ${
+      className={`h-7 shrink-0 whitespace-nowrap rounded-full border px-3 text-xs ${
         on ? 'border-foreground bg-foreground text-background' : 'border-border bg-card text-foreground hover:bg-accent'
       }`}
     >
@@ -25,7 +29,7 @@ function Chip({ on, label, onClick }: { on: boolean; label: string; onClick: () 
   )
 }
 
-export function ReadingHeader() {
+export function ReadingHeader({ phone = false }: { phone?: boolean }) {
   const doc = useDocumentStore((s) => s.document)
   const show = useUIStore((s) => s.readingShow)
   const setShow = useUIStore((s) => s.setReadingShow)
@@ -42,11 +46,14 @@ export function ReadingHeader() {
   const hasLyrics = doc.layers.some((l) => formSpans(l).some((s) => s.lyrics))
   return (
     <>
-      <div className="flex min-w-0 items-baseline gap-2">
+      <div className={`flex min-w-0 items-baseline gap-2 ${phone ? 'flex-1' : ''}`}>
         <h1 className="truncate text-sm font-semibold text-foreground">{doc.title || 'Untitled analysis'}</h1>
         {doc.artist.length > 0 && <span className="truncate text-xs text-muted-foreground">{doc.artist.join(', ')}</span>}
       </div>
-      <div className="ml-auto flex items-center gap-1.5" aria-label="Show">
+      <div
+        className={phone ? 'order-last -mx-3 flex w-[calc(100%+1.5rem)] items-center gap-1.5 overflow-x-auto px-3 pt-1.5' : 'ml-auto flex items-center gap-1.5'}
+        aria-label="Show"
+      >
         <span className="mr-1 text-xs text-muted-foreground">Show</span>
         {hasCommentary && <Chip on={show.commentary} label="Commentary" onClick={() => setShow('commentary', !show.commentary)} />}
         <Chip on={show.diagram} label="Form diagram" onClick={() => setShow('diagram', !show.diagram)} />
@@ -60,6 +67,7 @@ export function ReadingHeader() {
       >
         Share
       </button>
+      {!phone && (
       <button
         type="button"
         onClick={() => setReadingView(false)}
@@ -68,6 +76,7 @@ export function ReadingHeader() {
       >
         {sharedFrom ? 'Edit a copy' : 'Edit'}
       </button>
+      )}
     </>
   )
 }

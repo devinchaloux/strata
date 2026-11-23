@@ -257,3 +257,56 @@ export function wheelPixels(
   const unit = e.deltaMode === 1 ? LINE_PX : e.deltaMode === 2 ? pageWidth : 1
   return { dx: e.deltaX * unit, dy: e.deltaY * unit }
 }
+
+// ── Following the playhead ──────────────────────────────────────────────────
+
+/**
+ * How long a hand scroll (the scrollbar, the wheel, a finger) keeps the view
+ * from following, so the view doesn't fight the hand mid-gesture.
+ */
+export const HAND_SCROLL_HOLD_MS = 1500
+
+/**
+ * Where the view should scroll to follow the playhead while playing, or null to
+ * leave it where it is. The view follows the playhead only when it walks off
+ * the right of the view on its own. A playhead the reader scrolled out of view
+ * is left alone: they're looking at another passage, and the view picks the
+ * playhead up again once it walks back into view, or at the next seek
+ * (revealOffset). decisions.md, "Following the Playhead".
+ */
+export function followOffset(p: {
+  time: number
+  prevTime: number
+  pps: number
+  viewportWidth: number
+  totalWidth: number
+  scrollOffset: number
+}): number | null {
+  const { time, prevTime, pps, viewportWidth, totalWidth, scrollOffset } = p
+  if (pps <= 0 || viewportWidth <= 0) return null
+  const cursor = time * pps - scrollOffset
+  const prevCursor = prevTime * pps - scrollOffset
+  if (cursor > viewportWidth * 0.8 && prevCursor >= 0 && prevCursor <= viewportWidth) {
+    return clampScrollOffset(time * pps - viewportWidth * 0.8, totalWidth, viewportWidth)
+  }
+  return null
+}
+
+/** Whether `time` is on screen in the view (true before the view is measured). */
+export function timeInView(p: { time: number; pps: number; viewportWidth: number; scrollOffset: number }): boolean {
+  const { time, pps, viewportWidth, scrollOffset } = p
+  if (pps <= 0 || viewportWidth <= 0) return true
+  const cursor = time * pps - scrollOffset
+  return cursor >= 0 && cursor <= viewportWidth
+}
+
+/** Where the view scrolls to show `time` at 20% of its width. */
+export function offsetShowing(p: { time: number; pps: number; viewportWidth: number; totalWidth: number }): number {
+  const { time, pps, viewportWidth, totalWidth } = p
+  return clampScrollOffset(time * pps - viewportWidth * 0.2, totalWidth, viewportWidth)
+}
+
+/** Where the view should scroll to show a time a seek landed on (at 20%), or null if it's in view. */
+export function revealOffset(p: { time: number; pps: number; viewportWidth: number; totalWidth: number; scrollOffset: number }): number | null {
+  return timeInView(p) ? null : offsetShowing(p)
+}

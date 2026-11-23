@@ -53,7 +53,7 @@ const KEYS: [string, [string, string][]][] = [
     'Selecting',
     [
       ['Click', 'Select a span (when paused, the playhead moves to it)'],
-      ['Double-click', 'Play from a span or marker'],
+      ['Double-click', 'Play from a span or marker (on a phone, double-tap)'],
       ['Click the ruler', 'Move the playhead there'],
       [`${MOD}-click`, 'Add or remove a span'],
       ['Shift-click', 'Select a run of spans'],
