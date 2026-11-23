@@ -12,7 +12,12 @@
  */
 
 import { useRef } from 'react'
-import { scrollbarMetrics, scrollOffsetFromThumbX } from '@/lib/timeline'
+import { scrollbarMetrics, scrollOffsetFromThumbX, HAND_SCROLL_HOLD_MS } from '@/lib/timeline'
+import { useUIStore } from '@/store/uiStore'
+
+// While playing, the view follows the playhead; a hand on the scrollbar holds
+// that off, so the thumb doesn't hop back mid-drag (lib/timeline, followOffset).
+const holdFollow = () => useUIStore.getState().holdFollow(HAND_SCROLL_HOLD_MS)
 
 const SCROLLBAR_HEIGHT = 16 // px — track height (gutter)
 const THUMB_HEIGHT = 8 // px, the visible bar; the whole track height grabs it
@@ -47,7 +52,9 @@ export function TimelineScrollbar({
     e.stopPropagation()
     const startX = e.clientX
     const startThumbX = thumbX
+    holdFollow()
     const move = (ev: PointerEvent) => {
+      holdFollow()
       const nextThumbX = Math.max(0, Math.min(maxThumbX, startThumbX + (ev.clientX - startX)))
       onScroll(scrollOffsetFromThumbX(nextThumbX, maxThumbX, maxScroll))
     }
@@ -66,6 +73,7 @@ export function TimelineScrollbar({
     const clickX = e.clientX - rect.left
     const page = viewportWidth * 0.9
     const next = clickX < thumbX ? scrollOffset - page : scrollOffset + page
+    holdFollow()
     onScroll(Math.max(0, Math.min(maxScroll, next)))
   }
 

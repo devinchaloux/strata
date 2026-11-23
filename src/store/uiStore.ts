@@ -171,6 +171,9 @@ export interface UIState {
   // (e.g. a commentary link). PlayerDock owns the engine and carries it out;
   // `n` makes two requests for the same time distinct.
   seekRequest: { time: number; n: number; play?: boolean } | null
+  // A time the timeline should bring into view if it's off screen: set by
+  // every seek, so the view goes where the playhead went (useTimeline).
+  revealRequest: { time: number; n: number } | null
 
   // Actions — playback
   setCurrentTime: (time: number) => void
@@ -261,6 +264,7 @@ export interface UIState {
   shareOpen: boolean
   setShareOpen: (open: boolean) => void
   requestSeek: (time: number, play?: boolean) => void
+  requestReveal: (time: number) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -378,6 +382,7 @@ const useUIStore = create<UIState>()((set) => ({
   readingView: false,
   readingShow: { commentary: true, diagram: true },
   seekRequest: null,
+  revealRequest: null,
 
   setCurrentTime: (time) => set({ currentTime: time }),
   setDuration: (duration) => set({ duration }),
@@ -510,6 +515,7 @@ const useUIStore = create<UIState>()((set) => ({
     set({ readingView: on, selectedSpanIds: [], selectionAnchorId: null, selectedPointMarkerId: null, commentaryEdit: null }),
   setReadingShow: (part, on) => set((s) => ({ readingShow: { ...s.readingShow, [part]: on } })),
   requestSeek: (time, play) => set((s) => ({ seekRequest: { time, n: (s.seekRequest?.n ?? 0) + 1, play } })),
+  requestReveal: (time) => set((s) => ({ revealRequest: { time, n: (s.revealRequest?.n ?? 0) + 1 } })),
 }))
 
 export { useUIStore }

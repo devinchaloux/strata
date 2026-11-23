@@ -215,7 +215,17 @@ export function PlayerDock() {
   }
   const ytEngine = useYouTubePlayer(containerRef, videoId, sourceOffset)
   const audioEngine = useAudioPlayer(isLocal ? audioFile : null, sourceOffset)
-  const engine = source?.type === 'local' ? audioEngine : ytEngine
+  const sourceEngine = source?.type === 'local' ? audioEngine : ytEngine
+  // Every seek (the seek bar, the keys, a seek request) also asks the timeline
+  // to show where it landed (useTimeline): following during playback leaves a
+  // view the reader scrolled away, so a seek is how the view comes back.
+  const engine = {
+    ...sourceEngine,
+    seek: (t: number) => {
+      sourceEngine.seek(t)
+      useUIStore.getState().requestReveal(t)
+    },
+  }
   const engineRef = useRef(engine)
   // Written once the render commits, not while it runs (react-hooks/refs).
   useLayoutEffect(() => { engineRef.current = engine })
