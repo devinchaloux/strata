@@ -10,7 +10,7 @@ Yes, it's free and open source under the MIT License. You don't need an account.
 
 **What do I need?**
 
-You need a browser on a laptop or desktop, plus a YouTube link or an audio file. In Chrome and Edge, you can save back to the same file. In other browsers, you download a new copy each time you save. Strata doesn't support phones or tablets yet.
+You need a browser on a laptop or desktop, plus a YouTube link or an audio file. In Chrome and Edge, you can save back to the same file. In other browsers, you download a new copy each time you save. On a phone you can read and play an analysis, such as a shared link, but editing needs a wider screen.
 
 **Does Strata find the sections for me?**
 

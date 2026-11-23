@@ -3,6 +3,8 @@ import { useStore } from 'zustand'
 import { Undo2, Redo2, Settings, CircleHelp } from 'lucide-react'
 import { useFileIO } from '@/hooks/useFileIO'
 import { useMerge } from '@/hooks/useMerge'
+import { usePhone } from '@/hooks/usePhone'
+import { useTouchPan } from '@/hooks/useTouchPan'
 import { PlayerDock } from '@/components/PlayerDock'
 import { FormDiagram } from '@/components/FormDiagram'
 import { Inspector } from '@/components/Inspector'
@@ -117,6 +119,32 @@ function StrataMark({ size = 16 }: { size?: number }) {
       <rect x="3.5" y="7" width="9" height="2" rx="1" fill="var(--ink-muted)" />
       <rect x="5" y="3.5" width="6" height="2" rx="1" fill="var(--ink-faint)" />
     </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Phone note — in place of the editor on a phone
+// ---------------------------------------------------------------------------
+
+/** On a phone Strata reads and plays; editing waits for a wider screen. */
+function PhoneNote({ onRead }: { onRead: () => void }) {
+  return (
+    <main className="flex flex-1 items-center justify-center px-6 py-16">
+      <div className="flex max-w-xs flex-col items-center gap-3 text-center">
+        <StrataMark size={26} />
+        <p className="text-sm text-foreground">Editing needs a wider screen.</p>
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          On a phone you can read the analysis and play it. Open it on a tablet or a computer to edit it.
+        </p>
+        <button
+          type="button"
+          onClick={onRead}
+          className="mt-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          Read and play
+        </button>
+      </div>
+    </main>
   )
 }
 
@@ -351,6 +379,24 @@ export default function App() {
   const selectedMarkerId = useUIStore((s) => s.selectedPointMarkerId)
   const selectPointMarker = useUIStore((s) => s.selectPointMarker)
   const selectedCount = selectedSpanCount + (selectedMarkerId ? 1 : 0)
+
+  // On a phone Strata reads and plays but doesn't edit (decisions.md, "Read
+  // and Play on a Phone"): the reading view stacks, and the editor is a note.
+  const phone = usePhone()
+  const phoneReading = phone && readingView && doc != null
+  const phoneEditor = phone && !readingView && doc != null
+  const touchPan = useTouchPan()
+  // Arriving at the reading view on a phone, or opening a file there: names
+  // folded, and a readable scale that scrolls, as in the embed (fitted, a
+  // track's labels are too small to read). Keyed on loadId too, since every
+  // load fits the whole track (useTimeline).
+  const loadId = useDocumentStore((s) => s.loadId)
+  useEffect(() => {
+    if (!phoneReading) return
+    const ui = useUIStore.getState()
+    useUIStore.setState({ headersCollapsed: true })
+    ui.requestView(0, null)
+  }, [phoneReading, loadId])
 
   // Inspector collapse is pure view-state; local to the shell.
   const [inspectorCollapsed, setInspectorCollapsed] = useState(true)
@@ -647,20 +693,30 @@ export default function App() {
     // video into view; the header and inspector stay put.
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       {/* Toolbar — pinned while the page scrolls down to the video. */}
-      <header className="sticky top-0 z-40 flex h-10 shrink-0 items-center gap-1 border-b border-border bg-background px-3">
+      {/* On a phone the reading header wraps: the piece on one row, what to
+          show on the next. */}
+      <header
+        className={`sticky top-0 z-40 flex shrink-0 items-center gap-1 border-b border-border bg-background px-3 ${
+          phoneReading ? 'min-h-10 flex-wrap py-1.5' : 'h-10'
+        }`}
+      >
         <span className="mr-1 flex items-center gap-1.5 select-none">
           <StrataMark />
-          <span className="text-sm font-semibold tracking-tight text-foreground">Strata</span>
-          <span
-            className="rounded border border-border px-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
-            title="Strata is in beta. Save often."
-          >
-            Beta
-          </span>
+          {!phoneReading && (
+            <>
+              <span className="text-sm font-semibold tracking-tight text-foreground">Strata</span>
+              <span
+                className="rounded border border-border px-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                title="Strata is in beta. Save often."
+              >
+                Beta
+              </span>
+            </>
+          )}
         </span>
         {readingView ? (
-          <ReadingHeader />
-        ) : (
+          <ReadingHeader phone={phone} />
+        ) : phone ? null /* no editing toolbar on a phone: it can't fit, and a phone doesn't edit */ : (
           <>
 
         <div className="mx-1.5 h-4 w-px bg-border" />
@@ -764,10 +820,21 @@ export default function App() {
           screen; a docked video sits below it, off-screen until the page is
           scrolled. YouTube forbids hiding or covering its player, not scrolling
           it out of view (docs/decisions.md, "Video Below the Fold"). */}
+      {phoneEditor ? (
+        <PhoneNote onRead={() => setReadingView(true)} />
+      ) : (
       <div className="flex">
         {/* relative: the mini video player anchors to this column's corner */}
         <div className="relative flex min-w-0 flex-1 flex-col">
-          <div className="flex min-h-0 flex-col" style={{ height: `calc(100vh - ${HEADER_H + TRANSPORT_H}px)` }}>
+          {/* On a phone the reading view is as tall as its parts and the page
+              scrolls (video, then what's playing, then the diagram; the play
+              bar stays at the foot of the screen), and a finger drags the
+              diagram sideways. */}
+          <div
+            className="flex min-h-0 flex-col"
+            style={phoneReading ? { touchAction: 'pan-y' } : { height: `calc(100vh - ${HEADER_H + TRANSPORT_H}px)` }}
+            {...(phoneReading ? touchPan : {})}
+          >
             {doc ? (
               <FormDiagram />
             ) : (
@@ -788,6 +855,7 @@ export default function App() {
           </div>
         )}
       </div>
+      )}
 
       {/* Merge conflict dialog — renders only when a merge has conflicts */}
       <MergeConflictDialog />
