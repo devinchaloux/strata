@@ -563,6 +563,8 @@ This handles formal ambiguity at boundaries elegantly without requiring a separa
 
 Producing a single document from multiple widgets (e.g., form diagram SVG with written analysis text below it) is a v2 consideration. v1 encourages separate exports — each widget exports independently, and the analyst assembles in another tool if needed.
 
+> **As built (2026-11-23):** the PDF can carry the form diagram's commentary for the export's range after the figure (`docs/decisions.md`, "Commentary in the PDF"). Other combinations stay v2.
+
 ---
 
 ## 8. The Embeddable Viewer

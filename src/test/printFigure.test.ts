@@ -29,6 +29,17 @@ describe('figurePrintHtml', () => {
     expect(figurePrintHtml(tall, 't')).toContain('size: portrait')
   })
 
+  it('puts the commentary after the figure when given', () => {
+    const page = new DOMParser().parseFromString(
+      figurePrintHtml(wide, 't', '<section><h2>Drop</h2><p>Lands hard.</p></section>'),
+      'text/html',
+    )
+    expect(page.body.children).toHaveLength(2)
+    expect(page.body.children[0].tagName.toLowerCase()).toBe('svg')
+    expect(page.body.querySelector('.commentary h2')?.textContent).toBe('Drop')
+    expect(figurePrintHtml(wide, 't')).not.toContain('class="commentary"')
+  })
+
   it('escapes the title', () => {
     const page = new DOMParser().parseFromString(figurePrintHtml(wide, '<b>A & B</b>'), 'text/html')
     expect(page.title).toBe('<b>A & B</b>')

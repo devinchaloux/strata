@@ -189,6 +189,7 @@ aren't part of this repository.
 - [A `?new` link starts an analysis with its setup filled in; the tonic is passed as written.](#starting-an-analysis-from-a-link-2026-10-03)
 - [The figure exports as SVG and PNG from the editor's own drawing, with its own layer choice and spans cut at the range.](#export-choose-layers-cut-spans-at-the-range-2026-10-02)
 - [PDF goes through the browser's print dialog, with no library.](#save-as-pdf-through-the-print-dialog-2026-11-23)
+- [The PDF can carry the range's commentary after the figure; the SVG and PNG stay figures.](#commentary-in-the-pdf-2026-11-23)
 - [Commentary exports as one HTML page; Markdown is the second option.](#widgets)
 - [Example analyses live in `public/demos/` under CC BY 4.0, and the first screen lists them.](#example-analyses-2026-10-02)
 - [A demo corpus ships with the release.](#launch)
@@ -236,7 +237,7 @@ By area, in the order the entries were made:
 
 **The player and the source:** [Player Chrome (Phase 0.3)](#player-chrome-phase-03) · [Source Linking (2026-07-02)](#source-linking-2026-07-02) · [Video Curtain Covers Every Dialog (2026-09-27)](#video-curtain-covers-every-dialog-2026-09-27) · [Dialogs Stay Clear of the Player (2026-09-27)](#dialogs-stay-clear-of-the-player-2026-09-27) · [Video Below the Fold (2026-09-27)](#video-below-the-fold-2026-09-27) · [Menus Keep Clear of the Player (2026-10-02)](#menus-keep-clear-of-the-player-2026-10-02) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24)
 
-**Reading, sharing, embedding and export:** [Sharing](#sharing) · [Embeddable Viewer](#embeddable-viewer) · [Export (2026-09-27)](#export-2026-09-27) · [The Reading View (2026-10-01)](#the-reading-view-2026-10-01) · [Sharing by Link (2026-10-01)](#sharing-by-link-2026-10-01) · [Export: Choose Layers, Cut Spans at the Range (2026-10-02)](#export-choose-layers-cut-spans-at-the-range-2026-10-02) · [Share From the Toolbar; Dropbox and OneDrive Links (2026-10-02)](#share-from-the-toolbar-dropbox-and-onedrive-links-2026-10-02) · [Example Analyses (2026-10-02)](#example-analyses-2026-10-02) · [Embedding an Analysis (2026-10-03)](#embedding-an-analysis-2026-10-03) · [Starting an Analysis from a Link (2026-10-03)](#starting-an-analysis-from-a-link-2026-10-03) · [Embed Zoom (2026-11-06)](#embed-zoom-2026-11-06) · [Embed Layout on Wide Screens (2026-11-06)](#embed-layout-on-wide-screens-2026-11-06) · [Layer Names Sized to Fit (2026-11-06)](#layer-names-sized-to-fit-2026-11-06) · [Save as PDF Through the Print Dialog (2026-11-23)](#save-as-pdf-through-the-print-dialog-2026-11-23)
+**Reading, sharing, embedding and export:** [Sharing](#sharing) · [Embeddable Viewer](#embeddable-viewer) · [Export (2026-09-27)](#export-2026-09-27) · [The Reading View (2026-10-01)](#the-reading-view-2026-10-01) · [Sharing by Link (2026-10-01)](#sharing-by-link-2026-10-01) · [Export: Choose Layers, Cut Spans at the Range (2026-10-02)](#export-choose-layers-cut-spans-at-the-range-2026-10-02) · [Share From the Toolbar; Dropbox and OneDrive Links (2026-10-02)](#share-from-the-toolbar-dropbox-and-onedrive-links-2026-10-02) · [Example Analyses (2026-10-02)](#example-analyses-2026-10-02) · [Embedding an Analysis (2026-10-03)](#embedding-an-analysis-2026-10-03) · [Starting an Analysis from a Link (2026-10-03)](#starting-an-analysis-from-a-link-2026-10-03) · [Embed Zoom (2026-11-06)](#embed-zoom-2026-11-06) · [Embed Layout on Wide Screens (2026-11-06)](#embed-layout-on-wide-screens-2026-11-06) · [Layer Names Sized to Fit (2026-11-06)](#layer-names-sized-to-fit-2026-11-06) · [Save as PDF Through the Print Dialog (2026-11-23)](#save-as-pdf-through-the-print-dialog-2026-11-23) · [Commentary in the PDF (2026-11-23)](#commentary-in-the-pdf-2026-11-23)
 
 **The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03) · [A Shorter New Analysis Dialog; Darker Interface Greys (2026-10-24)](#a-shorter-new-analysis-dialog-darker-interface-greys-2026-10-24) · [People Do Things in Strata's Text (2026-11-05)](#people-do-things-in-stratas-text-2026-11-05) · [The Inspector as Sections; Zoom in the Reading View (2026-11-05)](#the-inspector-as-sections-zoom-in-the-reading-view-2026-11-05) · [Quick Pick Types on Typed Spans; Timing With Boundaries; Commentary Links (2026-11-05)](#quick-pick-types-on-typed-spans-timing-with-boundaries-commentary-links-2026-11-05) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05)
 
@@ -5110,3 +5111,27 @@ the schema's fields, `confidence` is gone, and custom types and pack import
 read as v1, as Phase 0.6 made them. The schema stays the source of truth.
 **Why.** The vision is the first thing many analysts read, and its stale table
 was the first wrong thing they'd meet.
+
+---
+
+## Commentary in the PDF (2026-11-23)
+
+*From the maintainer: "yes to commentary in the PDF."*
+
+**Decision.** The Export dialog has a "Commentary in the PDF" checkbox,
+shown when the analysis has commentary and off by default. Ticked, the PDF
+holds the figure first, then each piece of commentary in time order, headed
+with its span and times, as in the HTML export. Only commentary whose time
+overlaps the export's range goes in, so a PDF of the Exposition carries the
+Exposition's commentary. A link to commentary outside the range reads as
+the span's name. The SVG and
+PNG are unchanged: they are figures, and the commentary keeps its own HTML
+and Markdown exports.
+**Amends.** `docs/vision.md` §7.6 deferred figure and text in one document
+to v2. This is that document for the one case analysts asked for, the form
+diagram and its commentary; exporting several widgets together is still v2.
+**Rejected.** *Commentary always in the PDF:* a figure for a slide or a
+paper shouldn't grow a page of prose unasked. *The whole commentary whatever
+the range:* the range is how you choose what the export is about.
+**Why.** A handout is the figure and what you have to say about it. Before
+this, it took two exports and a third tool to put them together.
