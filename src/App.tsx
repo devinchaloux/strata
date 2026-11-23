@@ -691,7 +691,10 @@ export default function App() {
     // App shell: a pinned header, then a main row of [left work area | right
     // inspector]. The page itself scrolls, only far enough to bring a docked
     // video into view; the header and inspector stay put.
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
+    // On a phone's reading view the shell is exactly one screen (h-dvh, which
+    // follows the browser's own bars), so the commentary scrolls inside its
+    // area instead of pushing the diagram up and down as it grows and shrinks.
+    <div className={`flex flex-col bg-background text-foreground ${phoneReading ? 'h-dvh overflow-hidden' : 'min-h-screen'}`}>
       {/* Toolbar — pinned while the page scrolls down to the video. */}
       {/* On a phone the reading header wraps: the piece on one row, what to
           show on the next. */}
@@ -823,15 +826,15 @@ export default function App() {
       {phoneEditor ? (
         <PhoneNote onRead={() => setReadingView(true)} />
       ) : (
-      <div className="flex">
+      <div className={phoneReading ? 'flex min-h-0 flex-1' : 'flex'}>
         {/* relative: the mini video player anchors to this column's corner */}
         <div className="relative flex min-w-0 flex-1 flex-col">
-          {/* On a phone the reading view is as tall as its parts and the page
-              scrolls (video, then what's playing, then the diagram; the play
-              bar stays at the foot of the screen), and a finger drags the
-              diagram sideways. */}
+          {/* On a phone the reading view stacks in one screen: the video, then
+              what's playing (it takes the room that's left, and scrolls), then
+              the diagram just above the play bar; a finger drags the diagram
+              sideways. */}
           <div
-            className="flex min-h-0 flex-col"
+            className={phoneReading ? 'flex min-h-0 flex-1 flex-col' : 'flex min-h-0 flex-col'}
             style={phoneReading ? { touchAction: 'pan-y' } : { height: `calc(100vh - ${HEADER_H + TRANSPORT_H}px)` }}
             {...(phoneReading ? touchPan : {})}
           >

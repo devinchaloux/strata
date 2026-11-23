@@ -164,8 +164,8 @@ export function PlayerDock() {
     setLinkSourceOpen,
   } = useUIStore()
 
-  // A phone's reading view stacks: the video on top at full width, and the
-  // play bar held at the foot of the screen while the page scrolls.
+  // A phone's reading view stacks in one screen (App): the video on top at
+  // full width, the play bar at the foot.
   const phone = usePhone()
   const phoneReading = phone && readingView && !embed
 
@@ -467,7 +467,7 @@ export function PlayerDock() {
     <>
       {/* ── Transport bar — always visible; sits above the video panel at the
           bottom of the shell (Phase 0.7 §2 — transport above video). ── */}
-      <div className={`${embed ? 'embed-transport ' : ''}${phoneReading ? 'sticky bottom-0 z-40 ' : ''}flex h-12 shrink-0 items-center gap-2 border-t border-border bg-card px-3`}>
+      <div className={`${embed ? 'embed-transport ' : ''}flex h-12 shrink-0 items-center gap-2 border-t border-border bg-card px-3`}>
         {/* Rewind */}
         <TransportButton
           onClick={() => seek(0)}
@@ -659,7 +659,7 @@ export function PlayerDock() {
               : phoneReading
               ? // First in the column (CSS order), so it sits above the
                 // commentary without the iframe ever moving in the DOM.
-                { width: '100%', aspectRatio: '16 / 9', minHeight: VIDEO_MIN, order: -1 }
+                { width: '100%', aspectRatio: '16 / 9', minHeight: VIDEO_MIN, order: -1, flexShrink: 0 }
               : readingView
               ? { width: READING_VIDEO_W, aspectRatio: '16 / 9', minWidth: VIDEO_MIN, minHeight: VIDEO_MIN }
               : videoMini

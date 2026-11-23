@@ -5145,9 +5145,10 @@ this, it took two exports and a third tool to put them together.
 
 **Decision.** Narrower than 640px, the width at which the embed already
 stacks, Strata reads and plays but doesn't edit (`src/hooks/usePhone.ts`).
-The reading view stacks: the video at full width on top, then what's playing
-and its commentary, then the diagram, with the play bar held at the foot of
-the screen while the page scrolls. The layer names fold to the rail, the
+The reading view stacks in exactly one screen: the video at full width on
+top, then what's playing and its commentary, then the diagram just above the
+play bar. What's playing takes the room that's left and scrolls inside it, so
+the diagram stays put as the readout grows and shrinks with the playhead. The layer names fold to the rail, the
 diagram opens at 100% and scrolls, and a finger drags it sideways, all as in
 the embed (`src/hooks/useTouchPan.ts`, now shared by both). The header
 wraps: the piece and Share on one row, the Show chips on the next, scrolling
