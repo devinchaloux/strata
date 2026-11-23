@@ -12,6 +12,7 @@
  *   Drag boundary handle → move the shared edge between two adjacent spans
  */
 
+import { isDoubleTap, tappedWithFinger } from '@/lib/doubleTap'
 import { memo, useCallback, useRef, useState, useLayoutEffect } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
@@ -330,6 +331,11 @@ function SpanHitTarget({
     // A box-drag just finished; let the click bubble so the container resets.
     if (dragCommittedRef.current) return
     e.stopPropagation()
+    // A double tap plays from the span's start, as a double-click does.
+    if (tappedWithFinger(e) && isDoubleTap(`span:${span.id}`)) {
+      useUIStore.getState().requestSeek(span.startTime, true)
+      return
+    }
     if (e.shiftKey) {
       const anchorId = useUIStore.getState().selectionAnchorId
       const sorted = [...(layer.data as FormDiagramData).spans].sort((a, b) => a.startTime - b.startTime)
@@ -525,7 +531,11 @@ function MarkerHitTarget({
       onDoubleClick={() => useUIStore.getState().requestSeek(marker.timestamp, true)}
       // The container's click clears the selection, and a marker click bubbles
       // to it; stopping it here keeps the selection the pointerup just made.
-      onClick={(e) => e.stopPropagation()}
+      // A double tap plays from the marker, as a double-click does.
+      onClick={(e) => {
+        e.stopPropagation()
+        if (tappedWithFinger(e) && isDoubleTap(`marker:${marker.id}`)) useUIStore.getState().requestSeek(marker.timestamp, true)
+      }}
       role="presentation"
     >
       <title>{marker.label || caption || `Marker at ${marker.timestamp.toFixed(2)}s`}</title>

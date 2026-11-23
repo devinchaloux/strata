@@ -71,8 +71,13 @@ import { STACK_TOP_PAD, stackHeight, layerPitch } from '@/lib/formShape'
 import { markerBandHeight } from '@/lib/markerBand'
 import { HEADER_WIDTH_RAIL, layerHeaderWidth, measureLabel } from '@/lib/layerHeader'
 import type { Layer } from '@/types/strata'
+import { usePhone } from '@/hooks/usePhone'
 
 const TOP_BAR_HEIGHT = 24
+// The most of a phone's screen the layer stack takes in the reading view; past
+// it the layers scroll. A third of the screen leaves room for the video, what's
+// playing and the play bar, however many layers an analysis has.
+const PHONE_STACK_MAX = '35dvh'
 
 // ---------------------------------------------------------------------------
 // Layer header column (visible layers only — hidden ones live in the top bar)
@@ -577,6 +582,11 @@ export function FormDiagram() {
   const videoMini = useUIStore((s) => s.videoMini)
   const activeLayerId = useUIStore((s) => s.activeLayerId)
   const showDiagram = useUIStore((s) => !s.readingView || s.readingShow.diagram)
+  // On a phone the reading view is one screen shared by bands (what's playing,
+  // the diagram, later widgets), each scrolling inside its share; the diagram's
+  // layers scroll up and down past PHONE_STACK_MAX while the ruler stays put.
+  const embed = useUIStore((s) => s.embed)
+  const phoneReading = usePhone() && reading && !embed
   if (!doc) return null
 
   const fitZoom = computeFitZoom(timeline.duration, timeline.viewportWidth)
@@ -655,7 +665,9 @@ export function FormDiagram() {
           are visible — an inset outline would be covered by the SVG on bottom/right. */}
       {/* Reading can hide the diagram; it stays mounted (hidden) so the
           timeline keeps its measurements. */}
-      <div className={showDiagram ? 'contents' : 'hidden'}>
+      {/* data-touch-pan: a finger drags the diagram sideways here, and only
+          here (hooks/useTouchPan). */}
+      <div className={showDiagram ? 'contents' : 'hidden'} data-touch-pan>
       <div
         data-keeps-selection
         className="relative shrink-0 overflow-hidden rounded-md bg-(--canvas)"
@@ -690,9 +702,11 @@ export function FormDiagram() {
             </div>
           </div>
         )}
-        <div className="flex w-full" style={{ height: stackH }}>
-          <LayerHeaders layers={visible} collapsed={collapsed} width={headerWidth} />
-          <FormLayers layers={visible} />
+        <div className={phoneReading ? 'overflow-y-auto overscroll-contain' : undefined} style={phoneReading ? { maxHeight: PHONE_STACK_MAX } : undefined}>
+          <div className="flex w-full" style={{ height: stackH }}>
+            <LayerHeaders layers={visible} collapsed={collapsed} width={headerWidth} />
+            <FormLayers layers={visible} />
+          </div>
         </div>
         <div
           aria-hidden

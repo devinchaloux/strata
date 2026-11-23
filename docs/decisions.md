@@ -183,6 +183,7 @@ aren't part of this repository.
 
 - [The reading view lays an analysis out for reading, with editing off.](#the-reading-view-2026-10-01)
 - [On a phone Strata reads and plays: the reading view stacks, and editing waits for a wider screen.](#read-and-play-on-a-phone-2026-11-23)
+- [While playing, the view follows a playhead that walks off it and shows where a seek lands, but leaves alone a view the reader scrolled away.](#following-the-playhead-2026-11-23)
 - [You share an analysis as a link to its file (`?src=`); Strata reads GitHub, Dropbox and OneDrive links, and declines Google Drive.](#share-from-the-toolbar-dropbox-and-onedrive-links-2026-10-02)
 - [Shared links treat lyrics like any other view.](#shared-links-treat-lyrics-like-any-other-view-2026-10-03)
 - [A page embeds Strata in an iframe (`?embed`), with a focus, layers and window messages.](#embedding-an-analysis-2026-10-03)
@@ -238,7 +239,7 @@ By area, in the order the entries were made:
 
 **The player and the source:** [Player Chrome (Phase 0.3)](#player-chrome-phase-03) · [Source Linking (2026-07-02)](#source-linking-2026-07-02) · [Video Curtain Covers Every Dialog (2026-09-27)](#video-curtain-covers-every-dialog-2026-09-27) · [Dialogs Stay Clear of the Player (2026-09-27)](#dialogs-stay-clear-of-the-player-2026-09-27) · [Video Below the Fold (2026-09-27)](#video-below-the-fold-2026-09-27) · [Menus Keep Clear of the Player (2026-10-02)](#menus-keep-clear-of-the-player-2026-10-02) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24)
 
-**Reading, sharing, embedding and export:** [Sharing](#sharing) · [Embeddable Viewer](#embeddable-viewer) · [Export (2026-09-27)](#export-2026-09-27) · [The Reading View (2026-10-01)](#the-reading-view-2026-10-01) · [Sharing by Link (2026-10-01)](#sharing-by-link-2026-10-01) · [Export: Choose Layers, Cut Spans at the Range (2026-10-02)](#export-choose-layers-cut-spans-at-the-range-2026-10-02) · [Share From the Toolbar; Dropbox and OneDrive Links (2026-10-02)](#share-from-the-toolbar-dropbox-and-onedrive-links-2026-10-02) · [Example Analyses (2026-10-02)](#example-analyses-2026-10-02) · [Embedding an Analysis (2026-10-03)](#embedding-an-analysis-2026-10-03) · [Starting an Analysis from a Link (2026-10-03)](#starting-an-analysis-from-a-link-2026-10-03) · [Embed Zoom (2026-11-06)](#embed-zoom-2026-11-06) · [Embed Layout on Wide Screens (2026-11-06)](#embed-layout-on-wide-screens-2026-11-06) · [Layer Names Sized to Fit (2026-11-06)](#layer-names-sized-to-fit-2026-11-06) · [Save as PDF Through the Print Dialog (2026-11-23)](#save-as-pdf-through-the-print-dialog-2026-11-23) · [Commentary in the PDF (2026-11-23)](#commentary-in-the-pdf-2026-11-23) · [Read and Play on a Phone (2026-11-23)](#read-and-play-on-a-phone-2026-11-23)
+**Reading, sharing, embedding and export:** [Sharing](#sharing) · [Embeddable Viewer](#embeddable-viewer) · [Export (2026-09-27)](#export-2026-09-27) · [The Reading View (2026-10-01)](#the-reading-view-2026-10-01) · [Sharing by Link (2026-10-01)](#sharing-by-link-2026-10-01) · [Export: Choose Layers, Cut Spans at the Range (2026-10-02)](#export-choose-layers-cut-spans-at-the-range-2026-10-02) · [Share From the Toolbar; Dropbox and OneDrive Links (2026-10-02)](#share-from-the-toolbar-dropbox-and-onedrive-links-2026-10-02) · [Example Analyses (2026-10-02)](#example-analyses-2026-10-02) · [Embedding an Analysis (2026-10-03)](#embedding-an-analysis-2026-10-03) · [Starting an Analysis from a Link (2026-10-03)](#starting-an-analysis-from-a-link-2026-10-03) · [Embed Zoom (2026-11-06)](#embed-zoom-2026-11-06) · [Embed Layout on Wide Screens (2026-11-06)](#embed-layout-on-wide-screens-2026-11-06) · [Layer Names Sized to Fit (2026-11-06)](#layer-names-sized-to-fit-2026-11-06) · [Save as PDF Through the Print Dialog (2026-11-23)](#save-as-pdf-through-the-print-dialog-2026-11-23) · [Commentary in the PDF (2026-11-23)](#commentary-in-the-pdf-2026-11-23) · [Read and Play on a Phone (2026-11-23)](#read-and-play-on-a-phone-2026-11-23) · [Following the Playhead (2026-11-23)](#following-the-playhead-2026-11-23)
 
 **The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03) · [A Shorter New Analysis Dialog; Darker Interface Greys (2026-10-24)](#a-shorter-new-analysis-dialog-darker-interface-greys-2026-10-24) · [People Do Things in Strata's Text (2026-11-05)](#people-do-things-in-stratas-text-2026-11-05) · [The Inspector as Sections; Zoom in the Reading View (2026-11-05)](#the-inspector-as-sections-zoom-in-the-reading-view-2026-11-05) · [Quick Pick Types on Typed Spans; Timing With Boundaries; Commentary Links (2026-11-05)](#quick-pick-types-on-typed-spans-timing-with-boundaries-commentary-links-2026-11-05) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05)
 
@@ -5148,7 +5149,14 @@ stacks, Strata reads and plays but doesn't edit (`src/hooks/usePhone.ts`).
 The reading view stacks in exactly one screen: the video at full width on
 top, then what's playing and its commentary, then the diagram just above the
 play bar. What's playing takes the room that's left and scrolls inside it, so
-the diagram stays put as the readout grows and shrinks with the playhead. The layer names fold to the rail, the
+the diagram stays put as the readout grows and shrinks with the playhead. The
+screen is shared by bands, each scrolling inside its share and never growing
+the page: what's playing takes the room that's left, and the diagram's layer
+stack stops at a third of the screen (`PHONE_STACK_MAX`) and scrolls up and
+down past it while the ruler stays put. A widget added later takes a band of
+its own the same way. A double tap on a span or marker plays from it, as a
+double-click does with a mouse (`src/lib/doubleTap.ts`): phones don't reliably
+turn two taps into a double-click. The layer names fold to the rail, the
 diagram opens at 100% and scrolls, and a finger drags it sideways, all as in
 the embed (`src/hooks/useTouchPan.ts`, now shared by both). The header
 wraps: the piece and Share on one row, the Show chips on the next, scrolling
@@ -5164,3 +5172,25 @@ analysts write at a desk. Readers of a shared link are the ones on phones.
 **Why.** A shared link opened on a phone was unreadable: the toolbar ran off
 the screen, the video and the commentary were squeezed side by side, and the
 layer names took a third of the width.
+
+---
+
+## Following the Playhead (2026-11-23)
+
+*From the maintainer: dragging the scrollbar while playing "always hops back."*
+
+**Decision.** While playing, the view follows the playhead only when the
+playhead walks off the right of the view on its own: it moves the view so the
+playhead sits at 80% (`followOffset` in `src/lib/timeline.ts`). A playhead
+the reader scrolled out of view, with the scrollbar, the wheel or a finger, is
+left alone. The view picks it up again when the playhead walks back into view,
+or at the next seek. Every seek (the seek bar, the keys, a click or link that
+plays from a span) shows where it landed, at 20% of the view, if it landed off
+screen (`revealOffset`). During a hand scroll, following waits 1.5 seconds
+after the last movement, so the view never fights the hand.
+**Replaces.** Following that snapped back whenever the playhead was off screen,
+which pulled the view back the moment a reader scrolled away. The embed's
+4-second hold after a finger pan ("Embed Layout on Wide Screens") is now this
+rule, with the shorter hold.
+**Why.** A reader scrolls ahead to look at the drop while the intro plays. The
+view should stay where they put it.

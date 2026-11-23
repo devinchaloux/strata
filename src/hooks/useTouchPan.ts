@@ -7,10 +7,7 @@
 import { useRef } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
-import { clampScrollOffset, scrollableWidth } from '@/lib/timeline'
-
-// A hand pan holds the playhead-following for this long.
-const PAN_HOLD_MS = 4000
+import { clampScrollOffset, scrollableWidth, HAND_SCROLL_HOLD_MS } from '@/lib/timeline'
 
 /** Pointer handlers to spread on the element that holds the diagram. */
 export function useTouchPan() {
@@ -19,6 +16,9 @@ export function useTouchPan() {
 
   function onPointerDown(e: React.PointerEvent) {
     if (e.pointerType !== 'touch') return
+    // Only on the diagram (FormDiagram marks it): a swipe on the commentary
+    // above it scrolls the commentary.
+    if (!(e.target as Element).closest?.('[data-touch-pan]')) return
     pan.current = { x: e.clientX, offset: useUIStore.getState().scrollOffset, moved: false }
   }
   function onPointerMove(e: React.PointerEvent) {
@@ -30,7 +30,7 @@ export function useTouchPan() {
     const ui = useUIStore.getState()
     const duration = useDocumentStore.getState().document?.duration ?? 0
     ui.setScrollOffset(clampScrollOffset(p.offset - dx, scrollableWidth(duration, ui.zoom), ui.viewportWidth))
-    ui.holdFollow(PAN_HOLD_MS)
+    ui.holdFollow(HAND_SCROLL_HOLD_MS)
   }
   function onPointerEnd() {
     // A pan isn't a tap: the click that follows it mustn't select a span.
