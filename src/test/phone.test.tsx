@@ -63,3 +63,17 @@ describe('ReadingHeader', () => {
     expect(screen.getByRole('button', { name: 'Form diagram' })).toBeTruthy()
   })
 })
+
+describe('hiding a layer in the reading view', () => {
+  it('hides it from the view only, never in the file', async () => {
+    const { withReadingHidden } = await import('@/lib/layers')
+    const { useUIStore } = await import('@/store/uiStore')
+    const doc = makeDoc([makeLayer('A', []), makeLayer('B', [])])
+    useUIStore.getState().setReadingLayerHidden('B', true)
+    const shown = withReadingHidden(doc, useUIStore.getState().readingHiddenLayers)
+    expect(shown.layers.map((l) => l.visibility)).toEqual([true, false])
+    expect(doc.layers.map((l) => l.visibility)).toEqual([true, true])
+    useUIStore.getState().setReadingLayerHidden('B', false)
+    expect(useUIStore.getState().readingHiddenLayers).toEqual([])
+  })
+})

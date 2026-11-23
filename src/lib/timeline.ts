@@ -292,11 +292,21 @@ export function followOffset(p: {
   return null
 }
 
+/** Whether `time` is on screen in the view (true before the view is measured). */
+export function timeInView(p: { time: number; pps: number; viewportWidth: number; scrollOffset: number }): boolean {
+  const { time, pps, viewportWidth, scrollOffset } = p
+  if (pps <= 0 || viewportWidth <= 0) return true
+  const cursor = time * pps - scrollOffset
+  return cursor >= 0 && cursor <= viewportWidth
+}
+
+/** Where the view scrolls to show `time` at 20% of its width. */
+export function offsetShowing(p: { time: number; pps: number; viewportWidth: number; totalWidth: number }): number {
+  const { time, pps, viewportWidth, totalWidth } = p
+  return clampScrollOffset(time * pps - viewportWidth * 0.2, totalWidth, viewportWidth)
+}
+
 /** Where the view should scroll to show a time a seek landed on (at 20%), or null if it's in view. */
 export function revealOffset(p: { time: number; pps: number; viewportWidth: number; totalWidth: number; scrollOffset: number }): number | null {
-  const { time, pps, viewportWidth, totalWidth, scrollOffset } = p
-  if (pps <= 0 || viewportWidth <= 0) return null
-  const cursor = time * pps - scrollOffset
-  if (cursor >= 0 && cursor <= viewportWidth) return null
-  return clampScrollOffset(time * pps - viewportWidth * 0.2, totalWidth, viewportWidth)
+  return timeInView(p) ? null : offsetShowing(p)
 }

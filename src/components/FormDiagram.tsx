@@ -23,6 +23,7 @@ import {
   Eye,
   EyeOff,
   GripVertical,
+  Navigation,
 } from 'lucide-react'
 import {
   DndContext,
@@ -43,7 +44,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore, type QuickEntry } from '@/store/uiStore'
 import { useTimeline } from '@/hooks/useTimeline'
-import { computeFitZoom } from '@/lib/timeline'
+import { computeFitZoom, computePps, offsetShowing, scrollableWidth, timeInView } from '@/lib/timeline'
 import { TimelineAxis } from './TimelineAxis'
 import { FormLayers } from './FormLayers'
 import { LayerSettingsPopover } from './LayerSettingsPopover'
@@ -152,10 +153,25 @@ function SortableLayerHeaderRow({
     backgroundColor: active ? 'hsl(var(--primary) / 0.07)' : undefined,
   }
 
-  // Reading: just the level's name.
+  // Reading: the level's name, and an eye that hides it from this view only
+  // (uiStore.readingHiddenLayers); the file is untouched. On a phone it frees
+  // room for the rest.
   if (reading)
     return (
-      <div ref={setNodeRef} style={{ ...style, backgroundColor: undefined }} className="flex items-center px-2">
+      <div
+        ref={setNodeRef}
+        style={{ ...style, backgroundColor: undefined }}
+        className={`flex items-center ${collapsed ? 'justify-center' : 'gap-1 pl-1.5 pr-2'}`}
+      >
+        <button
+          onClick={() => useUIStore.getState().setReadingLayerHidden(layer.id, true)}
+          className="shrink-0 hover:opacity-80"
+          style={{ color: 'var(--ink-muted)' }}
+          title={`Hide ${layer.label || 'this layer'}`}
+          aria-label={`Hide ${layer.label || 'this layer'}`}
+        >
+          <Eye size={14} />
+        </button>
         {!collapsed && (
           <span className="truncate text-xs" style={{ color: 'var(--ink-primary)' }}>
             {layer.label}
@@ -397,6 +413,41 @@ function ZoomButton({
   )
 }
 
+/**
+ * Back to the playhead: shown only while the playhead is off screen, which,
+ * since following leaves a view the reader scrolled away (decisions.md,
+ * "Following the Playhead"), is when they need a way back. Brings the playhead
+ * in at 20%, where a seek lands; while playing, following carries on from there.
+ */
+function PlayheadButton() {
+  // A boolean, so the bar re-renders only when the playhead leaves or comes
+  // back, not on every time update.
+  const away = useUIStore(
+    (s) => !timeInView({ time: s.currentTime, pps: computePps(s.zoom), viewportWidth: s.viewportWidth, scrollOffset: s.scrollOffset }),
+  )
+  if (!away) return null
+  function goBack() {
+    const ui = useUIStore.getState()
+    const duration = useDocumentStore.getState().document?.duration ?? 0
+    ui.setScrollOffset(
+      offsetShowing({ time: ui.currentTime, pps: computePps(ui.zoom), viewportWidth: ui.viewportWidth, totalWidth: scrollableWidth(duration, ui.zoom) }),
+    )
+  }
+  return (
+    <button
+      type="button"
+      onClick={goBack}
+      title="Back to the playhead"
+      aria-label="Back to the playhead"
+      // A map app's "back to me" arrow, alone, like its locate button.
+      className="mr-1 flex h-5 w-5 items-center justify-center rounded hover:bg-accent"
+      style={{ color: 'var(--ink-secondary)' }}
+    >
+      <Navigation size={12} aria-hidden />
+    </button>
+  )
+}
+
 function ZoomControls({
   zoom,
   minZoomValue,
@@ -409,6 +460,7 @@ function ZoomControls({
 }: ZoomControlProps) {
   return (
     <div className="flex items-center gap-0.5" style={{ color: 'var(--ink-secondary)' }}>
+      <PlayheadButton />
       <ZoomButton onClick={zoomOut} disabled={zoom <= minZoomValue + 1e-6} label="Zoom out">
         −
       </ZoomButton>
@@ -586,6 +638,8 @@ export function FormDiagram() {
   // the diagram, later widgets), each scrolling inside its share; the diagram's
   // layers scroll up and down past PHONE_STACK_MAX while the ruler stays put.
   const embed = useUIStore((s) => s.embed)
+  // Layers the reader hid in the reading view (the file's visibility is untouched).
+  const readingHidden = useUIStore((s) => s.readingHiddenLayers)
   const phoneReading = usePhone() && reading && !embed
   if (!doc) return null
 
@@ -607,7 +661,10 @@ export function FormDiagram() {
   const sorted = doc.layers
     .filter((l) => l.type === 'form-diagram')
     .sort((a, b) => b.displayOrder - a.displayOrder)
-  const visible = sorted.filter((l) => l.visibility)
+  const hiddenByReader = (l: Layer) => reading && readingHidden.includes(l.id)
+  const visible = sorted.filter((l) => l.visibility && !hiddenByReader(l))
+  // Hidden in this view only: each comes back from a chip in the reading bar.
+  const readerHid = sorted.filter((l) => l.visibility && hiddenByReader(l))
   // Hidden commentary gets a chip too, so it comes back the same way a hidden
   // layer does (its Hide button is on the commentary itself).
   const hidden = [...sorted.filter((l) => !l.visibility), ...analysisLayers(doc).filter((l) => !l.visibility)]
@@ -697,7 +754,26 @@ export function FormDiagram() {
             >
               {collapsed ? <ChevronsRight size={15} /> : <ChevronsLeft size={15} />}
             </button>
-            <div className="ml-auto">
+            {readerHid.length > 0 && (
+              <div className="flex min-w-0 items-center gap-1 overflow-x-auto">
+                <span className="shrink-0 text-[11px]" style={{ color: 'var(--ink-muted)' }}>
+                  Hidden:
+                </span>
+                {readerHid.map((l) => (
+                  <button
+                    key={l.id}
+                    onClick={() => useUIStore.getState().setReadingLayerHidden(l.id, false)}
+                    className="flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[11px] hover:bg-accent"
+                    style={{ color: 'var(--ink-muted)' }}
+                    title={`Show ${l.label}`}
+                  >
+                    <EyeOff size={11} />
+                    <span className="max-w-[88px] truncate">{l.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="ml-auto shrink-0">
               <ZoomControls {...zoomProps} />
             </div>
           </div>

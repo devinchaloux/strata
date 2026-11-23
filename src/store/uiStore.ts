@@ -160,6 +160,9 @@ export interface UIState {
   readingView: boolean
   /** What the reading view shows (view state; the file's own visibility is untouched). */
   readingShow: { commentary: boolean; diagram: boolean }
+  // Layers the reader hid in the reading view (by id). The view's own choice,
+  // like readingShow: the file's layer visibility is untouched.
+  readingHiddenLayers: string[]
   // Lyrics in the commentary stack: also the analyst's remembered preference.
   showLyrics: boolean
   // The commentary being edited in place in the stack (CommentaryEditor):
@@ -236,6 +239,8 @@ export interface UIState {
   soloInspectorSection: (section: InspectorSection) => void
   setReadingView: (on: boolean) => void
   setReadingShow: (part: 'commentary' | 'diagram', on: boolean) => void
+  setReadingLayerHidden: (layerId: string, hidden: boolean) => void
+  clearReadingHiddenLayers: () => void
   setShowLyrics: (show: boolean) => void
   setCommentaryEdit: (edit: { key: string; at: number } | null) => void
   /** The address a shared analysis was opened from (?src=), or null. */
@@ -381,6 +386,7 @@ const useUIStore = create<UIState>()((set) => ({
   },
   readingView: false,
   readingShow: { commentary: true, diagram: true },
+  readingHiddenLayers: [],
   seekRequest: null,
   revealRequest: null,
 
@@ -514,6 +520,13 @@ const useUIStore = create<UIState>()((set) => ({
   setReadingView: (on) =>
     set({ readingView: on, selectedSpanIds: [], selectionAnchorId: null, selectedPointMarkerId: null, commentaryEdit: null }),
   setReadingShow: (part, on) => set((s) => ({ readingShow: { ...s.readingShow, [part]: on } })),
+  setReadingLayerHidden: (layerId, hidden) =>
+    set((s) => ({
+      readingHiddenLayers: hidden
+        ? [...s.readingHiddenLayers.filter((id) => id !== layerId), layerId]
+        : s.readingHiddenLayers.filter((id) => id !== layerId),
+    })),
+  clearReadingHiddenLayers: () => set({ readingHiddenLayers: [] }),
   requestSeek: (time, play) => set((s) => ({ seekRequest: { time, n: (s.seekRequest?.n ?? 0) + 1, play } })),
   requestReveal: (time) => set((s) => ({ revealRequest: { time, n: (s.revealRequest?.n ?? 0) + 1 } })),
 }))

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useLayoutEffect } from 'react'
 import { useStore } from 'zustand'
-import { Undo2, Redo2, Settings, CircleHelp } from 'lucide-react'
+import { Undo2, Redo2, Settings, CircleHelp, Ellipsis } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useFileIO } from '@/hooks/useFileIO'
 import { useMerge } from '@/hooks/useMerge'
 import { usePhone } from '@/hooks/usePhone'
@@ -50,6 +51,48 @@ import { computePps, scrollableWidth, clampScrollOffset } from '@/lib/timeline'
 const HEADER_H = 40
 const TRANSPORT_H = 48
 
+// ── Toolbar folding ──
+// The editing toolbar needs about 1,070px with every label showing. Narrower
+// than each width here, that item folds into the ⋯ More menu, least used
+// first, so labels never wrap and the bar never scrolls sideways
+// (decisions.md, "The Toolbar Folds When Narrow"). Measured from the items'
+// own widths, with "Unsaved changes" showing.
+const FOLD_BELOW = {
+  report: 1080,
+  demo: 1000,
+  saveAs: 930,
+  export: 870,
+  settingsHelp: 810,
+  unsavedLabel: 760,
+} as const
+
+/** An element's width, kept current as it resizes (0 until measured). */
+function useWidth(ref: React.RefObject<HTMLElement | null>): number {
+  const [width, setWidth] = useState(0)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const ro = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [ref])
+  return width
+}
+
+/** One row in the ⋯ More menu. */
+function MoreItem({ onClick, disabled, children }: { onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-accent disabled:pointer-events-none disabled:opacity-40"
+    >
+      {children}
+    </button>
+  )
+}
+
 function ToolbarButton({
   onClick,
   disabled,
@@ -71,7 +114,7 @@ function ToolbarButton({
       disabled={disabled}
       title={title}
       className={cn(
-        `rounded-md px-2.5 py-1 text-xs font-medium transition-colors
+        `whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-medium transition-colors
         hover:bg-accent hover:text-accent-foreground
         focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background
         disabled:opacity-40 disabled:pointer-events-none`,
@@ -391,12 +434,25 @@ export default function App() {
   // track's labels are too small to read). Keyed on loadId too, since every
   // load fits the whole track (useTimeline).
   const loadId = useDocumentStore((s) => s.loadId)
+  // Layers hidden in the reading view belong to the analysis being read.
+  useEffect(() => useUIStore.getState().clearReadingHiddenLayers(), [loadId])
   useEffect(() => {
     if (!phoneReading) return
     const ui = useUIStore.getState()
     useUIStore.setState({ headersCollapsed: true })
     ui.requestView(0, null)
   }, [phoneReading, loadId])
+
+  // The toolbar's width decides what folds into ⋯ More (FOLD_BELOW).
+  const headerRef = useRef<HTMLElement>(null)
+  const headerWidth = useWidth(headerRef)
+  const folds = (item: keyof typeof FOLD_BELOW) => headerWidth > 0 && headerWidth < FOLD_BELOW[item]
+  const [moreOpen, setMoreOpen] = useState(false)
+  // Runs a menu item, then closes the menu.
+  const fromMore = (run: () => void) => () => {
+    setMoreOpen(false)
+    run()
+  }
 
   // Inspector collapse is pure view-state; local to the shell.
   const [inspectorCollapsed, setInspectorCollapsed] = useState(true)
@@ -699,6 +755,7 @@ export default function App() {
       {/* On a phone the reading header wraps: the piece on one row, what to
           show on the next. */}
       <header
+        ref={headerRef}
         className={`sticky top-0 z-40 flex shrink-0 items-center gap-1 border-b border-border bg-background px-3 ${
           phoneReading ? 'min-h-10 flex-wrap py-1.5' : 'h-10'
         }`}
@@ -726,21 +783,27 @@ export default function App() {
 
         <ToolbarButton onClick={guardedNew}>New</ToolbarButton>
         <ToolbarButton onClick={guardedOpen}>Open</ToolbarButton>
-        <ToolbarButton onClick={guardedDemo} muted title={`Open the ${EXAMPLES[0].title} example for editing`}>
-          Demo
-        </ToolbarButton>
+        {!folds('demo') && (
+          <ToolbarButton onClick={guardedDemo} muted title={`Open the ${EXAMPLES[0].title} example for editing`}>
+            Demo
+          </ToolbarButton>
+        )}
 
         <div className="mx-1.5 h-4 w-px bg-border" />
 
         <ToolbarButton onClick={saveFile} disabled={!doc}>
           {hasHandle ? 'Save' : 'Download'}
         </ToolbarButton>
-        <ToolbarButton onClick={saveFileAs} disabled={!doc}>
-          Save As
-        </ToolbarButton>
-        <ToolbarButton onClick={() => setExportOpen(true)} disabled={!doc} title="Save the form diagram as an SVG, PNG, or PDF figure">
-          Export
-        </ToolbarButton>
+        {!folds('saveAs') && (
+          <ToolbarButton onClick={saveFileAs} disabled={!doc}>
+            Save As
+          </ToolbarButton>
+        )}
+        {!folds('export') && (
+          <ToolbarButton onClick={() => setExportOpen(true)} disabled={!doc} title="Save the form diagram as an SVG, PNG, or PDF figure">
+            Export
+          </ToolbarButton>
+        )}
 
         <div className="mx-1.5 h-4 w-px bg-border" />
 
@@ -759,23 +822,27 @@ export default function App() {
           <Redo2 size={14} />
         </IconToolbarButton>
 
-        <IconToolbarButton
-          onClick={() => {
-            setSettingsIsNew(false)
-            setSettingsOpen(true)
-          }}
-          disabled={!doc}
-          title="Document settings"
-        >
-          <Settings size={14} />
-        </IconToolbarButton>
-        <IconToolbarButton onClick={() => setHelpOpen(true)} title="How Strata works (?)">
-          <CircleHelp size={14} />
-        </IconToolbarButton>
+        {!folds('settingsHelp') && (
+          <>
+            <IconToolbarButton
+              onClick={() => {
+                setSettingsIsNew(false)
+                setSettingsOpen(true)
+              }}
+              disabled={!doc}
+              title="Document settings"
+            >
+              <Settings size={14} />
+            </IconToolbarButton>
+            <IconToolbarButton onClick={() => setHelpOpen(true)} title="How Strata works (?)">
+              <CircleHelp size={14} />
+            </IconToolbarButton>
+          </>
+        )}
         <button
           onClick={() => setReadingView(true)}
           disabled={!doc}
-          className="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-40
+          className="whitespace-nowrap rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-40
             focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
         >
           Reading view
@@ -791,20 +858,68 @@ export default function App() {
         </button>
         {/* A link, not a button: it opens GitHub's issue form in a new tab,
             prefilled with the version and browser (lib/issues.ts). */}
+        {!folds('report') && (
         <a
           href={reportIssueUrl()}
           target="_blank"
           rel="noreferrer"
           title="Report a bug or suggest an improvement on GitHub"
-          className="rounded-md px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground
+          className="whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground
             focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
         >
           Report an issue
         </a>
+        )}
+
+        {/* What no longer fits, least used first (FOLD_BELOW). */}
+        {folds('report') && (
+          <Popover open={moreOpen} onOpenChange={setMoreOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                title="More"
+                aria-label="More"
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+              >
+                <Ellipsis size={15} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" sideOffset={6} className="w-52 p-1">
+              {folds('demo') && <MoreItem onClick={fromMore(guardedDemo)}>Demo</MoreItem>}
+              {folds('saveAs') && (
+                <MoreItem onClick={fromMore(saveFileAs)} disabled={!doc}>
+                  Save As
+                </MoreItem>
+              )}
+              {folds('export') && (
+                <MoreItem onClick={fromMore(() => setExportOpen(true))} disabled={!doc}>
+                  Export
+                </MoreItem>
+              )}
+              {folds('settingsHelp') && (
+                <>
+                  <MoreItem
+                    onClick={fromMore(() => {
+                      setSettingsIsNew(false)
+                      setSettingsOpen(true)
+                    })}
+                    disabled={!doc}
+                  >
+                    <Settings size={13} aria-hidden /> Document settings
+                  </MoreItem>
+                  <MoreItem onClick={fromMore(() => setHelpOpen(true))}>
+                    <CircleHelp size={13} aria-hidden /> How Strata works
+                  </MoreItem>
+                </>
+              )}
+              <MoreItem onClick={fromMore(() => window.open(reportIssueUrl(), '_blank', 'noreferrer'))}>Report an issue</MoreItem>
+            </PopoverContent>
+          </Popover>
+        )}
 
         {isDirty && (
           <span
-            className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground"
+            className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground"
             title="You have unsaved changes"
           >
             <span
@@ -812,7 +927,8 @@ export default function App() {
               style={{ backgroundColor: 'var(--ink-faint)' }}
               aria-hidden
             />
-            Unsaved changes
+            {/* Narrow, just the dot; its title still says what it means. */}
+            {folds('unsavedLabel') ? <span className="sr-only">Unsaved changes</span> : 'Unsaved changes'}
           </span>
         )}
           </>
