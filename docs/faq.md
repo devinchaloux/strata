@@ -62,7 +62,7 @@ You get bar numbers from the beat grid. There is no score view: Strata works wit
 
 **How do I share or publish an analysis?**
 
-Put the `.strata` file online (Dropbox, OneDrive, GitHub, or your own site). Then use **Share…** for a link that opens it in Strata's reading view. You can also embed it in a web page, focused on one section. For a paper or slides, export the diagram as an SVG or PNG figure.
+Put the `.strata` file online (Dropbox, OneDrive, GitHub, or your own site). Then use **Share…** for a link that opens it in Strata's reading view. You can also embed it in a web page, focused on one section. For a paper or slides, export the diagram as an SVG, PNG, or PDF figure.
 
 **Can I use it for corpus studies?**
 

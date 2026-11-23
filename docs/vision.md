@@ -159,115 +159,134 @@ This resolves three problems simultaneously:
 
 ## 3. Data Model
 
-> **Authoritative source:** the formal schema in `schema/` (`strata.schema.json` +
-> the TypeScript types in `src/types/strata.ts`) is the source of truth for the
-> data model. The prose and tables in this section are conceptual and have drifted
-> from the finalized schema in places (e.g. `context` is now optional with `remix`
-> removed in favor of `derivativeOf`; span `color` is split into `fillColor` /
-> `strokeColor`). A full reconciliation pass of this section against the schema is
-> pending — see `docs/decisions.md` for the binding decisions.
+> **Authoritative source:** the formal schema in `schema/` (`strata.schema.json`, mirrored by the TypeScript types in `src/types/strata.ts`) is the source of truth for the data model, and `schema/strata-schema-reference.md` explains it field by field. This section was reconciled with the schema on 2026-11-23, for file format 2. It lists the fields at the level of intent. For every field and its exact rules, read the schema.
 
 ### 3.1 File-Level Metadata
 
-Every analysis document stores the following at the top level. Fields marked optional can be null in v1 but the schema must include them so they never need to be migrated in.
+Every analysis document stores the following at the top level. Optional fields may be null or left out. The schema includes them so that a file never needs to be migrated to gain them.
 
 | Field | Required | Notes |
 |---|---|---|
-| `title` | Yes | Display title of the track or recording |
-| `artist` / `performer` | Yes | Separate from composer — see context field |
-| `youtubeUrl` | Situational | Required if no localAudioRef; canonical sharing reference |
-| `localAudioRef` | Situational | Filename only — not embeddable in shared context |
-| `duration` | Yes | Track duration in seconds (float). Store explicitly. |
-| `context` | Yes | Enum: `recording` \| `performance` \| `remix`. Drives which fields appear in UI. |
-| `composer` | Optional | Only surfaced when context = performance |
-| `work` | Optional | The composition being performed (e.g. Op. 13). Enables cross-file corpus comparison of the same work. |
-| `sourceTrack` | Optional | Reference to another analysis file. Only surfaced when context = remix. |
-| `vocabulary` | Optional | Which controlled vocabulary this file uses for span types. Null = global built-in types only. |
-| `project` | Optional | Corpus/collection tag. Enables grouping files for corpus analysis. |
-| `analysisAuthor` | Optional | Who created this analysis |
-| `createdAt` | Yes | ISO timestamp, auto-generated |
-| `updatedAt` | Yes | ISO timestamp, auto-updated |
-| `strataVersion` | Yes | Version of the app that created this file. Critical for forward compatibility. |
-| `fileFormatVersion` | Yes | Integer. Increment when schema changes. Start at 1. |
+| `strataVersion` | Yes | Version of the app that wrote this file. Used to diagnose compatibility problems. |
+| `fileFormatVersion` | Yes | Integer, 2 at present. It goes up only when the meaning of existing data changes. Strata upgrades an older file when you open it, one step at a time. |
+| `createdAt` | Yes | ISO timestamp, set on the first save. |
+| `updatedAt` | Yes | ISO timestamp, updated on every save. |
+| `title` | Yes | Display title of the track or recording. |
+| `artist` | Yes | A list of names, so that a collaboration needs no special case. It may be empty while an analysis is in progress. |
+| `duration` | Yes | Track length in seconds (float). Stored explicitly, so that span times can be checked against it. |
+| `source` | Yes | The audio or video: `type` (`youtube` or `local`), the YouTube `url` or the local `filename`, and `sourceOffset`. See §3.6. |
+| `vocabulary` | Yes | The types this file defines beyond the built-in ones: `spanTypes`, `pointMarkerTypes`, and `modes`. See §3.5. |
+| `layers` | Yes | The analytical layers. See §3.2. |
+| `pointMarkers` | Yes | The document's single-moment events. See §3.4. |
+| `context` | Optional | `recording` (studio) or `performance` (live). Null if unspecified. A performance shows the composer field. |
+| `composer` | Optional | Shown when context is `performance`. |
+| `work` | Optional | The composition (e.g. "Piano Sonata Op. 13"). Lets you compare performances of the same work across files. It is also the only link between a `.strata` file and an MEI score. |
+| `derivativeOf` | Optional | For a remix, cover, re-recording, or arrangement: the source track's analysis file and the relationship. |
+| `notes` | Optional | Document-level text: method, caveats, a summary of findings. Commentary tied to the timeline lives in a written-analysis layer instead. |
+| `bpm`, `timeSignature` | Optional | The starting tempo and meter, used to set up a beat grid. |
+| `beatGrid` | Optional | Bars and beats, as segments with one tempo and meter each. Beats are computed from the segments, never stored. |
+| `homeKey` | Optional | The tonic and mode. Key areas and harmonic contexts are written relative to it, as Roman numerals. |
+| `project` | Optional | A corpus or collection tag. Strata stores it and does nothing else with it. |
+| `analysisAuthor` | Optional | Who made the analysis. |
+| `showCadenceCaptions` | Optional | Whether cadence captions show on the diagram. Absent means shown. |
 
 ### 3.2 The Layer
 
-The file contains an array of layers. Each layer corresponds to one widget instance. A file can have multiple layers of the same type (e.g., two form diagram layers representing different analytical frameworks applied simultaneously).
+The file holds a list of layers. Each layer is one widget instance. A file can have several layers of the same type, such as two form-diagram layers that apply different analytical frameworks to the same passage.
 
-- `id` — auto-generated, never changes
-- `type` — widget type identifier (e.g. `form`, `intensity`, `instrumentation`, `custom`)
-- `label` — human-readable layer name set by the analyst
-- `visibility` — shown or hidden
-- `locked` — editable or read-only
-- `colorDefault` — fallback color for spans in this layer
-- `displayOrder` — rendering order when stacked
-- `data` — widget-specific data payload; structure defined by the widget type, not the core schema
+| Field | Required | Notes |
+|---|---|---|
+| `id` | Yes | UUID, generated once. Never changes. |
+| `type` | Yes | The widget type: `form-diagram` or `written-analysis` today. A reader that meets a type it doesn't know keeps the layer unchanged. |
+| `label` | Yes | The layer's name, set by the analyst. |
+| `description` | Optional | A longer statement of the layer's framework, e.g. "Hepokoski/Darcy exposition analysis". |
+| `visibility` | Yes | Shown or hidden. Hidden layers are left out of exports. |
+| `locked` | Yes | A locked layer can be viewed and exported, but not edited. |
+| `fillColorDefault`, `strokeColorDefault` | Yes | The fill and outline for spans that set no color of their own: a hex color, or `none`. |
+| `displayOrder` | Yes | Drawing order, lowest first. Gaps are allowed. |
+| `data` | Yes | The widget's own payload. Its shape depends on `type`. |
+| `library` | Optional | The vocabulary library the layer draws its types from. The Type picker leads with it, but it restricts nothing. |
+| `rendering`, `fontScale`, `spanShape` | Optional | How the layer's text and spans are drawn: label and annotation placement, text size (S, M, L), and brackets or thin bars. Visual only. |
+| `fillGaps` | Optional | Whether a boundary placed in an empty stretch fills it on both sides. Absent means yes. |
+| `position` | Optional | Reserved for drawing a layer below the ruler. |
 
-> **Typed envelope pattern:** The core schema enforces structure around every layer entry (the fields above). The `data` field is a free payload — the core schema says "there is a data field and it is an object"; the widget contract says "here is what that object contains." This keeps the core schema stable while new widget types can define their own data structures without requiring core schema changes.
+A form-diagram layer's `data` holds its `spans`. A written-analysis layer's `data` holds `blocks` of Markdown commentary. Each block is anchored to a span by its id, or to a stretch of time. If you delete the span, its commentary becomes anchored to a stretch of time, so you never lose the text.
 
-### 3.3 The Span — Core Primitive
+> **Typed envelope pattern:** the core schema fixes the frame around every layer (the fields above). The `data` field is a payload whose shape the widget type defines. This keeps the core schema stable: a new widget type can define its own data without a change to the core.
 
-Time spans are the universal primitive of the entire system. Every widget is either defining spans, decorating spans, or both. Getting the span data model right is the most important early decision in the project.
+### 3.3 The Span: Core Primitive
 
-> **DECISION — Timestamps stored as seconds (float), not HH:MM:SS strings.**
-> Rationale: Seconds is what the YouTube API provides, what arithmetic requires, and what is unambiguous. Display formatting (turning 94.3 into 1:34) is a rendering concern, not a storage concern.
+Time spans are the universal primitive of the system. Every widget either defines spans, decorates them, or both.
 
-Each span contains:
+> **DECISION: Timestamps are stored as seconds (float), not HH:MM:SS strings.**
+> Rationale: seconds are what the YouTube API provides, what arithmetic requires, and what is unambiguous. Display formatting (turning 94.3 into 1:34) is a rendering concern, not a storage concern. Times are stored in recording time; the source's `sourceOffset` converts them to player time (§3.6).
 
-| Field | Notes |
-|---|---|
-| `id` | Auto-generated UUID on creation. Never changes. Never shown to user. Used for all inter-widget references. |
-| `label` | Free text. What the analyst calls this section. Display value in the UI. |
-| `slug` | Auto-generated from label (e.g. "Drop 1" → "drop-1"). Human-readable reference key. Stable unless explicitly changed. Used when another widget imports this span. Null until label is set. |
-| `startTime` | Float, seconds |
-| `endTime` | Float, seconds |
-| `type` | Controlled vocabulary term (e.g. "drop", "medial-caesura"). The corpus-queryable field. Separate from label. |
-| `color` | Hex. Per-span override of layer default. |
-| `notes` | Short freetext annotation. Tooltip-level observation, not a full written analysis. |
-| `confidence` | Enum: `definite` \| `approximate` \| `speculative`. Visually distinguishes certain boundaries from interpretive ones. |
-| `parentId` | Optional reference to another span's id. Hierarchical relationships can be expressed without being enforced. |
+Spans may overlap across layers, never within one. Gaps within a layer are allowed. A span records:
 
-> **Label vs. Type vs. Slug:** Label is for humans (display). Type is for queries (corpus analysis). Slug is the stable human-readable reference key for inter-widget links. These are three distinct fields and must remain separate.
+| Field | Required | Notes |
+|---|---|---|
+| `id` | Yes | UUID, generated on creation. Never changes and is never shown to the analyst. Every reference between spans, commentary, and merges uses it. |
+| `startTime`, `endTime` | Yes | Seconds, in recording time. The end must come after the start. |
+| `label` | Optional | What the analyst calls the section. Null for unlabeled spans, such as bar-level hypermeter spans whose type carries the meaning. |
+| `shortLabel` | Optional | An abbreviation the analyst writes ("Verse 1" → "V1"), shown when the full label doesn't fit. |
+| `slug` | Optional | Generated from the label ("Drop 1" → `drop-1`). Commentary links (`[[drop-1]]`) and embeds use it. Unique across the document, shared with point-marker slugs, and fixed once the file is saved. |
+| `type` | Optional | A vocabulary term id (e.g. `drop`, `medial-caesura`): the field a corpus query reads. Separate from the label. |
+| `annotation` | Optional | Text drawn on the span beside the label, e.g. "filter sweep → snare roll". |
+| `notes` | Optional | The analyst's working note. Shown only in the Inspector, never on the diagram or in exports. |
+| `lyrics` | Optional | Lyric text sung during the span. Shown with the span's commentary, not on the diagram. |
+| `keyArea` | Optional | Conventionally a Roman numeral relative to the home key (e.g. `vi`, `V/V`). Drawn as a caption across the span. |
+| `startBoundaryType`, `endBoundaryType` | Optional | The character of each boundary: `definite` (a clean cut, and the default), `gradual` (a processual transition), or `elided` (formally simultaneous with the neighboring boundary). An analytical claim, marked per side. |
+| `parentId` | Optional | The span on another layer that this one belongs to, e.g. this phrase belongs to that section. Group and Copy to layer set it. Nothing enforces that a child lies inside its parent. |
+| `mergedFrom` | Optional | The ids of the spans a merge made this one from, in time order. |
+| `fillColor`, `strokeColor` | Optional | Per-span fill and outline: a hex color, `none`, or null for the layer's default. |
+| `startCap`, `endCap`, `lineStyle`, `fillPattern`, `endOnTop` | Optional | How the bracket is drawn: each end's cap, a solid or dashed line, a faint fill texture, and which bracket sits on top at an elision. A drawing choice, separate from the boundary types. |
+
+> **Label, type, and slug:** the label is for people (display). The type is for queries (corpus analysis). The slug is the stable, readable name that links use. These are three distinct fields, and they must stay separate.
+
+> **Boundaries, not confidence:** the first drafts gave each span a `confidence` field (`definite`, `approximate`, or `speculative`). Format 2 removed it: nothing drew or queried it. The boundary types, which describe the music rather than the analyst's certainty, stay.
 
 ### 3.4 Point Markers
 
-In addition to spans, the timeline supports point markers — single-timestamp events. They are not sections; they are moments.
+Besides spans, the timeline holds point markers: single-moment events. They are not sections; they are moments. They belong to the document, not to a layer, so they show across all layers.
 
-There are two meaningfully different kinds of point markers, and the data model must serve both:
+There are two meaningfully different kinds of point markers, and the data model serves both:
 
-**Type A — Observational / personal flags**
-"This is interesting." "Come back to this." "Something weird happens here." Low-structure, high capture speed. Corpus-queryable only loosely (e.g., "show me all flagged moments"). Closer to a research breadcrumb than a formal analytical observation.
+**Type A: observational or personal flags.**
+"This is interesting." "Come back to this." "Something weird happens here." Low structure, high capture speed. Queryable only loosely (e.g., "show me all flagged moments"). Closer to a research breadcrumb than a formal analytical observation.
 
-**Type B — Theoretically precise analytical events**
-Medial caesura (MC) and essential expositional closure (EEC) in Hepokoski/Darcy sonata form analysis. These are not casual observations — they are theoretically loaded, analytically precise, and *corpus-queryable in the same rigorous sense as span types*. The presence OR ABSENCE of these events is analytically significant.
+**Type B: theoretically precise analytical events.**
+The medial caesura (MC) and essential expositional closure (EEC) in Hepokoski/Darcy sonata-form analysis. These are not casual observations. They are theoretically loaded, analytically precise, and *queryable in the same rigorous sense as span types*. The presence or absence of these events is analytically significant.
 
-Point marker `type` fields draw from the same three-tier vocabulary system as span types. The Hepokoski/Darcy vocabulary would define `medial-caesura` and `EEC` as *point marker* types — moments, not durations.
+Point-marker types draw from the same vocabulary system as span types (§3.5). A cadence, a Sonata Theory event, or a key change is a built-in point-marker type.
 
-> **Critical design requirement:** In Hepokoski/Darcy analysis, a *missing* medial caesura is itself analytically significant — it triggers specific formal consequences. The data model must be able to record "this event was expected here and did not occur." Exact implementation TBD (a boolean `absent` field on a point marker is the leading candidate), but this capability must be present from v1.
+> **Recording an absence:** in Hepokoski/Darcy analysis, a *missing* medial caesura is itself analytically significant: it has specific formal consequences. A marker's `absent` field records "this event was expected here and did not occur", and its caption is drawn struck through.
 
-**Point marker field spec:**
-
-| Field | Notes |
-|---|---|
-| `id` | Auto-generated UUID. Never shown to user. |
-| `timestamp` | Float, seconds. |
-| `label` | Free text. Display value. |
-| `type` | Controlled vocabulary term. Corpus-queryable. Separate from label. |
-| `notes` | Longer freetext observation. |
-| `flagged` | Boolean. "Come back to this." Simple filter-level corpus query. |
-| `absent` | Boolean. "This event was expected and did not occur." Analytically significant. |
-| `confidence` | Enum: `definite` \| `approximate` \| `speculative`. Parallel to span confidence. |
+| Field | Required | Notes |
+|---|---|---|
+| `id` | Yes | UUID. Never shown to the analyst. |
+| `timestamp` | Yes | Seconds, in recording time. |
+| `label` | Optional | Display text. |
+| `slug` | Optional | The name commentary links use. Shares one namespace with span slugs. |
+| `type` | Optional | A vocabulary term id. Queryable, and separate from the label. |
+| `harmonicContext` | Optional | Conventionally a Roman numeral relative to the home key. A caption joins it to the type as `V:PAC`. |
+| `notes` | Optional | A longer observation. |
+| `flagged` | Optional | "Come back to this." Absent means false. |
+| `absent` | Optional | "This event was expected and did not occur." Absent means false. |
+| `kind` | Optional | A preset that picks which fields the marker's panel leads with: `cadence`, `key-change`, `tempo-change`, `flag`, or `other`. It never restricts what a marker holds. |
 
 ### 3.5 The Vocabulary System
 
-The `type` field on a span draws from a controlled vocabulary. Three levels are planned:
+A span's or marker's `type` draws from a controlled vocabulary. A file stores only term ids. A query therefore never depends on which list the analyst picked a term from. The vocabulary has three levels:
 
-- **Global built-in types** — ship with the tool. Basic common terms: intro, verse, chorus, bridge, outro, drop, breakdown, build, etc. Available to all files with no setup.
-- **Project-level custom types** — defined by the analyst for their corpus. EDM project might add: beat-match-intro, rise, anthem-entry, peak. Binary form project might add: P-zone, TR, S-zone, medial-caesura, EEC.
-- **Community vocabularies** — named, versioned, shareable vocabulary files that anyone can adopt. "Common Practice Sonata Form v1." "EDM Club Track v1." Adopting one makes your corpus comparable with anyone else using the same vocabulary. Distributed as JSON files, no central server required.
+- **Built-in terms** ship with the app, grouped into libraries (General, Pop/Rock, Song form, EDM, Common practice, Jazz, and Form letters) and optional packs you switch on, such as Caplin formal functions or Sonata Theory. A term has one id and one meaning wherever it is listed. Its `broader` terms let a query roll it up: a search for all transitions also finds a Caplin transition.
+- **A file's own terms** are defined by the analyst and stored in the file's `vocabulary`, as span types, point-marker types, or modes. Form letters are made on demand (`a-section`, `a-prime`, `a-double-prime`), not listed.
+- **Shared vocabularies** are named, versioned packs anyone can adopt: "Common Practice Sonata Form v1", "EDM Club Track v1". When you adopt one, your corpus becomes comparable with anyone else's who uses it. Packs are `.vocab.json` files, imported and exported with no central server. Imported terms are copied into the file with their `source`, so the file never depends on the pack to open.
 
-> **DECISION — v1 ships with global built-in types only. Project-level custom types are v2. Community vocabularies are v3+.**
-> Rationale: Scope control. The architecture supports all three from day one — the file stores a vocabulary reference. The UI only needs to implement the simplest level first.
+> **DECISION: v1 ships all three levels.** The first draft deferred a file's own types to v2 and community vocabularies to v3. Phase 0.6 brought both into v1: classical and common-practice analysts need terms such as `medial-caesura` and `EEC` at launch, and without them the tool is unusable for that audience (`docs/decisions.md`, "v1 Feature Scope").
+
+### 3.6 Source and Time
+
+`source` names the audio or video and carries its `sourceOffset`, the gap in seconds between the start of the source and the true start of the recording: player time = recording time + `sourceOffset`. Every time in the file is stored in recording time. If you correct the offset, every seek corrects with it, and no span changes. A YouTube source can be shared. A local file is named only by its filename, so it must be present on the viewer's machine.
 
 ---
 
@@ -515,6 +534,8 @@ SVG is the correct and easiest export format for the form diagram widget. Becaus
 ### 7.3 PDF Export
 
 PDF requires a library (jsPDF or pdf-lib are standard). The workflow is: describe the document to the library programmatically, generate a PDF blob. Well-trodden ground. Libraries load at the app level, not per-widget.
+
+> **As built (2026-11-23):** Strata saves a PDF with no library. The exported SVG goes alone onto a print page, and the browser's print dialog saves it as a vector PDF (`docs/decisions.md`, "Save as PDF Through the Print Dialog").
 
 ### 7.4 Written Analysis Widget — Export Formats
 

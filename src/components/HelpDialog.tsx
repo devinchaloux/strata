@@ -23,7 +23,7 @@ const STEPS: [string, string][] = [
   ['Grid', 'Optional: tap T on the beat, or set a tempo in the Grid menu, to number bars and snap to beats. After four taps the grid appears; each further tap fine-tunes the tempo. Type a selected span’s length in bars, or step it with − and +: the spans after it move too. The Metronome in the play bar clicks the grid over the track. To match it, line up the first beats, then listen further in. If the click pulls ahead, lower the tempo. If it lags, raise it. For the exact tempo, pause on a downbeat far into the track and press Downbeat is here (D).'],
   ['Layers', 'Add a layer (+ above the layer names) for another level of form, or another framework. Group into (several spans) builds the level above from the one below; Copy to layer (one span) copies it to any other layer, up or down. Their shared boundaries then move together.'],
   ['Write', 'You write commentary above the diagram: hover a span’s level and press Edit, or press Write commentary in the Inspector. Markdown works, with a toolbar for bold, lists, headings, and links. The link button names a span or marker; type your own words over its label. Commentary appears while that passage plays.'],
-  ['Keep', 'Save a .strata file. Use Export to make a figure (SVG or PNG) or a commentary page (HTML).'],
+  ['Keep', 'Save a .strata file. Use Export to make a figure (SVG, PNG, or PDF) or a commentary page (HTML).'],
   ['Read', 'Open Reading view to read or teach from the video, commentary, and diagram, with editing off. Zoom the diagram with − and +, or press Fit to see the whole track. Use Share to make a link to a copy you’ve put online (Dropbox, OneDrive, GitHub, or your own site). Press Esc to go back.'],
 ]
 
