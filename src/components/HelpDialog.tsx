@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { versionLabel } from '@/lib/version'
 
 const MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘' : 'Ctrl'
 
@@ -134,7 +135,7 @@ export function HelpDialog({ open, onOpenChange }: { open: boolean; onOpenChange
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Found a problem?{' '}
+          Strata {versionLabel()}. Found a problem?{' '}
           <a
             className="text-primary underline underline-offset-2"
             href="https://github.com/devinchaloux/strata/issues"

@@ -1,7 +1,7 @@
 import type { StrataDocument } from '@/types/strata'
 import { readDocument, DocumentError, type LoadResult } from '@/lib/documentLoad'
 import { FILE_FORMAT_VERSION } from '@/lib/migrations'
-import { version as APP_VERSION } from '../../package.json'
+import { APP_VERSION } from '@/lib/version'
 
 // ---------------------------------------------------------------------------
 // Constants
