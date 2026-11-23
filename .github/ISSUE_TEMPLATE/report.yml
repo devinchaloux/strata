@@ -28,9 +28,9 @@ body:
   - type: input
     id: version
     attributes:
-      label: When it happened
-      description: Optional. The date is enough; it tells us which version of Strata you had.
-      placeholder: e.g. 3 October 2026
+      label: Strata version
+      description: Optional. Help (the ? key) shows it at the bottom; a report from the app fills it in.
+      placeholder: e.g. 0.1.0 (b88f438)
   - type: input
     id: browser
     attributes:

@@ -43,6 +43,7 @@ aren't part of this repository.
 - [The JSON Schema is the published contract; `src/types/strata.ts` mirrors it, and a test checks what the app writes against it.](#file-format-integrity-round-2-2026-09-27)
 - [Every document enters through one reader, which refuses what it can't interpret, names where, and keeps layers it can't draw.](#trust-and-format-integrity-round-1-2026-09-27)
 - [Saved files record the app version that wrote them.](#file-format-integrity-round-2-2026-09-27)
+- [Help shows the package version, raised for each named release, and the commit: "Strata 0.1.0 (b88f438)".](#stratas-version-in-help-2026-11-23)
 - [A colour may be `"none"` (no colour) as well as `null` (use the layer default).](#color-picker--layer-defaults-phase-2x-2026-06-30)
 - [A `.strata` file links to an MEI file only by sharing a `work` value.](#corpus-builder)
 
@@ -218,7 +219,7 @@ aren't part of this repository.
 
 By area, in the order the entries were made:
 
-**File format and schema:** [File Format](#file-format) · [Span Data Model](#span-data-model) · [File-Level Metadata](#file-level-metadata) · [Schema](#schema) · [Shared Time Point Pool](#shared-time-point-pool) · [Source References](#source-references) · [Schema Finalization (Phase 0.1)](#schema-finalization-phase-01) · [Schema Revision (Phase 0.1 — Session 2)](#schema-revision-phase-01--session-2) · [Schema Changes (Phase 2 prep, 2026-06-20)](#schema-changes-phase-2-prep-2026-06-20) · [Trust and Format Integrity, Round 1 (2026-09-27)](#trust-and-format-integrity-round-1-2026-09-27) · [File Format Integrity, Round 2 (2026-09-27)](#file-format-integrity-round-2-2026-09-27) · [Fill Patterns (2026-10-24)](#fill-patterns-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05)
+**File format and schema:** [File Format](#file-format) · [Span Data Model](#span-data-model) · [File-Level Metadata](#file-level-metadata) · [Schema](#schema) · [Shared Time Point Pool](#shared-time-point-pool) · [Source References](#source-references) · [Schema Finalization (Phase 0.1)](#schema-finalization-phase-01) · [Schema Revision (Phase 0.1 — Session 2)](#schema-revision-phase-01--session-2) · [Schema Changes (Phase 2 prep, 2026-06-20)](#schema-changes-phase-2-prep-2026-06-20) · [Trust and Format Integrity, Round 1 (2026-09-27)](#trust-and-format-integrity-round-1-2026-09-27) · [File Format Integrity, Round 2 (2026-09-27)](#file-format-integrity-round-2-2026-09-27) · [Fill Patterns (2026-10-24)](#fill-patterns-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05) · [Strata's Version in Help (2026-11-23)](#stratas-version-in-help-2026-11-23)
 
 **Drawing and editing the form diagram:** [Merge UX (Phase 0.5)](#merge-ux-phase-05) · [Hierarchical Enforcement](#hierarchical-enforcement) · [Form Diagram Editor — Interaction Model](#form-diagram-editor--interaction-model) · [Merge](#merge) · [Form Diagram Editor (Phase 0.4)](#form-diagram-editor-phase-04) · [Phase 2 Implementation (Form Diagram — Milestone A)](#phase-2-implementation-form-diagram--milestone-a) · [Merge Implementation (Phase 2.5)](#merge-implementation-phase-25) · [Form Diagram Shape Model — Adjoin Rework (2026-06-27)](#form-diagram-shape-model--adjoin-rework-2026-06-27) · [Label Collision Strategy (2026-06-27)](#label-collision-strategy-2026-06-27) · [Phase 2.5 Merge — Interaction Completion (2026-06-30)](#phase-25-merge--interaction-completion-2026-06-30) · [Elision Rendering & Boundary-First Shape Control (2026-07-25)](#elision-rendering--boundary-first-shape-control-2026-07-25) · [Keyboard Navigation of Spans (2026-09-27)](#keyboard-navigation-of-spans-2026-09-27) · [Space Plays, B Marks a Boundary (2026-10-01)](#space-plays-b-marks-a-boundary-2026-10-01) · [Paused Clicks Stay Paused; Open Caps Fill and Join; Issue Links (2026-10-01)](#paused-clicks-stay-paused-open-caps-fill-and-join-issue-links-2026-10-01) · [Quick Type (2026-10-01)](#quick-type-2026-10-01) · [Quick Entry (2026-10-02)](#quick-entry-2026-10-02) · [B in an Empty Stretch; Shift+B; Fit to the Grid (2026-10-02)](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02) · [Hidden Labels Show on Hover and Selection (2026-10-02)](#hidden-labels-show-on-hover-and-selection-2026-10-02) · [Inside Text Keeps Clear of Rounded and Angled Ends (2026-10-02)](#inside-text-keeps-clear-of-rounded-and-angled-ends-2026-10-02) · [Quick Setup From the Tempo; a Plainer Grid Menu and Quick Pick (2026-10-24)](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24) · [Typed Phrase Lengths; Quick Pick Fixes and Drawn Shapes (2026-10-24)](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24) · [Muted Fills; Same Label, Same Fill; Legible Text on Any Fill (2026-10-24)](#muted-fills-same-label-same-fill-legible-text-on-any-fill-2026-10-24) · [To End (2026-10-24)](#to-end-2026-10-24) · [Quick Pick Colours, and a Colour-Blind Safe Switch (2026-10-24)](#quick-pick-colours-and-a-colour-blind-safe-switch-2026-10-24) · [Fill Patterns (2026-10-24)](#fill-patterns-2026-10-24) · [Backspace No Longer Deletes Spans (2026-10-24)](#backspace-no-longer-deletes-spans-2026-10-24) · [Copy and Paste Between Spans (2026-10-24)](#copy-and-paste-between-spans-2026-10-24) · [Copy and Paste Several Spans (2026-10-24)](#copy-and-paste-several-spans-2026-10-24) · [Splitting a Parent (2026-10-31)](#splitting-a-parent-2026-10-31) · [The Track's End Shows; Quick Pick Closes; Filling a Letter Family (2026-11-05)](#the-tracks-end-shows-quick-pick-closes-filling-a-letter-family-2026-11-05)
 
@@ -5062,3 +5063,23 @@ gets one action. How a hypermetric reinterpretation should be written is still
 an open question; an elision often suggests one, but they are not the same
 mark, so Elide doesn't claim to write it.
 `numberBars`, `renumberSpans` and `elideSpan` in the store; `lib/hypermeter.ts`.
+
+---
+
+## Strata's Version in Help (2026-11-23)
+
+*From the maintainer: "We should probably add versioning into Strata."*
+
+**Decision.** Help shows which build is running, "Strata 0.1.0 (b88f438)":
+the package version and the short commit the build came from
+(`src/lib/version.ts`; the commit is set at build time in `vite.config.ts`,
+from Vercel's own variable when there is one). Every merge into `main` still
+goes live ("Releases and Open Tabs"), but the version is raised only for a
+release the maintainer names, such as the beta; the commit tells apart the
+builds in between. The report form's field is "Strata version" again,
+filled in when a report starts from the app.
+**Rejected.** *The build date:* it says when, not what. *The commit alone:*
+files already record the package version, so the two should read alike.
+**Why.** Files have recorded the version that wrote them since September,
+but the app showed its own nowhere, so the report form asked for a date. The
+commit tells two builds of the same release apart.
