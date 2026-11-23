@@ -41,3 +41,6 @@ lerna-debug.log*
 # OS files
 .DS_Store
 Thumbs.db
+
+# TypeScript build info, written by tsc on every build
+*.tsbuildinfo
