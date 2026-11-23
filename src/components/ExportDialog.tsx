@@ -1,5 +1,6 @@
 /**
- * ExportDialog — save the form diagram as a figure (SVG, or PNG for slides).
+ * ExportDialog — save the form diagram as a figure (SVG, PNG for slides, or PDF
+ * through the browser's print dialog).
  *
  * The range defaults to the selected spans when there are any, which is the
  * vision's "span as shortcut": click the Exposition, open Export, and the range
@@ -9,12 +10,13 @@
  * exactly what you save.
  */
 import { useEffect, useMemo, useState } from 'react'
-import { Download } from 'lucide-react'
+import { Download, Printer } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { exportFormDiagramSvg, exportLayers } from '@/widgets/form-diagram/exportSvg'
 import { isStaleBuildError, STALE_BUILD_MESSAGE } from '@/lib/staleBuild'
 import { downloadBlob, fileBaseName } from '@/lib/fileIO'
+import { printFigure } from '@/lib/printFigure'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { TimeInput } from './TimeInput'
@@ -129,6 +131,14 @@ export function ExportDialog() {
     }
   }
 
+  async function savePdf() {
+    try {
+      await printFigure(svg, `${base}-form-diagram`)
+    } catch (e) {
+      showAppMessage("Couldn't open the print page", [e instanceof Error ? e.message : String(e), 'You can still download the SVG.'])
+    }
+  }
+
   const radio = (value: RangeMode, label: string, disabled = false) => (
     <label className={`flex items-center gap-1.5 text-xs ${disabled ? 'opacity-40' : ''}`}>
       <input
@@ -238,6 +248,15 @@ export function ExportDialog() {
                 <Download size={13} aria-hidden /> Markdown
               </Button>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!svg || noLayers}
+              title="Choose Save as PDF in the print dialog"
+              onClick={savePdf}
+            >
+              <Printer size={13} aria-hidden /> PDF
+            </Button>
             <Button variant="outline" size="sm" disabled={!svg || noLayers} onClick={savePng}>
               <Download size={13} aria-hidden /> PNG
             </Button>

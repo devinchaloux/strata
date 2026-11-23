@@ -86,13 +86,14 @@ there, an open end included.
 
 ## 3. Export Formats
 
-The Export dialog offers two formats for the form diagram, plus the commentary
+The Export dialog offers three formats for the form diagram, plus the commentary
 exports described in `widgets/written-analysis.md`:
 
 | Format | How it's made |
 |---|---|
 | **SVG** | `src/widgets/form-diagram/exportSvg.tsx` renders the same pure figure the editor draws (`figure.tsx`), with the print theme, for a chosen `[startTime, endTime]` range at a chosen width. Editing-only elements are never part of that figure. |
 | **PNG** | The same SVG, drawn by the browser at twice the size. If the browser can't make the image, the dialog says so and the SVG download still works. |
+| **PDF** | The same SVG, alone on a print page in a hidden frame (`src/lib/printFigure.ts`): landscape unless the figure is taller than it is wide, scaled to the page width, in Inter. You choose Save as PDF in the browser's print dialog, so the figure stays vector and no PDF library is loaded. |
 
 The dialog chooses the layers, starting from the visible ones but independent
 of them. Each chosen layer is cut to the range first: a layer with no span in it

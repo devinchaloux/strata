@@ -679,7 +679,7 @@ export default function App() {
         <ToolbarButton onClick={saveFileAs} disabled={!doc}>
           Save As
         </ToolbarButton>
-        <ToolbarButton onClick={() => setExportOpen(true)} disabled={!doc} title="Save the form diagram as an SVG or PNG figure">
+        <ToolbarButton onClick={() => setExportOpen(true)} disabled={!doc} title="Save the form diagram as an SVG, PNG, or PDF figure">
           Export
         </ToolbarButton>
 
@@ -803,7 +803,7 @@ export default function App() {
       {/* Link source — set/swap/unlink the playback source (transport + settings open it) */}
       <LinkSourceDialog />
 
-      {/* Export — the form diagram as an SVG or PNG figure */}
+      {/* Export — the form diagram as an SVG, PNG, or PDF figure */}
       <ExportDialog />
       <LibrariesDialog />
       <ShareDialog />

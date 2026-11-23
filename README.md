@@ -39,7 +39,7 @@ On Strata's first screen, under **Or explore an example**, open **Alive** by Kre
 - **Use the vocabulary of your field.** Choose from built-in libraries for general terms, pop and rock, song form, EDM, common practice, jazz, and form letters. Add packs for Caplin's formal functions, Sonata Theory, and more. Add your own terms and share them as packs.
 - **Number the bars.** Tap along to the beat or type the tempo, then check it against a click track that plays over the recording. Stop the grid for a free passage and pick it up again after.
 - **Write about the music.** Attach commentary to a span to read it while that passage plays. Link to any span or point by name.
-- **Share and publish.** Share a link that opens your analysis in the reading view, embed it in a web page, or export the diagram as an SVG or PNG figure. Export the commentary as a web page or Markdown.
+- **Share and publish.** Share a link that opens your analysis in the reading view, embed it in a web page, or export the diagram as an SVG, PNG, or PDF figure. Export the commentary as a web page or Markdown.
 
 Press **?** in the app for a short guide and every keyboard shortcut.
 

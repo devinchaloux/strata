@@ -535,6 +535,8 @@ SVG is the correct and easiest export format for the form diagram widget. Becaus
 
 PDF requires a library (jsPDF or pdf-lib are standard). The workflow is: describe the document to the library programmatically, generate a PDF blob. Well-trodden ground. Libraries load at the app level, not per-widget.
 
+> **As built (2026-11-23):** Strata saves a PDF with no library. The exported SVG goes alone onto a print page, and the browser's print dialog saves it as a vector PDF (`docs/decisions.md`, "Save as PDF Through the Print Dialog").
+
 ### 7.4 Written Analysis Widget — Export Formats
 
 HTML is the default export. Rendered HTML opens correctly in any browser, requires no explanation, and is universally accessible. Most users lack markdown-aware applications and would see raw syntax (hashtags, asterisks) rather than rendered output if markdown were the default.
