@@ -90,6 +90,14 @@ npm run lint && npm run test:run && npm run build
 
 A comment marked `TEMPORARY` is a merge blocker; CI fails on one.
 
+### UI reviews
+
+Features add controls one reasonable step at a time, and together they can
+crowd the interface. After a major change that adds controls lands (a new
+widget, or a set of tools such as the bar layer's), propose a UI review
+before starting the next one: list what was added where, and what could
+fold, merge or hide. The maintainer decides whether to do it then.
+
 ### Commit messages
 
 Conventional Commits: `<type>(<scope>): <summary>`, then an optional body saying
