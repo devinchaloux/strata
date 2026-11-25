@@ -119,8 +119,9 @@ aren't part of this repository.
 - [The bar layer counts its bars by a layer above (each span from 1) or in groups; selected bars recount from 1; Elide makes a bar "4=1" and offers to elide the boundary above it.](#the-bar-layer-2026-11-25)
 - [Fill with the grid's bars makes an empty layer the bar layer, numbered and counted.](#the-bar-layer-2026-11-25)
 - [Selected spans split into equal bars on the bar layer; selected counted bars make phrases on the layer above. Either works on a chunk or the whole track.](#bars-from-phrases-phrases-from-bars-2026-11-25)
-- [Tempo is planned as its own widget, reading the bar layer (or a beat layer); tempo is derived, never stored.](#tempo-becomes-its-own-widget-2026-11-25)
-- [The tempo widget is a row in the layer stack; its display choices are saved in the file; deviation is in milliseconds; the scale comes from the data unless fixed; it reads a source layer only.](#the-tempo-widget-settled-2026-11-25)
+- [Tempo is its own widget (`type: "tempo"`), reading the bar layer (or a beat layer); tempo is derived, never stored.](#tempo-becomes-its-own-widget-2026-11-25)
+- [A widget is a block: one kind of analysis with its own tools, drawn as a card on the shared timeline. The file lists the blocks top to bottom (`widgets`); the analyst moves them with ↑ ↓, hides and shows them, adds them, and removes any but the form diagram.](#widgets-as-blocks-2026-11-25)
+- [Tempo is a block of its own; its display choices are saved in the file; deviation is in milliseconds; the scale comes from the data unless fixed; it reads a source layer only.](#the-tempo-widget-settled-2026-11-25)
 - [Normalize evens out a run of selected bars, Steady or Smooth, with a preview; the run's ends stay, and it can copy to a new layer instead.](#normalize-2026-11-25)
 - [Fit boundaries to the grid moves a layer's boundaries to bars or beats.](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02)
 - [Playback rates are 0.5×, 0.75×, 1× and 1.25×; rewind goes to 0:00.](#player-chrome-phase-03)
@@ -239,7 +240,7 @@ By area, in the order the entries were made:
 
 **Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01) · [Group Spans Into Another Layer (2026-10-24)](#group-spans-into-another-layer-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Choosing What Copy to Layer Takes (2026-10-31)](#choosing-what-copy-to-layer-takes-2026-10-31)
 
-**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25) · [Bars From Phrases, Phrases From Bars (2026-11-25)](#bars-from-phrases-phrases-from-bars-2026-11-25) · [The Tempo Lane (2026-11-25)](#the-tempo-lane-2026-11-25) · [Tempo Becomes Its Own Widget (2026-11-25)](#tempo-becomes-its-own-widget-2026-11-25) · [Normalize (2026-11-25)](#normalize-2026-11-25) · [The Tempo Widget, Settled (2026-11-25)](#the-tempo-widget-settled-2026-11-25)
+**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25) · [Bars From Phrases, Phrases From Bars (2026-11-25)](#bars-from-phrases-phrases-from-bars-2026-11-25) · [The Tempo Lane (2026-11-25)](#the-tempo-lane-2026-11-25) · [Tempo Becomes Its Own Widget (2026-11-25)](#tempo-becomes-its-own-widget-2026-11-25) · [Normalize (2026-11-25)](#normalize-2026-11-25) · [The Tempo Widget, Settled (2026-11-25)](#the-tempo-widget-settled-2026-11-25) · [Widgets as Blocks (2026-11-25)](#widgets-as-blocks-2026-11-25)
 
 **Point markers:** [Point Markers](#point-markers) · [Point Markers — Implementation (2026-07-03)](#point-markers--implementation-2026-07-03) · [Point Markers — Redesign (2026-07-04)](#point-markers--redesign-2026-07-04) · [Marker Band, Absent Events, and the Diagram Control Bar (2026-07-24, cont.)](#marker-band-absent-events-and-the-diagram-control-bar-2026-07-24-cont)
 
@@ -5496,4 +5497,44 @@ add it later without breaking files.
 **Why.** Each answer keeps the widget an ordinary layer whose numbers can't
 disagree with the bars they come from, while a reader sees the analysis as the
 analyst drew it.
+
+---
+
+## Widgets as Blocks (2026-11-25)
+
+*From the maintainer, correcting where tempo goes: "the form diagram bit is its
+own widget, a block. So the tempo should be a block that goes above or below
+it, but that it can be moved around. I don't want it like in between layers of
+the form diagram." And: "the widgets are … one type of analysis or category of
+analysis with a certain set of tools," with "the option to show/hide widgets,
+add widgets, remove them."*
+
+**Decision.** A widget is a block: one kind of analysis with its own tools,
+drawn as a framed card on the shared timeline, all blocks above the one ruler.
+A block holds every layer of its widget type: the form diagram block holds
+the form layers, the tempo block the tempo layers. The document lists its
+blocks top to bottom (`StrataDocument.widgets`: `{ type, hidden? }`, one per
+type, a new optional field, so no format version bump), so readers, embeds and
+exports see the arrangement the analyst made. A file without the list shows
+the form diagram alone, plus tempo when it has a tempo layer; the reader adds
+any block a layer needs and drops duplicates. Each block's top bar has ↑ ↓ to
+move it past its neighbour (when there is more than one block) and hide; any
+block but the form diagram also has remove, with a confirm, which removes its
+layers. Above the blocks, in the editor, hidden blocks come back from chips
+and **Add widget** adds one; the strip takes no room when there's nothing to
+show. With the form diagram hidden, its zoom controls move to the strip.
+Tempo is built as such a block (`type: "tempo"` layers, `widgets/tempo.md`).
+This corrects the first answer in "The Tempo Widget, Settled": tempo is not a
+row among the form diagram's layers.
+**Rejected.** *Dragging blocks:* blocks are tall, and with a few of them
+arrows are quicker and work from the keyboard. *A ruler per block:* it costs
+room, and one ruler at the bottom keeps every block lined up with it and the
+play bar. *Removing the form diagram:* its layers are the analysis; it hides.
+*Block order per viewer:* a reader might not see the analysis as arranged.
+**Why.** Each kind of analysis brings its own tools and settings; as its own
+block it keeps them out of the others' way and can be placed where it reads
+best against them.
+`lib/widgets.ts`; `addTempoWidget`, `removeWidget`, `setWidgetHidden`,
+`moveWidget`, `setTempoDisplay` and `setTempoSource` in the store;
+`BlockControls` and `WidgetStrip` in FormDiagram.tsx; `TempoBlock`.
 

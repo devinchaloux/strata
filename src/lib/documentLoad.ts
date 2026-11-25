@@ -17,7 +17,8 @@
  * layer the app can't draw is kept in the document and saved back unchanged.
  */
 
-import type { StrataDocument, Layer, Span, FormDiagramData, GridSegment } from '@/types/strata'
+import type { StrataDocument, Layer, Span, FormDiagramData, GridSegment, WidgetBlock } from '@/types/strata'
+import { widgetBlocks } from '@/lib/widgets'
 import { findOverlaps } from '@/lib/spanEdit'
 import { formatTime } from '@/lib/youtube'
 import { FILE_FORMAT_VERSION, migrate } from '@/lib/migrations'
@@ -101,6 +102,11 @@ export function readDocument(raw: unknown): LoadResult {
     layers,
   } as StrataDocument
   if (input.beatGrid !== undefined) doc.beatGrid = readBeatGrid(input.beatGrid, notices)
+  // Widgets as blocks: a list, deduplicated, with the blocks its layers need.
+  // A file that never had one gets none, unless a tempo layer needs a block.
+  if (Array.isArray(input.widgets) || layers.some((l) => l.type === 'tempo')) {
+    doc.widgets = widgetBlocks({ widgets: Array.isArray(input.widgets) ? input.widgets.filter(isObj) as unknown as WidgetBlock[] : [], layers })
+  }
 
   return { doc: fillMissingSlugs(doc), notices }
 }
@@ -177,6 +183,18 @@ function readLayer(raw: unknown, index: number, spanIds: Set<string>, notices: s
   }
 
   if (raw.type === 'written-analysis') return readAnalysisLayer(base, raw, where)
+
+  if (raw.type === 'tempo') {
+    // Tempo reads another layer; one with no readable source is kept as it is.
+    const data = isObj(raw.data) ? raw.data : {}
+    const source = isObj(data.source) ? data.source : null
+    if (source && typeof source.layerId === 'string') {
+      const unit = source.unit === 'beat' ? 'beat' : 'bar'
+      return { ...base, type: 'tempo', data: { ...data, source: { layerId: source.layerId, unit } } } as Layer
+    }
+    notices.push(`"${label}" is a tempo layer that doesn't say which layer to read. It is kept in the file unchanged.`)
+    return base as unknown as Layer
+  }
 
   if (raw.type !== 'form-diagram') {
     // Kept verbatim so saving round-trips it; FormDiagram only draws its own type.

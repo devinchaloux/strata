@@ -1,14 +1,16 @@
 # Tempo Widget
-*Widget type: `"tempo"` (planned) | design agreed, not built | November 2026*
+*Widget type: `"tempo"` | v1.0 | November 2026*
 
-> **Status:** planned, not built. Its design questions were settled with the
-> maintainer on 2026-11-25 (§7). Groundwork in the code:
-> `lib/tempoLane.ts` (each bar's tempo from its length, the scale),
-> `TempoLaneFigure` in `widgets/form-diagram/figure.tsx` (the step line), and
-> `lib/normalize.ts` (the smoothing). `docs/decisions.md`, "Tempo Becomes Its
-> Own Widget" and "Normalize".
+> **Built** 2026-11-25. Code: `src/widgets/tempo/TempoBlock.tsx` (the block,
+> its rows and settings), `lib/tempoLane.ts` (`tempoView`: the tempo of each
+> bar, the smoothed curve, the deviations, the scatter), `lib/normalize.ts`
+> (the smoother), `lib/widgets.ts` (blocks). `docs/decisions.md`, "Tempo
+> Becomes Its Own Widget", "The Tempo Widget, Settled" and "Widgets as
+> Blocks". Not yet: SVG export of the tempo block, a beat source in the app,
+> and comparing recordings.
 
-A layer that shows tempo over time. It reads a layer of marked bars (the bar
+A widget that shows tempo over time, drawn as its own block on the shared
+timeline, above or below the form diagram. It reads a layer of marked bars (the bar
 layer) or, later, of beats, and draws each one's tempo. An analyst who marks
 every bar is usually showing something about time: an accelerando that locks
 in, a ritardando, a performer's rubato. The tempo widget states it with
@@ -28,7 +30,7 @@ diagram. It worked, but tempo is analysis in its own right:
 - comparing performances (§5) needs tempo to be something a document has, not
   a way of drawing bars.
 
-## 2. Data
+## 2. Data (as built)
 
 Tempo is derived, never stored: it follows from the boundaries of the source
 layer, so it can't go stale when a boundary moves or disagree with the bars.
@@ -73,6 +75,30 @@ beat source, each span is one beat.
 Hovering a step shows "Bar 37: 103 BPM". Clicking it selects that bar on the
 source layer. The tempo isn't edited here; the bars are.
 
+The scatter is read robustly, as 1.4826 × the median absolute deviation, so
+one odd bar (a long last bar holding a fade) can't swamp it. The deviation
+band's range is at most four times the scatter (at least 20 ms), and a
+deviation beyond it is drawn clipped, with a cap.
+
+## 3a. The block
+
+- **Adding:** Add widget, above the blocks, offers Tempo once a layer is the
+  bar layer. It makes a tempo layer, "<bar layer> tempo", reading it, and a
+  tempo block just below the form diagram. Adding it while it is hidden shows
+  it.
+- **The top bar:** "Tempo", then ↑ ↓ to move the block past another (shown
+  when there is more than one block), hide, and remove (with a confirm; it
+  removes the tempo layers). The form diagram's top bar has the same move and
+  hide, but no remove: its layers are the analysis.
+- **Hidden blocks** come back from chips beside Add widget. With the form
+  diagram hidden, its zoom controls move there too.
+- **A row** per tempo layer: a header cell as wide as the layer names, with
+  the name and ⋯ settings (name; the layer it reads; Show: as marked,
+  smoothed, deviation; the smoothing, from Auto; the scale, from the data or
+  fixed), and the drawing, which scrolls and zooms with the form diagram and
+  carries the playhead. The tempo band is 52 px and the deviation band 40 px.
+- The marked line fades when the smoothed one is shown, so both read.
+
 ## 4. Normalize and display smoothing
 
 Two different acts, sharing one smoother:
@@ -109,10 +135,12 @@ before a custom rate is designed.
 
 ## 7. Settled (2026-11-25)
 
-1. **Placement:** a row of its own in the layer stack, taller than a bracket
-   row, that hides, reorders and exports like any layer and can sit right
-   under the bars it reads.
-2. **Display choices** (`display`) are saved in the file.
+1. **Placement:** tempo is its own block, a framed card on the shared
+   timeline that the analyst moves above or below the form diagram, shows,
+   hides, adds and removes; not a row among the form diagram's layers
+   ("Widgets as Blocks" corrects the first answer).
+2. **Display choices** (`display`) are saved in the file, and so are the
+   order of the blocks and which are hidden (`StrataDocument.widgets`).
 3. **Deviation** is in milliseconds.
 4. **The scale** comes from the data by default; a fixed range is set when two
    recordings need to share one.

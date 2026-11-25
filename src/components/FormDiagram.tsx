@@ -16,15 +16,21 @@
  * Stacking order is macro-on-top (highest displayOrder at the top).
  */
 
-import { useRef, useState } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import {
+  ArrowDown,
+  ArrowUp,
   ChevronsLeft,
   ChevronsRight,
   Eye,
   EyeOff,
   GripVertical,
   Navigation,
+  Plus,
+  Trash2,
 } from 'lucide-react'
+import { TempoBlock } from '@/widgets/tempo/TempoBlock'
+import { WIDGET_NAMES, widgetBlocks } from '@/lib/widgets'
 import {
   DndContext,
   PointerSensor,
@@ -71,7 +77,7 @@ import { cn } from '@/lib/utils'
 import { STACK_TOP_PAD, stackHeight, layerPitch } from '@/lib/formShape'
 import { markerBandHeight } from '@/lib/markerBand'
 import { HEADER_WIDTH_RAIL, layerHeaderWidth, measureLabel } from '@/lib/layerHeader'
-import type { Layer } from '@/types/strata'
+import type { BlockType, Layer, WidgetBlock } from '@/types/strata'
 import { usePhone } from '@/hooks/usePhone'
 
 const TOP_BAR_HEIGHT = 24
@@ -510,11 +516,13 @@ function WidgetTopBar({
   onToggleCollapsed,
   hidden,
   zoom,
+  blockControls,
 }: {
   collapsed: boolean
   onToggleCollapsed: () => void
   hidden: Layer[]
   zoom: ZoomControlProps
+  blockControls?: ReactNode
 }) {
   const updateLayer = useDocumentStore((s) => s.updateLayer)
   return (
@@ -556,9 +564,119 @@ function WidgetTopBar({
         </div>
       )}
 
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-1">
         <ZoomControls {...zoom} />
+        {blockControls}
       </div>
+    </div>
+  )
+}
+
+/**
+ * A block's own controls, at the right of its top bar (lib/widgets.ts): move
+ * it up or down, hide it, and, for any block but the form diagram, remove it.
+ * Moving shows only when there is another block to move past.
+ */
+function BlockControls({ type, index, count }: { type: BlockType; index: number; count: number }) {
+  const moveWidget = useDocumentStore((s) => s.moveWidget)
+  const setWidgetHidden = useDocumentStore((s) => s.setWidgetHidden)
+  const removeWidget = useDocumentStore((s) => s.removeWidget)
+  const [confirming, setConfirming] = useState(false)
+  const name = WIDGET_NAMES[type]
+  const icon = 'flex h-5 w-5 items-center justify-center rounded hover:bg-accent disabled:opacity-30 disabled:hover:bg-transparent'
+  const style = { color: 'var(--ink-muted)' }
+  return (
+    <span className="flex items-center gap-0.5">
+      {count > 1 && (
+        <>
+          <span aria-hidden style={{ width: 1, height: 12, background: 'var(--hairline)', margin: '0 3px' }} />
+          <button className={icon} style={style} disabled={index === 0} onClick={() => moveWidget(type, -1)} title={`Move ${name} up`} aria-label={`Move ${name} up`}>
+            <ArrowUp size={13} />
+          </button>
+          <button className={icon} style={style} disabled={index === count - 1} onClick={() => moveWidget(type, 1)} title={`Move ${name} down`} aria-label={`Move ${name} down`}>
+            <ArrowDown size={13} />
+          </button>
+        </>
+      )}
+      <button className={icon} style={style} onClick={() => setWidgetHidden(type, true)} title={`Hide ${name}`} aria-label={`Hide ${name}`}>
+        <EyeOff size={13} />
+      </button>
+      {type !== 'form-diagram' &&
+        (confirming ? (
+          <span className="flex items-center gap-1 text-[11px]" style={style}>
+            Remove {name}?
+            <button className="rounded px-1 hover:bg-accent" style={{ color: 'hsl(var(--destructive))' }} onClick={() => removeWidget(type)}>
+              Remove
+            </button>
+            <button className="rounded px-1 hover:bg-accent" onClick={() => setConfirming(false)}>
+              Keep
+            </button>
+          </span>
+        ) : (
+          <button className={icon} style={style} onClick={() => setConfirming(true)} title={`Remove ${name}`} aria-label={`Remove ${name}`}>
+            <Trash2 size={13} />
+          </button>
+        ))}
+    </span>
+  )
+}
+
+/**
+ * Above the blocks, in the editor: the hidden blocks, each brought back with
+ * a click, and Add widget. When the form diagram is hidden, the zoom controls
+ * it carries come here. Nothing shows while every block is shown and nothing
+ * more can be added, so the strip costs no room most of the time.
+ */
+function WidgetStrip({ blocks, zoom }: { blocks: WidgetBlock[]; zoom: ZoomControlProps | null }) {
+  const setWidgetHidden = useDocumentStore((s) => s.setWidgetHidden)
+  const addTempoWidget = useDocumentStore((s) => s.addTempoWidget)
+  const hasBars = useDocumentStore((s) => !!s.document?.layers.some((l) => l.role === 'bars' && l.type === 'form-diagram'))
+  const [open, setOpen] = useState(false)
+  const [note, setNote] = useState<string | null>(null)
+  const hidden = blocks.filter((w) => w.hidden && w.type in WIDGET_NAMES)
+  const canAddTempo = !blocks.some((w) => w.type === 'tempo')
+  if (!hidden.length && !canAddTempo && !zoom) return null
+  const chip = 'flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] hover:bg-accent'
+  return (
+    <div className="flex shrink-0 items-center gap-1 pb-1" style={{ color: 'var(--ink-muted)' }}>
+      {hidden.length > 0 && <span className="text-[11px]">Hidden:</span>}
+      {hidden.map((w) => (
+        <button key={w.type} className={chip} onClick={() => setWidgetHidden(w.type, false)} title={`Show ${WIDGET_NAMES[w.type]}`}>
+          <Eye size={11} />
+          {WIDGET_NAMES[w.type]}
+        </button>
+      ))}
+      {canAddTempo && (
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <button className={chip} title="Add a widget: another kind of analysis on the same timeline">
+              <Plus size={11} />
+              Add widget
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="flex w-72 flex-col gap-1 p-2 text-[13px]">
+            <button
+              className="flex flex-col items-start rounded px-2 py-1.5 text-left hover:bg-accent disabled:opacity-50 disabled:hover:bg-transparent"
+              disabled={!hasBars}
+              onClick={() => {
+                if (addTempoWidget()) setOpen(false)
+                else setNote('Make a layer the bar layer first (its ⋯ menu).')
+              }}
+            >
+              <span style={{ color: 'var(--ink-primary)' }}>Tempo</span>
+              <span className="text-[11px]" style={{ color: 'var(--ink-muted)' }}>
+                {hasBars ? 'Each bar’s tempo, read from the bar layer.' : 'Needs a bar layer: turn one on in a layer’s ⋯ menu.'}
+              </span>
+            </button>
+            {note && <p className="px-2 text-[11px]" style={{ color: 'var(--ink-muted)' }}>{note}</p>}
+          </PopoverContent>
+        </Popover>
+      )}
+      {zoom && (
+        <div className="ml-auto">
+          <ZoomControls {...zoom} />
+        </div>
+      )}
     </div>
   )
 }
@@ -655,6 +773,21 @@ export function FormDiagram() {
     isFit: Math.abs(timeline.zoom - fitZoom) < 1e-3,
   }
 
+  // Widgets as blocks (lib/widgets.ts): the form diagram's card and the other
+  // blocks, top to bottom in the file's order, above the one shared ruler.
+  const blocks = widgetBlocks(doc)
+  const formAt = blocks.findIndex((w) => w.type === 'form-diagram')
+  const formHidden = !!blocks[formAt]?.hidden
+  const renderBlock = (w: WidgetBlock, i: number) =>
+    w.type === 'tempo' && !w.hidden ? (
+      <TempoBlock
+        key="tempo"
+        headerWidth={headerWidth}
+        reading={reading}
+        controls={reading ? undefined : <BlockControls type="tempo" index={i} count={blocks.length} />}
+      />
+    ) : null
+
   // Macro-on-top; hidden layers are pulled out of the stack (slot reclaimed).
   // Only form-diagram layers draw here. A layer of a type this build doesn't
   // know is kept in the document untouched (the loader warns about it).
@@ -721,9 +854,11 @@ export function FormDiagram() {
       {/* data-touch-pan: a finger drags the diagram sideways here, and only
           here (hooks/useTouchPan). */}
       <div className={showDiagram ? 'contents' : 'hidden'} data-touch-pan>
+      {!reading && <WidgetStrip blocks={blocks} zoom={formHidden ? zoomProps : null} />}
+      {blocks.slice(0, formAt).map((w, i) => renderBlock(w, i))}
       <div
         data-keeps-selection
-        className="relative shrink-0 overflow-hidden rounded-md bg-(--canvas)"
+        className={`relative shrink-0 overflow-hidden rounded-md bg-(--canvas) ${formHidden ? 'hidden' : ''}`}
         style={{ marginBottom: 4 }}
       >
         {/* Editing controls are off while reading. The reading view keeps
@@ -735,6 +870,7 @@ export function FormDiagram() {
             onToggleCollapsed={toggleCollapsed}
             hidden={hidden}
             zoom={zoomProps}
+            blockControls={<BlockControls type="form-diagram" index={formAt} count={blocks.length} />}
           />
         )}
         {/* Reading (and an embed) keeps two controls: the layer names'
@@ -786,6 +922,8 @@ export function FormDiagram() {
           style={{ border: '1px solid var(--ruler)' }}
         />
       </div>
+
+      {blocks.slice(formAt + 1).map((w, k) => renderBlock(w, formAt + 1 + k))}
 
       {/* Ruler row — offset cell matches header width so zero aligns with spans */}
       <div className="flex shrink-0 border-t" style={{ borderColor: 'var(--hairline)' }}>

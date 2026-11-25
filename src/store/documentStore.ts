@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { temporal } from 'zundo'
-import type { StrataDocument, Layer, LayerBase, Span, PointMarker, GridSegment, VocabTerm } from '@/types/strata'
+import type { StrataDocument, Layer, LayerBase, Span, PointMarker, GridSegment, VocabTerm, BlockType, TempoData, TempoLayer } from '@/types/strata'
+import { moveBlock, setBlockHidden, widgetBlocks } from '@/lib/widgets'
 import { formSpans, newFormLayer } from '@/lib/layers'
 import { groupUpTarget, placeSpan, copyOfSpan, layerAbove, DEFAULT_COPY_FIELDS, type CopyField } from '@/lib/groupSpans'
 import { boundaryMoves, followLinks, repairParentLinks, splitTimeNearChildren, relinkToPieces } from '@/lib/linkedBoundaries'
@@ -174,6 +175,20 @@ interface DocumentState {
     logLambda: number,
     intoNewLayer: boolean,
   ) => { moved: number; layerId: string } | null
+  // Widgets as blocks (lib/widgets.ts). One undo step each.
+  // Add the tempo widget: a tempo layer reading the bar layer, and its block
+  // (just below the form diagram), or show the block if it is there. Returns
+  // the tempo layer's id, or null when there is no bar layer to read.
+  addTempoWidget: () => string | null
+  // Remove a widget: its block and every layer of its type. The form diagram
+  // can't be removed.
+  removeWidget: (type: BlockType) => void
+  setWidgetHidden: (type: BlockType, hidden: boolean) => void
+  // Move a block one place up (-1) or down (+1).
+  moveWidget: (type: BlockType, dir: -1 | 1) => void
+  // A tempo layer's display choices, merged; and which layer it reads.
+  setTempoDisplay: (layerId: string, display: Partial<NonNullable<TempoData['display']>>) => void
+  setTempoSource: (layerId: string, sourceId: string) => void
   // A span one or more bars longer or shorter, every later boundary in its
   // layer moving with it (lib/spanEdit.ts, rippleSpanEnd).
   resizeSpanByBars: (layerId: string, spanId: string, bars: number) => void
@@ -1033,6 +1048,70 @@ const useDocumentStore = create<DocumentState>()(
         const next = relabelSpans({ ...doc, layers }, labelled, get().frozenSlugIds)
         set({ document: { ...next, updatedAt: now() } })
         return { moved: plan.moved, layerId: target.id }
+      },
+
+      addTempoWidget: () => {
+        const doc = get().document
+        if (!doc) return null
+        const blocks = widgetBlocks(doc)
+        const existing = doc.layers.find((l) => l.type === 'tempo')
+        if (existing) {
+          set({ document: { ...doc, widgets: setBlockHidden(blocks, 'tempo', false), updatedAt: now() } })
+          return existing.id
+        }
+        const bars = doc.layers.find((l) => l.role === 'bars' && l.type === 'form-diagram')
+        if (!bars) return null
+        const layer: TempoLayer = {
+          ...newFormLayer('Tempo', 0),
+          label: `${bars.label} tempo`,
+          type: 'tempo',
+          data: { source: { layerId: bars.id, unit: 'bar' } },
+        }
+        const layers = [...doc.layers, layer]
+        set({ document: { ...doc, layers, widgets: widgetBlocks({ widgets: blocks, layers }), updatedAt: now() } })
+        return layer.id
+      },
+
+      removeWidget: (type) => {
+        const doc = get().document
+        if (!doc || type === 'form-diagram') return
+        const layers = doc.layers.filter((l) => l.type !== type)
+        set({ document: { ...doc, layers, widgets: widgetBlocks(doc).filter((w) => w.type !== type), updatedAt: now() } })
+      },
+
+      setWidgetHidden: (type, hidden) => {
+        const doc = get().document
+        if (!doc) return
+        set({ document: { ...doc, widgets: setBlockHidden(widgetBlocks(doc), type, hidden), updatedAt: now() } })
+      },
+
+      moveWidget: (type, dir) => {
+        const doc = get().document
+        if (!doc) return
+        const blocks = widgetBlocks(doc)
+        const moved = moveBlock(blocks, type, dir)
+        if (moved !== blocks) set({ document: { ...doc, widgets: moved, updatedAt: now() } })
+      },
+
+      setTempoDisplay: (layerId, display) => {
+        const doc = get().document
+        if (!doc) return
+        const layers = doc.layers.map((l) => {
+          if (l.id !== layerId || l.type !== 'tempo') return l
+          const merged = { ...(l.data.display ?? {}), ...display }
+          for (const k of Object.keys(merged) as Array<keyof typeof merged>) if (merged[k] === undefined) delete merged[k]
+          return { ...l, data: { ...l.data, display: merged } }
+        })
+        set({ document: { ...doc, layers, updatedAt: now() } })
+      },
+
+      setTempoSource: (layerId, sourceId) => {
+        const doc = get().document
+        if (!doc) return
+        const layers = doc.layers.map((l) =>
+          l.id === layerId && l.type === 'tempo' ? { ...l, data: { ...l.data, source: { ...l.data.source, layerId: sourceId } } } : l,
+        )
+        set({ document: { ...doc, layers, updatedAt: now() } })
       },
 
       resizeSpanByBars: (layerId, spanId, bars) => {

@@ -60,6 +60,9 @@ Until the widget registry exists, point markers snap to these boundaries directl
 
 ## 2. Timeline Presence
 
+**As a block.** The form diagram is one block of the work area, holding every form layer (`docs/decisions.md`, "Widgets as Blocks"). Its top bar ends with ↑ ↓ to move it past another block (when there is one) and a button to hide it; it can't be removed. Hidden, it comes back from a chip above the blocks, which also takes its zoom controls meanwhile. The shared ruler stays at the bottom of all blocks.
+
+
 `TimelinePresenceComponent` renders tick marks on the shared ruler at each span boundary.
 
 **Visual specification:**

@@ -3,8 +3,10 @@
 
 > **Status (2026-10-03):** this is the design, not yet the code. The types are
 > defined in `src/types/strata.ts`, but the app doesn't load widgets through a
-> registry: the form diagram and the written analysis are built directly, and
-> the port to `src/types/widget.ts` described below hasn't happened. The
+> registry: the form diagram, the written analysis and tempo are built
+> directly, and the port to `src/types/widget.ts` described below hasn't
+> happened. Widgets that draw on the timeline do so as blocks, ordered by
+> `StrataDocument.widgets` (`docs/decisions.md`, "Widgets as Blocks"). The
 > "embeddable viewer" below was replaced by the app's embed mode
 > (`docs/decisions.md`, "Embedding an Analysis"). The render / edit boundary
 > still holds in the code: see "Render / Edit Split".

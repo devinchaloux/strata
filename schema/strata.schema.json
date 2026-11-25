@@ -121,6 +121,11 @@
     "showCadenceCaptions": {
       "type": "boolean",
       "description": "Whether cadence-related point marker detail (type abbreviation, harmonic context) renders on the diagram. Point markers aren't layer-owned, so this is document-level rather than per-layer. Omit/absent = true (shown)."
+    },
+    "widgets": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/WidgetBlock" },
+      "description": "The widgets of the work area, top to bottom, each drawn as a block above the shared time ruler. One entry per widget type; a block holds every layer of its type. Absent = the form diagram alone, plus a tempo block if there are tempo layers. A reader adds a block any layer needs, drops duplicates, and keeps an entry whose type it doesn't know."
     }
 
   },
@@ -341,8 +346,8 @@
         },
         "type": {
           "type": "string",
-          "enum": ["form-diagram", "written-analysis"],
-          "description": "Widget type: 'form-diagram' (spans on a timeline) or 'written-analysis' (commentary anchored to spans or times). Possible future types: 'energy-contour', 'instrumentation'. A reader that meets a type it doesn't know should keep the layer unchanged."
+          "enum": ["form-diagram", "written-analysis", "tempo"],
+          "description": "Widget type: 'form-diagram' (spans on a timeline), 'written-analysis' (commentary anchored to spans or times) or 'tempo' (the tempo of a layer of bars, read from their lengths). Possible future types: 'energy-contour', 'instrumentation'. A reader that meets a type it doesn't know should keep the layer unchanged."
         },
         "label": {
           "type": "string",
@@ -421,8 +426,66 @@
         {
           "if": { "properties": { "type": { "const": "written-analysis" } } },
           "then": { "properties": { "data": { "$ref": "#/$defs/WrittenAnalysisData" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "tempo" } } },
+          "then": { "properties": { "data": { "$ref": "#/$defs/TempoData" } } }
         }
       ]
+    },
+
+    "WidgetBlock": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "description": "One widget in the work area, drawn as a framed block on the shared timeline.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "The widget type the block draws: 'form-diagram' or 'tempo'. It holds every layer of that type."
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "Hidden by the analyst: not drawn, and left out of exports. Absent = shown."
+        }
+      }
+    },
+
+    "TempoData": {
+      "type": "object",
+      "required": ["source"],
+      "additionalProperties": false,
+      "description": "A tempo layer's settings. The tempo itself is never stored: each unit's tempo is 60 x its beats / its length in seconds, read from the source layer's spans, with the beats from the beat grid's meter at the unit, else the document's meter, else 4.",
+      "properties": {
+        "source": {
+          "type": "object",
+          "required": ["layerId", "unit"],
+          "additionalProperties": false,
+          "properties": {
+            "layerId": { "type": "string", "description": "The form-diagram layer whose spans are the units, usually the bar layer." },
+            "unit": { "type": "string", "enum": ["bar", "beat"], "description": "What each span of the source is." }
+          }
+        },
+        "display": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "smoothing": { "type": ["number", "null"], "description": "Display-only smoothing for the smoothed and deviation views, as log10 of the smoother's lambda (the same smoother as Normalize). Null or absent = automatic: the smoothest at which what is left looks like tapping scatter. It moves no boundary." },
+            "show": {
+              "type": "array",
+              "items": { "type": "string", "enum": ["marked", "smoothed", "deviation"] },
+              "description": "Which views to draw: the tempo as marked, as smoothed, and each boundary's deviation from the smoothed curve in milliseconds. Absent = marked only."
+            },
+            "scale": {
+              "type": ["object", "null"],
+              "required": ["min", "max"],
+              "additionalProperties": false,
+              "properties": { "min": { "type": "number" }, "max": { "type": "number" } },
+              "description": "A fixed BPM range, for comparing recordings. Absent or null = from the data, lowest to highest, out to the nearest 10."
+            }
+          }
+        }
+      }
     },
 
     "WrittenAnalysisData": {

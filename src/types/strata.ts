@@ -328,14 +328,47 @@ export interface LayerBase {
   fontScale?: 'sm' | 'md' | 'lg'
 }
 
+/**
+ * A tempo layer (widgets/tempo.md): the tempo of a source layer of bars (or,
+ * later, beats), read from its spans' lengths and never stored. Only what to
+ * read and how to show it is kept.
+ */
+export interface TempoData {
+  /** The layer whose spans are the units, and what they are. */
+  source: { layerId: string; unit: 'bar' | 'beat' }
+  display?: {
+    /** Display-only smoothing for the smoothed and deviation views, log10 of lambda (lib/normalize.ts); null or absent = automatic. Moves no boundary. */
+    smoothing?: number | null
+    /** Which views to draw. Absent = ['marked']. */
+    show?: Array<'marked' | 'smoothed' | 'deviation'>
+    /** A fixed BPM range, for comparing recordings; absent = from the data. */
+    scale?: { min: number; max: number } | null
+  }
+}
+
 export type FormDiagramLayer = LayerBase & { type: 'form-diagram'; data: FormDiagramData }
 export type WrittenAnalysisLayer = LayerBase & { type: 'written-analysis'; data: WrittenAnalysisData }
+export type TempoLayer = LayerBase & { type: 'tempo'; data: TempoData }
 
 /**
  * A layer is tagged by its widget type, so checking `layer.type` tells
  * TypeScript which `data` shape it holds.
  */
-export type Layer = FormDiagramLayer | WrittenAnalysisLayer
+export type Layer = FormDiagramLayer | WrittenAnalysisLayer | TempoLayer
+
+/** The widget types that draw as a block on the timeline (WidgetBlock). */
+export type BlockType = 'form-diagram' | 'tempo'
+
+/**
+ * One widget in the work area, drawn as a block: one framed card on the shared
+ * timeline, holding every layer of its type. StrataDocument.widgets lists them
+ * top to bottom.
+ */
+export interface WidgetBlock {
+  type: BlockType
+  /** Hidden by the analyst: not drawn, and left out of exports. Absent = shown. */
+  hidden?: boolean
+}
 
 // ---------------------------------------------------------------------------
 // Top-Level Document
@@ -380,4 +413,13 @@ export interface StrataDocument {
    * is document-level rather than per-layer. Omit/absent = true (shown).
    */
   showCadenceCaptions?: boolean
+
+  /**
+   * The widgets of the work area, top to bottom, each drawn as a block above
+   * the shared ruler: one per widget type, holding that type's layers
+   * (docs/decisions.md, "Widgets as Blocks"). Absent = the form diagram alone,
+   * plus a tempo block if there are tempo layers. The reader adds any block a
+   * layer needs and drops duplicates.
+   */
+  widgets?: WidgetBlock[]
 }

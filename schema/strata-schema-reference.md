@@ -16,6 +16,8 @@ flowchart TB
   F --> P["Point markers<br/>single moments, seen by every layer"]
   L --> FD["Form diagram layer<br/>spans: label, type, boundaries, part of"]
   L --> C["Commentary layer<br/>writing about a span or a stretch of time"]
+  L --> T["Tempo layer<br/>the tempo of a layer of bars"]
+  F --> W["Widgets<br/>which blocks show, top to bottom"]
 ```
 
 The details about the track, its timing, and its vocabulary sit at the top. The analysis itself lives in the layers, mostly as spans. Commentary sits alongside the spans. Point markers belong to the whole analysis, so every layer sees them. The sections below explain each part.
@@ -77,10 +79,11 @@ A layer can also mark the bars one by one: the **bar layer** (`role: "bars"` on 
 
 A layer (`layers`) holds one reading of the timeline: large-scale form, sections, phrases, or one framework's view of the piece. A file can hold as many layers as your analysis needs. You can give your layers different focuses, frameworks, and vocabularies within the same analysis.
 
-There are two kinds today:
+There are three kinds today:
 
 - **Form diagram layers** (`type: "form-diagram"`) hold spans, the sections drawn as brackets.
 - **A commentary layer** (`type: "written-analysis"`) holds your written commentary. Strata makes one the first time you write commentary. You never manage it directly.
+- **Tempo layers** (`type: "tempo"`) show the tempo of a layer of bars, usually the bar layer. The tempo itself isn't stored: each bar's tempo is worked out from its length, so it always agrees with the bars. The layer keeps only which layer it reads (`data.source`) and how to show it (`data.display`): as marked, smoothed for the drawing (no bar moves), and each boundary's deviation from the smooth curve in milliseconds, with an optional fixed BPM range for comparing recordings.
 
 Within one form layer, spans never overlap. You lay a layer's sections end to end, with gaps where you make no claim. When two readings overlap, put them on two layers.
 
@@ -89,7 +92,7 @@ Each layer also carries its own settings:
 | Setting | What it does | In the file |
 | --- | --- | --- |
 | Identity | A permanent internal code | `id` |
-| Kind | Form diagram or commentary | `type` |
+| Kind | Form diagram, commentary or tempo | `type` |
 | Content | The layer's spans or commentary | `data` |
 | Name and description | The name beside the layer, and an optional longer note on its framework ("Phrase-level hypermeter, 4-bar units") | `label`, `description` |
 | Shown or hidden | Strata leaves hidden layers out of exports | `visibility` |
@@ -105,6 +108,10 @@ Each layer also carries its own settings:
 Two more settings have no control in the app yet. When a file sets where a layer's labels and annotations sit (`rendering`), Strata draws them there. Strata reserves `position`, above or below the time ruler, for later.
 
 Strata keeps a layer of a kind it doesn't know unchanged in the file, so a file made by a newer version loses nothing.
+
+### Widgets
+
+Each kind of analysis that draws on the timeline is a **widget**, shown as a block: the form diagram is one block holding every form layer, and tempo is another holding every tempo layer. All blocks share the one time ruler at the bottom. The file lists the blocks top to bottom (`widgets`), each with its kind (`type`) and whether you hid it (`hidden`), so a reader sees them as you arranged them. A file without the list shows the form diagram alone, plus tempo if it has a tempo layer.
 
 ## Spans
 
