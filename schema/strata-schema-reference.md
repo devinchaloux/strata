@@ -73,7 +73,7 @@ Strata stores the grid as a few **stretches** rather than as individual beats. E
 
 Strata works out every beat and bar line from these few numbers. When you correct a tempo, you change one number. Every bar line after it moves with it.
 
-A layer can also mark the bars one by one: the **bar layer** (`role: "bars"` on the layer). Each of its spans is a bar. The span's label is the bar number and its annotation the bar's place in its hypermetric group: `1`, `2`, `3`, and `4=1` for an elided bar, which ends one group and begins the next. Where the grid computes bars from a tempo, the bar layer records them as you heard them, so it suits music whose tempo moves. A document has at most one bar layer.
+A layer can also mark the bars one by one: the **bar layer** (`role: "bars"` on the layer). Each of its spans is a bar. The span's label is the bar number and its annotation the bar's place in its hypermetric group: `1`, `2`, `3`, and `4=1` for an elided bar, which ends one group and begins the next. Where the grid computes bars from a tempo, the bar layer records them as you heard them, so it suits music whose tempo moves. A document has at most one bar layer. The two meet in both directions: Strata can fill an empty layer with the grid's bars, or make the grid from the bar layer, a stretch per bar at that bar's tempo.
 
 ## Layers
 

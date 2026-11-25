@@ -1071,6 +1071,7 @@ function HypermeterRow({ layerId, spans }: { layerId: string; spans: Span[] }) {
 function BarSetupRow({ layer, spans }: { layer: Layer; spans: Span[] }) {
   const splitIntoBars = useDocumentStore((s) => s.splitIntoBars)
   const phrasesFromCount = useDocumentStore((s) => s.phrasesFromCount)
+  const gridFromBars = useDocumentStore((s) => s.gridFromBars)
   const barGroup = useUIStore((s) => s.barGroup)
   const setBarGroup = useUIStore((s) => s.setBarGroup)
   const [result, setResult] = useState<string | null>(null)
@@ -1079,7 +1080,6 @@ function BarSetupRow({ layer, spans }: { layer: Layer; spans: Span[] }) {
   const isBars = layer.role === 'bars'
   const counted = spans.some((s) => countOf(s.annotation) !== null)
   const canNormalize = isBars && spans.length >= 2
-  if (isBars && !counted && !canNormalize) return null
   const button = 'rounded border border-border px-2 py-0.5 text-xs text-foreground hover:bg-accent'
   const n = spans.length
   return (
@@ -1127,6 +1127,18 @@ function BarSetupRow({ layer, spans }: { layer: Layer; spans: Span[] }) {
             }}
           >
             Phrases from the count
+          </button>
+        )}
+        {isBars && (
+          <button
+            className={button}
+            title="Make the beat grid from these bars: each a stretch at its own tempo, bars at the same tempo merged. It replaces the grid where they are."
+            onClick={() => {
+              const r = gridFromBars(spans.map((s) => s.id))
+              setResult(r ? `Made the grid here: ${r.stretches} stretch${r.stretches === 1 ? '' : 'es'} from ${r.bars} bar${r.bars === 1 ? '' : 's'}.` : null)
+            }}
+          >
+            Grid from {n === 1 ? 'this bar' : 'these'}
           </button>
         )}
         {canNormalize && (

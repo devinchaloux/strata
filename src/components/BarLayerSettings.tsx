@@ -6,7 +6,8 @@
  * number and its annotation the hypermetric count. On the bar layer the menu
  * numbers the bars from a first bar and counts them, by the spans of a layer
  * above (each phrase counts from 1) or in groups of a set size. An empty layer
- * can instead be filled with the beat grid's bars, which makes it the bar layer.
+ * can instead be filled with the beat grid's bars, which makes it the bar layer;
+ * the other way, Beat grid from the bars makes the grid from them (lib/gridFromBars.ts).
  */
 import { useState } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
@@ -27,6 +28,7 @@ export function BarLayerSettings({ layer }: { layer: Layer }) {
   const numberBarLayer = useDocumentStore((s) => s.numberBarLayer)
   const countBars = useDocumentStore((s) => s.countBars)
   const numberBars = useDocumentStore((s) => s.numberBars)
+  const gridFromBars = useDocumentStore((s) => s.gridFromBars)
   const barGroup = useUIStore((s) => s.barGroup)
   const setBarGroup = useUIStore((s) => s.setBarGroup)
   const [first, setFirst] = useState(1)
@@ -134,6 +136,26 @@ export function BarLayerSettings({ layer }: { layer: Layer }) {
                 Number
               </button>
             </span>
+          </div>
+
+          <div
+            className="flex items-center justify-between gap-2"
+            title="Make the beat grid from these bars: each bar a stretch at its own tempo, bars at the same tempo merged, numbered from the bar labels. It replaces the grid where the bars are."
+          >
+            <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
+              Beat grid from the bars
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                const r = gridFromBars(null)
+                setResult(r ? `Made the grid: ${r.stretches} stretch${r.stretches === 1 ? '' : 'es'} from ${r.bars} bars. Undo puts the old grid back.` : null)
+              }}
+              className={button}
+              style={buttonStyle}
+            >
+              Make
+            </button>
           </div>
 
           <div

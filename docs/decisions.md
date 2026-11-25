@@ -124,6 +124,7 @@ aren't part of this repository.
 - [A widget is a block: one kind of analysis with its own tools, drawn as a card on the shared timeline. The file lists the blocks top to bottom (`widgets`); the analyst moves them with ↑ ↓, hides and shows them, adds them, and removes any but Segments.](#widgets-as-blocks-2026-11-25)
 - [Tempo is a block of its own; its display choices are saved in the file; deviation is in milliseconds; the scale comes from the data unless fixed; it reads a source layer only.](#the-tempo-widget-settled-2026-11-25)
 - [Normalize evens out a run of selected bars, Steady or Smooth, with a preview; the run's ends stay, and it can copy to a new layer instead.](#normalize-2026-11-25)
+- [The beat grid can be made from the bar layer, or from selected bars: a stretch per bar at its own tempo, equal tempos merged, replacing the grid only where the bars are.](#the-beat-grid-from-the-bars-2026-11-25)
 - [Fit boundaries to the grid moves a layer's boundaries to bars or beats.](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02)
 - [Playback rates are 0.5×, 0.75×, 1× and 1.25×; rewind goes to 0:00.](#player-chrome-phase-03)
 - [The play bar's clock reads m:ss; editable times keep milliseconds.](#ui-review-fixes-and-tighter-chrome-2026-09-27)
@@ -241,7 +242,7 @@ By area, in the order the entries were made:
 
 **Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01) · [Group Spans Into Another Layer (2026-10-24)](#group-spans-into-another-layer-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Choosing What Copy to Layer Takes (2026-10-31)](#choosing-what-copy-to-layer-takes-2026-10-31)
 
-**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25) · [Bars From Phrases, Phrases From Bars (2026-11-25)](#bars-from-phrases-phrases-from-bars-2026-11-25) · [The Tempo Lane (2026-11-25)](#the-tempo-lane-2026-11-25) · [Tempo Becomes Its Own Widget (2026-11-25)](#tempo-becomes-its-own-widget-2026-11-25) · [Normalize (2026-11-25)](#normalize-2026-11-25) · [The Tempo Widget, Settled (2026-11-25)](#the-tempo-widget-settled-2026-11-25) · [Widgets as Blocks (2026-11-25)](#widgets-as-blocks-2026-11-25) · [Segments, Not Form Diagram (2026-11-25)](#segments-not-form-diagram-2026-11-25)
+**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25) · [Bars From Phrases, Phrases From Bars (2026-11-25)](#bars-from-phrases-phrases-from-bars-2026-11-25) · [The Tempo Lane (2026-11-25)](#the-tempo-lane-2026-11-25) · [Tempo Becomes Its Own Widget (2026-11-25)](#tempo-becomes-its-own-widget-2026-11-25) · [Normalize (2026-11-25)](#normalize-2026-11-25) · [The Tempo Widget, Settled (2026-11-25)](#the-tempo-widget-settled-2026-11-25) · [Widgets as Blocks (2026-11-25)](#widgets-as-blocks-2026-11-25) · [Segments, Not Form Diagram (2026-11-25)](#segments-not-form-diagram-2026-11-25) · [The Beat Grid From the Bars (2026-11-25)](#the-beat-grid-from-the-bars-2026-11-25)
 
 **Point markers:** [Point Markers](#point-markers) · [Point Markers — Implementation (2026-07-03)](#point-markers--implementation-2026-07-03) · [Point Markers — Redesign (2026-07-04)](#point-markers--redesign-2026-07-04) · [Marker Band, Absent Events, and the Diagram Control Bar (2026-07-24, cont.)](#marker-band-absent-events-and-the-diagram-control-bar-2026-07-24-cont)
 
@@ -5574,4 +5575,38 @@ key areas and sonic functions alike. A texture or timbre widget is the other
 kind, many things sounding at once, and belongs to the planned instrumentation
 widget. Segmentation is also the established term for this act in music
 cognition and music information retrieval.
+
+---
+
+## The Beat Grid From the Bars (2026-11-25)
+
+*The last of the first pass of tempo tools agreed with the maintainer: Fill
+with the grid's bars makes bars from a grid; this goes the other way.*
+
+**Decision.** **Beat grid from the bars** (the bar layer's menu) makes the
+beat grid from every bar of the bar layer; **Grid from these** (the
+Inspector's Bars row) makes it from selected bars, a chunk of the track. Each
+bar becomes a grid stretch starting on its downbeat at its own tempo (60 ×
+beats ÷ its length), its meter read from the grid as it was, else the
+document's. Bars one after another whose tempos differ by 0.01 BPM or less
+merge into one stretch, so a plateau evened with Normalize's Steady becomes a
+single stretch. Each run of bars that follow one another starts at its first
+bar's number when the label is a whole number, and its last stretch ends
+where the run ends, leaving a gap free. The new stretches replace the grid
+only over the bars' stretch: a stretch running into it stops at its start,
+and one running on past its end resumes on its own next downbeat, so its bar
+lines don't move. Tempos are stored exactly, not rounded: a rounded tempo
+leaves the last bar of a stretch a hair short, and the grid would draw a
+stray downbeat just before the next one. One undo step. The grid is a copy:
+moving a bar afterwards doesn't move the grid; making it again does.
+**Rejected.** *A grid that follows the bars live:* the grid is the analyst's
+statement of where beats fall, edited on its own terms (tapping, tempo
+correction, Downbeat is here); tying it to a layer would make every boundary
+drag rewrite it. *A tempo-ramp stretch* (a tempo that changes within a
+stretch): a format change for later; a stretch per bar already follows an
+accelerando bar by bar.
+**Why.** With the grid following hand-marked bars, snapping, the ruler's bar
+numbers and the metronome all follow music whose tempo moves.
+`lib/gridFromBars.ts` (`gridFromBars`, `spliceGrid`); `gridFromBars` in the
+store; BarLayerSettings and the Inspector's Bars row.
 

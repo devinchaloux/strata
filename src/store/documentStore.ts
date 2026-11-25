@@ -9,6 +9,8 @@ import { sortedSegments, segmentAt, segmentEnd, extendBack, snapToGrid, barTilin
 import { barNumberLabels, boundaryOnBar, countLabels, countOf, countsByGroups, elideLabels, numberedGridBars, phraseRuns, splitEvenly, writeCounts } from '@/lib/hypermeter'
 import { roundTempo, segmentForAdjusting, tempoThroughDownbeat } from '@/lib/metronome'
 import { normalizePlan, runTimes } from '@/lib/normalize'
+import { gridFromBars as makeGridFromBars, spliceGrid } from '@/lib/gridFromBars'
+import { beatsPerBarAt } from '@/lib/tempoLane'
 import type { SegmentationData } from '@/types/strata'
 import { mergeVocabPack, type MergeResult, type VocabPack } from '@/lib/vocabPack'
 import { placeBoundaryInSpans, setSpanEdge, findOverlaps, endSpanAtTime, snapSpansToGrid, rippleSpanEnd, extendSpanToEnd, MIN_SPAN_WIDTH } from '@/lib/spanEdit'
@@ -189,6 +191,11 @@ interface DocumentState {
   // A tempo layer's display choices, merged; and which layer it reads.
   setTempoDisplay: (layerId: string, display: Partial<NonNullable<TempoData['display']>>) => void
   setTempoSource: (layerId: string, sourceId: string) => void
+  // The beat grid from marked bars (lib/gridFromBars.ts): the given bars, or
+  // with null every bar of the bar layer, become grid stretches at their own
+  // tempos, replacing the grid over the stretch they cover. One undo step;
+  // returns how many stretches and bars, or null with no bars.
+  gridFromBars: (spanIds: string[] | null) => { stretches: number; bars: number } | null
   // A span one or more bars longer or shorter, every later boundary in its
   // layer moving with it (lib/spanEdit.ts, rippleSpanEnd).
   resizeSpanByBars: (layerId: string, spanId: string, bars: number) => void
@@ -1112,6 +1119,30 @@ const useDocumentStore = create<DocumentState>()(
           l.id === layerId && l.type === 'tempo' ? { ...l, data: { ...l.data, source: { ...l.data.source, layerId: sourceId } } } : l,
         )
         set({ document: { ...doc, layers, updatedAt: now() } })
+      },
+
+      gridFromBars: (spanIds) => {
+        const doc = get().document
+        if (!doc) return null
+        let bars: Span[]
+        if (spanIds) {
+          const picked = pickedOnOneLayer(doc, spanIds)
+          if (!picked) return null
+          bars = picked.spans
+        } else {
+          const layer = doc.layers.find((l) => l.role === 'bars' && l.type === 'segmentation')
+          bars = layer ? [...segmentSpans(layer)].sort((a, b) => a.startTime - b.startTime) : []
+        }
+        if (!bars.length) return null
+        const mkId = () => crypto.randomUUID()
+        // Meters are read from the grid as it was, before it is replaced.
+        const made = makeGridFromBars(bars, beatsPerBarAt(doc), mkId, doc.timeSignature?.denominator)
+        if (!made.length) return null
+        const from = bars[0].startTime
+        const to = bars[bars.length - 1].endTime
+        const beatGrid = spliceGrid(doc.beatGrid, made, from, to, doc.duration, mkId)
+        set({ document: { ...doc, beatGrid, updatedAt: now() } })
+        return { stretches: made.length, bars: bars.length }
       },
 
       resizeSpanByBars: (layerId, spanId, bars) => {
