@@ -118,6 +118,7 @@ aren't part of this repository.
 - [Hypermetric counts go into annotations, inside the shape, and never over an annotation holding other text.](#the-bar-layer-2026-11-25)
 - [The bar layer counts its bars by a layer above (each span from 1) or in groups; selected bars recount from 1; Elide makes a bar "4=1" and offers to elide the boundary above it.](#the-bar-layer-2026-11-25)
 - [Fill with the grid's bars makes an empty layer the bar layer, numbered and counted.](#the-bar-layer-2026-11-25)
+- [Selected spans split into equal bars on the bar layer; selected counted bars make phrases on the layer above. Either works on a chunk or the whole track.](#bars-from-phrases-phrases-from-bars-2026-11-25)
 - [Fit boundaries to the grid moves a layer's boundaries to bars or beats.](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02)
 - [Playback rates are 0.5×, 0.75×, 1× and 1.25×; rewind goes to 0:00.](#player-chrome-phase-03)
 - [The play bar's clock reads m:ss; editable times keep milliseconds.](#ui-review-fixes-and-tighter-chrome-2026-09-27)
@@ -235,7 +236,7 @@ By area, in the order the entries were made:
 
 **Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01) · [Group Spans Into Another Layer (2026-10-24)](#group-spans-into-another-layer-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Choosing What Copy to Layer Takes (2026-10-31)](#choosing-what-copy-to-layer-takes-2026-10-31)
 
-**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25)
+**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25) · [Bars From Phrases, Phrases From Bars (2026-11-25)](#bars-from-phrases-phrases-from-bars-2026-11-25)
 
 **Point markers:** [Point Markers](#point-markers) · [Point Markers — Implementation (2026-07-03)](#point-markers--implementation-2026-07-03) · [Point Markers — Redesign (2026-07-04)](#point-markers--redesign-2026-07-04) · [Marker Band, Absent Events, and the Diagram Control Bar (2026-07-24, cont.)](#marker-band-absent-events-and-the-diagram-control-bar-2026-07-24-cont)
 
@@ -5343,4 +5344,37 @@ has: bars only, phrases only, both, or neither.
 `setBarLayer`, `numberBarLayer`, `countBars`, `elideGroupBoundary`,
 `numberBars`, `renumberSpans` and `elideSpan` in the store; `lib/hypermeter.ts`;
 `BarLayerSettings`.
+
+---
+
+## Bars From Phrases, Phrases From Bars (2026-11-25)
+
+*From the maintainer, on quick setup for analyses that have bars but no
+phrases, phrases but no bars, or both: "it should allow to do it with a span
+only … it may not be the whole entire recording, but it may be like a chunk of
+the recording."*
+
+**Decision.** Both tools work on the selected spans, so they set up a chunk of
+the recording as readily as all of it. With spans selected on one layer that
+isn't the bar layer, the Inspector's **Split into N bars** divides each into N
+equal bars on the bar layer, or on a new "Bars" layer made the bar layer just
+below theirs when there is none. Each bar's parent is the span it came from,
+its annotation its count (1 to N), and its label its bar number, going on from
+the numbered bar before. It is refused if the bar layer already has bars in
+that stretch. With counted bars selected, **Phrases from the count** makes one
+phrase from the first selected bar and from every bar counted 1, each running
+to the bar before the next; they go on the layer just above when it has
+nothing in that stretch, else on a new "Phrases" layer there. The bars become
+the phrases' children. A phrase that starts on an elided bar ("4=1") marks the
+end of the phrase before it elided, as Elide's offer does. One undo step each.
+**Rejected.** *Whole-layer only, from the layer menu:* an analysis often marks
+bars for one passage, and selecting a whole layer covers the rest. *Writing over
+bars already there:* like Fill with bars, splitting never replaces spans.
+**Why.** Marking every bar of a nine-minute track by ear took over an hour.
+Tapping 33 phrase boundaries and splitting each into six takes a fraction of
+that. Equal bars inside a tapped phrase are close wherever the tempo is steady
+across the phrase; where it moves (an accelerando), the planned Normalize, with
+its smooth mode, is what evens them along the curve.
+`splitIntoBars` and `phrasesFromCount` in the store; `splitEvenly` and
+`phraseRuns` in lib/hypermeter.ts; `BarSetupRow` in MetadataPanel.
 

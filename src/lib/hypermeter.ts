@@ -156,3 +156,39 @@ export function boundaryOnBar<S extends { startTime: number; endTime: number }>(
   }
   return null
 }
+
+// ---------------------------------------------------------------------------
+// Quick setup between phrases and bars, for any run of selected spans: a chunk
+// of the recording or all of it. docs/decisions.md, "Bars From Phrases, Phrases
+// From Bars".
+// ---------------------------------------------------------------------------
+
+/** [start, end] split into `n` equal bars. */
+export function splitEvenly(start: number, end: number, n: number): Array<[number, number]> {
+  const count = Math.max(1, Math.round(n))
+  const len = (end - start) / count
+  return Array.from({ length: count }, (_, k) => [start + k * len, k === count - 1 ? end : start + (k + 1) * len])
+}
+
+/**
+ * The phrases a run of counted bars (sorted by time) makes: one starts at the
+ * first bar and at every bar counted 1 ("1", or "4=1" for an elided bar), and
+ * runs to the bar before the next. `elided` marks a phrase whose first bar is
+ * elided, so the phrase before it ends in that bar. Bars whose annotation isn't
+ * a count stay in the phrase they fall in.
+ */
+export function phraseRuns<B extends { id: string; startTime: number; endTime: number; annotation?: string | null }>(
+  bars: B[],
+): Array<{ start: number; end: number; ids: string[]; elided: boolean }> {
+  const runs: Array<{ start: number; end: number; ids: string[]; elided: boolean }> = []
+  for (const b of bars) {
+    const last = runs[runs.length - 1]
+    if (!last || countOf(b.annotation) === 1) {
+      runs.push({ start: b.startTime, end: b.endTime, ids: [b.id], elided: !!last && (b.annotation ?? '').includes('=') })
+    } else {
+      last.end = b.endTime
+      last.ids.push(b.id)
+    }
+  }
+  return runs
+}

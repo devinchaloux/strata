@@ -9,7 +9,7 @@
  * boundary placement — slice 3).
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { useDocumentStore, groupBoundaryOnBar } from '@/store/documentStore'
 import { countOf } from '@/lib/hypermeter'
@@ -727,6 +727,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         )}
 
         <HypermeterRow layerId={layer.id} spans={[span]} />
+        <BarSetupRow layer={layer} spans={[span]} />
 
         {/* Linked to a parent or children (Group, Copy to layer): boundaries they
             share move together (lib/linkedBoundaries.ts). Unlink frees them. */}
@@ -1058,6 +1059,82 @@ function HypermeterRow({ layerId, spans }: { layerId: string; spans: Span[] }) {
   )
 }
 
+/**
+ * Quick setup between phrases and bars, on whatever is selected: a chunk of
+ * the recording or all of it. Selected spans that aren't bars split into equal
+ * bars on the bar layer (made below them if there is none); selected counted
+ * bars make phrases, one from each bar counted 1, on the layer above.
+ * docs/decisions.md, "Bars From Phrases, Phrases From Bars".
+ */
+function BarSetupRow({ layer, spans }: { layer: Layer; spans: Span[] }) {
+  const splitIntoBars = useDocumentStore((s) => s.splitIntoBars)
+  const phrasesFromCount = useDocumentStore((s) => s.phrasesFromCount)
+  const barGroup = useUIStore((s) => s.barGroup)
+  const setBarGroup = useUIStore((s) => s.setBarGroup)
+  const [result, setResult] = useState<string | null>(null)
+  if (layer.locked || layer.type !== 'form-diagram') return null
+  const isBars = layer.role === 'bars'
+  const counted = spans.some((s) => countOf(s.annotation) !== null)
+  if (isBars && !counted) return null
+  const button = 'rounded border border-border px-2 py-0.5 text-xs text-foreground hover:bg-accent'
+  const n = spans.length
+  return (
+    <div className="flex flex-col gap-1 text-xs">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="w-10 shrink-0 text-muted-foreground">Bars</span>
+        {!isBars && (
+          <>
+            <button
+              className={button}
+              title={`Split ${n === 1 ? 'this span' : `each of these ${n} spans`} into equal bars on the bar layer, numbered and counted`}
+              onClick={() => {
+                const r = splitIntoBars(spans.map((s) => s.id), barGroup)
+                setResult(
+                  r === 'occupied'
+                    ? 'The bar layer already has bars here.'
+                    : r
+                      ? `Made ${r.made} bars, numbered and counted.`
+                      : null,
+                )
+              }}
+            >
+              Split into
+            </button>
+            <input
+              type="number"
+              min={1}
+              max={16}
+              value={barGroup}
+              onChange={(e) => setBarGroup(Number(e.target.value) || 1)}
+              aria-label="Bars in each span"
+              title="Bars in each span"
+              className="w-10 rounded border border-border bg-card px-1 py-0.5 text-center text-xs tabular-nums text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
+            />
+            <span className="text-muted-foreground">bars {n === 1 ? '' : 'each'}</span>
+          </>
+        )}
+        {counted && (
+          <button
+            className={button}
+            title="Make phrases on the layer above: one starts at each bar counted 1, and these bars become their children"
+            onClick={() => {
+              const r = phrasesFromCount(spans.map((s) => s.id))
+              setResult(r ? `Made ${r.made} phrase${r.made === 1 ? '' : 's'} from the count.` : null)
+            }}
+          >
+            Phrases from the count
+          </button>
+        )}
+      </div>
+      {result && (
+        <span className="pl-[2.875rem] text-[11px] text-muted-foreground" role="status">
+          {result}
+        </span>
+      )}
+    </div>
+  )
+}
+
 function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
   const doc = useDocumentStore((s) => s.document)
   const updateSpans = useDocumentStore((s) => s.updateSpans)
@@ -1130,6 +1207,9 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
         {entries.every((e) => e.layer.id === entries[0].layer.id) && (
           <div className="mb-4">
             <HypermeterRow layerId={entries[0].layer.id} spans={spans} />
+            <div className="mt-1.5">
+              <BarSetupRow layer={entries[0].layer} spans={spans} />
+            </div>
           </div>
         )}
 

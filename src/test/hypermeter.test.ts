@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { barNumberLabels, boundaryOnBar, countLabels, countOf, countsByGroups, elideLabels, gridBars, holdsCount, writeCounts } from '@/lib/hypermeter'
+import { barNumberLabels, boundaryOnBar, countLabels, countOf, countsByGroups, elideLabels, gridBars, holdsCount, phraseRuns, splitEvenly, writeCounts } from '@/lib/hypermeter'
 import { readDocument } from '@/lib/documentLoad'
 import type { GridSegment, Span } from '@/types/strata'
 import { formSpans } from '@/lib/layers'
@@ -213,5 +213,60 @@ describe('bar-layer helpers', () => {
     expect(boundaryOnBar([4, 5], spans)).toEqual({ before: spans[0], after: spans[1] })
     expect(boundaryOnBar([3, 4], spans)).toEqual({ before: spans[0], after: spans[1] })
     expect(boundaryOnBar([1, 2], spans)).toBeNull()
+  })
+})
+
+describe('bars from phrases, phrases from bars', () => {
+  const store = () => useDocumentStore.getState()
+  const layers = () => [...store().document!.layers].sort((a, b) => a.displayOrder - b.displayOrder)
+  const byLabel = (label: string) => layers().find((l) => l.label === label)!
+  const sp = (id: string, startTime: number, endTime: number, extra: Partial<Span> = {}): Span => ({ id, startTime, endTime, ...extra })
+
+  it('splits only the selected phrases into bars, on a new bar layer below them', () => {
+    // Three phrases; the analyst picks the middle two, a chunk of the track.
+    store().loadDocument({ ...makeDoc([makeLayer('Phrases', [sp('p1', 0, 8), sp('p2', 8, 14), sp('p3', 14, 20)], 0)]), duration: 20 })
+    const r = store().splitIntoBars(['p2', 'p3'], 3)
+    expect(r).toMatchObject({ made: 6 })
+    const bars = byLabel('Bars')
+    expect(bars.role).toBe('bars')
+    expect(layers().map((l) => l.label)).toEqual(['Bars', 'Phrases'])
+    const made = formSpans(bars)
+    expect(made.map((b) => [b.startTime, b.endTime])).toEqual([[8, 10], [10, 12], [12, 14], [14, 16], [16, 18], [18, 20]])
+    expect(made.map((b) => b.label)).toEqual(['1', '2', '3', '4', '5', '6'])
+    expect(made.map((b) => b.annotation)).toEqual(['1', '2', '3', '1', '2', '3'])
+    expect(made.map((b) => b.parentId)).toEqual(['p2', 'p2', 'p2', 'p3', 'p3', 'p3'])
+    // The first phrase next: its bars go in, and numbering goes on from the bar before.
+    store().splitIntoBars(['p1'], 4)
+    expect(formSpans(byLabel('Bars')).map((b) => b.label).slice(0, 4)).toEqual(['1', '2', '3', '4'])
+    // Not over bars that are there.
+    expect(store().splitIntoBars(['p2'], 3)).toBe('occupied')
+    useDocumentStore.temporal.getState().undo()
+    expect(formSpans(byLabel('Bars'))).toHaveLength(6)
+  })
+
+  it('makes phrases from a chunk of counted bars, eliding where a bar is 4=1', () => {
+    const counts = ['1', '2', '3', '4', '1', '2', '3', '4=1', '2', '3', '4']
+    const bars = counts.map((c, k) => sp(`b${k}`, k * 2, k * 2 + 2, { annotation: c }))
+    store().loadDocument({ ...makeDoc([{ ...makeLayer('Bars', bars, 0), role: 'bars' as const }, makeLayer('Phrases', [sp('far', 30, 40)], 1)]), duration: 40 })
+    // Bars 2 onward only: the first phrase starts at the first selected bar.
+    const r = store().phrasesFromCount(bars.slice(2).map((b) => b.id))
+    expect(r?.layerId).toBe('Phrases')
+    const phrases = formSpans(byLabel('Phrases')).filter((p) => p.id !== 'far')
+    expect(phrases.map((p) => [p.startTime, p.endTime])).toEqual([[4, 8], [8, 14], [14, 22]])
+    expect(phrases[1].endBoundaryType).toBe('elided')
+    const kids = formSpans(byLabel('Bars')).filter((b) => b.parentId === phrases[2].id).map((b) => b.id)
+    expect(kids).toEqual(['b7', 'b8', 'b9', 'b10'])
+    // The layer above is now full there: a second run makes a new Phrases layer.
+    store().phrasesFromCount(bars.slice(2).map((b) => b.id))
+    expect(layers().map((l) => l.label)).toEqual(['Bars', 'Phrases', 'Phrases'])
+  })
+
+  it('splits evenly and finds runs', () => {
+    expect(splitEvenly(0, 6, 3)).toEqual([[0, 2], [2, 4], [4, 6]])
+    const runs = phraseRuns([sp('a', 0, 1, { annotation: '1' }), sp('b', 1, 2, { annotation: '2' }), sp('c', 2, 3, { annotation: '2=1' }), sp('d', 3, 4, { annotation: 'Hook' })])
+    expect(runs).toEqual([
+      { start: 0, end: 2, ids: ['a', 'b'], elided: false },
+      { start: 2, end: 4, ids: ['c', 'd'], elided: true },
+    ])
   })
 })

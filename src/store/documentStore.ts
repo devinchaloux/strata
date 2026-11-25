@@ -2,10 +2,10 @@ import { create } from 'zustand'
 import { temporal } from 'zundo'
 import type { StrataDocument, Layer, LayerBase, Span, PointMarker, GridSegment, VocabTerm } from '@/types/strata'
 import { formSpans, newFormLayer } from '@/lib/layers'
-import { groupUpTarget, placeSpan, copyOfSpan, DEFAULT_COPY_FIELDS, type CopyField } from '@/lib/groupSpans'
+import { groupUpTarget, placeSpan, copyOfSpan, layerAbove, DEFAULT_COPY_FIELDS, type CopyField } from '@/lib/groupSpans'
 import { boundaryMoves, followLinks, repairParentLinks, splitTimeNearChildren, relinkToPieces } from '@/lib/linkedBoundaries'
 import { sortedSegments, segmentAt, segmentEnd, extendBack, snapToGrid, barTiling, barLength } from '@/lib/beatGrid'
-import { barNumberLabels, boundaryOnBar, countLabels, countOf, countsByGroups, elideLabels, numberedGridBars, writeCounts } from '@/lib/hypermeter'
+import { barNumberLabels, boundaryOnBar, countLabels, countOf, countsByGroups, elideLabels, numberedGridBars, phraseRuns, splitEvenly, writeCounts } from '@/lib/hypermeter'
 import { roundTempo, segmentForAdjusting, tempoThroughDownbeat } from '@/lib/metronome'
 import type { FormDiagramData } from '@/types/strata'
 import { mergeVocabPack, type MergeResult, type VocabPack } from '@/lib/vocabPack'
@@ -146,6 +146,20 @@ interface DocumentState {
   // boundaryOnBar): the end of the span that ends there. The nearest layer
   // above with one there is used. Returns that layer's id, or null if none has one.
   elideGroupBoundary: (layerId: string, spanId: string) => string | null
+  // Quick setup between phrases and bars, for any selected run (a chunk of the
+  // recording or all of it). One undo step each.
+  // Split each selected span into `barsEach` equal bars on the bar layer, or a
+  // new "Bars" layer just below theirs when there is none: each bar's parent
+  // is its phrase, its annotation its count, its label its bar number, going on
+  // from the bar before. Refused ('occupied') when the bar layer already has
+  // bars in that stretch.
+  splitIntoBars: (spanIds: string[], barsEach: number) => { made: number; layerId: string } | 'occupied' | null
+  // Make phrases from selected counted bars: one starts at the first bar and at
+  // every bar counted 1 (lib/hypermeter.ts phraseRuns), on the layer just
+  // above theirs when it has nothing in that stretch, else on a new "Phrases"
+  // layer there. The bars become the phrases' children; a phrase that starts
+  // on an elided bar ("4=1") marks the end of the one before it elided.
+  phrasesFromCount: (spanIds: string[]) => { made: number; layerId: string } | null
   // A span one or more bars longer or shorter, every later boundary in its
   // layer moving with it (lib/spanEdit.ts, rippleSpanEnd).
   resizeSpanByBars: (layerId: string, spanId: string, bars: number) => void
@@ -277,6 +291,19 @@ function withBarRole(layers: Layer[], layerId: string, on: boolean): Layer[] {
     delete rest.role
     return rest
   })
+}
+
+/**
+ * The selected spans when they all sit on one unlocked form layer, sorted by
+ * time; null otherwise.
+ */
+function pickedOnOneLayer(doc: StrataDocument | null, spanIds: string[]): { layer: Layer; spans: Span[] } | null {
+  if (!doc || !spanIds.length) return null
+  const layer = doc.layers.find((l) => l.type === 'form-diagram' && formSpans(l).some((s) => spanIds.includes(s.id)))
+  if (!layer || layer.locked) return null
+  const spans = formSpans(layer).filter((s) => spanIds.includes(s.id))
+  if (spans.length !== spanIds.length) return null
+  return { layer, spans: [...spans].sort((a, b) => a.startTime - b.startTime) }
 }
 
 /**
@@ -878,6 +905,76 @@ const useDocumentStore = create<DocumentState>()(
         const next = patchSpans(doc, new Set([hit.boundary.before.id]), (s) => ({ ...s, endBoundaryType: 'elided', endCap: undefined }))
         set({ document: { ...next, updatedAt: now() } })
         return hit.layer.id
+      },
+
+      splitIntoBars: (spanIds, barsEach) => {
+        const doc = get().document
+        const picked = pickedOnOneLayer(doc, spanIds)
+        if (!doc || !picked) return null
+        const { layer: source, spans: phrases } = picked
+        let layers = doc.layers
+        let bars = layers.find((l) => l.role === 'bars' && l.id !== source.id && l.type === 'form-diagram')
+        if (bars?.locked) return null
+        if (bars) {
+          const existing = formSpans(bars)
+          if (phrases.some((p) => existing.some((b) => b.endTime > p.startTime + 1e-6 && b.startTime < p.endTime - 1e-6))) return 'occupied'
+        } else {
+          // A new bar layer just below the phrases; the layers from there up move up one.
+          const at = source.displayOrder
+          const made = newFormLayer('Bars', at)
+          layers = withBarRole([...layers.map((l) => (l.displayOrder >= at ? { ...l, displayOrder: l.displayOrder + 1 } : l)), made], made.id, true)
+          bars = layers.find((l) => l.id === made.id)!
+        }
+        const barLayer = bars
+        // Bar numbers go on from the numbered bar before the first phrase.
+        const before = formSpans(barLayer)
+          .filter((b) => b.endTime <= phrases[0].startTime + 1e-6 && /^\s*\d+\s*$/.test(b.label ?? ''))
+          .sort((a, b) => b.startTime - a.startTime)[0]
+        let number = before ? Number(before.label) + 1 : 1
+        const fresh: Span[] = phrases.flatMap((p) =>
+          splitEvenly(p.startTime, p.endTime, barsEach).map(([startTime, endTime], k) => ({
+            id: crypto.randomUUID(),
+            startTime,
+            endTime,
+            parentId: p.id,
+            annotation: String(k + 1),
+          })),
+        )
+        layers = mapLayer(layers, barLayer.id, (l) => mapFormDiagramSpans(l, (spans) => [...spans, ...fresh].sort((a, b) => a.startTime - b.startTime)))
+        const next = relabelSpans({ ...doc, layers }, new Map(fresh.map((b) => [b.id, String(number++)])), get().frozenSlugIds)
+        set({ document: { ...next, updatedAt: now() } })
+        return { made: fresh.length, layerId: barLayer.id }
+      },
+
+      phrasesFromCount: (spanIds) => {
+        const doc = get().document
+        const picked = pickedOnOneLayer(doc, spanIds)
+        if (!doc || !picked) return null
+        const { layer: source, spans: bars } = picked
+        if (!bars.some((b) => countOf(b.annotation) !== null)) return null
+        const start = bars[0].startTime
+        const end = bars[bars.length - 1].endTime
+        let layers = doc.layers
+        const above = layerAbove(layers, source)
+        const free = above && !above.locked && !formSpans(above).some((x) => x.endTime > start + 1e-6 && x.startTime < end - 1e-6)
+        let targetId: string
+        if (above && free) targetId = above.id
+        else {
+          const at = source.displayOrder + 1
+          const made = newFormLayer('Phrases', at)
+          layers = [...layers.map((l) => (l.displayOrder >= at ? { ...l, displayOrder: l.displayOrder + 1 } : l)), made]
+          targetId = made.id
+        }
+        const runs = phraseRuns(bars)
+        const fresh: Span[] = runs.map((r) => ({ id: crypto.randomUUID(), startTime: r.start, endTime: r.end }))
+        runs.forEach((r, k) => {
+          if (r.elided && k > 0) fresh[k - 1] = { ...fresh[k - 1], endBoundaryType: 'elided' }
+        })
+        const parentOf = new Map(runs.flatMap((r, k) => r.ids.map((id) => [id, fresh[k].id] as const)))
+        layers = mapLayer(layers, targetId, (l) => mapFormDiagramSpans(l, (spans) => [...spans, ...fresh].sort((a, b) => a.startTime - b.startTime)))
+        layers = mapLayer(layers, source.id, (l) => mapFormDiagramSpans(l, (spans) => spans.map((x) => (parentOf.has(x.id) ? { ...x, parentId: parentOf.get(x.id) } : x))))
+        set({ document: { ...doc, layers, updatedAt: now() } })
+        return { made: fresh.length, layerId: targetId }
       },
 
       resizeSpanByBars: (layerId, spanId, bars) => {
