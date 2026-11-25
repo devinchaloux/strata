@@ -213,7 +213,7 @@ aren't part of this repository.
 - [Merging into `main` is a release; an open tab keeps its version.](#releases-and-open-tabs-2026-10-02)
 - [Tests run in Node unless a file needs a DOM; the audit runs weekly.](#faster-checks-tests-in-node-a-weekly-audit-2026-10-05)
 - [Lint runs React's full hooks set; CI fails on a `TEMPORARY` marker.](#reacts-newer-checks-on-2026-10-16)
-- [ESLint's tools take a patched minimatch until ESLint's own range reaches 11.](#lint-tools-use-a-patched-minimatch-2026-11-07)
+- [ESLint's tools need no minimatch override: since ESLint 10.15 and typescript-eslint 8.74 they ask for 11 themselves.](#lint-tools-use-a-patched-minimatch-2026-11-07)
 - [The beta analyses one recording at a time; a Corpus Builder is planned for version 2, its backend still open.](#the-corpus-builder-is-planned-for-version-2-2026-10-31)
 - [The Library may never be built.](#architecture-1)
 - [Report-building across widgets waits for version 2.](#widgets)
@@ -5030,6 +5030,10 @@ project gets it.
 11.0.1, and the newest ESLint (10.14) and typescript-eslint (8.72) still ask
 for 10. Lint covers the same 159 files with the override, and the suite
 passes. Remove the override once ESLint's own dependency range reaches 11.
+**Update (2026-11-25).** The override is gone. ESLint 10.15 and
+typescript-eslint 8.74 ask for minimatch 11 themselves, so `package.json`
+takes those versions and has no `overrides` block. Lint covers the same 170
+files, and `npm audit` reports nothing.
 
 
 ---
