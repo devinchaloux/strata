@@ -64,6 +64,17 @@ You get bar numbers from the beat grid. There is no score view: Strata works wit
 
 Put the `.strata` file online (Dropbox, OneDrive, GitHub, or your own site). Then use **Share…** for a link that opens it in Strata's reading view. You can also embed it in a web page, focused on one section. For a paper or slides, export the diagram as an SVG, PNG, or PDF figure.
 
+**Which file hosts work?**
+
+Any place that lets other sites read the file. Save your `.strata` file there, copy its link, and paste it into **Share…**:
+
+- **GitHub:** put the file in a repository or a Gist and copy the file's page link. Strata reads the raw file behind it.
+- **Dropbox:** share the file and copy the link ("Anyone with the link").
+- **OneDrive (personal):** share the file with "Anyone with the link" and copy the link.
+- **Your own site:** link the file directly. Your server has to allow other sites to read it (CORS).
+
+Google Drive doesn't work: it lets other sites read its files only through its own API. Strata stays this way through the beta, with no server of its own in between.
+
 **Can I use it for corpus studies?**
 
 Yes. You keep every analysis as structured data with shared types. You can read a folder of `.strata` files with a short script or import them into a spreadsheet. The Corpus Builder, planned for version 2, will let you gather and query analyses inside Strata. [How the JSON is structured](json-structure.md) shows a short script that reads a folder of analyses.
