@@ -66,7 +66,7 @@ export function readDocument(raw: unknown): LoadResult {
 
   // ── 2 & 3. Validate and normalize, layer by layer ──
   const spanIds = new Set<string>()
-  const layers = input.layers.map((raw, i) => readLayer(raw, i, spanIds, notices))
+  const layers = oneBarLayer(input.layers.map((raw, i) => readLayer(raw, i, spanIds, notices)))
   const lastSpanEnd = Math.max(
     0,
     ...layers.flatMap((l) => (l.type === 'form-diagram' ? l.data.spans.map((s) => s.endTime) : [])),
@@ -139,6 +139,25 @@ function fillMissingSlugs(doc: StrataDocument): StrataDocument {
     ),
     pointMarkers: markers.map((m) => (assigned.has(m.id) ? { ...m, slug: assigned.get(m.id)! } : m)),
   }
+}
+
+/**
+ * A document has at most one bar layer (Layer.role 'bars'): the first form
+ * layer that claims it keeps it, and any other loses it. A role this version
+ * doesn't know is kept as it is, so saving round-trips it.
+ */
+function oneBarLayer(layers: Layer[]): Layer[] {
+  let found = false
+  return layers.map((l) => {
+    if (l.role !== 'bars') return l
+    if (l.type === 'form-diagram' && !found) {
+      found = true
+      return l
+    }
+    const rest = { ...l }
+    delete rest.role
+    return rest
+  })
 }
 
 function readLayer(raw: unknown, index: number, spanIds: Set<string>, notices: string[]): Layer {

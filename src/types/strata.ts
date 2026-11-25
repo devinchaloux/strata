@@ -313,6 +313,14 @@ export interface LayerBase {
    */
   fillGaps?: boolean
   /**
+   * What the layer is for, where Strata offers tools for it. 'bars' marks the
+   * bar layer: one span per bar, its label the bar number and its annotation
+   * the hypermetric count (lib/hypermeter.ts). At most one layer in a document
+   * has it. Absent = an ordinary layer. Not to be confused with spanShape
+   * 'bar', which is only a way of drawing.
+   */
+  role?: 'bars'
+  /**
    * Text size for this layer's labels and annotations: sm (9.5 / 8.5 px),
    * md (11 / 9, the default when absent) or lg (13 / 11). Uniform within a
    * layer; there is no per-span font size.

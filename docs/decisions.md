@@ -114,7 +114,10 @@ aren't part of this repository.
 - [The metronome clicks the grid and tunes it to a thousandth of a BPM.](#click-track-and-beat-matching-2026-10-24)
 - [Quick setup by tempo fills a layer with a span every N bars.](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24)
 - [A span's length in bars can be stepped or typed, and later boundaries move with it.](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24)
-- [Number bars fills an empty layer with one span per bar, counted in groups; selected bars recount from 1, and Elide makes a bar "4=1".](#numbering-hypermeter-2026-11-20)
+- [One layer can be the bar layer (`role: "bars"`): each span a bar, its label the bar number, its annotation the hypermetric count.](#the-bar-layer-2026-11-25)
+- [Hypermetric counts go into annotations, inside the shape, and never over an annotation holding other text.](#the-bar-layer-2026-11-25)
+- [The bar layer counts its bars by a layer above (each span from 1) or in groups; selected bars recount from 1; Elide makes a bar "4=1" and offers to elide the boundary above it.](#the-bar-layer-2026-11-25)
+- [Fill with the grid's bars makes an empty layer the bar layer, numbered and counted.](#the-bar-layer-2026-11-25)
 - [Fit boundaries to the grid moves a layer's boundaries to bars or beats.](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02)
 - [Playback rates are 0.5×, 0.75×, 1× and 1.25×; rewind goes to 0:00.](#player-chrome-phase-03)
 - [The play bar's clock reads m:ss; editable times keep milliseconds.](#ui-review-fixes-and-tighter-chrome-2026-09-27)
@@ -232,7 +235,7 @@ By area, in the order the entries were made:
 
 **Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01) · [Group Spans Into Another Layer (2026-10-24)](#group-spans-into-another-layer-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Choosing What Copy to Layer Takes (2026-10-31)](#choosing-what-copy-to-layer-takes-2026-10-31)
 
-**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24)
+**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25)
 
 **Point markers:** [Point Markers](#point-markers) · [Point Markers — Implementation (2026-07-03)](#point-markers--implementation-2026-07-03) · [Point Markers — Redesign (2026-07-04)](#point-markers--redesign-2026-07-04) · [Marker Band, Absent Events, and the Diagram Control Bar (2026-07-24, cont.)](#marker-band-absent-events-and-the-diagram-control-bar-2026-07-24-cont)
 
@@ -5283,4 +5286,61 @@ shaded margin of "The Track's End Shows" (2026-11-05).
 a layer of bars is wrong, and it was space nobody could use. The problem it
 solved, an open last end that looked as if it ran on, is answered by the
 timeline itself stopping there: nothing is drawn past the end to run into.
+
+---
+
+## The Bar Layer (2026-11-25)
+
+*From the maintainer, after counting with Number bars on a nine-minute track
+with all 198 bars marked by hand: "In my head, this is an annotation. It is not
+a label." And then: "the label really should be the bar number … and the
+grouping is the annotation." An analyst who marks every bar is trying to show
+something with it, and the hour that skeleton takes should pay off.*
+
+**Decision.** A layer can be **the bar layer** (`Layer.role: "bars"`, a new
+optional field, so no format version bump). Each span on it is a bar: its
+label is the bar number, its annotation its place in the hypermetric group
+(`1`, `2` …, `4=1` for an elided bar). A document has at most one; making a
+layer the bar layer takes the role from any other, and a reader that finds two
+keeps the first. A switch in the layer menu turns it on. Turning it on numbers
+the bars from 1 where every label is empty or a count, moving counts written as
+labels into empty annotations; labels that are words stay. The menu then
+numbers the bars from a first bar (0 for a pickup), and counts them **by a
+layer above**, each of whose spans counts its bars from 1 to its end (a six-bar
+phrase counts to 6, an expansion on to 7 or 8, with no group size set), or **in
+groups** of a set size. Fill with the grid's bars, on an empty layer, makes it
+the bar layer, labelled with the grid's own bar numbers and counted in groups.
+
+**Decision.** Hypermetric counts go into span annotations, on any layer, and a
+count is never written over an annotation that holds other text; the menu says
+how many it left alone. This replaces counts as labels ("Numbering Hypermeter",
+2026-11-20). The Inspector's row reads "Count these N from 1, in groups of N"
+(the old "in [4] s" read as nothing).
+
+**Decision.** On an elided bar, the Inspector offers **Elide the Phrases
+boundary too** when a layer above (the nearest with one) has a boundary at the
+bar's start or end. It marks the end of the span that ends there elided, since
+elision is recorded per side. It is an offer, not automatic: a hypermetric
+elision often goes with a phrase elision, but they are different claims.
+
+**Rejected.** *Counts as labels with an option to put them inside:* on the bar
+layer the label is needed for the bar number, and as labels the counts made a
+slug each ("1", "1-2" … 198 on one track), useless as link targets. Bar numbers
+make good ones. *A choice per layer between label and annotation for counts:*
+the bar layer settles which is which. *A structured count field* (`count: 4,
+becomesCount: 1`) would make "every elision in the corpus" a query; it is a
+format design for later. How a hypermetric reinterpretation is written is still
+open.
+
+**Why.** The text zones ruling already put bar numbers and analytical detail
+inside the shape and the name above; counts as labels contradicted it. Knowing
+which layer holds the bars lets Strata offer tools for it without guessing:
+counting from the phrases already drawn, and next (agreed with the maintainer,
+in this order) a tempo lane drawn from the bar lengths, a Normalize that evens
+out tapping error, steady or along a smooth curve, with a preview, and a beat
+grid made from the bars. Quick setup should help whichever layers an analysis
+has: bars only, phrases only, both, or neither.
+`setBarLayer`, `numberBarLayer`, `countBars`, `elideGroupBoundary`,
+`numberBars`, `renumberSpans` and `elideSpan` in the store; `lib/hypermeter.ts`;
+`BarLayerSettings`.
 

@@ -257,7 +257,7 @@ export interface UIState {
   /** The focused stretch: the rest of the diagram is dimmed and playback loops here. */
   focusRange: { start: number; end: number } | null
   setFocusRange: (range: { start: number; end: number } | null) => void
-  /** Bars in a hypermetric group for Number bars, Number from 1 and Elide (lib/hypermeter.ts). Session only. */
+  /** Bars in a hypermetric group for Fill with bars, Count and Elide (lib/hypermeter.ts). Session only. */
   barGroup: number
   setBarGroup: (n: number) => void
   /** Until this time (ms), playback doesn't scroll the timeline: the reader has panned it by hand. */

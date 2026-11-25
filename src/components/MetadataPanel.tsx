@@ -11,7 +11,7 @@
 
 import { useEffect, useRef } from 'react'
 import { ChevronRight } from 'lucide-react'
-import { useDocumentStore } from '@/store/documentStore'
+import { useDocumentStore, groupBoundaryOnBar } from '@/store/documentStore'
 import { countOf } from '@/lib/hypermeter'
 import { useUIStore, type InspectorSection } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
@@ -989,51 +989,71 @@ function commonValue<T>(spans: Span[], get: (s: Span) => T): T | typeof MIXED {
 }
 
 /**
- * Hypermeter (lib/hypermeter.ts): recount a run of selected bars from 1, or
- * make one bar the elided "4=1" and count on from 2. Elide shows only on a bar
- * whose label is already a count, so the Inspector stays quiet elsewhere.
- * The group size is shared with the layer menu's Number bars.
+ * Hypermeter (lib/hypermeter.ts): count a run of selected bars from 1, or
+ * make one bar the elided "4=1" and count on from 2. Counts go into the
+ * annotation, inside the shape. Elide shows only on a bar whose annotation is
+ * already a count, so the Inspector stays quiet elsewhere; on an elided bar
+ * where a layer above has a boundary, it offers to mark that boundary elided
+ * too. The group size is shared with the layer menu.
+ * docs/decisions.md, "Numbering Hypermeter" and "The Bar Layer".
  */
 function HypermeterRow({ layerId, spans }: { layerId: string; spans: Span[] }) {
+  const doc = useDocumentStore((s) => s.document)
   const renumberSpans = useDocumentStore((s) => s.renumberSpans)
   const elideSpan = useDocumentStore((s) => s.elideSpan)
+  const elideGroupBoundary = useDocumentStore((s) => s.elideGroupBoundary)
   const barGroup = useUIStore((s) => s.barGroup)
   const setBarGroup = useUIStore((s) => s.setBarGroup)
   const single = spans.length === 1
-  if (single && countOf(spans[0].label) === null) return null
+  if (single && countOf(spans[0].annotation) === null) return null
+  const elided = single && (spans[0].annotation ?? '').includes('=')
+  const hit = elided && doc ? groupBoundaryOnBar(doc, layerId, spans[0].id) : null
+  const offer = hit && hit.boundary.before.endBoundaryType !== 'elided' ? hit : null
   const button = 'rounded border border-border px-2 py-0.5 text-xs text-foreground hover:bg-accent'
   return (
-    <div className="flex items-center gap-1.5 text-xs">
-      <span className="w-10 shrink-0 text-muted-foreground">Count</span>
-      {single ? (
-        <button
-          className={button}
-          title="This bar ends one group and begins the next: it becomes 4=1, and the bars after it count on from 2"
-          onClick={() => elideSpan(layerId, spans[0].id, barGroup)}
-        >
-          Elide
-        </button>
-      ) : (
-        <button
-          className={button}
-          title="Count these bars 1, 2, 3 … from the first, in groups"
-          onClick={() => renumberSpans(layerId, spans.map((s) => s.id), barGroup)}
-        >
-          Number from 1
-        </button>
+    <div className="flex flex-col gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5 text-xs">
+        <span className="w-10 shrink-0 text-muted-foreground">Count</span>
+        {single ? (
+          <button
+            className={button}
+            title="This bar ends one group and begins the next: its count becomes 4=1, and the bars after it count on from 2"
+            onClick={() => elideSpan(layerId, spans[0].id, barGroup)}
+          >
+            Elide
+          </button>
+        ) : (
+          <button
+            className={button}
+            title="Count these bars 1, 2, 3 … from the first, in groups, into their annotations"
+            onClick={() => renumberSpans(layerId, spans.map((s) => s.id), barGroup)}
+          >
+            Count these {spans.length} from 1
+          </button>
+        )}
+        <span className="text-muted-foreground">in groups of</span>
+        <input
+          type="number"
+          min={1}
+          max={16}
+          value={barGroup}
+          onChange={(e) => setBarGroup(Number(e.target.value) || 1)}
+          aria-label="Bars in a group"
+          title="Bars in a group"
+          className="w-10 rounded border border-border bg-card px-1 py-0.5 text-center text-xs tabular-nums text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
+        />
+      </div>
+      {offer && (
+        <div className="flex items-center gap-1.5 pl-[2.875rem] text-xs">
+          <button
+            className={button}
+            title={`${offer.layer.label} has a boundary on this bar: mark it elided, so one span ends and the next begins in this bar`}
+            onClick={() => elideGroupBoundary(layerId, spans[0].id)}
+          >
+            Elide the {offer.layer.label} boundary too
+          </button>
+        </div>
       )}
-      <span className="text-muted-foreground">in</span>
-      <input
-        type="number"
-        min={1}
-        max={16}
-        value={barGroup}
-        onChange={(e) => setBarGroup(Number(e.target.value) || 1)}
-        aria-label="Bars in a group"
-        title="Bars in a group"
-        className="w-10 rounded border border-border bg-card px-1 py-0.5 text-center text-xs tabular-nums text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
-      />
-      <span className="text-muted-foreground">s</span>
     </div>
   )
 }

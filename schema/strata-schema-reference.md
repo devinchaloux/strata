@@ -71,6 +71,8 @@ Strata stores the grid as a few **stretches** rather than as individual beats. E
 
 Strata works out every beat and bar line from these few numbers. When you correct a tempo, you change one number. Every bar line after it moves with it.
 
+A layer can also mark the bars one by one: the **bar layer** (`role: "bars"` on the layer). Each of its spans is a bar. The span's label is the bar number and its annotation the bar's place in its hypermetric group: `1`, `2`, `3`, and `4=1` for an elided bar, which ends one group and begins the next. Where the grid computes bars from a tempo, the bar layer records them as you heard them, so it suits music whose tempo moves. A document has at most one bar layer.
+
 ## Layers
 
 A layer (`layers`) holds one reading of the timeline: large-scale form, sections, phrases, or one framework's view of the piece. A file can hold as many layers as your analysis needs. You can give your layers different focuses, frameworks, and vocabularies within the same analysis.
@@ -96,6 +98,7 @@ Each layer also carries its own settings:
 | Default colors | Fill and outline for spans that have no color of their own, or no color at all (`"none"`) | `fillColorDefault`, `strokeColorDefault` |
 | Shape | Brackets, or thin flat bars (suited to a layer of key areas) | `spanShape` |
 | Library | The vocabulary you usually draw this layer's types from. It's a preference only: you can use any type | `library` |
+| Bar layer | Marks the one layer that has a span for every bar: its labels are bar numbers, its annotations the hypermetric counts ("4=1" for an elided bar) | `role: "bars"` |
 | Filling gaps | Whether a boundary in an empty stretch fills the stretch on both sides or starts a span there, for a layer that begins partway through | `fillGaps` |
 | Text size | Small, medium, or large labels | `fontScale` |
 

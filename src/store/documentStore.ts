@@ -5,7 +5,7 @@ import { formSpans, newFormLayer } from '@/lib/layers'
 import { groupUpTarget, placeSpan, copyOfSpan, DEFAULT_COPY_FIELDS, type CopyField } from '@/lib/groupSpans'
 import { boundaryMoves, followLinks, repairParentLinks, splitTimeNearChildren, relinkToPieces } from '@/lib/linkedBoundaries'
 import { sortedSegments, segmentAt, segmentEnd, extendBack, snapToGrid, barTiling, barLength } from '@/lib/beatGrid'
-import { countLabels, elideLabels, gridBars } from '@/lib/hypermeter'
+import { barNumberLabels, boundaryOnBar, countLabels, countOf, countsByGroups, elideLabels, numberedGridBars, writeCounts } from '@/lib/hypermeter'
 import { roundTempo, segmentForAdjusting, tempoThroughDownbeat } from '@/lib/metronome'
 import type { FormDiagramData } from '@/types/strata'
 import { mergeVocabPack, type MergeResult, type VocabPack } from '@/lib/vocabPack'
@@ -120,15 +120,32 @@ interface DocumentState {
   // meter. One undo step; returns how many spans it made (0 when there is no
   // tempo to go on, or the layer already has spans in that stretch).
   fillLayerWithBars: (layerId: string, start: number, barsPer: number) => number
-  // Hypermeter (lib/hypermeter.ts). Fill an empty layer with one span per bar
-  // of the grid, counted 1 to `group` and round again; returns how many spans
-  // it made (0 when the layer has spans or there is no grid). One undo step.
+  // Hypermeter and the bar layer (lib/hypermeter.ts). Counts go into span
+  // annotations, never over one that holds other text. Each is one undo step.
+  // Fill an empty layer with one span per bar of the grid and make it the bar
+  // layer: labels are the grid's bar numbers, annotations counted 1 to
+  // `group` and round again. Returns how many spans it made (0 when the layer
+  // has spans or there is no grid).
   numberBars: (layerId: string, group: number) => number
   // Recount the given spans of a layer 1 to `group`, in time order.
   renumberSpans: (layerId: string, spanIds: string[], group: number) => void
   // Make a span the elided bar ("4=1") and count on from 2 after it, until a
-  // span whose label isn't a count.
+  // span whose annotation isn't a count.
   elideSpan: (layerId: string, spanId: string, group: number) => void
+  // Make a layer the bar layer, or an ordinary one again. Turning it on takes
+  // the role from any other layer; where every label is empty or a count, the
+  // counts move into empty annotations and the labels become bar numbers from 1.
+  setBarLayer: (layerId: string, on: boolean) => void
+  // Label the bar layer's spans with bar numbers from `first`, in time order.
+  numberBarLayer: (layerId: string, first: number) => void
+  // Count every bar of a layer: by the spans of layer `byLayerId` (each group
+  // counts from 1 to its end), or in groups of `group` when it is null.
+  // Returns how many bars it counted and how many it skipped for holding a note.
+  countBars: (layerId: string, byLayerId: string | null, group: number) => { counted: number; skipped: number }
+  // Mark elided the boundary another layer has on this bar (lib/hypermeter.ts
+  // boundaryOnBar): the end of the span that ends there. The nearest layer
+  // above with one there is used. Returns that layer's id, or null if none has one.
+  elideGroupBoundary: (layerId: string, spanId: string) => string | null
   // A span one or more bars longer or shorter, every later boundary in its
   // layer moving with it (lib/spanEdit.ts, rippleSpanEnd).
   resizeSpanByBars: (layerId: string, spanId: string, bars: number) => void
@@ -245,6 +262,63 @@ function patchSpans(doc: StrataDocument, ids: Set<string>, fn: (s: Span) => Span
       mapFormDiagramSpans(l, (spans) => (spans.some((s) => ids.has(s.id)) ? spans.map((s) => (ids.has(s.id) ? fn(s) : s)) : spans)),
     ),
   }
+}
+
+/**
+ * The layers with `layerId` made the bar layer (on) or an ordinary one (off):
+ * a document has at most one bar layer, so turning it on takes it from any other.
+ */
+function withBarRole(layers: Layer[], layerId: string, on: boolean): Layer[] {
+  return layers.map((l) => {
+    if (l.id === layerId && on) return { ...l, role: 'bars' as const }
+    // Off: only this layer loses the role. On: every other layer does.
+    if (l.role !== 'bars' || (!on && l.id !== layerId)) return l
+    const rest = { ...l }
+    delete rest.role
+    return rest
+  })
+}
+
+/**
+ * Write `texts` as the annotations of `spans`, one to one, leaving alone any
+ * annotation that holds other text (lib/hypermeter.ts writeCounts) unless
+ * `force`. Null when nothing changes.
+ */
+function writeAnnotations(
+  doc: StrataDocument,
+  spans: Span[],
+  texts: Array<string | null | undefined>,
+  force = false,
+): StrataDocument | null {
+  const out = force ? texts : writeCounts(spans.map((s) => s.annotation), texts)
+  const changed = new Map<string, string | null>()
+  spans.forEach((s, k) => {
+    if ((out[k] ?? null) !== (s.annotation ?? null)) changed.set(s.id, out[k] ?? null)
+  })
+  if (!changed.size) return null
+  return patchSpans(doc, new Set(changed.keys()), (s) => ({ ...s, annotation: changed.get(s.id) }))
+}
+
+/**
+ * The boundary a layer above `layerId` has on one of its bars, nearest layer
+ * first (lib/hypermeter.ts boundaryOnBar), or null when none has one there.
+ */
+export function groupBoundaryOnBar(
+  doc: StrataDocument,
+  layerId: string,
+  spanId: string,
+): { layer: Layer; boundary: { before: Span; after: Span } } | null {
+  const layer = doc.layers.find((l) => l.id === layerId)
+  const bar = layer && formSpans(layer).find((s) => s.id === spanId)
+  if (!layer || !bar) return null
+  const above = doc.layers
+    .filter((l) => l.type === 'form-diagram' && l.displayOrder > layer.displayOrder)
+    .sort((a, b) => a.displayOrder - b.displayOrder)
+  for (const l of above) {
+    const boundary = boundaryOnBar([bar.startTime, bar.endTime], [...formSpans(l)].sort((a, b) => a.startTime - b.startTime))
+    if (boundary) return { layer: l, boundary }
+  }
+  return null
 }
 
 /** Span and marker ids that currently carry a slug — the set that becomes frozen on save. */
@@ -714,12 +788,12 @@ const useDocumentStore = create<DocumentState>()(
         const doc = get().document
         const layer = doc?.layers.find((l) => l.id === layerId)
         if (!doc || !layer || layer.type !== 'form-diagram' || formSpans(layer).length > 0) return 0
-        const bars = gridBars(sortedSegments(doc.beatGrid), doc.duration)
+        const bars = numberedGridBars(sortedSegments(doc.beatGrid), doc.duration)
         if (!bars.length) return 0
-        const labels = countLabels(bars.length, group)
-        const fresh: Span[] = bars.map(([startTime, endTime]) => ({ id: crypto.randomUUID(), startTime, endTime }))
-        const filled = { ...doc, layers: mapLayer(doc.layers, layerId, (l) => mapFormDiagramSpans(l, () => fresh)) }
-        const next = relabelSpans(filled, new Map(fresh.map((s, k) => [s.id, labels[k]])), get().frozenSlugIds)
+        const counts = countLabels(bars.length, group)
+        const fresh: Span[] = bars.map((b, k) => ({ id: crypto.randomUUID(), startTime: b.start, endTime: b.end, annotation: counts[k] }))
+        const filled = { ...doc, layers: withBarRole(doc.layers, layerId, true).map((l) => (l.id === layerId ? mapFormDiagramSpans(l, () => fresh) : l)) }
+        const next = relabelSpans(filled, new Map(fresh.map((s, k) => [s.id, String(bars[k].bar)])), get().frozenSlugIds)
         set({ document: { ...next, updatedAt: now() } })
         return fresh.length
       },
@@ -730,9 +804,8 @@ const useDocumentStore = create<DocumentState>()(
         if (!doc || !layer) return
         const run = formSpans(layer).filter((s) => spanIds.includes(s.id)).sort((a, b) => a.startTime - b.startTime)
         if (!run.length) return
-        const labels = countLabels(run.length, group)
-        const next = relabelSpans(doc, new Map(run.map((s, k) => [s.id, labels[k]])), get().frozenSlugIds)
-        set({ document: { ...next, updatedAt: now() } })
+        const next = writeAnnotations(doc, run, countLabels(run.length, group))
+        if (next) set({ document: { ...next, updatedAt: now() } })
       },
 
       elideSpan: (layerId, spanId, group) => {
@@ -742,14 +815,69 @@ const useDocumentStore = create<DocumentState>()(
         const spans = [...formSpans(layer)].sort((a, b) => a.startTime - b.startTime)
         const at = spans.findIndex((s) => s.id === spanId)
         if (at < 0) return
-        const after = elideLabels(spans.map((s) => s.label), at, group)
-        const changed = new Map<string, string | null>()
-        spans.forEach((s, k) => {
-          if (k >= at && after[k] !== s.label) changed.set(s.id, after[k] ?? null)
-        })
-        if (!changed.size) return
-        const next = relabelSpans(doc, changed, get().frozenSlugIds)
+        const after = elideLabels(spans.map((s) => s.annotation), at, group)
+        const next = writeAnnotations(doc, spans.slice(at), after.slice(at), true)
+        if (next) set({ document: { ...next, updatedAt: now() } })
+      },
+
+      setBarLayer: (layerId, on) => {
+        const doc = get().document
+        const layer = doc?.layers.find((l) => l.id === layerId)
+        if (!doc || !layer || layer.type !== 'form-diagram' || (layer.role === 'bars') === on) return
+        let next: StrataDocument = { ...doc, layers: withBarRole(doc.layers, layerId, on) }
+        const spans = [...formSpans(layer)].sort((a, b) => a.startTime - b.startTime)
+        // Counts written as labels (before counts moved into annotations) move
+        // down, and the labels become bar numbers. Labels that are words stay.
+        if (on && spans.length && spans.every((s) => !s.label?.trim() || countOf(s.label) !== null)) {
+          if (spans.some((s) => s.label?.trim())) {
+            const moved = new Set(spans.filter((s) => s.label?.trim() && !s.annotation?.trim()).map((s) => s.id))
+            next = patchSpans(next, moved, (s) => ({ ...s, annotation: s.label }))
+          }
+          const numbers = barNumberLabels(spans.length)
+          next = relabelSpans(next, new Map(spans.map((s, k) => [s.id, numbers[k]])), get().frozenSlugIds)
+        }
         set({ document: { ...next, updatedAt: now() } })
+      },
+
+      numberBarLayer: (layerId, first) => {
+        const doc = get().document
+        const layer = doc?.layers.find((l) => l.id === layerId)
+        if (!doc || !layer || layer.type !== 'form-diagram') return
+        const spans = [...formSpans(layer)].sort((a, b) => a.startTime - b.startTime)
+        if (!spans.length) return
+        const numbers = barNumberLabels(spans.length, first)
+        const next = relabelSpans(doc, new Map(spans.map((s, k) => [s.id, numbers[k]])), get().frozenSlugIds)
+        set({ document: { ...next, updatedAt: now() } })
+      },
+
+      countBars: (layerId, byLayerId, group) => {
+        const doc = get().document
+        const layer = doc?.layers.find((l) => l.id === layerId)
+        const none = { counted: 0, skipped: 0 }
+        if (!doc || !layer || layer.type !== 'form-diagram') return none
+        const spans = [...formSpans(layer)].sort((a, b) => a.startTime - b.startTime)
+        if (!spans.length) return none
+        const by = byLayerId ? doc.layers.find((l) => l.id === byLayerId) : null
+        const bars = spans.map((s): [number, number] => [s.startTime, s.endTime])
+        const counts = by && by.type === 'form-diagram'
+          ? countsByGroups(bars, formSpans(by).map((g): [number, number] => [g.startTime, g.endTime]), group)
+          : countLabels(spans.length, group)
+        const written = writeCounts(spans.map((s) => s.annotation), counts)
+        const skipped = written.filter((t, k) => t !== counts[k]).length
+        const next = writeAnnotations(doc, spans, written)
+        if (next) set({ document: { ...next, updatedAt: now() } })
+        return { counted: spans.length - skipped, skipped }
+      },
+
+      elideGroupBoundary: (layerId, spanId) => {
+        const doc = get().document
+        const hit = doc && groupBoundaryOnBar(doc, layerId, spanId)
+        if (!doc || !hit) return null
+        // Elision is per boundary side (docs/decisions.md): the span that ends
+        // in this bar marks its end elided, and its bracket runs on into the next.
+        const next = patchSpans(doc, new Set([hit.boundary.before.id]), (s) => ({ ...s, endBoundaryType: 'elided', endCap: undefined }))
+        set({ document: { ...next, updatedAt: now() } })
+        return hit.layer.id
       },
 
       resizeSpanByBars: (layerId, spanId, bars) => {
