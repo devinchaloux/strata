@@ -120,6 +120,7 @@ aren't part of this repository.
 - [Fill with the grid's bars makes an empty layer the bar layer, numbered and counted.](#the-bar-layer-2026-11-25)
 - [Selected spans split into equal bars on the bar layer; selected counted bars make phrases on the layer above. Either works on a chunk or the whole track.](#bars-from-phrases-phrases-from-bars-2026-11-25)
 - [Tempo is planned as its own widget, reading the bar layer (or a beat layer); tempo is derived, never stored.](#tempo-becomes-its-own-widget-2026-11-25)
+- [The tempo widget is a row in the layer stack; its display choices are saved in the file; deviation is in milliseconds; the scale comes from the data unless fixed; it reads a source layer only.](#the-tempo-widget-settled-2026-11-25)
 - [Normalize evens out a run of selected bars, Steady or Smooth, with a preview; the run's ends stay, and it can copy to a new layer instead.](#normalize-2026-11-25)
 - [Fit boundaries to the grid moves a layer's boundaries to bars or beats.](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02)
 - [Playback rates are 0.5×, 0.75×, 1× and 1.25×; rewind goes to 0:00.](#player-chrome-phase-03)
@@ -238,7 +239,7 @@ By area, in the order the entries were made:
 
 **Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01) · [Group Spans Into Another Layer (2026-10-24)](#group-spans-into-another-layer-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Choosing What Copy to Layer Takes (2026-10-31)](#choosing-what-copy-to-layer-takes-2026-10-31)
 
-**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25) · [Bars From Phrases, Phrases From Bars (2026-11-25)](#bars-from-phrases-phrases-from-bars-2026-11-25) · [The Tempo Lane (2026-11-25)](#the-tempo-lane-2026-11-25) · [Tempo Becomes Its Own Widget (2026-11-25)](#tempo-becomes-its-own-widget-2026-11-25) · [Normalize (2026-11-25)](#normalize-2026-11-25)
+**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25) · [Bars From Phrases, Phrases From Bars (2026-11-25)](#bars-from-phrases-phrases-from-bars-2026-11-25) · [The Tempo Lane (2026-11-25)](#the-tempo-lane-2026-11-25) · [Tempo Becomes Its Own Widget (2026-11-25)](#tempo-becomes-its-own-widget-2026-11-25) · [Normalize (2026-11-25)](#normalize-2026-11-25) · [The Tempo Widget, Settled (2026-11-25)](#the-tempo-widget-settled-2026-11-25)
 
 **Point markers:** [Point Markers](#point-markers) · [Point Markers — Implementation (2026-07-03)](#point-markers--implementation-2026-07-03) · [Point Markers — Redesign (2026-07-04)](#point-markers--redesign-2026-07-04) · [Marker Band, Absent Events, and the Diagram Control Bar (2026-07-24, cont.)](#marker-band-absent-events-and-the-diagram-control-bar-2026-07-24-cont)
 
@@ -5471,4 +5472,28 @@ what the marks can and can't show. Display-only smoothing, which leaves the
 marks alone, belongs to the tempo widget.
 `lib/normalize.ts`; `normalizeBars` in the store; `NormalizePanel`; the
 preview in `uiStore.normalizePreview`, drawn by FormLayers.
+
+---
+
+## The Tempo Widget, Settled (2026-11-25)
+
+*The maintainer's answers to the open questions in `widgets/tempo.md`.*
+
+**Decision.** The tempo widget takes a row of its own in the layer stack,
+taller than a bracket row, and hides, reorders and exports like any layer.
+Its display choices (smoothing, which views, a fixed scale) are saved in the
+file. The deviation view is in milliseconds. The BPM scale comes from the data
+(lowest to highest, out to the nearest 10) unless a fixed range is set. A
+tempo layer reads a source layer of bars or beats only; a tempo map of its
+own waits until something produces one.
+**Rejected.** *A band under the diagram:* it can't be reordered or sit beside
+the bars it reads, and allows only one. *Display choices per viewer:* a reader
+might not see what the analyst meant. *Deviation as a percentage of the bar:*
+comparable across tempos, but the tapping-scatter band, the point of the view,
+is in milliseconds. *A fixed default scale:* a narrow tempo range reads flat.
+*A stored tempo map now:* nothing produces one yet, and an optional field can
+add it later without breaking files.
+**Why.** Each answer keeps the widget an ordinary layer whose numbers can't
+disagree with the bars they come from, while a reader sees the analysis as the
+analyst drew it.
 

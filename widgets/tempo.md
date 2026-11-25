@@ -1,8 +1,8 @@
 # Tempo Widget
-*Widget type: `"tempo"` (planned) | draft for the maintainer | November 2026*
+*Widget type: `"tempo"` (planned) | design agreed, not built | November 2026*
 
-> **Status:** planned, not built. This draft records what was agreed on
-> 2026-11-25 and what is still open (§7). Groundwork in the code:
+> **Status:** planned, not built. Its design questions were settled with the
+> maintainer on 2026-11-25 (§7). Groundwork in the code:
 > `lib/tempoLane.ts` (each bar's tempo from its length, the scale),
 > `TempoLaneFigure` in `widgets/form-diagram/figure.tsx` (the step line), and
 > `lib/normalize.ts` (the smoothing). `docs/decisions.md`, "Tempo Becomes Its
@@ -28,11 +28,15 @@ diagram. It worked, but tempo is analysis in its own right:
 - comparing performances (§5) needs tempo to be something a document has, not
   a way of drawing bars.
 
-## 2. Data (proposed)
+## 2. Data
 
 Tempo is derived, never stored: it follows from the boundaries of the source
-layer, so it can't go stale when a boundary moves. The layer stores only what
-to read and how to show it.
+layer, so it can't go stale when a boundary moves or disagree with the bars.
+The layer stores only what to read and how to show it. The display choices
+are saved in the file, so a reader, an embed and an export show what the
+analyst chose, as with other layer settings. A tempo map of the layer's own
+(imported, or detected from audio) is left for later; it can come as an
+optional field without breaking files.
 
 ```ts
 interface TempoData {
@@ -43,7 +47,7 @@ interface TempoData {
     smoothing?: number | null
     /** Which views to draw. Absent = ['marked']. */
     show?: Array<'marked' | 'smoothed' | 'deviation'>
-    /** A fixed scale in BPM, for comparing recordings; absent = from the data. */
+    /** A fixed scale in BPM, for comparing recordings; absent = from the data (lowest to highest, out to the nearest 10). */
     scale?: { min: number; max: number } | null
   }
 }
@@ -60,8 +64,8 @@ beat source, each span is one beat.
   over or instead of the marked line. This is the "normalization draw": it
   changes how the tempo is shown, never the bars. The automatic setting is the
   smoothest at which what's left still looks like tapping scatter.
-- **Deviation:** marked minus smoothed, per bar, in milliseconds (or as a
-  percentage of the bar, §7). A shaded band shows the tapping scatter (the
+- **Deviation:** marked minus smoothed, per boundary, in milliseconds, the
+  same unit as the tapping scatter. A shaded band shows the tapping scatter (the
   noise floor): deviations inside it can't be told apart from tapping, and
   those outside it are probably the music, such as rubato, agogic accents, or
   a push into a cadence.
@@ -103,14 +107,14 @@ needing to be prominent or to look like YouTube's control. Local audio can
 play at any rate; what YouTube's embedded player accepts needs checking
 before a custom rate is designed.
 
-## 7. Open questions (the maintainer's)
+## 7. Settled (2026-11-25)
 
-1. Does the widget take a row in the layer stack (a taller row, reorderable
-   like any layer), or a band under the diagram, as the first version did?
-   Recommended: a row in the stack.
-2. Field names, and whether `display` belongs in the file (a reader sees what
-   the analyst chose) or in the view.
-3. Deviation in milliseconds, or as a percentage of the bar?
-4. A fixed scale by default, or from the data?
-5. Can a tempo layer carry a tempo map of its own (imported, or from onset
-   detection) instead of a source layer?
+1. **Placement:** a row of its own in the layer stack, taller than a bracket
+   row, that hides, reorders and exports like any layer and can sit right
+   under the bars it reads.
+2. **Display choices** (`display`) are saved in the file.
+3. **Deviation** is in milliseconds.
+4. **The scale** comes from the data by default; a fixed range is set when two
+   recordings need to share one.
+5. **Source only for now:** tempo is always read from a bar or beat layer. A
+   tempo map of the layer's own waits until something produces one.
