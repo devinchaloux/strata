@@ -1,8 +1,9 @@
 /**
- * The tempo lane: the bar layer's tempo, bar by bar, drawn as a step line in a
- * band under the diagram. Nothing is stored but the switch (Layer.showTempo on
- * the bar layer): each bar's tempo is read from its length, as beats in the bar
- * over its seconds. docs/decisions.md, "The Tempo Lane".
+ * Tempo from marked bars: each bar's tempo read from its length, as beats in
+ * the bar over its seconds, and the scale and layout to draw it as a step line
+ * (TempoLaneFigure in widgets/form-diagram/figure.tsx). Groundwork for the
+ * tempo widget (widgets/tempo.md); nothing here is stored.
+ * docs/decisions.md, "Tempo Becomes Its Own Widget".
  */
 import type { Layer, StrataDocument } from '@/types/strata'
 import { formSpans } from '@/lib/layers'
@@ -85,18 +86,16 @@ export function tempoY(bpm: number, scale: TempoScale, top: number): number {
 }
 
 /**
- * The lane to draw, or null: the bar layer, when it asks for the lane, is among
- * the layers shown, and has at least two bars. With `range`, only the bars in
- * it, cut at its edges and moved so the range starts at 0 (for export); a
- * bar's tempo is always read from the whole bar.
+ * The tempo of a layer of bars, or null when it has fewer than two. With
+ * `range`, only the bars in it, cut at its edges and moved so the range starts
+ * at 0 (for export); a bar's tempo is always read from the whole bar.
  */
 export function tempoLane(
   doc: StrataDocument,
-  shownLayerIds: string[],
+  layer: Layer,
   range?: { start: number; end: number },
 ): TempoLane | null {
-  const layer = doc.layers.find((l) => l.role === 'bars' && l.type === 'form-diagram')
-  if (!layer || !layer.showTempo || !shownLayerIds.includes(layer.id)) return null
+  if (layer.type !== 'form-diagram') return null
   let steps = tempoSteps(layer, beatsPerBarAt(doc))
   if (steps.length < 2) return null
   const scale = tempoScale(steps)
@@ -107,9 +106,4 @@ export function tempoLane(
     if (!steps.length) return null
   }
   return { layer, steps, scale }
-}
-
-/** The lane's height for a document's shown layers: TEMPO_LANE_HEIGHT or 0. */
-export function tempoLaneHeight(doc: StrataDocument, shownLayerIds: string[]): number {
-  return tempoLane(doc, shownLayerIds) ? TEMPO_LANE_HEIGHT : 0
 }

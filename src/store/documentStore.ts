@@ -7,6 +7,7 @@ import { boundaryMoves, followLinks, repairParentLinks, splitTimeNearChildren, r
 import { sortedSegments, segmentAt, segmentEnd, extendBack, snapToGrid, barTiling, barLength } from '@/lib/beatGrid'
 import { barNumberLabels, boundaryOnBar, countLabels, countOf, countsByGroups, elideLabels, numberedGridBars, phraseRuns, splitEvenly, writeCounts } from '@/lib/hypermeter'
 import { roundTempo, segmentForAdjusting, tempoThroughDownbeat } from '@/lib/metronome'
+import { normalizePlan, runTimes } from '@/lib/normalize'
 import type { FormDiagramData } from '@/types/strata'
 import { mergeVocabPack, type MergeResult, type VocabPack } from '@/lib/vocabPack'
 import { placeBoundaryInSpans, setSpanEdge, findOverlaps, endSpanAtTime, snapSpansToGrid, rippleSpanEnd, extendSpanToEnd, MIN_SPAN_WIDTH } from '@/lib/spanEdit'
@@ -160,6 +161,19 @@ interface DocumentState {
   // layer there. The bars become the phrases' children; a phrase that starts
   // on an elided bar ("4=1") marks the end of the one before it elided.
   phrasesFromCount: (spanIds: string[]) => { made: number; layerId: string } | null
+  // Normalize a run of selected bars that follow one another (lib/normalize.ts):
+  // 'steady' makes them equal, 'smooth' fits a smooth tempo curve with
+  // smoothing 10^logLambda. The run's two ends stay; boundaries linked to
+  // parents or children carry their moves. With `intoNewLayer`, the bars are
+  // copied, normalized, to a layer "<name> (normalized)" just below (reused
+  // when it is free there) and the originals stay as tapped. One undo step;
+  // null when the spans don't follow one another or are too few.
+  normalizeBars: (
+    spanIds: string[],
+    mode: 'steady' | 'smooth',
+    logLambda: number,
+    intoNewLayer: boolean,
+  ) => { moved: number; layerId: string } | null
   // A span one or more bars longer or shorter, every later boundary in its
   // layer moving with it (lib/spanEdit.ts, rippleSpanEnd).
   resizeSpanByBars: (layerId: string, spanId: string, bars: number) => void
@@ -975,6 +989,50 @@ const useDocumentStore = create<DocumentState>()(
         layers = mapLayer(layers, source.id, (l) => mapFormDiagramSpans(l, (spans) => spans.map((x) => (parentOf.has(x.id) ? { ...x, parentId: parentOf.get(x.id) } : x))))
         set({ document: { ...doc, layers, updatedAt: now() } })
         return { made: fresh.length, layerId: targetId }
+      },
+
+      normalizeBars: (spanIds, mode, logLambda, intoNewLayer) => {
+        const doc = get().document
+        const picked = pickedOnOneLayer(doc, spanIds)
+        if (!doc || !picked || picked.spans.length < 2) return null
+        const times = runTimes(picked.spans)
+        if (!times) return null
+        const plan = normalizePlan(times, mode, logLambda)
+        const run = picked.spans
+        const placed = (s: Span, k: number): Span => ({ ...s, startTime: plan.times[k], endTime: plan.times[k + 1] })
+        if (!intoNewLayer) {
+          const at = new Map(run.map((s, k) => [s.id, k]))
+          const layers = mapLayer(doc.layers, picked.layer.id, (l) =>
+            mapFormDiagramSpans(l, (spans) => spans.map((s) => (at.has(s.id) ? placed(s, at.get(s.id)!) : s))),
+          )
+          set({ document: withLinks(doc, { ...doc, layers, updatedAt: now() }, picked.layer.id) })
+          return { moved: plan.moved, layerId: picked.layer.id }
+        }
+        // A copy, normalized: only what names and counts the bars comes along.
+        const name = `${picked.layer.label} (normalized)`
+        const start = times[0]
+        const end = times[times.length - 1]
+        let layers = doc.layers
+        let target = layers.find(
+          (l) => l.type === 'form-diagram' && l.label === name && !l.locked && !formSpans(l).some((x) => x.endTime > start + 1e-6 && x.startTime < end - 1e-6),
+        )
+        if (!target) {
+          const at = picked.layer.displayOrder
+          const made = newFormLayer(name, at)
+          layers = [...layers.map((l) => (l.displayOrder >= at ? { ...l, displayOrder: l.displayOrder + 1 } : l)), made]
+          target = made
+        }
+        const copies: Span[] = run.map((s, k) => {
+          const c: Span = { id: crypto.randomUUID(), startTime: plan.times[k], endTime: plan.times[k + 1] }
+          if (s.annotation != null) c.annotation = s.annotation
+          if (s.type != null) c.type = s.type
+          return c
+        })
+        layers = mapLayer(layers, target.id, (l) => mapFormDiagramSpans(l, (spans) => [...spans, ...copies].sort((a, b) => a.startTime - b.startTime)))
+        const labelled = new Map(copies.map((c, k) => [c.id, run[k].label ?? null]).filter(([, label]) => label) as Array<[string, string]>)
+        const next = relabelSpans({ ...doc, layers }, labelled, get().frozenSlugIds)
+        set({ document: { ...next, updatedAt: now() } })
+        return { moved: plan.moved, layerId: target.id }
       },
 
       resizeSpanByBars: (layerId, spanId, bars) => {

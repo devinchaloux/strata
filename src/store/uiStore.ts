@@ -260,6 +260,9 @@ export interface UIState {
   /** Bars in a hypermetric group for Fill with bars, Count and Elide (lib/hypermeter.ts). Session only. */
   barGroup: number
   setBarGroup: (n: number) => void
+  /** Normalize's preview (lib/normalize.ts): where a run's boundaries would go, drawn over the layer. */
+  normalizePreview: { layerId: string; times: number[] } | null
+  setNormalizePreview: (preview: { layerId: string; times: number[] } | null) => void
   /** Until this time (ms), playback doesn't scroll the timeline: the reader has panned it by hand. */
   followHoldUntil: number
   holdFollow: (ms: number) => void
@@ -456,6 +459,8 @@ const useUIStore = create<UIState>()((set) => ({
   barGroup: 4,
   setFocusRange: (range) => set({ focusRange: range }),
   setBarGroup: (n) => set({ barGroup: Math.max(1, Math.min(16, Math.round(n))) }),
+  normalizePreview: null,
+  setNormalizePreview: (normalizePreview) => set({ normalizePreview }),
   followHoldUntil: 0,
   holdFollow: (ms) => set({ followHoldUntil: Date.now() + ms }),
   playRequest: null,

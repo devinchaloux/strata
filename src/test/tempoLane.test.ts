@@ -6,7 +6,7 @@ import { makeDoc, makeLayer } from './fixtures'
 const bar = (k: number, start: number, end: number): Span => ({ id: `b${k}`, startTime: start, endTime: end, label: String(k + 1) })
 // Bars of 2s, then 1.5s: 120 then 160 BPM in 4/4.
 const bars = [bar(0, 0, 2), bar(1, 2, 4), bar(2, 4, 5.5), bar(3, 5.5, 7)]
-const barLayer = (extra: Partial<Layer> = {}): Layer => ({ ...makeLayer('Bars', bars), role: 'bars', showTempo: true, ...extra }) as Layer
+const barLayer = (extra: Partial<Layer> = {}): Layer => ({ ...makeLayer('Bars', bars), role: 'bars', ...extra }) as Layer
 
 describe('tempoSteps', () => {
   it('reads each bar\'s tempo from its length', () => {
@@ -38,29 +38,14 @@ describe('tempoScale', () => {
 })
 
 describe('tempoLane', () => {
-  it('draws only for a shown bar layer that asks for it', () => {
+  it('reads a layer of bars, and needs two', () => {
     const doc = makeDoc([barLayer()], { duration: 7 })
-    expect(tempoLane(doc, ['Bars'])?.steps).toHaveLength(4)
-    expect(tempoLane(doc, [])).toBeNull()
-    expect(tempoLane(makeDoc([barLayer({ showTempo: undefined })]), ['Bars'])).toBeNull()
-    expect(tempoLane(makeDoc([barLayer({ role: undefined })]), ['Bars'])).toBeNull()
+    expect(tempoLane(doc, barLayer())?.steps).toHaveLength(4)
+    expect(tempoLane(doc, { ...barLayer(), data: { spans: [bars[0]] } } as Layer)).toBeNull()
   })
 
   it('cuts to a range for export, keeping each bar\'s whole-bar tempo', () => {
-    const lane = tempoLane(makeDoc([barLayer()], { duration: 7 }), ['Bars'], { start: 3, end: 6 })!
+    const lane = tempoLane(makeDoc([barLayer()], { duration: 7 }), barLayer(), { start: 3, end: 6 })!
     expect(lane.steps.map((s) => [s.start, s.end, s.bpm])).toEqual([[0, 1, 120], [1, 2.5, 160], [2.5, 3, 160]])
-  })
-})
-
-describe('export', () => {
-  it('draws the lane in an exported SVG, under the layers, with the scale labelled', async () => {
-    const { exportFormDiagramSvg } = await import('@/widgets/form-diagram/exportSvg')
-    const opts = { start: 0, end: 7, width: 700, includeMarkers: false, includeAxis: false }
-    const withLane = await exportFormDiagramSvg(makeDoc([barLayer()], { duration: 7 }), opts)
-    const without = await exportFormDiagramSvg(makeDoc([barLayer({ showTempo: undefined })], { duration: 7 }), opts)
-    expect(withLane).toContain('BPM')
-    expect(without).not.toContain('BPM')
-    const h = (svg: string) => Number(/height="(\d+)"/.exec(svg)![1])
-    expect(h(withLane) - h(without)).toBe(TEMPO_LANE_HEIGHT)
   })
 })

@@ -395,10 +395,6 @@
           "enum": ["bars"],
           "description": "What the layer is for. 'bars' marks the bar layer: one span per bar, each span's label its bar number and its annotation the hypermetric count ('1', '2' …, '4=1' for an elided bar). At most one layer in a document has it; a reader that finds more keeps the first. Absent = an ordinary layer. Unrelated to spanShape 'bar', which is only a way of drawing."
         },
-        "showTempo": {
-          "type": "boolean",
-          "description": "On the bar layer (role 'bars'): draw a tempo lane under the diagram, each bar's tempo in beats per minute read from its length. A display choice; nothing about the tempo is stored. Absent = off. Ignored on other layers."
-        },
         "fillGaps": {
           "type": "boolean",
           "description": "Editing behavior: whether a boundary placed in an empty stretch of this layer fills it on both sides (true, the default when absent) or starts a span there and leaves the stretch before it empty (false)."

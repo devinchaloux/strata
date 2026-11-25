@@ -99,7 +99,6 @@ Each layer also carries its own settings:
 | Shape | Brackets, or thin flat bars (suited to a layer of key areas) | `spanShape` |
 | Library | The vocabulary you usually draw this layer's types from. It's a preference only: you can use any type | `library` |
 | Bar layer | Marks the one layer that has a span for every bar: its labels are bar numbers, its annotations the hypermetric counts ("4=1" for an elided bar) | `role: "bars"` |
-| Tempo lane | On the bar layer: a lane under the diagram showing each bar's tempo, worked out from its length. Only the switch is stored | `showTempo` |
 | Filling gaps | Whether a boundary in an empty stretch fills the stretch on both sides or starts a span there, for a layer that begins partway through | `fillGaps` |
 | Text size | Small, medium, or large labels | `fontScale` |
 

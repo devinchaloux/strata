@@ -29,9 +29,8 @@ import { spanTypeName } from '@/lib/vocabulary'
 import { QuickEntryBar } from './QuickEntryBar'
 import { snapToActiveGrid } from '@/store/snap'
 import { Playhead } from './Playhead'
-import { FormDiagramFigure, TempoLaneFigure, type SpanDecoration } from '@/widgets/form-diagram/figure'
+import { FormDiagramFigure, type SpanDecoration } from '@/widgets/form-diagram/figure'
 import { EDITOR_THEME } from '@/widgets/form-diagram/theme'
-import { TEMPO_LANE_HEIGHT, tempoLane, tempoY } from '@/lib/tempoLane'
 import { safeFill } from '@/lib/palette'
 import type { Layer, Span, FormDiagramData, PointMarker, VocabTerm, GridSegment } from '@/types/strata'
 import {
@@ -57,6 +56,8 @@ const MARKER_DRAG_THRESHOLD_PX = 3
 // span's rectangle with a blue outline — the blue reads even when the span
 // already has a grey/colored fill. Hover is a fainter grey wash, no outline.
 const SELECT_BLUE = '#2563eb'
+// Normalize's preview lines: apart from the selection's blue.
+const PREVIEW_AMBER = '#d97706'
 const SELECT_GREY = '#64748b'
 
 
@@ -580,6 +581,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   // Marker band state. Selected via the whole document object rather than
   // `?? []` selectors, which would return a fresh array on every render.
   const doc = useDocumentStore((s) => s.document)
+  const normalizePreview = useUIStore((s) => s.normalizePreview)
   const updatePointMarker = useDocumentStore((s) => s.updatePointMarker)
   const selectedMarkerId = useUIStore((s) => s.selectedPointMarkerId)
   const colorblindSafe = useUIStore((s) => s.colorblindSafe)
@@ -598,10 +600,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   // Marker band — document-level point markers live inside the diagram (so
   // they export with it), in a band below the layer stack.
   const bandLayout = layoutMarkerBand(pointMarkers, markerTypes, pps)
-  // The tempo lane (lib/tempoLane.ts) sits under the marker band, on the ruler.
-  const lane = doc ? tempoLane(doc, layers.map((l) => l.id)) : null
-  const laneTop = stackH + bandLayout.height
-  const svgHeight = laneTop + (lane ? TEMPO_LANE_HEIGHT : 0)
+  const svgHeight = stackH + bandLayout.height
 
 
   // Box-drag selection state.
@@ -850,16 +849,20 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
             />
           ))}
 
-        {pps > 0 && lane && (
-          <TempoLaneFigure
-            lane={lane}
-            top={laneTop}
-            pps={pps}
-            totalWidth={totalWidth}
-            theme={EDITOR_THEME}
-            labels={false}
-          />
-        )}
+        {/* Normalize's preview: where each inner boundary of the run would go. */}
+        {pps > 0 && normalizePreview && (() => {
+          const i = layers.findIndex((l) => l.id === normalizePreview.layerId)
+          if (i < 0) return null
+          const top = shapeTopY(layers, i)
+          const h = layerBodyHeight(layers[i])
+          return (
+            <g aria-hidden pointerEvents="none">
+              {normalizePreview.times.slice(1, -1).map((t, k) => (
+                <line key={k} x1={t * pps} x2={t * pps} y1={top - 4} y2={top + h + 2} stroke={PREVIEW_AMBER} strokeWidth={1.5} strokeDasharray="3 2" />
+              ))}
+            </g>
+          )
+        })()}
 
         {pps > 0 && <HiddenLabelPeek layers={layers} pps={pps} totalWidth={totalWidth} />}
 
@@ -905,17 +908,6 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
 
       {/* Playback cursor — mirrors the ruler cursor so the two read as one line */}
       <Playhead height={svgHeight} opacity={0.5} />
-
-      {/* The tempo lane's scale, kept at the left edge while the drawing scrolls. */}
-      {lane && pps > 0 && (
-        <div aria-hidden className="pointer-events-none absolute left-1 text-[10px] leading-none tabular-nums" style={{ top: laneTop, color: 'var(--ink-muted)' }}>
-          {lane.scale.ticks.map((t) => (
-            <span key={t} className="absolute whitespace-nowrap" style={{ top: tempoY(t, lane.scale, 0) - 11, background: 'var(--canvas)' }}>
-              {t === lane.scale.max ? `${t} BPM` : t}
-            </span>
-          ))}
-        </div>
-      )}
 
       {/* Quick entry for the selection, on number keys (QuickEntryBar.tsx); not while reading. */}
       {!reading && <QuickEntryBar containerRef={containerRef} layers={layers} pps={pps} scrollOffset={scrollOffset} />}

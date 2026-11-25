@@ -70,7 +70,6 @@ import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { STACK_TOP_PAD, stackHeight, layerPitch } from '@/lib/formShape'
 import { markerBandHeight } from '@/lib/markerBand'
-import { tempoLaneHeight } from '@/lib/tempoLane'
 import { HEADER_WIDTH_RAIL, layerHeaderWidth, measureLabel } from '@/lib/layerHeader'
 import type { Layer } from '@/types/strata'
 import { usePhone } from '@/hooks/usePhone'
@@ -670,12 +669,9 @@ export function FormDiagram() {
   // layer does (its Hide button is on the commentary itself).
   const hidden = [...sorted.filter((l) => !l.visibility), ...analysisLayers(doc).filter((l) => !l.visibility)]
 
-  // The widget card must also make room for the marker band and the tempo
-  // lane that FormLayers draws below the stack, or they are clipped by the card.
-  const stackH =
-    stackHeight(visible) +
-    markerBandHeight(doc.pointMarkers, doc.vocabulary.pointMarkerTypes, timeline.pps) +
-    tempoLaneHeight(doc, visible.map((l) => l.id))
+  // The widget card must also make room for the marker band that FormLayers
+  // draws below the stack, or the band is clipped by the card.
+  const stackH = stackHeight(visible) + markerBandHeight(doc.pointMarkers, doc.vocabulary.pointMarkerTypes, timeline.pps)
   // As wide as the longest visible name needs (lib/layerHeader.ts). Measuring
   // a handful of names is cheap, so it runs each render rather than in a memo
   // (which couldn't sit below the early return above).

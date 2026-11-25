@@ -119,7 +119,8 @@ aren't part of this repository.
 - [The bar layer counts its bars by a layer above (each span from 1) or in groups; selected bars recount from 1; Elide makes a bar "4=1" and offers to elide the boundary above it.](#the-bar-layer-2026-11-25)
 - [Fill with the grid's bars makes an empty layer the bar layer, numbered and counted.](#the-bar-layer-2026-11-25)
 - [Selected spans split into equal bars on the bar layer; selected counted bars make phrases on the layer above. Either works on a chunk or the whole track.](#bars-from-phrases-phrases-from-bars-2026-11-25)
-- [The bar layer can draw a tempo lane under the diagram, each bar's tempo read from its length; only the switch (`showTempo`) is stored.](#the-tempo-lane-2026-11-25)
+- [Tempo is planned as its own widget, reading the bar layer (or a beat layer); tempo is derived, never stored.](#tempo-becomes-its-own-widget-2026-11-25)
+- [Normalize evens out a run of selected bars, Steady or Smooth, with a preview; the run's ends stay, and it can copy to a new layer instead.](#normalize-2026-11-25)
 - [Fit boundaries to the grid moves a layer's boundaries to bars or beats.](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02)
 - [Playback rates are 0.5×, 0.75×, 1× and 1.25×; rewind goes to 0:00.](#player-chrome-phase-03)
 - [The play bar's clock reads m:ss; editable times keep milliseconds.](#ui-review-fixes-and-tighter-chrome-2026-09-27)
@@ -237,7 +238,7 @@ By area, in the order the entries were made:
 
 **Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01) · [Group Spans Into Another Layer (2026-10-24)](#group-spans-into-another-layer-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Choosing What Copy to Layer Takes (2026-10-31)](#choosing-what-copy-to-layer-takes-2026-10-31)
 
-**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25) · [Bars From Phrases, Phrases From Bars (2026-11-25)](#bars-from-phrases-phrases-from-bars-2026-11-25) · [The Tempo Lane (2026-11-25)](#the-tempo-lane-2026-11-25)
+**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25) · [Bars From Phrases, Phrases From Bars (2026-11-25)](#bars-from-phrases-phrases-from-bars-2026-11-25) · [The Tempo Lane (2026-11-25)](#the-tempo-lane-2026-11-25) · [Tempo Becomes Its Own Widget (2026-11-25)](#tempo-becomes-its-own-widget-2026-11-25) · [Normalize (2026-11-25)](#normalize-2026-11-25)
 
 **Point markers:** [Point Markers](#point-markers) · [Point Markers — Implementation (2026-07-03)](#point-markers--implementation-2026-07-03) · [Point Markers — Redesign (2026-07-04)](#point-markers--redesign-2026-07-04) · [Marker Band, Absent Events, and the Diagram Control Bar (2026-07-24, cont.)](#marker-band-absent-events-and-the-diagram-control-bar-2026-07-24-cont)
 
@@ -5408,4 +5409,66 @@ the end: the lane shows the bars as marked.
 The narrowing brackets imply it; the lane states it, with numbers.
 `lib/tempoLane.ts`; `TempoLaneFigure` in widgets/form-diagram/figure.tsx; drawn
 by FormLayers and exportSvg; the switch in BarLayerSettings.
+
+---
+
+## Tempo Becomes Its Own Widget (2026-11-25)
+
+*From the maintainer, on the tempo lane: "this feels like a separate widget
+entirely … I wonder what else could be done with it (thinking about
+performances!)" And: "linking it to a bar layer (or even a beat layer) is a
+smart idea."*
+
+**Decision.** Tempo is planned as its own widget type, `"tempo"`, a layer that
+reads a source layer of bars (or, later, beats) and draws each one's tempo.
+This reverses the tempo lane above: `Layer.showTempo` is removed before it
+reached a merged file, so no file carries it and nothing needs migrating. The
+drawing and the tempo arithmetic stay in the code (`lib/tempoLane.ts`,
+`TempoLaneFigure`) as groundwork. The widget will offer display-only smoothing
+(the "normalization draw") that changes no boundary, beside Normalize, which
+does. Its draft spec, with the questions still open, is `widgets/tempo.md`.
+**Why.** Tempo is analysis in its own right, above all for performances:
+comparing recordings bar by bar, rubato as the deviation from a smooth curve,
+tempo with loudness. It should hide, reorder and export like any layer, and
+its views would crowd the bar layer's settings. Deciding before the merge kept
+the format change free.
+
+---
+
+## Normalize (2026-11-25)
+
+*From the maintainer: "there probably needs to be a scale for normalization if
+anyone wants to try to normalize but also measure some micro adjustments."*
+
+**Decision.** With two or more bars on the bar layer selected, one after
+another, the Inspector's **Normalize…** opens a panel. **Steady** makes every
+bar the same length: one tempo across the run, given in BPM. **Smooth** fits a
+smooth tempo curve (a Whittaker smoother on the boundary times, third
+differences) with a **Smoothing** scale from light to heavy. It starts at
+**Auto**, the smoothest setting at which what's left over still looks like
+tapping scatter (the leftovers' lag-1 correlation reaches zero). The run's
+first and last boundaries never move. While the panel is open, dashed amber
+lines show where each boundary would go. The panel says how many move and how
+far, and how far the marks sit from the result ("±24 ms"), saying that timing
+within that can't be told apart from tapping. Steady warns when the tempo
+moves across the run, since it would then shift bars a long way. **Into a new
+layer** copies the bars, normalized, with their labels, counts and types, to
+"<layer> (normalized)" just below (reused where it is free), keeping the
+originals as marked. Otherwise boundaries linked to phrases carry their moves.
+One undo step.
+**Rejected.** *One smoothing over the whole track:* on the maintainer's
+nine-minute track it couldn't flatten the 126 BPM plateau without pulling the
+corners where the accelerando meets it by 300 ms or more. Normalizing a
+selected stretch at a time, Steady on the plateau and Smooth on the ramps,
+does both. *A strength blend between marks and fit as the scale:* the
+smoothing amount is the more useful scale, because a lighter setting keeps
+more of the music's detail rather than a fraction of everything. *Fitting with
+a standard selector (generalized cross-validation):* tapping error sits on
+boundaries, so bar lengths carry correlated error, and it under-smooths.
+**Why.** Marking bars by hand scatters them by 20–30 ms. Normalize removes
+that and shows how much it removed, so an analyst who wants micro-timing knows
+what the marks can and can't show. Display-only smoothing, which leaves the
+marks alone, belongs to the tempo widget.
+`lib/normalize.ts`; `normalizeBars` in the store; `NormalizePanel`; the
+preview in `uiStore.normalizePreview`, drawn by FormLayers.
 

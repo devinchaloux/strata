@@ -12,6 +12,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { useDocumentStore, groupBoundaryOnBar } from '@/store/documentStore'
+import { NormalizePanel } from '@/components/NormalizePanel'
 import { countOf } from '@/lib/hypermeter'
 import { useUIStore, type InspectorSection } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
@@ -1063,7 +1064,8 @@ function HypermeterRow({ layerId, spans }: { layerId: string; spans: Span[] }) {
  * Quick setup between phrases and bars, on whatever is selected: a chunk of
  * the recording or all of it. Selected spans that aren't bars split into equal
  * bars on the bar layer (made below them if there is none); selected counted
- * bars make phrases, one from each bar counted 1, on the layer above.
+ * bars make phrases, one from each bar counted 1, on the layer above; two or
+ * more bars on the bar layer can be normalized (NormalizePanel).
  * docs/decisions.md, "Bars From Phrases, Phrases From Bars".
  */
 function BarSetupRow({ layer, spans }: { layer: Layer; spans: Span[] }) {
@@ -1072,10 +1074,12 @@ function BarSetupRow({ layer, spans }: { layer: Layer; spans: Span[] }) {
   const barGroup = useUIStore((s) => s.barGroup)
   const setBarGroup = useUIStore((s) => s.setBarGroup)
   const [result, setResult] = useState<string | null>(null)
+  const [normalizing, setNormalizing] = useState(false)
   if (layer.locked || layer.type !== 'form-diagram') return null
   const isBars = layer.role === 'bars'
   const counted = spans.some((s) => countOf(s.annotation) !== null)
-  if (isBars && !counted) return null
+  const canNormalize = isBars && spans.length >= 2
+  if (isBars && !counted && !canNormalize) return null
   const button = 'rounded border border-border px-2 py-0.5 text-xs text-foreground hover:bg-accent'
   const n = spans.length
   return (
@@ -1125,7 +1129,18 @@ function BarSetupRow({ layer, spans }: { layer: Layer; spans: Span[] }) {
             Phrases from the count
           </button>
         )}
+        {canNormalize && (
+          <button
+            className={button}
+            aria-expanded={normalizing}
+            title="Even out these bars: one steady tempo, or a smooth curve that follows a tempo that moves"
+            onClick={() => setNormalizing((v) => !v)}
+          >
+            Normalize…
+          </button>
+        )}
       </div>
+      {normalizing && <NormalizePanel spans={spans} onClose={() => setNormalizing(false)} />}
       {result && (
         <span className="pl-[2.875rem] text-[11px] text-muted-foreground" role="status">
           {result}

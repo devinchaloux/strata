@@ -7,7 +7,6 @@
  * numbers the bars from a first bar and counts them, by the spans of a layer
  * above (each phrase counts from 1) or in groups of a set size. An empty layer
  * can instead be filled with the beat grid's bars, which makes it the bar layer.
- * The Tempo lane switch draws each bar's tempo under the diagram (lib/tempoLane.ts).
  */
 import { useState } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
@@ -28,7 +27,6 @@ export function BarLayerSettings({ layer }: { layer: Layer }) {
   const numberBarLayer = useDocumentStore((s) => s.numberBarLayer)
   const countBars = useDocumentStore((s) => s.countBars)
   const numberBars = useDocumentStore((s) => s.numberBars)
-  const updateLayer = useDocumentStore((s) => s.updateLayer)
   const barGroup = useUIStore((s) => s.barGroup)
   const setBarGroup = useUIStore((s) => s.setBarGroup)
   const [first, setFirst] = useState(1)
@@ -109,20 +107,6 @@ export function BarLayerSettings({ layer }: { layer: Layer }) {
 
       {isBars && count > 0 && (
         <>
-          <label
-            className="flex cursor-pointer items-center justify-between gap-3"
-            title="Draw each bar's tempo, worked out from its length, in a lane under the diagram"
-          >
-            <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
-              Tempo lane
-            </span>
-            <Switch
-              checked={!!layer.showTempo}
-              onCheckedChange={(v) => updateLayer(layer.id, { showTempo: v || undefined })}
-              aria-label="Tempo lane"
-            />
-          </label>
-
           <div className="flex items-center justify-between gap-2" title="Label every bar with its number, in order">
             <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
               Number from bar

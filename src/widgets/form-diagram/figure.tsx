@@ -368,13 +368,13 @@ export function MarkerFigure({
   )
 }
 
-// ── The tempo lane ──────────────────────────────────────────────────────────
+// ── Tempo ───────────────────────────────────────────────────────────────────
 
 /**
- * The bar layer's tempo as a step line, one level per bar, in a band from
+ * A layer of bars' tempo as a step line, one level per bar, in a band from
  * `top` (lib/tempoLane.ts). Guide lines at round tempos; with `labels`, their
- * values at the band's left edge (the editor draws its own, which stay in view
- * as it scrolls). Each bar carries a hover title: "Bar 37: 103 BPM".
+ * values at the band's left edge. Each bar carries a hover title: "Bar 37:
+ * 103 BPM". Groundwork for the tempo widget (widgets/tempo.md), not drawn yet.
  */
 export function TempoLaneFigure({
   lane,
