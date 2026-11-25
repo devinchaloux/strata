@@ -29,8 +29,9 @@ import { spanTypeName } from '@/lib/vocabulary'
 import { QuickEntryBar } from './QuickEntryBar'
 import { snapToActiveGrid } from '@/store/snap'
 import { Playhead } from './Playhead'
-import { FormDiagramFigure, type SpanDecoration } from '@/widgets/form-diagram/figure'
+import { FormDiagramFigure, TempoLaneFigure, type SpanDecoration } from '@/widgets/form-diagram/figure'
 import { EDITOR_THEME } from '@/widgets/form-diagram/theme'
+import { TEMPO_LANE_HEIGHT, tempoLane, tempoY } from '@/lib/tempoLane'
 import { safeFill } from '@/lib/palette'
 import type { Layer, Span, FormDiagramData, PointMarker, VocabTerm, GridSegment } from '@/types/strata'
 import {
@@ -597,7 +598,10 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   // Marker band — document-level point markers live inside the diagram (so
   // they export with it), in a band below the layer stack.
   const bandLayout = layoutMarkerBand(pointMarkers, markerTypes, pps)
-  const svgHeight = stackH + bandLayout.height
+  // The tempo lane (lib/tempoLane.ts) sits under the marker band, on the ruler.
+  const lane = doc ? tempoLane(doc, layers.map((l) => l.id)) : null
+  const laneTop = stackH + bandLayout.height
+  const svgHeight = laneTop + (lane ? TEMPO_LANE_HEIGHT : 0)
 
 
   // Box-drag selection state.
@@ -846,6 +850,17 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
             />
           ))}
 
+        {pps > 0 && lane && (
+          <TempoLaneFigure
+            lane={lane}
+            top={laneTop}
+            pps={pps}
+            totalWidth={totalWidth}
+            theme={EDITOR_THEME}
+            labels={false}
+          />
+        )}
+
         {pps > 0 && <HiddenLabelPeek layers={layers} pps={pps} totalWidth={totalWidth} />}
 
         {/* Marker band: empty band clears the selection; markers select and drag. */}
@@ -890,6 +905,17 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
 
       {/* Playback cursor — mirrors the ruler cursor so the two read as one line */}
       <Playhead height={svgHeight} opacity={0.5} />
+
+      {/* The tempo lane's scale, kept at the left edge while the drawing scrolls. */}
+      {lane && pps > 0 && (
+        <div aria-hidden className="pointer-events-none absolute left-1 text-[10px] leading-none tabular-nums" style={{ top: laneTop, color: 'var(--ink-muted)' }}>
+          {lane.scale.ticks.map((t) => (
+            <span key={t} className="absolute whitespace-nowrap" style={{ top: tempoY(t, lane.scale, 0) - 11, background: 'var(--canvas)' }}>
+              {t === lane.scale.max ? `${t} BPM` : t}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Quick entry for the selection, on number keys (QuickEntryBar.tsx); not while reading. */}
       {!reading && <QuickEntryBar containerRef={containerRef} layers={layers} pps={pps} scrollOffset={scrollOffset} />}

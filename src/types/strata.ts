@@ -321,6 +321,11 @@ export interface LayerBase {
    */
   role?: 'bars'
   /**
+   * On the bar layer: draw the tempo lane under the diagram, each bar's tempo
+   * read from its length (lib/tempoLane.ts). Absent = off. Ignored elsewhere.
+   */
+  showTempo?: boolean
+  /**
    * Text size for this layer's labels and annotations: sm (9.5 / 8.5 px),
    * md (11 / 9, the default when absent) or lg (13 / 11). Uniform within a
    * layer; there is no per-span font size.

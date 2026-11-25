@@ -13,10 +13,11 @@
  * `react-dom/server` is imported on demand, so the editor's bundle only pays
  * for it when someone actually exports.
  */
-import { FormDiagramFigure } from './figure'
+import { FormDiagramFigure, TempoLaneFigure } from './figure'
 import { PRINT_THEME } from './theme'
 import { safeFill } from '@/lib/palette'
 import { stackHeight } from '@/lib/formShape'
+import { TEMPO_LANE_HEIGHT, tempoLane } from '@/lib/tempoLane'
 import { layoutMarkerBand } from '@/lib/markerBand'
 import { getTickInterval } from '@/lib/timeline'
 import type { StrataDocument, Layer, FormDiagramData, Span } from '@/types/strata'
@@ -111,19 +112,25 @@ export async function exportFormDiagramSvg(doc: StrataDocument, opts: SvgExportO
   const bandHeight = band.height
 
   const stackH = stackHeight(layers)
-  const axisTop = stackH + bandHeight
+  // The tempo lane, when the bar layer is exported and asks for it, under the band.
+  const lane = tempoLane(doc, exportLayers(doc, opts.layerIds).map((l) => l.id), { start, end })
+  const laneTop = stackH + bandHeight
+  const axisTop = laneTop + (lane ? TEMPO_LANE_HEIGHT : 0)
   const height = Math.ceil(axisTop + (opts.includeAxis ? AXIS_HEIGHT : 0))
   const width = Math.ceil(opts.width + SIDE_PAD * 2)
 
   const figure = renderToStaticMarkup(
-    <FormDiagramFigure
-      layers={layers}
-      placements={placements}
-      pps={pps}
-      totalWidth={opts.width}
-      showCaptions={doc.showCadenceCaptions ?? true}
-      theme={opts.colorblindSafe ? { ...PRINT_THEME, mapFill: safeFill } : PRINT_THEME}
-    />,
+    <g>
+      <FormDiagramFigure
+        layers={layers}
+        placements={placements}
+        pps={pps}
+        totalWidth={opts.width}
+        showCaptions={doc.showCadenceCaptions ?? true}
+        theme={opts.colorblindSafe ? { ...PRINT_THEME, mapFill: safeFill } : PRINT_THEME}
+      />
+      {lane && <TempoLaneFigure lane={lane} top={laneTop} pps={pps} totalWidth={opts.width} theme={PRINT_THEME} />}
+    </g>,
   )
 
   // Axis: ticks at a round interval, at least ~60px apart at this scale.

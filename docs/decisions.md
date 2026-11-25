@@ -119,6 +119,7 @@ aren't part of this repository.
 - [The bar layer counts its bars by a layer above (each span from 1) or in groups; selected bars recount from 1; Elide makes a bar "4=1" and offers to elide the boundary above it.](#the-bar-layer-2026-11-25)
 - [Fill with the grid's bars makes an empty layer the bar layer, numbered and counted.](#the-bar-layer-2026-11-25)
 - [Selected spans split into equal bars on the bar layer; selected counted bars make phrases on the layer above. Either works on a chunk or the whole track.](#bars-from-phrases-phrases-from-bars-2026-11-25)
+- [The bar layer can draw a tempo lane under the diagram, each bar's tempo read from its length; only the switch (`showTempo`) is stored.](#the-tempo-lane-2026-11-25)
 - [Fit boundaries to the grid moves a layer's boundaries to bars or beats.](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02)
 - [Playback rates are 0.5×, 0.75×, 1× and 1.25×; rewind goes to 0:00.](#player-chrome-phase-03)
 - [The play bar's clock reads m:ss; editable times keep milliseconds.](#ui-review-fixes-and-tighter-chrome-2026-09-27)
@@ -236,7 +237,7 @@ By area, in the order the entries were made:
 
 **Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01) · [Group Spans Into Another Layer (2026-10-24)](#group-spans-into-another-layer-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Choosing What Copy to Layer Takes (2026-10-31)](#choosing-what-copy-to-layer-takes-2026-10-31)
 
-**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25) · [Bars From Phrases, Phrases From Bars (2026-11-25)](#bars-from-phrases-phrases-from-bars-2026-11-25)
+**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25) · [Bars From Phrases, Phrases From Bars (2026-11-25)](#bars-from-phrases-phrases-from-bars-2026-11-25) · [The Tempo Lane (2026-11-25)](#the-tempo-lane-2026-11-25)
 
 **Point markers:** [Point Markers](#point-markers) · [Point Markers — Implementation (2026-07-03)](#point-markers--implementation-2026-07-03) · [Point Markers — Redesign (2026-07-04)](#point-markers--redesign-2026-07-04) · [Marker Band, Absent Events, and the Diagram Control Bar (2026-07-24, cont.)](#marker-band-absent-events-and-the-diagram-control-bar-2026-07-24-cont)
 
@@ -5377,4 +5378,34 @@ across the phrase; where it moves (an accelerando), the planned Normalize, with
 its smooth mode, is what evens them along the curve.
 `splitIntoBars` and `phrasesFromCount` in the store; `splitEvenly` and
 `phraseRuns` in lib/hypermeter.ts; `BarSetupRow` in MetadataPanel.
+
+---
+
+## The Tempo Lane (2026-11-25)
+
+*From the maintainer, on a track whose bars are all marked by hand: "one of
+the things that I wanted to show is that the tempo steadily increases until
+… it kind of locks in, and then it slows down at the end."*
+
+**Decision.** A switch on the bar layer, **Tempo lane** (`Layer.showTempo`, a
+new optional field, so no format version bump), draws each bar's tempo under
+the diagram, between the marker band and the ruler: a step line, one level per
+bar, in a 52px band. A bar's tempo is its beats over its length in minutes;
+the beats come from the beat grid's meter at the bar, else the document's
+meter, else 4. The scale runs from the lowest tempo to the highest, out to the
+nearest 10, with dashed guide lines at both ends and at a round tempo between
+them when there's room; the top one reads "140 BPM". In the editor the scale's
+labels stay at the left edge as the drawing scrolls. Hovering a bar shows
+"Bar 37: 103 BPM". The lane follows the bar layer: hidden with it, and drawn
+in the reading view and in an SVG export that includes it, where an exported
+range keeps each bar's whole-bar tempo.
+**Rejected.** *Storing the tempos:* they follow from the bar boundaries, and a
+stored copy would go stale the moment a boundary moved. *A lane on by default:*
+it changes what a reader sees, so the analyst turns it on. *Clipping the scale
+to leave out an outlier bar,* such as a long last bar that holds the decay to
+the end: the lane shows the bars as marked.
+**Why.** Marking every bar is how an analyst shows tempo they can hear moving.
+The narrowing brackets imply it; the lane states it, with numbers.
+`lib/tempoLane.ts`; `TempoLaneFigure` in widgets/form-diagram/figure.tsx; drawn
+by FormLayers and exportSvg; the switch in BarLayerSettings.
 

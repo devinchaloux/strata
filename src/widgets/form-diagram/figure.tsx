@@ -47,6 +47,7 @@ import {
 import type { Layer, Span, FormDiagramData, CapStyle } from '@/types/strata'
 import type { FigureTheme } from './theme'
 import { PATTERN_TILE, patternInk, patternMarks } from '@/lib/patterns'
+import { TEMPO_LANE_HEIGHT, tempoY, type TempoLane } from '@/lib/tempoLane'
 
 /** A white halo behind text that overhangs the ink of the layer above. */
 function halo(theme: FigureTheme) {
@@ -363,6 +364,60 @@ export function MarkerFigure({
           {visibleCaption}
         </text>
       )}
+    </g>
+  )
+}
+
+// ── The tempo lane ──────────────────────────────────────────────────────────
+
+/**
+ * The bar layer's tempo as a step line, one level per bar, in a band from
+ * `top` (lib/tempoLane.ts). Guide lines at round tempos; with `labels`, their
+ * values at the band's left edge (the editor draws its own, which stay in view
+ * as it scrolls). Each bar carries a hover title: "Bar 37: 103 BPM".
+ */
+export function TempoLaneFigure({
+  lane,
+  top,
+  pps,
+  totalWidth,
+  theme,
+  labels = true,
+}: {
+  lane: TempoLane
+  top: number
+  pps: number
+  totalWidth: number
+  theme: FigureTheme
+  labels?: boolean
+}) {
+  const y = (bpm: number) => tempoY(bpm, lane.scale, top)
+  let d = ''
+  lane.steps.forEach((s, k) => {
+    const x0 = s.start * pps
+    const x1 = s.end * pps
+    const prev = lane.steps[k - 1]
+    d += prev && Math.abs(prev.end - s.start) < 1e-6 ? ` L${x0},${y(s.bpm)}` : ` M${x0},${y(s.bpm)}`
+    d += ` L${x1},${y(s.bpm)}`
+  })
+  return (
+    <g>
+      <line x1={0} x2={totalWidth} y1={top + 0.5} y2={top + 0.5} stroke={theme.inkFaint} strokeOpacity={0.5} strokeWidth={1} />
+      {lane.scale.ticks.map((t) => (
+        <line key={t} x1={0} x2={totalWidth} y1={y(t)} y2={y(t)} stroke={theme.inkFaint} strokeOpacity={0.5} strokeWidth={0.75} strokeDasharray="2 3" />
+      ))}
+      {labels &&
+        lane.scale.ticks.map((t) => (
+          <text key={t} x={2} y={y(t) - 2} fontSize={8.5} fill={theme.caption}>
+            {t === lane.scale.max ? `${t} BPM` : t}
+          </text>
+        ))}
+      <path d={d.trim()} fill="none" stroke={theme.ink} strokeWidth={1.5} strokeLinejoin="round" />
+      {lane.steps.map((s, k) => (
+        <rect key={k} x={s.start * pps} y={top} width={Math.max(0, (s.end - s.start) * pps)} height={TEMPO_LANE_HEIGHT} fill="transparent">
+          <title>{`${s.bar ? `Bar ${s.bar}: ` : ''}${Math.round(s.bpm * 10) / 10} BPM`}</title>
+        </rect>
+      ))}
     </g>
   )
 }
