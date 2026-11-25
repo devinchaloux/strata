@@ -1,5 +1,5 @@
 /**
- * Colour themes for the form diagram figure (./figure.tsx). Kept apart from the
+ * Colour themes for the Segments block figure (./figure.tsx). Kept apart from the
  * components so the figure module exports components only.
  */
 

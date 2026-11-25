@@ -1,5 +1,5 @@
 /**
- * FormDiagram — the form-diagram *widget*: a bounded block of a widget top bar,
+ * WorkArea — the segmentation *widget*: a bounded block of a widget top bar,
  * the layer-header column, and the stack of form layers, sitting on the shared
  * timeline ruler.
  *
@@ -52,7 +52,7 @@ import { useUIStore, type QuickEntry } from '@/store/uiStore'
 import { useTimeline } from '@/hooks/useTimeline'
 import { computeFitZoom, computePps, offsetShowing, scrollableWidth, timeInView } from '@/lib/timeline'
 import { TimelineAxis } from './TimelineAxis'
-import { FormLayers } from './FormLayers'
+import { SegmentLayers } from './SegmentLayers'
 import { LayerSettingsPopover } from './LayerSettingsPopover'
 import { AddLayerPopover } from './AddLayerPopover'
 import { DiagramControlBar } from './DiagramControlBar'
@@ -61,7 +61,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { QuickSetup } from './QuickSetup'
 import { VIDEO_MINI_WIDTH } from './PlayerDock'
 import { CommentaryPanel } from '@/widgets/written-analysis/CommentaryPanel'
-import { formSpans, analysisLayers, quickSetupLayer } from '@/lib/layers'
+import { segmentSpans, analysisLayers, quickSetupLayer } from '@/lib/layers'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -74,7 +74,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { STACK_TOP_PAD, stackHeight, layerPitch } from '@/lib/formShape'
+import { STACK_TOP_PAD, stackHeight, layerPitch } from '@/lib/segmentShape'
 import { markerBandHeight } from '@/lib/markerBand'
 import { HEADER_WIDTH_RAIL, layerHeaderWidth, measureLabel } from '@/lib/layerHeader'
 import type { BlockType, Layer, WidgetBlock } from '@/types/strata'
@@ -297,7 +297,7 @@ function LayerHeaders({ layers, collapsed, width }: { layers: Layer[]; collapsed
   // confirming removes the layer, which would unmount a dialog nested in that row
   // mid-close (Radix throws). One hoisted dialog, keyed by the pending layer.
   const [pendingDelete, setPendingDelete] = useState<Layer | null>(null)
-  const pendingSpanCount = pendingDelete ? formSpans(pendingDelete).length : 0
+  const pendingSpanCount = pendingDelete ? segmentSpans(pendingDelete).length : 0
   function confirmDelete() {
     if (pendingDelete) removeLayer(pendingDelete.id)
     setPendingDelete(null)
@@ -574,7 +574,7 @@ function WidgetTopBar({
 
 /**
  * A block's own controls, at the right of its top bar (lib/widgets.ts): move
- * it up or down, hide it, and, for any block but the form diagram, remove it.
+ * it up or down, hide it, and, for any block but the Segments block, remove it.
  * Moving shows only when there is another block to move past.
  */
 function BlockControls({ type, index, count }: { type: BlockType; index: number; count: number }) {
@@ -601,7 +601,7 @@ function BlockControls({ type, index, count }: { type: BlockType; index: number;
       <button className={icon} style={style} onClick={() => setWidgetHidden(type, true)} title={`Hide ${name}`} aria-label={`Hide ${name}`}>
         <EyeOff size={13} />
       </button>
-      {type !== 'form-diagram' &&
+      {type !== 'segmentation' &&
         (confirming ? (
           <span className="flex items-center gap-1 text-[11px]" style={style}>
             Remove {name}?
@@ -623,14 +623,14 @@ function BlockControls({ type, index, count }: { type: BlockType; index: number;
 
 /**
  * Above the blocks, in the editor: the hidden blocks, each brought back with
- * a click, and Add widget. When the form diagram is hidden, the zoom controls
+ * a click, and Add widget. When the Segments block is hidden, the zoom controls
  * it carries come here. Nothing shows while every block is shown and nothing
  * more can be added, so the strip costs no room most of the time.
  */
 function WidgetStrip({ blocks, zoom }: { blocks: WidgetBlock[]; zoom: ZoomControlProps | null }) {
   const setWidgetHidden = useDocumentStore((s) => s.setWidgetHidden)
   const addTempoWidget = useDocumentStore((s) => s.addTempoWidget)
-  const hasBars = useDocumentStore((s) => !!s.document?.layers.some((l) => l.role === 'bars' && l.type === 'form-diagram'))
+  const hasBars = useDocumentStore((s) => !!s.document?.layers.some((l) => l.role === 'bars' && l.type === 'segmentation'))
   const [open, setOpen] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   const hidden = blocks.filter((w) => w.hidden && w.type in WIDGET_NAMES)
@@ -738,10 +738,10 @@ function QuickEntrySwitch() {
 }
 
 // ---------------------------------------------------------------------------
-// FormDiagram
+// WorkArea
 // ---------------------------------------------------------------------------
 
-export function FormDiagram() {
+export function WorkArea() {
   const doc = useDocumentStore((s) => s.document)
   const collapsed = useUIStore((s) => s.headersCollapsed)
   const toggleCollapsed = useUIStore((s) => s.toggleHeadersCollapsed)
@@ -773,11 +773,11 @@ export function FormDiagram() {
     isFit: Math.abs(timeline.zoom - fitZoom) < 1e-3,
   }
 
-  // Widgets as blocks (lib/widgets.ts): the form diagram's card and the other
+  // Widgets as blocks (lib/widgets.ts): the Segments block's card and the other
   // blocks, top to bottom in the file's order, above the one shared ruler.
   const blocks = widgetBlocks(doc)
-  const formAt = blocks.findIndex((w) => w.type === 'form-diagram')
-  const formHidden = !!blocks[formAt]?.hidden
+  const segmentsAt = blocks.findIndex((w) => w.type === 'segmentation')
+  const segmentsHidden = !!blocks[segmentsAt]?.hidden
   const renderBlock = (w: WidgetBlock, i: number) =>
     w.type === 'tempo' && !w.hidden ? (
       <TempoBlock
@@ -789,10 +789,10 @@ export function FormDiagram() {
     ) : null
 
   // Macro-on-top; hidden layers are pulled out of the stack (slot reclaimed).
-  // Only form-diagram layers draw here. A layer of a type this build doesn't
+  // Only segmentation layers draw here. A layer of a type this build doesn't
   // know is kept in the document untouched (the loader warns about it).
   const sorted = doc.layers
-    .filter((l) => l.type === 'form-diagram')
+    .filter((l) => l.type === 'segmentation')
     .sort((a, b) => b.displayOrder - a.displayOrder)
   const hiddenByReader = (l: Layer) => reading && readingHidden.includes(l.id)
   const visible = sorted.filter((l) => l.visibility && !hiddenByReader(l))
@@ -802,7 +802,7 @@ export function FormDiagram() {
   // layer does (its Hide button is on the commentary itself).
   const hidden = [...sorted.filter((l) => !l.visibility), ...analysisLayers(doc).filter((l) => !l.visibility)]
 
-  // The widget card must also make room for the marker band that FormLayers
+  // The widget card must also make room for the marker band that SegmentLayers
   // draws below the stack, or the band is clipped by the card.
   const stackH = stackHeight(visible) + markerBandHeight(doc.pointMarkers, doc.vocabulary.pointMarkerTypes, timeline.pps)
   // As wide as the longest visible name needs (lib/layerHeader.ts). Measuring
@@ -814,7 +814,7 @@ export function FormDiagram() {
   // A linked analysis with no spans yet gets the quick setup (QuickSetup.tsx).
   const linked = !!doc.source.url || (doc.source.type === 'local' && !!doc.source.filename)
   const quickLayer =
-    !reading && linked && !doc.layers.some((l) => formSpans(l).length > 0) ? quickSetupLayer(doc, activeLayerId) : null
+    !reading && linked && !doc.layers.some((l) => segmentSpans(l).length > 0) ? quickSetupLayer(doc, activeLayerId) : null
 
   return (
     // px-2 insets the whole diagram (widget card + ruler) together, so the
@@ -847,18 +847,18 @@ export function FormDiagram() {
       {/* The widget is a framed card: the top bar (collapse / add / hidden
           chips) and the layer stack read as one object distinct from the shared
           timeline below. The border overlay (absolute, pointer-events-none, z-10)
-          paints above the absolutely-positioned FormLayers SVG so all four edges
+          paints above the absolutely-positioned SegmentLayers SVG so all four edges
           are visible — an inset outline would be covered by the SVG on bottom/right. */}
       {/* Reading can hide the diagram; it stays mounted (hidden) so the
           timeline keeps its measurements. */}
       {/* data-touch-pan: a finger drags the diagram sideways here, and only
           here (hooks/useTouchPan). */}
       <div className={showDiagram ? 'contents' : 'hidden'} data-touch-pan>
-      {!reading && <WidgetStrip blocks={blocks} zoom={formHidden ? zoomProps : null} />}
-      {blocks.slice(0, formAt).map((w, i) => renderBlock(w, i))}
+      {!reading && <WidgetStrip blocks={blocks} zoom={segmentsHidden ? zoomProps : null} />}
+      {blocks.slice(0, segmentsAt).map((w, i) => renderBlock(w, i))}
       <div
         data-keeps-selection
-        className={`relative shrink-0 overflow-hidden rounded-md bg-(--canvas) ${formHidden ? 'hidden' : ''}`}
+        className={`relative shrink-0 overflow-hidden rounded-md bg-(--canvas) ${segmentsHidden ? 'hidden' : ''}`}
         style={{ marginBottom: 4 }}
       >
         {/* Editing controls are off while reading. The reading view keeps
@@ -870,7 +870,7 @@ export function FormDiagram() {
             onToggleCollapsed={toggleCollapsed}
             hidden={hidden}
             zoom={zoomProps}
-            blockControls={<BlockControls type="form-diagram" index={formAt} count={blocks.length} />}
+            blockControls={<BlockControls type="segmentation" index={segmentsAt} count={blocks.length} />}
           />
         )}
         {/* Reading (and an embed) keeps two controls: the layer names'
@@ -913,7 +913,7 @@ export function FormDiagram() {
         <div className={phoneReading ? 'overflow-y-auto overscroll-contain' : undefined} style={phoneReading ? { maxHeight: PHONE_STACK_MAX } : undefined}>
           <div className="flex w-full" style={{ height: stackH }}>
             <LayerHeaders layers={visible} collapsed={collapsed} width={headerWidth} />
-            <FormLayers layers={visible} />
+            <SegmentLayers layers={visible} />
           </div>
         </div>
         <div
@@ -923,7 +923,7 @@ export function FormDiagram() {
         />
       </div>
 
-      {blocks.slice(formAt + 1).map((w, k) => renderBlock(w, formAt + 1 + k))}
+      {blocks.slice(segmentsAt + 1).map((w, k) => renderBlock(w, segmentsAt + 1 + k))}
 
       {/* Ruler row — offset cell matches header width so zero aligns with spans */}
       <div className="flex shrink-0 border-t" style={{ borderColor: 'var(--hairline)' }}>

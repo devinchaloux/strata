@@ -14,7 +14,7 @@ flowchart TB
   F --> V["Vocabulary<br/>your own terms, imported packs"]
   F --> L["Layers"]
   F --> P["Point markers<br/>single moments, seen by every layer"]
-  L --> FD["Form diagram layer<br/>spans: label, type, boundaries, part of"]
+  L --> FD["Segmentation layer<br/>spans: label, type, boundaries, part of"]
   L --> C["Commentary layer<br/>writing about a span or a stretch of time"]
   L --> T["Tempo layer<br/>the tempo of a layer of bars"]
   F --> W["Widgets<br/>which blocks show, top to bottom"]
@@ -81,7 +81,7 @@ A layer (`layers`) holds one reading of the timeline: large-scale form, sections
 
 There are three kinds today:
 
-- **Form diagram layers** (`type: "form-diagram"`) hold spans, the sections drawn as brackets.
+- **Segmentation layers** (`type: "segmentation"`) hold spans that cut the timeline into consecutive segments, drawn as brackets: sections, phrases, bars, key areas. On screen they make up the **Segments** block. (Before format 3 they were called form diagram layers, `"form-diagram"`.)
 - **A commentary layer** (`type: "written-analysis"`) holds your written commentary. Strata makes one the first time you write commentary. You never manage it directly.
 - **Tempo layers** (`type: "tempo"`) show the tempo of a layer of bars, usually the bar layer. The tempo itself isn't stored: each bar's tempo is worked out from its length, so it always agrees with the bars. The layer keeps only which layer it reads (`data.source`) and how to show it (`data.display`): as marked, smoothed for the drawing (no bar moves), and each boundary's deviation from the smooth curve in milliseconds, with an optional fixed BPM range for comparing recordings.
 
@@ -92,7 +92,7 @@ Each layer also carries its own settings:
 | Setting | What it does | In the file |
 | --- | --- | --- |
 | Identity | A permanent internal code | `id` |
-| Kind | Form diagram, commentary or tempo | `type` |
+| Kind | Segmentation, commentary or tempo | `type` |
 | Content | The layer's spans or commentary | `data` |
 | Name and description | The name beside the layer, and an optional longer note on its framework ("Phrase-level hypermeter, 4-bar units") | `label`, `description` |
 | Shown or hidden | Strata leaves hidden layers out of exports | `visibility` |
@@ -111,7 +111,7 @@ Strata keeps a layer of a kind it doesn't know unchanged in the file, so a file 
 
 ### Widgets
 
-Each kind of analysis that draws on the timeline is a **widget**, shown as a block: the form diagram is one block holding every form layer, and tempo is another holding every tempo layer. All blocks share the one time ruler at the bottom. The file lists the blocks top to bottom (`widgets`), each with its kind (`type`) and whether you hid it (`hidden`), so a reader sees them as you arranged them. A file without the list shows the form diagram alone, plus tempo if it has a tempo layer.
+Each kind of analysis that draws on the timeline is a **widget**, shown as a block: Segments is one block holding every segmentation layer, and tempo is another holding every tempo layer. All blocks share the one time ruler at the bottom. The file lists the blocks top to bottom (`widgets`), each with its kind (`type`) and whether you hid it (`hidden`), so a reader sees them as you arranged them. A file without the list shows Segments alone, plus tempo if it has a tempo layer.
 
 ## Spans
 
@@ -248,6 +248,7 @@ Each file records the version of the format it uses (`fileFormatVersion`). When 
 
 | Version | What changed |
 | --- | --- |
+| 3 (November 2026) | The form diagram became **segmentation**: its layers' `type` (and its entry in `widgets`) changed from `"form-diagram"` to `"segmentation"`. The name says what every such layer does, whatever the framework: cut the timeline into consecutive segments. Nothing else changed. Strata renames it when it opens an older file. |
 | 2 (October 2026) | Removed three details that were unused or unwanted: a shared pool of time points (`sharedTimePoints`; the beat grid took over its job), a hierarchy setting on each layer that Strata never used (`hierarchicalEnforcement`), and a confidence rating on spans and markers (`confidence`). Strata drops them when it opens a version-1 file. Colors may now be `"none"`. |
 | 1 | The first published format. |
 

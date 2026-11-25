@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { layerFonts } from '@/lib/formShape'
+import { layerFonts } from '@/lib/segmentShape'
 import type { Layer } from '@/types/strata'
 import { makeLayer } from './fixtures'
 

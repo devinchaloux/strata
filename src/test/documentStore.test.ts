@@ -2,13 +2,13 @@ import { FILE_FORMAT_VERSION } from '@/lib/migrations'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useDocumentStore } from '@/store/documentStore'
 import { makeDoc, makeLayer, makeSpan } from './fixtures'
-import type { StrataDocument, Layer, Span, FormDiagramData } from '@/types/strata'
+import type { StrataDocument, Layer, Span, SegmentationData } from '@/types/strata'
 
 // Minimal layer/doc builders for exercising store actions in isolation.
 function layer(id: string, displayOrder: number, visibility = true): Layer {
   return {
     id,
-    type: 'form-diagram',
+    type: 'segmentation',
     label: id,
     visibility,
     locked: false,
@@ -99,11 +99,11 @@ describe('loadId (re-fit-on-load signal)', () => {
 
 describe('updateSpans (bulk edit)', () => {
   function spanLayer(id: string, spans: Span[]): Layer {
-    return { ...layer(id, 0), type: 'form-diagram', data: { spans } }
+    return { ...layer(id, 0), type: 'segmentation', data: { spans } }
   }
   function spansOf(layerId: string): Span[] {
     const l = useDocumentStore.getState().document!.layers.find((x) => x.id === layerId)!
-    return (l.data as FormDiagramData).spans
+    return (l.data as SegmentationData).spans
   }
 
   beforeEach(() => {

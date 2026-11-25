@@ -10,7 +10,7 @@
 > and comparing recordings.
 
 A widget that shows tempo over time, drawn as its own block on the shared
-timeline, above or below the form diagram. It reads a layer of marked bars (the bar
+timeline, above or below the Segments block. It reads a layer of marked bars (the bar
 layer) or, later, of beats, and draws each one's tempo. An analyst who marks
 every bar is usually showing something about time: an accelerando that locks
 in, a ritardando, a performer's rubato. The tempo widget states it with
@@ -84,18 +84,18 @@ deviation beyond it is drawn clipped, with a cap.
 
 - **Adding:** Add widget, above the blocks, offers Tempo once a layer is the
   bar layer. It makes a tempo layer, "<bar layer> tempo", reading it, and a
-  tempo block just below the form diagram. Adding it while it is hidden shows
+  tempo block just below the Segments block. Adding it while it is hidden shows
   it.
 - **The top bar:** "Tempo", then ↑ ↓ to move the block past another (shown
   when there is more than one block), hide, and remove (with a confirm; it
-  removes the tempo layers). The form diagram's top bar has the same move and
+  removes the tempo layers). The Segments block's top bar has the same move and
   hide, but no remove: its layers are the analysis.
 - **Hidden blocks** come back from chips beside Add widget. With the form
   diagram hidden, its zoom controls move there too.
 - **A row** per tempo layer: a header cell as wide as the layer names, with
   the name and ⋯ settings (name; the layer it reads; Show: as marked,
   smoothed, deviation; the smoothing, from Auto; the scale, from the data or
-  fixed), and the drawing, which scrolls and zooms with the form diagram and
+  fixed), and the drawing, which scrolls and zooms with the Segments block and
   carries the playhead. The tempo band is 52 px and the deviation band 40 px.
 - The marked line fades when the smoothed one is shown, so both read.
 
@@ -136,8 +136,8 @@ before a custom rate is designed.
 ## 7. Settled (2026-11-25)
 
 1. **Placement:** tempo is its own block, a framed card on the shared
-   timeline that the analyst moves above or below the form diagram, shows,
-   hides, adds and removes; not a row among the form diagram's layers
+   timeline that the analyst moves above or below the Segments block, shows,
+   hides, adds and removes; not a row among the Segments block's layers
    ("Widgets as Blocks" corrects the first answer).
 2. **Display choices** (`display`) are saved in the file, and so are the
    order of the blocks and which are hidden (`StrataDocument.widgets`).

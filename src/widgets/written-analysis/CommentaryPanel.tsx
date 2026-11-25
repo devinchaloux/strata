@@ -1,7 +1,7 @@
 /**
  * CommentaryPanel — the written-analysis widget's reading view.
  *
- * Sits in the open area above the form diagram and shows the moment as a
+ * Sits in the open area above the Segments block and shows the moment as a
  * stack: in each layer from the top down (rotation → section → phrase), the
  * span sounding now, with its label, annotation and commentary, and its lyrics
  * when the Lyrics toggle is on. Commentary on a stretch of time covering the
@@ -16,7 +16,7 @@
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import type { AnalysisBlock, StrataDocument } from '@/types/strata'
-import { formSpans, analysisLayers, withReadingHidden } from '@/lib/layers'
+import { segmentSpans, analysisLayers, withReadingHidden } from '@/lib/layers'
 import { spanTypeName } from '@/lib/vocabulary'
 import { EyeOff } from 'lucide-react'
 import { READING_VIDEO_W } from '@/components/PlayerDock'
@@ -45,7 +45,7 @@ const mmss = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).
  */
 function momentOf(doc: StrataDocument, time: number, selected: string[], playing: boolean): number {
   if (!playing && selected.length) {
-    const spans = doc.layers.flatMap(formSpans).filter((s) => selected.includes(s.id))
+    const spans = doc.layers.flatMap(segmentSpans).filter((s) => selected.includes(s.id))
     if (spans.length) return Math.min(...spans.map((s) => s.startTime))
   }
   return time
@@ -60,7 +60,7 @@ function heldMoment(doc: StrataDocument, edit: { key: string; at: number } | nul
   const [kind, id] = edit.key.split(':')
   // A stretch being written about ("range:start:end") holds the stack too.
   if (kind === 'range') return edit.at
-  const exists = kind === 'span' ? doc.layers.some((l) => formSpans(l).some((s) => s.id === id)) : allBlocks(doc).some((b) => b.block.id === id)
+  const exists = kind === 'span' ? doc.layers.some((l) => segmentSpans(l).some((s) => s.id === id)) : allBlocks(doc).some((b) => b.block.id === id)
   return exists ? edit.at : null
 }
 
@@ -257,7 +257,7 @@ function Hint({ children }: { children: React.ReactNode }) {
 function nextStep(doc: StrataDocument): string | null {
   const linked = !!doc.source.url || (doc.source.type === 'local' && !!doc.source.filename)
   if (!linked) return 'Start by linking a video or audio file in the play bar.'
-  if (!doc.layers.some((l) => formSpans(l).length > 0))
+  if (!doc.layers.some((l) => segmentSpans(l).length > 0))
     return 'Press Space to play and B at each boundary you hear. Press M to place a point marker.'
   if (!allBlocks(doc).length)
     return doc.beatGrid?.length
@@ -291,7 +291,7 @@ export function CommentaryPanel() {
 
   // Before there's anything to read, this space coaches the next step of a
   // first analysis: link a source, mark boundaries, then describe a span.
-  const hasSpans = doc.layers.some((l) => formSpans(l).length > 0)
+  const hasSpans = doc.layers.some((l) => segmentSpans(l).length > 0)
   const step = nextStep(doc)
   if (!hasSpans) return reading ? null : <Hint>{step}</Hint>
 
@@ -312,7 +312,7 @@ export function CommentaryPanel() {
   const passages = passagesAt(doc, t).filter((b) => b !== rangeBlock)
   // Layers the reader hid in the reading view leave the readout too.
   const rows = stackAt(reading ? withReadingHidden(doc, ui.readingHiddenLayers) : doc, t)
-  const anyLyrics = doc.layers.some((l) => formSpans(l).some((s) => s.lyrics))
+  const anyLyrics = doc.layers.some((l) => segmentSpans(l).some((s) => s.lyrics))
 
   // Reading: the video sits top left (PlayerDock, READING_VIDEO_W), so the
   // commentary starts to its right, larger; the header's Show chips replace

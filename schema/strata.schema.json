@@ -27,7 +27,7 @@
     "fileFormatVersion": {
       "type": "integer",
       "minimum": 1,
-      "description": "Version of this file format (2 at present). It goes up when a change means older files must be upgraded to be read correctly; the app upgrades an older file when it opens it (src/lib/migrations.ts)."
+      "description": "Version of this file format (3 at present). It goes up when a change means older files must be upgraded to be read correctly; the app upgrades an older file when it opens it (src/lib/migrations.ts)."
     },
     "createdAt": {
       "type": "string",
@@ -125,7 +125,7 @@
     "widgets": {
       "type": "array",
       "items": { "$ref": "#/$defs/WidgetBlock" },
-      "description": "The widgets of the work area, top to bottom, each drawn as a block above the shared time ruler. One entry per widget type; a block holds every layer of its type. Absent = the form diagram alone, plus a tempo block if there are tempo layers. A reader adds a block any layer needs, drops duplicates, and keeps an entry whose type it doesn't know."
+      "description": "The widgets of the work area, top to bottom, each drawn as a block above the shared time ruler. One entry per widget type; a block holds every layer of its type. Absent = segments alone, plus a tempo block if there are tempo layers. A reader adds a block any layer needs, drops duplicates, and keeps an entry whose type it doesn't know."
     }
 
   },
@@ -346,8 +346,8 @@
         },
         "type": {
           "type": "string",
-          "enum": ["form-diagram", "written-analysis", "tempo"],
-          "description": "Widget type: 'form-diagram' (spans on a timeline), 'written-analysis' (commentary anchored to spans or times) or 'tempo' (the tempo of a layer of bars, read from their lengths). Possible future types: 'energy-contour', 'instrumentation'. A reader that meets a type it doesn't know should keep the layer unchanged."
+          "enum": ["segmentation", "written-analysis", "tempo"],
+          "description": "Widget type: 'segmentation' (spans that cut the timeline into consecutive segments, drawn as brackets; called the form diagram before format 3), 'written-analysis' (commentary anchored to spans or times) or 'tempo' (the tempo of a layer of bars, read from their lengths). Possible future types: 'energy-contour', 'instrumentation'. A reader that meets a type it doesn't know should keep the layer unchanged."
         },
         "label": {
           "type": "string",
@@ -420,8 +420,8 @@
       },
       "allOf": [
         {
-          "if": { "properties": { "type": { "const": "form-diagram" } } },
-          "then": { "properties": { "data": { "$ref": "#/$defs/FormDiagramData" } } }
+          "if": { "properties": { "type": { "const": "segmentation" } } },
+          "then": { "properties": { "data": { "$ref": "#/$defs/SegmentationData" } } }
         },
         {
           "if": { "properties": { "type": { "const": "written-analysis" } } },
@@ -442,7 +442,7 @@
       "properties": {
         "type": {
           "type": "string",
-          "description": "The widget type the block draws: 'form-diagram' or 'tempo'. It holds every layer of that type."
+          "description": "The widget type the block draws: 'segmentation' or 'tempo'. It holds every layer of that type."
         },
         "hidden": {
           "type": "boolean",
@@ -462,7 +462,7 @@
           "required": ["layerId", "unit"],
           "additionalProperties": false,
           "properties": {
-            "layerId": { "type": "string", "description": "The form-diagram layer whose spans are the units, usually the bar layer." },
+            "layerId": { "type": "string", "description": "The segmentation layer whose spans are the units, usually the bar layer." },
             "unit": { "type": "string", "enum": ["bar", "beat"], "description": "What each span of the source is." }
           }
         },
@@ -535,11 +535,11 @@
       }
     },
 
-    "FormDiagramData": {
+    "SegmentationData": {
       "type": "object",
       "required": ["spans"],
       "additionalProperties": false,
-      "description": "Data payload for a form-diagram layer.",
+      "description": "Data payload for a segmentation layer.",
       "properties": {
         "spans": {
           "type": "array",

@@ -11,7 +11,7 @@
 import { useState } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
-import { formSpans } from '@/lib/layers'
+import { segmentSpans } from '@/lib/layers'
 import { Switch } from '@/components/ui/switch'
 import type { Layer } from '@/types/strata'
 
@@ -33,10 +33,10 @@ export function BarLayerSettings({ layer }: { layer: Layer }) {
   const [result, setResult] = useState<string | null>(null)
 
   const isBars = layer.role === 'bars'
-  const count = formSpans(layer).length
+  const count = segmentSpans(layer).length
   // Layers above that could group the bars, nearest first.
   const above = (layers ?? [])
-    .filter((l) => l.type === 'form-diagram' && l.displayOrder > layer.displayOrder && formSpans(l).length > 0)
+    .filter((l) => l.type === 'segmentation' && l.displayOrder > layer.displayOrder && segmentSpans(l).length > 0)
     .sort((a, b) => a.displayOrder - b.displayOrder)
   const [by, setBy] = useState<string>(above[0]?.id ?? GROUPS)
   const byLayer = above.find((l) => l.id === by) ?? null

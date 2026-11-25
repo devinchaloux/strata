@@ -10,21 +10,21 @@ const tempo = (sourceId = 'Bars', extra: Partial<TempoLayer['data']> = {}): Temp
   ({ ...makeLayer('T'), type: 'tempo', data: { source: { layerId: sourceId, unit: 'bar' }, ...extra } }) as TempoLayer
 
 describe('widgetBlocks', () => {
-  it('is the form diagram alone for a file that lists none', () => {
-    expect(widgetBlocks({ layers: [makeLayer('A')] })).toEqual([{ type: 'form-diagram' }])
+  it('is the Segments block alone for a file that lists none', () => {
+    expect(widgetBlocks({ layers: [makeLayer('A')] })).toEqual([{ type: 'segmentation' }])
   })
 
-  it('adds a tempo block below the form diagram when a tempo layer needs one, and drops duplicates', () => {
-    expect(widgetBlocks({ layers: [tempo()] })).toEqual([{ type: 'form-diagram' }, { type: 'tempo' }])
-    expect(widgetBlocks({ widgets: [{ type: 'tempo' }, { type: 'form-diagram' }, { type: 'tempo', hidden: true }], layers: [] })).toEqual([
+  it('adds a tempo block below the Segments block when a tempo layer needs one, and drops duplicates', () => {
+    expect(widgetBlocks({ layers: [tempo()] })).toEqual([{ type: 'segmentation' }, { type: 'tempo' }])
+    expect(widgetBlocks({ widgets: [{ type: 'tempo' }, { type: 'segmentation' }, { type: 'tempo', hidden: true }], layers: [] })).toEqual([
       { type: 'tempo' },
-      { type: 'form-diagram' },
+      { type: 'segmentation' },
     ])
   })
 
   it('moves, hides and shows blocks', () => {
     const blocks = widgetBlocks({ layers: [tempo()] })
-    expect(moveBlock(blocks, 'tempo', -1).map((w) => w.type)).toEqual(['tempo', 'form-diagram'])
+    expect(moveBlock(blocks, 'tempo', -1).map((w) => w.type)).toEqual(['tempo', 'segmentation'])
     expect(moveBlock(blocks, 'tempo', 1)).toBe(blocks)
     const hidden = setBlockHidden(blocks, 'tempo', true)
     expect(blockShown(hidden, 'tempo')).toBe(false)
@@ -36,7 +36,7 @@ describe('reading a file', () => {
   it('reads a tempo layer and gives it a block', () => {
     const { doc } = readDocument(JSON.parse(JSON.stringify(makeDoc([makeLayer('Bars'), tempo()]))))
     expect(doc.layers[1].type).toBe('tempo')
-    expect(doc.widgets).toEqual([{ type: 'form-diagram' }, { type: 'tempo' }])
+    expect(doc.widgets).toEqual([{ type: 'segmentation' }, { type: 'tempo' }])
   })
 
   it('leaves a file without widgets without a list', () => {
@@ -58,14 +58,14 @@ describe('widgets in the store', () => {
     const id = store().addTempoWidget()!
     const layer = store().document!.layers.find((l) => l.id === id) as TempoLayer
     expect(layer.data.source).toEqual({ layerId: 'Bars', unit: 'bar' })
-    expect(store().document!.widgets).toEqual([{ type: 'form-diagram' }, { type: 'tempo' }])
+    expect(store().document!.widgets).toEqual([{ type: 'segmentation' }, { type: 'tempo' }])
   })
 
   it('moves, hides, shows and removes it, one undo step each', () => {
     load()
     store().addTempoWidget()
     store().moveWidget('tempo', -1)
-    expect(store().document!.widgets!.map((w) => w.type)).toEqual(['tempo', 'form-diagram'])
+    expect(store().document!.widgets!.map((w) => w.type)).toEqual(['tempo', 'segmentation'])
     store().setWidgetHidden('tempo', true)
     expect(store().document!.widgets![0].hidden).toBe(true)
     // Adding again shows the block that is there rather than making another.
@@ -73,11 +73,11 @@ describe('widgets in the store', () => {
     expect(store().document!.widgets![0].hidden).toBeUndefined()
     store().removeWidget('tempo')
     expect(store().document!.layers.some((l) => l.type === 'tempo')).toBe(false)
-    expect(store().document!.widgets).toEqual([{ type: 'form-diagram' }])
+    expect(store().document!.widgets).toEqual([{ type: 'segmentation' }])
     useDocumentStore.temporal.getState().undo()
     expect(store().document!.layers.some((l) => l.type === 'tempo')).toBe(true)
-    store().removeWidget('form-diagram')
-    expect(store().document!.widgets!.some((w) => w.type === 'form-diagram')).toBe(true)
+    store().removeWidget('segmentation')
+    expect(store().document!.widgets!.some((w) => w.type === 'segmentation')).toBe(true)
   })
 
   it('changes what the tempo shows and reads', () => {

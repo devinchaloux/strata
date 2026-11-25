@@ -1,4 +1,4 @@
-import { formSpans } from '@/lib/layers'
+import { segmentSpans } from '@/lib/layers'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { slugify, uniqueSlug } from '@/lib/slug'
 import { useDocumentStore } from '@/store/documentStore'
@@ -34,7 +34,7 @@ describe('uniqueSlug', () => {
 
 describe('slugs in the store', () => {
   const store = () => useDocumentStore.getState()
-  const spans = () => store().document!.layers.flatMap((l) => formSpans(l))
+  const spans = () => store().document!.layers.flatMap((l) => segmentSpans(l))
   const slugOf = (id: string) => spans().find((s) => s.id === id)?.slug
 
   beforeEach(() => {
@@ -112,6 +112,6 @@ describe('marker slugs', () => {
     store().loadDocument(makeDoc([makeLayer('L', [makeSpan('a', 0, 30)])]))
     store().addPointMarker({ id: 'm1', timestamp: 10, label: 'Drop' })
     store().setSpanLabels(['a'], 'Drop')
-    expect(store().document!.layers.flatMap((l) => formSpans(l))[0].slug).toBe('drop-2')
+    expect(store().document!.layers.flatMap((l) => segmentSpans(l))[0].slug).toBe('drop-2')
   })
 })

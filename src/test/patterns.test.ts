@@ -5,7 +5,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { FILL_PATTERNS, patternInk, patternMarks } from '@/lib/patterns'
-import { exportFormDiagramSvg } from '@/widgets/form-diagram/exportSvg'
+import { exportSegmentsSvg } from '@/widgets/segmentation/exportSvg'
 import { safeFill, QUICK_FILLS } from '@/lib/palette'
 import { makeDoc, makeLayer, makeSpan } from './fixtures'
 
@@ -29,14 +29,14 @@ describe('a patterned span in an export', () => {
   const opts = { start: 0, end: 100, width: 800, includeMarkers: false, includeAxis: false }
 
   it('defines its pattern and fills with it', async () => {
-    const svg = await exportFormDiagramSvg(doc, opts)
+    const svg = await exportSegmentsSvg(doc, opts)
     expect(svg).toContain('<pattern id="fill-pattern-s1"')
     expect(svg).toContain('fill="url(#fill-pattern-s1)"')
     expect(svg.match(/<pattern /g)).toHaveLength(1)
   })
 
   it('takes its colour from the fill as drawn, colour-blind safe included', async () => {
-    const svg = await exportFormDiagramSvg(doc, { ...opts, colorblindSafe: true })
+    const svg = await exportSegmentsSvg(doc, { ...opts, colorblindSafe: true })
     expect(svg).toContain(`stroke="${patternInk(safeFill(QUICK_FILLS[0]))}"`)
   })
 })

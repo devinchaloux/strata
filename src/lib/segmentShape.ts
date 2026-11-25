@@ -1,5 +1,5 @@
 /**
- * Pure geometry + color helpers for form-diagram span shapes.
+ * Pure geometry + color helpers for segmentation span shapes.
  *
  * No React, no DOM. Everything here is a pure function so it can be unit-tested
  * and reused by both the editor render path and (later) the embeddable viewer.
@@ -37,7 +37,7 @@
  * colored fill reads as a solid block. One path, two idioms, no special-casing.
  */
 
-import type { BoundaryType, CapStyle, LineStyle, Layer, Span, FormDiagramData } from '@/types/strata'
+import type { BoundaryType, CapStyle, LineStyle, Layer, Span, SegmentationData } from '@/types/strata'
 
 // ---------------------------------------------------------------------------
 // Metrics (starting values; tweakable once seen on real data)
@@ -671,7 +671,7 @@ export function layerLabelLayout(layer: Layer, pps: number, totalWidth: number) 
   if ((layer.rendering?.labelPosition ?? 'above') === 'inside') return null
   const isBar = layer.spanShape === 'bar'
   return layoutLayerLabels(
-    (layer.data as FormDiagramData).spans.map((s) => ({
+    (layer.data as SegmentationData).spans.map((s) => ({
       id: s.id,
       x: s.startTime * pps,
       width: (s.endTime - s.startTime) * pps,

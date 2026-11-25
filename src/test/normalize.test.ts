@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { autoLogLambda, normalizePlan, runTimes, scatter, smoothTimes, steadyTimes } from '@/lib/normalize'
-import { formSpans } from '@/lib/layers'
+import { segmentSpans } from '@/lib/layers'
 import { useDocumentStore } from '@/store/documentStore'
 import type { Span } from '@/types/strata'
 import { makeDoc, makeLayer } from './fixtures'
@@ -79,10 +79,10 @@ describe('normalizeBars in the store', () => {
     load()
     const r = store().normalizeBars(['b0', 'b1', 'b2', 'b3', 'b4', 'b5'], 'steady', 0, false)
     expect(r?.moved).toBe(5)
-    expect(formSpans(layer('Bars')).map((s) => s.startTime)).toEqual([0, 2, 4, 6, 8, 10])
-    expect(formSpans(layer('Phrases'))[0].endTime).toBe(6)
+    expect(segmentSpans(layer('Bars')).map((s) => s.startTime)).toEqual([0, 2, 4, 6, 8, 10])
+    expect(segmentSpans(layer('Phrases'))[0].endTime).toBe(6)
     useDocumentStore.temporal.getState().undo()
-    expect(formSpans(layer('Bars')).map((s) => s.startTime)).toEqual(taps.slice(0, -1))
+    expect(segmentSpans(layer('Bars')).map((s) => s.startTime)).toEqual(taps.slice(0, -1))
   })
 
   it('copies the bars, normalized, to a layer below, keeping the taps', () => {
@@ -91,10 +91,10 @@ describe('normalizeBars in the store', () => {
     const copy = layer(r!.layerId)
     expect(copy.label).toBe('Bars (normalized)')
     expect(copy.displayOrder).toBeLessThan(layer('Bars').displayOrder)
-    expect(formSpans(copy).map((s) => [s.startTime, s.label, s.annotation])).toEqual([
+    expect(segmentSpans(copy).map((s) => [s.startTime, s.label, s.annotation])).toEqual([
       [0, '1', '1'], [2, '2', '2'], [4, '3', '3'], [6, '4', '1'], [8, '5', '2'], [10, '6', '3'],
     ])
-    expect(formSpans(layer('Bars')).map((s) => s.startTime)).toEqual(taps.slice(0, -1))
+    expect(segmentSpans(layer('Bars')).map((s) => s.startTime)).toEqual(taps.slice(0, -1))
   })
 
   it('refuses bars that do not follow one another', () => {

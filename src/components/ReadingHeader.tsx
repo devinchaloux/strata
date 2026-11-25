@@ -12,7 +12,7 @@
  */
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
-import { analysisLayers, formSpans } from '@/lib/layers'
+import { analysisLayers, segmentSpans } from '@/lib/layers'
 
 function Chip({ on, label, onClick }: { on: boolean; label: string; onClick: () => void }) {
   return (
@@ -43,7 +43,7 @@ export function ReadingHeader({ phone = false }: { phone?: boolean }) {
   if (!doc) return null
 
   const hasCommentary = analysisLayers(doc).length > 0
-  const hasLyrics = doc.layers.some((l) => formSpans(l).some((s) => s.lyrics))
+  const hasLyrics = doc.layers.some((l) => segmentSpans(l).some((s) => s.lyrics))
   return (
     <>
       <div className={`flex min-w-0 items-baseline gap-2 ${phone ? 'flex-1' : ''}`}>
@@ -56,7 +56,7 @@ export function ReadingHeader({ phone = false }: { phone?: boolean }) {
       >
         <span className="mr-1 text-xs text-muted-foreground">Show</span>
         {hasCommentary && <Chip on={show.commentary} label="Commentary" onClick={() => setShow('commentary', !show.commentary)} />}
-        <Chip on={show.diagram} label="Form diagram" onClick={() => setShow('diagram', !show.diagram)} />
+        <Chip on={show.diagram} label="Segments" onClick={() => setShow('diagram', !show.diagram)} />
         {hasLyrics && <Chip on={showLyrics} label="Lyrics" onClick={() => setShowLyrics(!showLyrics)} />}
         <Chip on={colorblindSafe} label="Color-blind safe" onClick={() => setColorblindSafe(!colorblindSafe)} />
       </div>

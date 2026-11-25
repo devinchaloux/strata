@@ -6,7 +6,7 @@
  * layer (BarLayerSettings), lock, and delete.
  *
  * Hierarchical enforcement is deliberately NOT here: it was redefined as a
- * cross-layer nesting constraint scoped to the form-diagram widget (not per-layer),
+ * cross-layer nesting constraint scoped to the segmentation widget (not per-layer),
  * so its control belongs at the widget level and its enforcement logic is its own
  * future work item. See docs/decisions.md and _private/open-questions.md.
  *
@@ -257,7 +257,7 @@ export function LayerSettingsPopover({
 
           {/* The bar layer: numbering and counting its bars, or filling an
               empty layer with the grid's bars (BarLayerSettings). */}
-          {layer.type === 'form-diagram' && (
+          {layer.type === 'segmentation' && (
             <>
               <div className="h-px" style={{ background: 'var(--hairline)' }} />
               <BarLayerSettings layer={layer} />

@@ -1,10 +1,10 @@
 /**
- * The form diagram as a pure drawing — the widget contract's "render component".
+ * The Segments block as a pure drawing — the widget contract's "render component".
  *
  * Nothing here reads a store or handles an event. Given layers, markers, a
  * scale and a colour theme, it returns SVG. That is what lets one drawing serve
  * three places: the editor (which lays an interaction layer on top, see
- * components/FormLayers.tsx), SVG/PDF export (rendered to a string with a print
+ * components/SegmentLayers.tsx), SVG/PDF export (rendered to a string with a print
  * theme), and a future embeddable viewer.
  *
  * The editor needs one thing drawn *inside* each span, between the shape and its
@@ -35,7 +35,7 @@ import {
   layerBodyHeight,
   type Justification,
   type ResolvedLabel,
-} from '@/lib/formShape'
+} from '@/lib/segmentShape'
 import {
   BAND_TOP_GAP,
   BAND_ROW_HEIGHT,
@@ -44,7 +44,7 @@ import {
   BOX_PAD_X,
   type MarkerPlacement,
 } from '@/lib/markerBand'
-import type { Layer, Span, FormDiagramData, CapStyle } from '@/types/strata'
+import type { Layer, Span, SegmentationData, CapStyle } from '@/types/strata'
 import type { FigureTheme } from './theme'
 import { PATTERN_TILE, patternInk, patternMarks } from '@/lib/patterns'
 import { TEMPO_LANE_HEIGHT, tempoY, type TempoLane } from '@/lib/tempoLane'
@@ -75,7 +75,7 @@ function SpanFigure({
 }: {
   span: Span
   layer: Layer
-  /** Sides that join an open-capped neighbour (formShape.openJoins). */
+  /** Sides that join an open-capped neighbour (segmentShape.openJoins). */
   join?: { start: boolean; end: boolean }
   pps: number
   /** Resolved above-label from the layer's neighbour-aware layout pass. */
@@ -223,7 +223,7 @@ function SpanFigure({
       )}
 
       {/* A label with no room is left out rather than marked: in the editor it
-          shows on hover or selection (FormLayers' HiddenLabelPeek). */}
+          shows on hover or selection (SegmentLayers' HiddenLabelPeek). */}
 
       {annotationText && (
         <text
@@ -265,12 +265,12 @@ export const LayerFigure = memo(function LayerFigure({
 }) {
   if (!layer.visibility) return null
   const labels = layerLabelLayout(layer, pps, totalWidth)
-  const joins = openJoins((layer.data as FormDiagramData).spans)
+  const joins = openJoins((layer.data as SegmentationData).spans)
   return (
     <g transform={`translate(0, ${topY})`}>
       {/* Overlap order, not time order, so an elided bracket can sit on top of
           its neighbour when the analyst asks for it (endOnTop). */}
-      {spanDrawOrder((layer.data as FormDiagramData).spans).map((span) => (
+      {spanDrawOrder((layer.data as SegmentationData).spans).map((span) => (
         <SpanFigure
           key={span.id}
           span={span}
@@ -428,7 +428,7 @@ export function TempoLaneFigure({
  * Every visible layer plus the marker band, in the diagram's coordinates
  * (x = seconds × pps; layers stacked from y = 0, the band below them).
  */
-export function FormDiagramFigure({
+export function SegmentationFigure({
   layers,
   placements,
   pps,

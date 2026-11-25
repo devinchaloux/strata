@@ -17,7 +17,7 @@
  * layer the app can't draw is kept in the document and saved back unchanged.
  */
 
-import type { StrataDocument, Layer, Span, FormDiagramData, GridSegment, WidgetBlock } from '@/types/strata'
+import type { StrataDocument, Layer, Span, SegmentationData, GridSegment, WidgetBlock } from '@/types/strata'
 import { widgetBlocks } from '@/lib/widgets'
 import { findOverlaps } from '@/lib/spanEdit'
 import { formatTime } from '@/lib/youtube'
@@ -70,7 +70,7 @@ export function readDocument(raw: unknown): LoadResult {
   const layers = oneBarLayer(input.layers.map((raw, i) => readLayer(raw, i, spanIds, notices)))
   const lastSpanEnd = Math.max(
     0,
-    ...layers.flatMap((l) => (l.type === 'form-diagram' ? l.data.spans.map((s) => s.endTime) : [])),
+    ...layers.flatMap((l) => (l.type === 'segmentation' ? l.data.spans.map((s) => s.endTime) : [])),
   )
 
   const now = new Date().toISOString()
@@ -118,7 +118,7 @@ export function readDocument(raw: unknown): LoadResult {
  * are never changed: something may already point at them.
  */
 function fillMissingSlugs(doc: StrataDocument): StrataDocument {
-  const spans = doc.layers.flatMap((l) => (l.type === 'form-diagram' ? l.data.spans : []))
+  const spans = doc.layers.flatMap((l) => (l.type === 'segmentation' ? l.data.spans : []))
   const markers = doc.pointMarkers
   if (![...spans, ...markers].some((s) => s.label && !s.slug)) return doc
   const taken = new Set([...spans, ...markers].map((s) => s.slug).filter((x): x is string => !!x))
@@ -139,7 +139,7 @@ function fillMissingSlugs(doc: StrataDocument): StrataDocument {
   return {
     ...doc,
     layers: doc.layers.map((l) =>
-      l.type === 'form-diagram'
+      l.type === 'segmentation'
         ? { ...l, data: { ...l.data, spans: l.data.spans.map((s) => (assigned.has(s.id) ? { ...s, slug: assigned.get(s.id)! } : s)) } }
         : l,
     ),
@@ -156,7 +156,7 @@ function oneBarLayer(layers: Layer[]): Layer[] {
   let found = false
   return layers.map((l) => {
     if (l.role !== 'bars') return l
-    if (l.type === 'form-diagram' && !found) {
+    if (l.type === 'segmentation' && !found) {
       found = true
       return l
     }
@@ -196,8 +196,8 @@ function readLayer(raw: unknown, index: number, spanIds: Set<string>, notices: s
     return base as unknown as Layer
   }
 
-  if (raw.type !== 'form-diagram') {
-    // Kept verbatim so saving round-trips it; FormDiagram only draws its own type.
+  if (raw.type !== 'segmentation') {
+    // Kept verbatim so saving round-trips it; WorkArea only draws its own type.
     notices.push(
       `"${label}" is a ${String(raw.type)} layer, which this version of Strata can't display yet. It is kept in the file unchanged.`,
     )
@@ -221,8 +221,8 @@ function readLayer(raw: unknown, index: number, spanIds: Set<string>, notices: s
     )
   }
 
-  const formData: FormDiagramData = { ...data, spans }
-  return { ...base, type: 'form-diagram', data: formData } as Layer
+  const segmentData: SegmentationData = { ...data, spans }
+  return { ...base, type: 'segmentation', data: segmentData } as Layer
 }
 
 /** A written-analysis layer: commentary blocks, each anchored to a span or a time range. */

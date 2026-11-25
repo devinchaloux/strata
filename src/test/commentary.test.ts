@@ -219,9 +219,9 @@ describe('commentary in files', () => {
   it('round-trips through the reader and validates against the schema', () => {
     const fixture = JSON.parse(readFileSync(resolve(__dirname, '../../public/demos/alive.strata'), 'utf8'))
     store().loadDocument(readDocument(fixture).doc)
-    const span = doc().layers.flatMap((l) => (l.type === 'form-diagram' ? l.data.spans : []))[0]
+    const span = doc().layers.flatMap((l) => (l.type === 'segmentation' ? l.data.spans : []))[0]
     store().setSpanCommentary(span.id, 'An analytical remark.')
-    store().removeLayer(doc().layers.find((l) => l.type === 'form-diagram')!.id)
+    store().removeLayer(doc().layers.find((l) => l.type === 'segmentation')!.id)
 
     const saved = JSON.parse(JSON.stringify(doc()))
     const schema = JSON.parse(readFileSync(resolve(__dirname, '../../schema/strata.schema.json'), 'utf8'))

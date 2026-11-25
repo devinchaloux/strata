@@ -8,7 +8,7 @@ import type { GridSegment, Span } from '@/types/strata'
 import { barTiling } from '@/lib/beatGrid'
 import { rippleSpanEnd, extendSpanToEnd } from '@/lib/spanEdit'
 import { useDocumentStore } from '@/store/documentStore'
-import { formSpans } from '@/lib/layers'
+import { segmentSpans } from '@/lib/layers'
 import { makeDoc, makeLayer } from './fixtures'
 
 // 120 BPM in 4/4: a bar is 2 s, four bars 8 s.
@@ -88,7 +88,7 @@ describe('in the store', () => {
     store().loadDocument({ ...makeDoc([layer]), duration: 30, bpm: 120, timeSignature: { numerator: 4, denominator: 4 }, ...extra })
     return layer.id
   }
-  const layerSpans = (id: string) => formSpans(store().document!.layers.find((l) => l.id === id)!)
+  const layerSpans = (id: string) => segmentSpans(store().document!.layers.find((l) => l.id === id)!)
 
   it('fills an empty layer from the tempo, starting a grid there', () => {
     const id = load()

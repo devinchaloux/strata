@@ -5,7 +5,7 @@
  * schema doesn't allow (it uses additionalProperties: false) fails here instead
  * of in someone else's corpus script.
  */
-import { formSpans, newFormLayer } from '@/lib/layers'
+import { segmentSpans, newSegmentLayer } from '@/lib/layers'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -54,7 +54,7 @@ describe('documents the app writes', () => {
 
   it('stay valid after the common edits', () => {
     const layer = store().document!.layers[0]
-    const [first, second] = formSpans(layer)
+    const [first, second] = segmentSpans(layer)
 
     store().placeBoundary(layer.id, (first.startTime + first.endTime) / 2) // split
     store().setSpanLabels([first.id], 'Intro′') // label + slug
@@ -86,10 +86,10 @@ describe('documents the app writes', () => {
   })
 
   it('stay valid after quick setup, a change of length in bars and beat matching', () => {
-    const empty = newFormLayer('Phrases', 99)
+    const empty = newSegmentLayer('Phrases', 99)
     store().addLayer(empty)
     expect(store().fillLayerWithBars(empty.id, 1, 4)).toBeGreaterThan(2)
-    const [, second, third] = formSpans(store().document!.layers.find((l) => l.id === empty.id)!)
+    const [, second, third] = segmentSpans(store().document!.layers.find((l) => l.id === empty.id)!)
     store().resizeSpanByBars(empty.id, second.id, 1)
     store().setSpanBars(empty.id, third.id, 2)
     store().stepGridTempo(30, 0.01)
@@ -100,7 +100,7 @@ describe('documents the app writes', () => {
 
   it('stay valid after a merge', () => {
     const layer = store().document!.layers[0]
-    const sources = formSpans(layer).slice(0, 2)
+    const sources = segmentSpans(layer).slice(0, 2)
     const { draft } = resolveMerge(sources, () => crypto.randomUUID())
     store().mergeSpans(layer.id, sources.map((s) => s.id), draft)
     expectValid(doc())

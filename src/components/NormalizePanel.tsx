@@ -35,7 +35,7 @@ export function NormalizePanel({ spans, onClose }: { spans: Span[]; onClose: () 
   const plan = useMemo(() => (times ? normalizePlan(times, mode, g) : null), [times, mode, g])
   const firstId = spans[0]?.id
   const layerId = useMemo(
-    () => doc?.layers.find((l) => l.type === 'form-diagram' && l.data.spans.some((s) => s.id === firstId))?.id ?? null,
+    () => doc?.layers.find((l) => l.type === 'segmentation' && l.data.spans.some((s) => s.id === firstId))?.id ?? null,
     [doc, firstId],
   )
 

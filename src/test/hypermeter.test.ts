@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { barNumberLabels, boundaryOnBar, countLabels, countOf, countsByGroups, elideLabels, gridBars, holdsCount, phraseRuns, splitEvenly, writeCounts } from '@/lib/hypermeter'
 import { readDocument } from '@/lib/documentLoad'
 import type { GridSegment, Span } from '@/types/strata'
-import { formSpans } from '@/lib/layers'
+import { segmentSpans } from '@/lib/layers'
 import { useDocumentStore } from '@/store/documentStore'
 import { makeDoc, makeLayer } from './fixtures'
 
@@ -61,7 +61,7 @@ describe('in the store', () => {
     store().loadDocument({ ...makeDoc([makeLayer('L')]), duration: 16, beatGrid: [seg(0)] })
     return 'L'
   }
-  const spansOf = (i = 0) => formSpans(store().document!.layers[i])
+  const spansOf = (i = 0) => segmentSpans(store().document!.layers[i])
   const labels = () => spansOf().map((s) => s.label)
   const counts = (i = 0) => spansOf(i).map((s) => s.annotation)
 
@@ -114,7 +114,7 @@ describe('the bar layer', () => {
   const bar = (k: number, extra: Partial<Span> = {}): Span => ({ id: `b${k}`, startTime: k * 2, endTime: k * 2 + 2, ...extra })
   const phrase = (id: string, start: number, end: number, extra: Partial<Span> = {}): Span => ({ id, startTime: start, endTime: end, ...extra })
   const layerOf = (id: string) => store().document!.layers.find((l) => l.id === id)!
-  const field = (id: string, f: 'label' | 'annotation') => formSpans(layerOf(id)).map((s) => s[f])
+  const field = (id: string, f: 'label' | 'annotation') => segmentSpans(layerOf(id)).map((s) => s[f])
 
   // Eight bars below; above them phrases of 3 and 5 bars.
   function load(barSpans: Span[] = Array.from({ length: 8 }, (_, k) => bar(k))) {
@@ -176,7 +176,7 @@ describe('the bar layer', () => {
     load()
     store().countBars('Bars', 'Phrases', 4)
     expect(store().elideGroupBoundary('Bars', 'b3')).toBe('Phrases')
-    const [p1, p2] = formSpans(layerOf('Phrases'))
+    const [p1, p2] = segmentSpans(layerOf('Phrases'))
     expect(p1.endBoundaryType).toBe('elided')
     expect(p2.startBoundaryType).toBeUndefined() // elision is per side
     // No boundary above bar 2.
@@ -230,18 +230,18 @@ describe('bars from phrases, phrases from bars', () => {
     const bars = byLabel('Bars')
     expect(bars.role).toBe('bars')
     expect(layers().map((l) => l.label)).toEqual(['Bars', 'Phrases'])
-    const made = formSpans(bars)
+    const made = segmentSpans(bars)
     expect(made.map((b) => [b.startTime, b.endTime])).toEqual([[8, 10], [10, 12], [12, 14], [14, 16], [16, 18], [18, 20]])
     expect(made.map((b) => b.label)).toEqual(['1', '2', '3', '4', '5', '6'])
     expect(made.map((b) => b.annotation)).toEqual(['1', '2', '3', '1', '2', '3'])
     expect(made.map((b) => b.parentId)).toEqual(['p2', 'p2', 'p2', 'p3', 'p3', 'p3'])
     // The first phrase next: its bars go in, and numbering goes on from the bar before.
     store().splitIntoBars(['p1'], 4)
-    expect(formSpans(byLabel('Bars')).map((b) => b.label).slice(0, 4)).toEqual(['1', '2', '3', '4'])
+    expect(segmentSpans(byLabel('Bars')).map((b) => b.label).slice(0, 4)).toEqual(['1', '2', '3', '4'])
     // Not over bars that are there.
     expect(store().splitIntoBars(['p2'], 3)).toBe('occupied')
     useDocumentStore.temporal.getState().undo()
-    expect(formSpans(byLabel('Bars'))).toHaveLength(6)
+    expect(segmentSpans(byLabel('Bars'))).toHaveLength(6)
   })
 
   it('makes phrases from a chunk of counted bars, eliding where a bar is 4=1', () => {
@@ -251,10 +251,10 @@ describe('bars from phrases, phrases from bars', () => {
     // Bars 2 onward only: the first phrase starts at the first selected bar.
     const r = store().phrasesFromCount(bars.slice(2).map((b) => b.id))
     expect(r?.layerId).toBe('Phrases')
-    const phrases = formSpans(byLabel('Phrases')).filter((p) => p.id !== 'far')
+    const phrases = segmentSpans(byLabel('Phrases')).filter((p) => p.id !== 'far')
     expect(phrases.map((p) => [p.startTime, p.endTime])).toEqual([[4, 8], [8, 14], [14, 22]])
     expect(phrases[1].endBoundaryType).toBe('elided')
-    const kids = formSpans(byLabel('Bars')).filter((b) => b.parentId === phrases[2].id).map((b) => b.id)
+    const kids = segmentSpans(byLabel('Bars')).filter((b) => b.parentId === phrases[2].id).map((b) => b.id)
     expect(kids).toEqual(['b7', 'b8', 'b9', 'b10'])
     // The layer above is now full there: a second run makes a new Phrases layer.
     store().phrasesFromCount(bars.slice(2).map((b) => b.id))

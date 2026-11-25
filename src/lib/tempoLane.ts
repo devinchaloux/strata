@@ -1,13 +1,13 @@
 /**
  * Tempo from marked bars: each bar's tempo read from its length, as beats in
  * the bar over its seconds, and the scale and layout to draw it as a step line
- * (TempoLaneFigure in widgets/form-diagram/figure.tsx), and what the tempo
+ * (TempoLaneFigure in widgets/segmentation/figure.tsx), and what the tempo
  * widget draws (tempoView: marked, smoothed, deviation). Nothing here is
  * stored. widgets/tempo.md; docs/decisions.md, "Widgets as Blocks".
  */
 import type { Layer, StrataDocument, TempoLayer } from '@/types/strata'
 import { autoLogLambda, smoothTimes } from '@/lib/normalize'
-import { formSpans } from '@/lib/layers'
+import { segmentSpans } from '@/lib/layers'
 import { segmentAt, sortedSegments } from '@/lib/beatGrid'
 
 /** Height of the lane, in px, from the top of its band to the ruler. */
@@ -51,7 +51,7 @@ export function beatsPerBarAt(doc: StrataDocument): (t: number) => number {
 
 /** Each bar's tempo, from its length; bars shorter than a millisecond are left out. */
 export function tempoSteps(layer: Layer, beatsAt: (t: number) => number): TempoStep[] {
-  return [...formSpans(layer)]
+  return [...segmentSpans(layer)]
     .sort((a, b) => a.startTime - b.startTime)
     .filter((s) => s.endTime - s.startTime > 0.001)
     .map((s) => ({
@@ -99,7 +99,7 @@ export function tempoLane(
   layer: Layer,
   range?: { start: number; end: number },
 ): TempoLane | null {
-  if (layer.type !== 'form-diagram') return null
+  if (layer.type !== 'segmentation') return null
   let steps = tempoSteps(layer, beatsPerBarAt(doc))
   if (steps.length < 2) return null
   const scale = tempoScale(steps)
@@ -162,7 +162,7 @@ export function boundaryRuns(steps: TempoStep[]): number[][] {
 export function tempoView(doc: StrataDocument, layer: TempoLayer): TempoView {
   const display = layer.data?.display ?? {}
   const show = display.show?.length ? display.show : ['marked']
-  const source = doc.layers.find((l) => l.id === layer.data?.source?.layerId && l.type === 'form-diagram') ?? null
+  const source = doc.layers.find((l) => l.id === layer.data?.source?.layerId && l.type === 'segmentation') ?? null
   const beatsAt = beatsPerBarAt(doc)
   const marked = source ? tempoSteps(source, beatsAt) : []
   const wantSmooth = show.includes('smoothed') || show.includes('deviation')

@@ -5,9 +5,9 @@
  */
 import type { Layer, Span, StrataDocument, WrittenAnalysisLayer } from '@/types/strata'
 
-/** A form-diagram layer's spans; an empty list for any other widget type. */
-export function formSpans(layer: Layer): Span[] {
-  return layer.type === 'form-diagram' ? layer.data.spans : []
+/** A segmentation layer's spans; an empty list for any other widget type. */
+export function segmentSpans(layer: Layer): Span[] {
+  return layer.type === 'segmentation' ? layer.data.spans : []
 }
 
 /** The document's written-analysis layers. */
@@ -18,7 +18,7 @@ export function analysisLayers(doc: StrataDocument): WrittenAnalysisLayer[] {
 /** The layer a quick setup fills: the active one if it's an empty form layer, else the top empty one. */
 export function quickSetupLayer(doc: StrataDocument, activeId: string | null): Layer | null {
   const empty = doc.layers
-    .filter((l) => l.type === 'form-diagram' && formSpans(l).length === 0)
+    .filter((l) => l.type === 'segmentation' && segmentSpans(l).length === 0)
     .sort((a, b) => b.displayOrder - a.displayOrder)
   return empty.find((l) => l.id === activeId) ?? empty[0] ?? null
 }
@@ -28,10 +28,10 @@ export function quickSetupLayer(doc: StrataDocument, activeId: string | null): L
  * neutral ink stroke, never a grey box (docs/decisions.md, layer colour
  * defaults).
  */
-export function newFormLayer(label: string, displayOrder: number): Layer {
+export function newSegmentLayer(label: string, displayOrder: number): Layer {
   return {
     id: crypto.randomUUID(),
-    type: 'form-diagram',
+    type: 'segmentation',
     label,
     visibility: true,
     locked: false,

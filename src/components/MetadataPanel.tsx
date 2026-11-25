@@ -25,18 +25,18 @@ import { TimeInput } from './TimeInput'
 import { TypePicker } from './TypePicker'
 import { labelFollowsType, letterFamily, familyLabels } from '@/lib/vocabulary'
 import { blockForSpan, blockForRange } from '@/widgets/written-analysis/commentary'
-import { capFromBoundaryType } from '@/lib/formShape'
+import { capFromBoundaryType } from '@/lib/segmentShape'
 import { slugify } from '@/lib/slug'
 import { ColorPicker } from '@/components/ui/color-picker'
 import { Field, inputClass } from '@/components/Field'
 import { toAccidentals } from '@/lib/musicSymbols'
 import { barAt, barLength, segmentAt, sortedSegments } from '@/lib/beatGrid'
 import { CAP_ICONS } from '@/lib/capIcons'
-import { formSpans, analysisLayers } from '@/lib/layers'
+import { segmentSpans, analysisLayers } from '@/lib/layers'
 import type {
   Span,
   Layer,
-  FormDiagramData,
+  SegmentationData,
   BoundaryType,
   CapStyle,
   LineStyle,
@@ -98,8 +98,8 @@ function findSpans(layers: Layer[], spanIds: string[]): SpanEntry[] {
   const out: SpanEntry[] = []
   for (const id of spanIds) {
     for (const layer of layers) {
-      if (layer.type !== 'form-diagram') continue
-      const span = (layer.data as FormDiagramData).spans.find((s) => s.id === id)
+      if (layer.type !== 'segmentation') continue
+      const span = (layer.data as SegmentationData).spans.find((s) => s.id === id)
       if (span) {
         out.push({ layer, span })
         break
@@ -274,7 +274,7 @@ function TimingGrid({
  */
 function OverlapFields({ layer, span }: { layer: Layer; span: Span }) {
   const updateSpan = useDocumentStore((s) => s.updateSpan)
-  const spans = (layer.data as FormDiagramData).spans
+  const spans = (layer.data as SegmentationData).spans
   const prev = spans.find((s) => s.endTime === span.startTime && s.id !== span.id)
   const next = spans.find((s) => s.startTime === span.endTime && s.id !== span.id)
   const capAt = (s: Span, side: 'start' | 'end') =>
@@ -480,7 +480,7 @@ function SpanLinks({ span }: { span: Span }) {
   const doc = useDocumentStore((s) => s.document)
   const updateSpans = useDocumentStore((s) => s.updateSpans)
   if (!doc) return null
-  const all = doc.layers.flatMap((l) => formSpans(l).map((s) => ({ s, l })))
+  const all = doc.layers.flatMap((l) => segmentSpans(l).map((s) => ({ s, l })))
   const parent = span.parentId ? all.find((e) => e.s.id === span.parentId) : undefined
   const children = all.filter((e) => e.s.parentId === span.id)
   if (!parent && !children.length) return null
@@ -584,7 +584,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   // Its length in bars of the grid where it ends, for the − / + bar buttons.
   const endSeg = segs.length ? segmentAt(segs, Math.max(span.startTime, span.endTime - 1e-3), doc?.duration ?? 0)?.seg : null
   const barsLong = endSeg ? Math.round((duration / barLength(endSeg)) * 10) / 10 : null
-  const siblings = formSpans(layer)
+  const siblings = segmentSpans(layer)
   const position = siblings.findIndex((s) => s.id === span.id) + 1
   // For To end: how many spans come after this one, and whether it already ends the track.
   const after = siblings.filter((s) => s.startTime >= span.endTime - 1e-6).length
@@ -1075,7 +1075,7 @@ function BarSetupRow({ layer, spans }: { layer: Layer; spans: Span[] }) {
   const setBarGroup = useUIStore((s) => s.setBarGroup)
   const [result, setResult] = useState<string | null>(null)
   const [normalizing, setNormalizing] = useState(false)
-  if (layer.locked || layer.type !== 'form-diagram') return null
+  if (layer.locked || layer.type !== 'segmentation') return null
   const isBars = layer.role === 'bars'
   const counted = spans.some((s) => countOf(s.annotation) !== null)
   const canNormalize = isBars && spans.length >= 2

@@ -2,14 +2,14 @@ import { create } from 'zustand'
 import { temporal } from 'zundo'
 import type { StrataDocument, Layer, LayerBase, Span, PointMarker, GridSegment, VocabTerm, BlockType, TempoData, TempoLayer } from '@/types/strata'
 import { moveBlock, setBlockHidden, widgetBlocks } from '@/lib/widgets'
-import { formSpans, newFormLayer } from '@/lib/layers'
+import { segmentSpans, newSegmentLayer } from '@/lib/layers'
 import { groupUpTarget, placeSpan, copyOfSpan, layerAbove, DEFAULT_COPY_FIELDS, type CopyField } from '@/lib/groupSpans'
 import { boundaryMoves, followLinks, repairParentLinks, splitTimeNearChildren, relinkToPieces } from '@/lib/linkedBoundaries'
 import { sortedSegments, segmentAt, segmentEnd, extendBack, snapToGrid, barTiling, barLength } from '@/lib/beatGrid'
 import { barNumberLabels, boundaryOnBar, countLabels, countOf, countsByGroups, elideLabels, numberedGridBars, phraseRuns, splitEvenly, writeCounts } from '@/lib/hypermeter'
 import { roundTempo, segmentForAdjusting, tempoThroughDownbeat } from '@/lib/metronome'
 import { normalizePlan, runTimes } from '@/lib/normalize'
-import type { FormDiagramData } from '@/types/strata'
+import type { SegmentationData } from '@/types/strata'
 import { mergeVocabPack, type MergeResult, type VocabPack } from '@/lib/vocabPack'
 import { placeBoundaryInSpans, setSpanEdge, findOverlaps, endSpanAtTime, snapSpansToGrid, rippleSpanEnd, extendSpanToEnd, MIN_SPAN_WIDTH } from '@/lib/spanEdit'
 import { groupingHandleSet, breakHistoryGroup } from '@/store/history'
@@ -177,10 +177,10 @@ interface DocumentState {
   ) => { moved: number; layerId: string } | null
   // Widgets as blocks (lib/widgets.ts). One undo step each.
   // Add the tempo widget: a tempo layer reading the bar layer, and its block
-  // (just below the form diagram), or show the block if it is there. Returns
+  // (just below the Segments block), or show the block if it is there. Returns
   // the tempo layer's id, or null when there is no bar layer to read.
   addTempoWidget: () => string | null
-  // Remove a widget: its block and every layer of its type. The form diagram
+  // Remove a widget: its block and every layer of its type. The Segments block
   // can't be removed.
   removeWidget: (type: BlockType) => void
   setWidgetHidden: (type: BlockType, hidden: boolean) => void
@@ -286,9 +286,9 @@ function mapLayer(layers: Layer[], id: string, fn: (layer: Layer) => Layer): Lay
 // is enforced: a write that would make two spans in one layer overlap is
 // dropped and the layer is returned unchanged (docs/decisions.md, 2026-09-27).
 // Gestures already respect the invariant; this catches any caller that doesn't.
-function mapFormDiagramSpans(layer: Layer, fn: (spans: Span[]) => Span[]): Layer {
-  if (layer.type !== 'form-diagram') return layer
-  const data = layer.data as FormDiagramData
+function mapSegmentSpans(layer: Layer, fn: (spans: Span[]) => Span[]): Layer {
+  if (layer.type !== 'segmentation') return layer
+  const data = layer.data as SegmentationData
   const next = fn(data.spans)
   // Untouched layers keep their identity, so memoized layers don't re-render:
   // on a large analysis a one-span edit used to redraw every layer.
@@ -302,7 +302,7 @@ function patchSpans(doc: StrataDocument, ids: Set<string>, fn: (s: Span) => Span
   return {
     ...doc,
     layers: doc.layers.map((l) =>
-      mapFormDiagramSpans(l, (spans) => (spans.some((s) => ids.has(s.id)) ? spans.map((s) => (ids.has(s.id) ? fn(s) : s)) : spans)),
+      mapSegmentSpans(l, (spans) => (spans.some((s) => ids.has(s.id)) ? spans.map((s) => (ids.has(s.id) ? fn(s) : s)) : spans)),
     ),
   }
 }
@@ -328,9 +328,9 @@ function withBarRole(layers: Layer[], layerId: string, on: boolean): Layer[] {
  */
 function pickedOnOneLayer(doc: StrataDocument | null, spanIds: string[]): { layer: Layer; spans: Span[] } | null {
   if (!doc || !spanIds.length) return null
-  const layer = doc.layers.find((l) => l.type === 'form-diagram' && formSpans(l).some((s) => spanIds.includes(s.id)))
+  const layer = doc.layers.find((l) => l.type === 'segmentation' && segmentSpans(l).some((s) => spanIds.includes(s.id)))
   if (!layer || layer.locked) return null
-  const spans = formSpans(layer).filter((s) => spanIds.includes(s.id))
+  const spans = segmentSpans(layer).filter((s) => spanIds.includes(s.id))
   if (spans.length !== spanIds.length) return null
   return { layer, spans: [...spans].sort((a, b) => a.startTime - b.startTime) }
 }
@@ -365,13 +365,13 @@ export function groupBoundaryOnBar(
   spanId: string,
 ): { layer: Layer; boundary: { before: Span; after: Span } } | null {
   const layer = doc.layers.find((l) => l.id === layerId)
-  const bar = layer && formSpans(layer).find((s) => s.id === spanId)
+  const bar = layer && segmentSpans(layer).find((s) => s.id === spanId)
   if (!layer || !bar) return null
   const above = doc.layers
-    .filter((l) => l.type === 'form-diagram' && l.displayOrder > layer.displayOrder)
+    .filter((l) => l.type === 'segmentation' && l.displayOrder > layer.displayOrder)
     .sort((a, b) => a.displayOrder - b.displayOrder)
   for (const l of above) {
-    const boundary = boundaryOnBar([bar.startTime, bar.endTime], [...formSpans(l)].sort((a, b) => a.startTime - b.startTime))
+    const boundary = boundaryOnBar([bar.startTime, bar.endTime], [...segmentSpans(l)].sort((a, b) => a.startTime - b.startTime))
     if (boundary) return { layer: l, boundary }
   }
   return null
@@ -442,7 +442,7 @@ function withLinks(prev: StrataDocument, next: StrataDocument, layerId: string):
   const before = prev.layers.find((l) => l.id === layerId)
   const after = next.layers.find((l) => l.id === layerId)
   if (!before || !after) return next
-  return followLinks(next, layerId, boundaryMoves(formSpans(before), formSpans(after)))
+  return followLinks(next, layerId, boundaryMoves(segmentSpans(before), segmentSpans(after)))
 }
 
 /**
@@ -458,13 +458,13 @@ function rippleByBars(
   delta: (barLen: number, span: Span) => number,
 ): StrataDocument | null {
   const layer = doc.layers.find((l) => l.id === layerId)
-  const span = layer && formSpans(layer).find((x) => x.id === spanId)
+  const span = layer && segmentSpans(layer).find((x) => x.id === spanId)
   if (!layer || !span) return null
   const hit = segmentAt(sortedSegments(doc.beatGrid), Math.max(span.startTime, span.endTime - 1e-3), doc.duration)
   if (!hit) return null
-  const next = rippleSpanEnd(formSpans(layer), spanId, delta(barLength(hit.seg), span), doc.duration)
+  const next = rippleSpanEnd(segmentSpans(layer), spanId, delta(barLength(hit.seg), span), doc.duration)
   if (!next) return null
-  const moved = withLinks(doc, { ...doc, layers: mapLayer(doc.layers, layerId, (l) => mapFormDiagramSpans(l, () => next)), updatedAt: now() }, layerId)
+  const moved = withLinks(doc, { ...doc, layers: mapLayer(doc.layers, layerId, (l) => mapSegmentSpans(l, () => next)), updatedAt: now() }, layerId)
   // A span pushed past the layer's end is dropped.
   return afterRemoval(doc, moved)
 }
@@ -583,7 +583,7 @@ const useDocumentStore = create<DocumentState>()(
           document: {
             ...doc,
             layers: mapLayer(doc.layers, layerId, (l) =>
-              mapFormDiagramSpans(l, (spans) =>
+              mapSegmentSpans(l, (spans) =>
                 [...spans, span].sort((a, b) => a.startTime - b.startTime)
               )
             ),
@@ -599,7 +599,7 @@ const useDocumentStore = create<DocumentState>()(
           document: {
             ...doc,
             layers: mapLayer(doc.layers, layerId, (l) =>
-              mapFormDiagramSpans(l, (spans) =>
+              mapSegmentSpans(l, (spans) =>
                 spans
                   .map((s) => (s.id === spanId ? { ...s, ...patch } : s))
                   .sort((a, b) => a.startTime - b.startTime)
@@ -618,7 +618,7 @@ const useDocumentStore = create<DocumentState>()(
           document: {
             ...doc,
             layers: doc.layers.map((l) =>
-              mapFormDiagramSpans(l, (spans) =>
+              mapSegmentSpans(l, (spans) =>
                 spans
                   .map((s) => (ids.has(s.id) ? { ...s, ...patch } : s))
                   .sort((a, b) => a.startTime - b.startTime),
@@ -668,7 +668,7 @@ const useDocumentStore = create<DocumentState>()(
         if (!doc) return
         let changed = false
         const layers = mapLayer(doc.layers, layerId, (l) =>
-          mapFormDiagramSpans(l, (spans) => {
+          mapSegmentSpans(l, (spans) => {
             const next = extendSpanToEnd(spans, spanId, doc.duration)
             if (!next) return spans
             changed = true
@@ -686,7 +686,7 @@ const useDocumentStore = create<DocumentState>()(
         const next = {
           ...doc,
           layers: mapLayer(doc.layers, layerId, (l) =>
-            mapFormDiagramSpans(l, (spans) => spans.filter((s) => s.id !== spanId))
+            mapSegmentSpans(l, (spans) => spans.filter((s) => s.id !== spanId))
           ),
           updatedAt: now(),
         }
@@ -711,7 +711,7 @@ const useDocumentStore = create<DocumentState>()(
         const next = {
           ...doc,
           layers: mapLayer(doc.layers, layerId, (l) =>
-            mapFormDiagramSpans(l, (spans) =>
+            mapSegmentSpans(l, (spans) =>
               [...spans.filter((s) => !spanIds.includes(s.id)), result].sort(
                 (a, b) => a.startTime - b.startTime
               )
@@ -751,12 +751,12 @@ const useDocumentStore = create<DocumentState>()(
         // Splitting a parent: a split near a boundary between its children
         // moves onto it, so no child straddles the split (lib/linkedBoundaries.ts).
         const target = doc.layers.find((l) => l.id === layerId)
-        const parent = target && formSpans(target).find((x) => x.startTime < at && at < x.endTime)
+        const parent = target && segmentSpans(target).find((x) => x.startTime < at && at < x.endTime)
         const time = parent ? splitTimeNearChildren(doc, parent, at) : at
         let changed = false
         const layers = mapLayer(doc.layers, layerId, (l) => {
-          if (l.type !== 'form-diagram') return l
-          const data = l.data as FormDiagramData
+          if (l.type !== 'segmentation') return l
+          const data = l.data as SegmentationData
           // Layer.fillGaps false: a boundary in an empty stretch starts a span
           // that runs to the next boundary only, not back to the previous one.
           const next = placeBoundaryInSpans(
@@ -775,7 +775,7 @@ const useDocumentStore = create<DocumentState>()(
         // The left half keeps the span's id; its children under the new right
         // half move to it.
         if (parent) {
-          const right = formSpans(next.layers.find((l) => l.id === layerId)!).find((x) => x.id !== parent.id && Math.abs(x.startTime - time) < 1e-9)
+          const right = segmentSpans(next.layers.find((l) => l.id === layerId)!).find((x) => x.id !== parent.id && Math.abs(x.startTime - time) < 1e-9)
           if (right) next = relinkToPieces(next, parent.id, [parent.id, right.id])
         }
         // A split copies the label (and so the slug) into the new right half;
@@ -788,8 +788,8 @@ const useDocumentStore = create<DocumentState>()(
         if (!doc) return
         let changed = false
         const layers = mapLayer(doc.layers, layerId, (l) => {
-          if (l.type !== 'form-diagram') return l
-          const data = l.data as FormDiagramData
+          if (l.type !== 'segmentation') return l
+          const data = l.data as SegmentationData
           const next = endSpanAtTime(data.spans, time)
           if (!next) return l
           changed = true
@@ -804,8 +804,8 @@ const useDocumentStore = create<DocumentState>()(
         const segs = sortedSegments(doc.beatGrid)
         let moved = 0
         const layers = mapLayer(doc.layers, layerId, (l) => {
-          if (l.type !== 'form-diagram') return l
-          const data = l.data as FormDiagramData
+          if (l.type !== 'segmentation') return l
+          const data = l.data as SegmentationData
           const r = snapSpansToGrid(data.spans, (t) => snapToGrid(t, segs, doc.duration, unit))
           moved = r.moved
           return moved ? { ...l, data: { ...data, spans: r.spans } } : l
@@ -828,7 +828,7 @@ const useDocumentStore = create<DocumentState>()(
         const to = times[times.length - 1]
         let made = 0
         const layers = mapLayer(doc.layers, layerId, (l) =>
-          mapFormDiagramSpans(l, (spans) => {
+          mapSegmentSpans(l, (spans) => {
             if (spans.some((x) => x.endTime > from + 1e-6 && x.startTime < to - 1e-6)) return spans
             const fresh: Span[] = times.slice(1).map((end, k) => ({ id: crypto.randomUUID(), startTime: times[k], endTime: end }))
             made = fresh.length
@@ -843,12 +843,12 @@ const useDocumentStore = create<DocumentState>()(
       numberBars: (layerId, group) => {
         const doc = get().document
         const layer = doc?.layers.find((l) => l.id === layerId)
-        if (!doc || !layer || layer.type !== 'form-diagram' || formSpans(layer).length > 0) return 0
+        if (!doc || !layer || layer.type !== 'segmentation' || segmentSpans(layer).length > 0) return 0
         const bars = numberedGridBars(sortedSegments(doc.beatGrid), doc.duration)
         if (!bars.length) return 0
         const counts = countLabels(bars.length, group)
         const fresh: Span[] = bars.map((b, k) => ({ id: crypto.randomUUID(), startTime: b.start, endTime: b.end, annotation: counts[k] }))
-        const filled = { ...doc, layers: withBarRole(doc.layers, layerId, true).map((l) => (l.id === layerId ? mapFormDiagramSpans(l, () => fresh) : l)) }
+        const filled = { ...doc, layers: withBarRole(doc.layers, layerId, true).map((l) => (l.id === layerId ? mapSegmentSpans(l, () => fresh) : l)) }
         const next = relabelSpans(filled, new Map(fresh.map((s, k) => [s.id, String(bars[k].bar)])), get().frozenSlugIds)
         set({ document: { ...next, updatedAt: now() } })
         return fresh.length
@@ -858,7 +858,7 @@ const useDocumentStore = create<DocumentState>()(
         const doc = get().document
         const layer = doc?.layers.find((l) => l.id === layerId)
         if (!doc || !layer) return
-        const run = formSpans(layer).filter((s) => spanIds.includes(s.id)).sort((a, b) => a.startTime - b.startTime)
+        const run = segmentSpans(layer).filter((s) => spanIds.includes(s.id)).sort((a, b) => a.startTime - b.startTime)
         if (!run.length) return
         const next = writeAnnotations(doc, run, countLabels(run.length, group))
         if (next) set({ document: { ...next, updatedAt: now() } })
@@ -868,7 +868,7 @@ const useDocumentStore = create<DocumentState>()(
         const doc = get().document
         const layer = doc?.layers.find((l) => l.id === layerId)
         if (!doc || !layer) return
-        const spans = [...formSpans(layer)].sort((a, b) => a.startTime - b.startTime)
+        const spans = [...segmentSpans(layer)].sort((a, b) => a.startTime - b.startTime)
         const at = spans.findIndex((s) => s.id === spanId)
         if (at < 0) return
         const after = elideLabels(spans.map((s) => s.annotation), at, group)
@@ -879,9 +879,9 @@ const useDocumentStore = create<DocumentState>()(
       setBarLayer: (layerId, on) => {
         const doc = get().document
         const layer = doc?.layers.find((l) => l.id === layerId)
-        if (!doc || !layer || layer.type !== 'form-diagram' || (layer.role === 'bars') === on) return
+        if (!doc || !layer || layer.type !== 'segmentation' || (layer.role === 'bars') === on) return
         let next: StrataDocument = { ...doc, layers: withBarRole(doc.layers, layerId, on) }
-        const spans = [...formSpans(layer)].sort((a, b) => a.startTime - b.startTime)
+        const spans = [...segmentSpans(layer)].sort((a, b) => a.startTime - b.startTime)
         // Counts written as labels (before counts moved into annotations) move
         // down, and the labels become bar numbers. Labels that are words stay.
         if (on && spans.length && spans.every((s) => !s.label?.trim() || countOf(s.label) !== null)) {
@@ -898,8 +898,8 @@ const useDocumentStore = create<DocumentState>()(
       numberBarLayer: (layerId, first) => {
         const doc = get().document
         const layer = doc?.layers.find((l) => l.id === layerId)
-        if (!doc || !layer || layer.type !== 'form-diagram') return
-        const spans = [...formSpans(layer)].sort((a, b) => a.startTime - b.startTime)
+        if (!doc || !layer || layer.type !== 'segmentation') return
+        const spans = [...segmentSpans(layer)].sort((a, b) => a.startTime - b.startTime)
         if (!spans.length) return
         const numbers = barNumberLabels(spans.length, first)
         const next = relabelSpans(doc, new Map(spans.map((s, k) => [s.id, numbers[k]])), get().frozenSlugIds)
@@ -910,13 +910,13 @@ const useDocumentStore = create<DocumentState>()(
         const doc = get().document
         const layer = doc?.layers.find((l) => l.id === layerId)
         const none = { counted: 0, skipped: 0 }
-        if (!doc || !layer || layer.type !== 'form-diagram') return none
-        const spans = [...formSpans(layer)].sort((a, b) => a.startTime - b.startTime)
+        if (!doc || !layer || layer.type !== 'segmentation') return none
+        const spans = [...segmentSpans(layer)].sort((a, b) => a.startTime - b.startTime)
         if (!spans.length) return none
         const by = byLayerId ? doc.layers.find((l) => l.id === byLayerId) : null
         const bars = spans.map((s): [number, number] => [s.startTime, s.endTime])
-        const counts = by && by.type === 'form-diagram'
-          ? countsByGroups(bars, formSpans(by).map((g): [number, number] => [g.startTime, g.endTime]), group)
+        const counts = by && by.type === 'segmentation'
+          ? countsByGroups(bars, segmentSpans(by).map((g): [number, number] => [g.startTime, g.endTime]), group)
           : countLabels(spans.length, group)
         const written = writeCounts(spans.map((s) => s.annotation), counts)
         const skipped = written.filter((t, k) => t !== counts[k]).length
@@ -942,21 +942,21 @@ const useDocumentStore = create<DocumentState>()(
         if (!doc || !picked) return null
         const { layer: source, spans: phrases } = picked
         let layers = doc.layers
-        let bars = layers.find((l) => l.role === 'bars' && l.id !== source.id && l.type === 'form-diagram')
+        let bars = layers.find((l) => l.role === 'bars' && l.id !== source.id && l.type === 'segmentation')
         if (bars?.locked) return null
         if (bars) {
-          const existing = formSpans(bars)
+          const existing = segmentSpans(bars)
           if (phrases.some((p) => existing.some((b) => b.endTime > p.startTime + 1e-6 && b.startTime < p.endTime - 1e-6))) return 'occupied'
         } else {
           // A new bar layer just below the phrases; the layers from there up move up one.
           const at = source.displayOrder
-          const made = newFormLayer('Bars', at)
+          const made = newSegmentLayer('Bars', at)
           layers = withBarRole([...layers.map((l) => (l.displayOrder >= at ? { ...l, displayOrder: l.displayOrder + 1 } : l)), made], made.id, true)
           bars = layers.find((l) => l.id === made.id)!
         }
         const barLayer = bars
         // Bar numbers go on from the numbered bar before the first phrase.
-        const before = formSpans(barLayer)
+        const before = segmentSpans(barLayer)
           .filter((b) => b.endTime <= phrases[0].startTime + 1e-6 && /^\s*\d+\s*$/.test(b.label ?? ''))
           .sort((a, b) => b.startTime - a.startTime)[0]
         let number = before ? Number(before.label) + 1 : 1
@@ -969,7 +969,7 @@ const useDocumentStore = create<DocumentState>()(
             annotation: String(k + 1),
           })),
         )
-        layers = mapLayer(layers, barLayer.id, (l) => mapFormDiagramSpans(l, (spans) => [...spans, ...fresh].sort((a, b) => a.startTime - b.startTime)))
+        layers = mapLayer(layers, barLayer.id, (l) => mapSegmentSpans(l, (spans) => [...spans, ...fresh].sort((a, b) => a.startTime - b.startTime)))
         const next = relabelSpans({ ...doc, layers }, new Map(fresh.map((b) => [b.id, String(number++)])), get().frozenSlugIds)
         set({ document: { ...next, updatedAt: now() } })
         return { made: fresh.length, layerId: barLayer.id }
@@ -985,12 +985,12 @@ const useDocumentStore = create<DocumentState>()(
         const end = bars[bars.length - 1].endTime
         let layers = doc.layers
         const above = layerAbove(layers, source)
-        const free = above && !above.locked && !formSpans(above).some((x) => x.endTime > start + 1e-6 && x.startTime < end - 1e-6)
+        const free = above && !above.locked && !segmentSpans(above).some((x) => x.endTime > start + 1e-6 && x.startTime < end - 1e-6)
         let targetId: string
         if (above && free) targetId = above.id
         else {
           const at = source.displayOrder + 1
-          const made = newFormLayer('Phrases', at)
+          const made = newSegmentLayer('Phrases', at)
           layers = [...layers.map((l) => (l.displayOrder >= at ? { ...l, displayOrder: l.displayOrder + 1 } : l)), made]
           targetId = made.id
         }
@@ -1000,8 +1000,8 @@ const useDocumentStore = create<DocumentState>()(
           if (r.elided && k > 0) fresh[k - 1] = { ...fresh[k - 1], endBoundaryType: 'elided' }
         })
         const parentOf = new Map(runs.flatMap((r, k) => r.ids.map((id) => [id, fresh[k].id] as const)))
-        layers = mapLayer(layers, targetId, (l) => mapFormDiagramSpans(l, (spans) => [...spans, ...fresh].sort((a, b) => a.startTime - b.startTime)))
-        layers = mapLayer(layers, source.id, (l) => mapFormDiagramSpans(l, (spans) => spans.map((x) => (parentOf.has(x.id) ? { ...x, parentId: parentOf.get(x.id) } : x))))
+        layers = mapLayer(layers, targetId, (l) => mapSegmentSpans(l, (spans) => [...spans, ...fresh].sort((a, b) => a.startTime - b.startTime)))
+        layers = mapLayer(layers, source.id, (l) => mapSegmentSpans(l, (spans) => spans.map((x) => (parentOf.has(x.id) ? { ...x, parentId: parentOf.get(x.id) } : x))))
         set({ document: { ...doc, layers, updatedAt: now() } })
         return { made: fresh.length, layerId: targetId }
       },
@@ -1018,7 +1018,7 @@ const useDocumentStore = create<DocumentState>()(
         if (!intoNewLayer) {
           const at = new Map(run.map((s, k) => [s.id, k]))
           const layers = mapLayer(doc.layers, picked.layer.id, (l) =>
-            mapFormDiagramSpans(l, (spans) => spans.map((s) => (at.has(s.id) ? placed(s, at.get(s.id)!) : s))),
+            mapSegmentSpans(l, (spans) => spans.map((s) => (at.has(s.id) ? placed(s, at.get(s.id)!) : s))),
           )
           set({ document: withLinks(doc, { ...doc, layers, updatedAt: now() }, picked.layer.id) })
           return { moved: plan.moved, layerId: picked.layer.id }
@@ -1029,11 +1029,11 @@ const useDocumentStore = create<DocumentState>()(
         const end = times[times.length - 1]
         let layers = doc.layers
         let target = layers.find(
-          (l) => l.type === 'form-diagram' && l.label === name && !l.locked && !formSpans(l).some((x) => x.endTime > start + 1e-6 && x.startTime < end - 1e-6),
+          (l) => l.type === 'segmentation' && l.label === name && !l.locked && !segmentSpans(l).some((x) => x.endTime > start + 1e-6 && x.startTime < end - 1e-6),
         )
         if (!target) {
           const at = picked.layer.displayOrder
-          const made = newFormLayer(name, at)
+          const made = newSegmentLayer(name, at)
           layers = [...layers.map((l) => (l.displayOrder >= at ? { ...l, displayOrder: l.displayOrder + 1 } : l)), made]
           target = made
         }
@@ -1043,7 +1043,7 @@ const useDocumentStore = create<DocumentState>()(
           if (s.type != null) c.type = s.type
           return c
         })
-        layers = mapLayer(layers, target.id, (l) => mapFormDiagramSpans(l, (spans) => [...spans, ...copies].sort((a, b) => a.startTime - b.startTime)))
+        layers = mapLayer(layers, target.id, (l) => mapSegmentSpans(l, (spans) => [...spans, ...copies].sort((a, b) => a.startTime - b.startTime)))
         const labelled = new Map(copies.map((c, k) => [c.id, run[k].label ?? null]).filter(([, label]) => label) as Array<[string, string]>)
         const next = relabelSpans({ ...doc, layers }, labelled, get().frozenSlugIds)
         set({ document: { ...next, updatedAt: now() } })
@@ -1059,10 +1059,10 @@ const useDocumentStore = create<DocumentState>()(
           set({ document: { ...doc, widgets: setBlockHidden(blocks, 'tempo', false), updatedAt: now() } })
           return existing.id
         }
-        const bars = doc.layers.find((l) => l.role === 'bars' && l.type === 'form-diagram')
+        const bars = doc.layers.find((l) => l.role === 'bars' && l.type === 'segmentation')
         if (!bars) return null
         const layer: TempoLayer = {
-          ...newFormLayer('Tempo', 0),
+          ...newSegmentLayer('Tempo', 0),
           label: `${bars.label} tempo`,
           type: 'tempo',
           data: { source: { layerId: bars.id, unit: 'bar' } },
@@ -1074,7 +1074,7 @@ const useDocumentStore = create<DocumentState>()(
 
       removeWidget: (type) => {
         const doc = get().document
-        if (!doc || type === 'form-diagram') return
+        if (!doc || type === 'segmentation') return
         const layers = doc.layers.filter((l) => l.type !== type)
         set({ document: { ...doc, layers, widgets: widgetBlocks(doc).filter((w) => w.type !== type), updatedAt: now() } })
       },
@@ -1129,7 +1129,7 @@ const useDocumentStore = create<DocumentState>()(
       groupSpans: (spanIds, target, fields = DEFAULT_COPY_FIELDS) => {
         const doc = get().document
         if (!doc) return null
-        const picked = doc.layers.flatMap((l) => formSpans(l).filter((x) => spanIds.includes(x.id)).map((span) => ({ span, layer: l })))
+        const picked = doc.layers.flatMap((l) => segmentSpans(l).filter((x) => spanIds.includes(x.id)).map((span) => ({ span, layer: l })))
         if (!picked.length) return null
         const sources = new Set(picked.map((p) => p.layer.id))
         const byOrder = picked.map((p) => p.layer).sort((a, b) => b.displayOrder - a.displayOrder)
@@ -1137,13 +1137,13 @@ const useDocumentStore = create<DocumentState>()(
         let targetId: string
         if ('layerId' in target) {
           const t = doc.layers.find((l) => l.id === target.layerId)
-          if (!t || t.type !== 'form-diagram' || t.locked || sources.has(t.id)) return null
+          if (!t || t.type !== 'segmentation' || t.locked || sources.has(t.id)) return null
           targetId = t.id
         } else {
           // Made just above the highest source layer, or just below the
           // lowest; the layers from there up move up one.
           const at = target.below ? byOrder[byOrder.length - 1].displayOrder : byOrder[0].displayOrder + 1
-          const made = newFormLayer(target.newLayer.trim() || 'New layer', at)
+          const made = newSegmentLayer(target.newLayer.trim() || 'New layer', at)
           layers = [...layers.map((l) => (l.displayOrder >= at ? { ...l, displayOrder: l.displayOrder + 1 } : l)), made]
           targetId = made.id
         }
@@ -1170,17 +1170,17 @@ const useDocumentStore = create<DocumentState>()(
           span = { id, startTime: start, endTime: end }
         }
         const before = layers.find((l) => l.id === targetId)!
-        layers = mapLayer(layers, targetId, (l) => mapFormDiagramSpans(l, (spans) => placeSpan(spans, span, () => crypto.randomUUID())))
+        layers = mapLayer(layers, targetId, (l) => mapSegmentSpans(l, (spans) => placeSpan(spans, span, () => crypto.randomUUID())))
         // Spans there that the new one cuts back (or cuts in two) keep the
         // children still under what is left of them, as a split does.
-        const after = formSpans(layers.find((l) => l.id === targetId)!)
-        const cut = formSpans(before).filter((x) => x.endTime > start && x.startTime < end && after.some((y) => y.id === x.id))
-        const kept = new Set(formSpans(before).map((x) => x.id))
+        const after = segmentSpans(layers.find((l) => l.id === targetId)!)
+        const cut = segmentSpans(before).filter((x) => x.endTime > start && x.startTime < end && after.some((y) => y.id === x.id))
+        const kept = new Set(segmentSpans(before).map((x) => x.id))
         // The new span is their parent, which ties their outer boundaries to
         // its edges (lib/linkedBoundaries.ts).
         if (parentOfSources)
           layers = layers.map((l) =>
-            sources.has(l.id) ? mapFormDiagramSpans(l, (spans) => spans.map((x) => (spanIds.includes(x.id) ? { ...x, parentId: id } : x))) : l,
+            sources.has(l.id) ? mapSegmentSpans(l, (spans) => spans.map((x) => (spanIds.includes(x.id) ? { ...x, parentId: id } : x))) : l,
           )
         let next: StrataDocument = { ...doc, layers, updatedAt: now() }
         for (const x of cut) {
@@ -1201,7 +1201,7 @@ const useDocumentStore = create<DocumentState>()(
         if (!doc) return null
         const { above, blocked } = groupUpTarget(doc, spanIds)
         if (blocked) return null
-        const count = doc.layers.filter((l) => l.type === 'form-diagram').length
+        const count = doc.layers.filter((l) => l.type === 'segmentation').length
         return get().groupSpans(spanIds, above ? { layerId: above.id } : { newLayer: `Layer ${count + 1}` })
       },
 
@@ -1211,7 +1211,7 @@ const useDocumentStore = create<DocumentState>()(
         const next = {
           ...doc,
           layers: mapLayer(doc.layers, layerId, (l) =>
-            mapFormDiagramSpans(l, (spans) => setSpanEdge(spans, spanId, edge, time, doc.duration) ?? spans),
+            mapSegmentSpans(l, (spans) => setSpanEdge(spans, spanId, edge, time, doc.duration) ?? spans),
           ),
           updatedAt: now(),
         }
@@ -1225,7 +1225,7 @@ const useDocumentStore = create<DocumentState>()(
         const next = {
           ...doc,
           layers: mapLayer(doc.layers, layerId, (l) =>
-            mapFormDiagramSpans(l, (spans) => {
+            mapSegmentSpans(l, (spans) => {
               const left = spans.find((s) => s.id === leftSpanId)
               const right = spans.find((s) => s.id === rightSpanId)
               if (!left || !right) return spans
@@ -1344,7 +1344,7 @@ const useDocumentStore = create<DocumentState>()(
           const gridFloor = Math.max(0, ...others.map((_, i) => segmentEnd(others, i, doc.duration)).filter((e) => e <= tappedStart))
           const boundaryFloor = Math.max(
             0,
-            ...doc.layers.flatMap(formSpans).flatMap((s) => [s.startTime, s.endTime]).filter((t) => t <= tappedStart + 0.05),
+            ...doc.layers.flatMap(segmentSpans).flatMap((s) => [s.startTime, s.endTime]).filter((t) => t <= tappedStart + 0.05),
           )
           start = extendBack(tappedStart, (beatsPerBar * 60) / bpm, Math.max(gridFloor, boundaryFloor))
         }

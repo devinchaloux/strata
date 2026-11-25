@@ -60,7 +60,7 @@ describe('ReadingHeader', () => {
     render(<ReadingHeader phone />)
     expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Share' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Form diagram' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Segments' })).toBeTruthy()
   })
 })
 

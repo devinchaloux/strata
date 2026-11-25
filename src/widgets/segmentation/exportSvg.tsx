@@ -1,5 +1,5 @@
 /**
- * SVG export for the form diagram — the widget contract's export definition.
+ * SVG export for the Segments block — the widget contract's export definition.
  *
  * Renders the same pure figure the editor draws (./figure.tsx), with the print
  * theme's literal colours, for a chosen time range at a chosen width. The
@@ -13,13 +13,13 @@
  * `react-dom/server` is imported on demand, so the editor's bundle only pays
  * for it when someone actually exports.
  */
-import { FormDiagramFigure } from './figure'
+import { SegmentationFigure } from './figure'
 import { PRINT_THEME } from './theme'
 import { safeFill } from '@/lib/palette'
-import { stackHeight } from '@/lib/formShape'
+import { stackHeight } from '@/lib/segmentShape'
 import { layoutMarkerBand } from '@/lib/markerBand'
 import { getTickInterval } from '@/lib/timeline'
-import type { StrataDocument, Layer, FormDiagramData, Span } from '@/types/strata'
+import type { StrataDocument, Layer, SegmentationData, Span } from '@/types/strata'
 
 export interface SvgExportOptions {
   /** Range to export, in recording seconds. */
@@ -31,7 +31,7 @@ export interface SvgExportOptions {
   includeMarkers: boolean
   /** Draw a time axis (m:ss) under everything. */
   includeAxis: boolean
-  /** The form-diagram layers to draw; the visible ones when absent. */
+  /** The segmentation layers to draw; the visible ones when absent. */
   layerIds?: string[]
   /** Draw quick fills in their colour-blind safe counterparts, as the editor shows them. */
   colorblindSafe?: boolean
@@ -42,11 +42,11 @@ const SIDE_PAD = 16
 const AXIS_HEIGHT = 22
 const FONT_STACK = "Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif"
 
-/** The layers an export can draw: the chosen form-diagram layers (by default
+/** The layers an export can draw: the chosen segmentation layers (by default
  *  the visible ones), macro on top. */
 export function exportLayers(doc: StrataDocument, layerIds?: string[]): Layer[] {
   return doc.layers
-    .filter((l) => l.type === 'form-diagram' && (layerIds ? layerIds.includes(l.id) : l.visibility))
+    .filter((l) => l.type === 'segmentation' && (layerIds ? layerIds.includes(l.id) : l.visibility))
     .sort((a, b) => b.displayOrder - a.displayOrder)
 }
 
@@ -64,7 +64,7 @@ const CUT_OVERHANG_PX = 4
 export function cutLayerToRange(layer: Layer, start: number, end: number, pps: number): Layer | null {
   const over = CUT_OVERHANG_PX / pps
   const spans: Span[] = []
-  for (const s of (layer.data as FormDiagramData).spans) {
+  for (const s of (layer.data as SegmentationData).spans) {
     if (s.endTime <= start || s.startTime >= end) continue
     const cutStart = s.startTime < start
     const cutEnd = s.endTime > end
@@ -77,7 +77,7 @@ export function cutLayerToRange(layer: Layer, start: number, end: number, pps: n
     })
   }
   if (!spans.length) return null
-  return { ...layer, visibility: true, data: { ...(layer.data as FormDiagramData), spans } } as Layer
+  return { ...layer, visibility: true, data: { ...(layer.data as SegmentationData), spans } } as Layer
 }
 
 /** m:ss for axis labels (the export's audience reads minutes, not milliseconds). */
@@ -90,7 +90,7 @@ function axisLabel(t: number): string {
 const escapeXml = (s: string) =>
   s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!)
 
-export async function exportFormDiagramSvg(doc: StrataDocument, opts: SvgExportOptions): Promise<string> {
+export async function exportSegmentsSvg(doc: StrataDocument, opts: SvgExportOptions): Promise<string> {
   const { renderToStaticMarkup } = await import('react-dom/server')
 
   const start = Math.max(0, Math.min(opts.start, doc.duration))
@@ -116,7 +116,7 @@ export async function exportFormDiagramSvg(doc: StrataDocument, opts: SvgExportO
   const width = Math.ceil(opts.width + SIDE_PAD * 2)
 
   const figure = renderToStaticMarkup(
-    <FormDiagramFigure
+    <SegmentationFigure
       layers={layers}
       placements={placements}
       pps={pps}
@@ -147,7 +147,7 @@ export async function exportFormDiagramSvg(doc: StrataDocument, opts: SvgExportO
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="${FONT_STACK}">`,
     `<title>${escapeXml(title)}</title>`,
-    `<desc>${escapeXml(`Form diagram, ${axisLabel(start)}–${axisLabel(end)}. Made with Strata.`)}</desc>`,
+    `<desc>${escapeXml(`Segments, ${axisLabel(start)}–${axisLabel(end)}. Made with Strata.`)}</desc>`,
     // Clip to exactly the chosen range, so no sliver of a neighbouring span
     // shows in the side margins; the margins stay as white space.
     `<defs><clipPath id="range"><rect x="${SIDE_PAD}" y="0" width="${opts.width}" height="${axisTop}"/></clipPath></defs>`,

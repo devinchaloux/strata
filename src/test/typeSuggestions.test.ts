@@ -3,7 +3,7 @@ import { quickTypes, typeSuggestions } from '@/lib/typeSuggestions'
 import { letterTerm } from '@/lib/vocabulary'
 import { applySpanType } from '@/store/typeActions'
 import { useDocumentStore } from '@/store/documentStore'
-import { formSpans } from '@/lib/layers'
+import { segmentSpans } from '@/lib/layers'
 import { makeDoc, makeLayer, makeSpan } from './fixtures'
 
 const sections = makeLayer('S', [
@@ -45,7 +45,7 @@ describe('applySpanType', () => {
     store.temporal.getState().clear()
     const c = letterTerm('C', 0)
     applySpanType(['p3'], { ...c, kind: 'span' }, c)
-    const p3 = formSpans(store.getState().document!.layers[1]).find((s) => s.id === 'p3')!
+    const p3 = segmentSpans(store.getState().document!.layers[1]).find((s) => s.id === 'p3')!
     expect([p3.type, p3.label]).toEqual(['c-section', 'C'])
     expect(store.getState().document!.vocabulary.spanTypes.map((t) => t.id)).toContain('c-section')
     store.temporal.getState().undo()

@@ -4,7 +4,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { PALETTE, QUICK_FILLS, SAFE_FILLS, safeFill } from '@/lib/palette'
-import { contrast, textOnFill } from '@/lib/formShape'
+import { contrast, textOnFill } from '@/lib/segmentShape'
 
 const LABEL_INK = '#334155'
 const ANNOTATION_INK = '#475569'

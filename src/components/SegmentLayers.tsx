@@ -1,5 +1,5 @@
 /**
- * FormLayers — the stack of form-diagram layers rendered above the timeline ruler.
+ * SegmentLayers — the stack of segmentation layers rendered above the timeline ruler.
  *
  * Interactions:
  *   Click span          → single-select
@@ -19,8 +19,8 @@ import { useUIStore } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
 import { computePps, totalContentWidth, scrollableWidth, snapTime } from '@/lib/timeline'
 import { groupUpTarget } from '@/lib/groupSpans'
-import { formSpans } from '@/lib/layers'
-import { stackHeight, shapeTopY, layerBodyHeight, layerIndexAtY, layerFonts, estimateTextWidth, layerLabelLayout, LABEL_RISE } from '@/lib/formShape'
+import { segmentSpans } from '@/lib/layers'
+import { stackHeight, shapeTopY, layerBodyHeight, layerIndexAtY, layerFonts, estimateTextWidth, layerLabelLayout, LABEL_RISE } from '@/lib/segmentShape'
 import { layoutMarkerBand, BAND_TOP_GAP, BAND_ROW_HEIGHT, GLYPH_HALF, type MarkerPlacement } from '@/lib/markerBand'
 import { MIN_SPAN_WIDTH, MIN_BOUNDARY_DRAG_PX } from '@/lib/spanEdit'
 import { newGestureKey, withHistoryGroup } from '@/store/history'
@@ -29,10 +29,10 @@ import { spanTypeName } from '@/lib/vocabulary'
 import { QuickEntryBar } from './QuickEntryBar'
 import { snapToActiveGrid } from '@/store/snap'
 import { Playhead } from './Playhead'
-import { FormDiagramFigure, type SpanDecoration } from '@/widgets/form-diagram/figure'
-import { EDITOR_THEME } from '@/widgets/form-diagram/theme'
+import { SegmentationFigure, type SpanDecoration } from '@/widgets/segmentation/figure'
+import { EDITOR_THEME } from '@/widgets/segmentation/theme'
 import { safeFill } from '@/lib/palette'
-import type { Layer, Span, FormDiagramData, PointMarker, VocabTerm, GridSegment } from '@/types/strata'
+import type { Layer, Span, SegmentationData, PointMarker, VocabTerm, GridSegment } from '@/types/strata'
 import {
   ContextMenu,
   ContextMenuTrigger,
@@ -268,7 +268,7 @@ function HiddenLabelPeek({ layers, pps, totalWidth }: { layers: Layer[]; pps: nu
   const peeks: JSX.Element[] = []
   layers.forEach((layer, i) => {
     if (!layer.visibility) return
-    const spans = (layer.data as FormDiagramData).spans.filter((s) => ids.has(s.id))
+    const spans = (layer.data as SegmentationData).spans.filter((s) => ids.has(s.id))
     if (!spans.length) return
     const layout = layerLabelLayout(layer, pps, totalWidth)
     const font = layerFonts(layer).label
@@ -340,7 +340,7 @@ function SpanHitTarget({
     }
     if (e.shiftKey) {
       const anchorId = useUIStore.getState().selectionAnchorId
-      const sorted = [...(layer.data as FormDiagramData).spans].sort((a, b) => a.startTime - b.startTime)
+      const sorted = [...(layer.data as SegmentationData).spans].sort((a, b) => a.startTime - b.startTime)
       const anchorIdx = sorted.findIndex((s) => s.id === anchorId)
       // No anchor, or the anchor is in another layer: treat as a plain click.
       if (anchorIdx === -1) {
@@ -412,7 +412,7 @@ const LayerInteraction = memo(function LayerInteraction({
   // Reading view: spans still select and seek, but nothing edits.
   const reading = useUIStore((s) => s.readingView)
   if (!layer.visibility) return null
-  const spans = (layer.data as FormDiagramData).spans
+  const spans = (layer.data as SegmentationData).spans
   const bodyHeight = layerBodyHeight(layer)
   const menuSpan = menuSpanId ? spans.find((s) => s.id === menuSpanId) : undefined
 
@@ -546,7 +546,7 @@ function MarkerHitTarget({
 }
 
 // ---------------------------------------------------------------------------
-// FormLayers
+// SegmentLayers
 // ---------------------------------------------------------------------------
 
 /** Box-drag state — tracked while the user drags on empty canvas space. */
@@ -567,7 +567,7 @@ interface BoxDragState {
 // rather than a click. Keeps accidental micro-drags from overriding clicks.
 const BOX_DRAG_THRESHOLD = 4
 
-export function FormLayers({ layers }: { layers: Layer[] }) {
+export function SegmentLayers({ layers }: { layers: Layer[] }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const zoom = useUIStore((s) => s.zoom)
   const scrollOffset = useUIStore((s) => s.scrollOffset)
@@ -594,7 +594,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   const totalWidth = totalContentWidth(duration, zoom)
   const svgWidth = Math.max(scrollableWidth(duration, zoom), viewportWidth)
   // Every layer keeps a slot (hidden ones render empty) so the header column and
-  // the canvas stay row-aligned; FormLayerGroup draws nothing for hidden layers.
+  // the canvas stay row-aligned; SegmentLayerGroup draws nothing for hidden layers.
   const stackH = stackHeight(layers)
 
   // Marker band — document-level point markers live inside the diagram (so
@@ -699,8 +699,8 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
           const lo = Math.min(prev.startX, prev.endX)
           const hi = Math.max(prev.startX, prev.endX)
           const layer = layers[prev.layerIdx]
-          if (layer?.type === 'form-diagram') {
-            const spans = (layer.data as FormDiagramData).spans
+          if (layer?.type === 'segmentation') {
+            const spans = (layer.data as SegmentationData).spans
             const overlapping = spans
               .filter((s) => s.startTime * pps < hi && s.endTime * pps > lo)
               .map((s) => s.id)
@@ -729,7 +729,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
   // Span boundaries in every visible form layer, and the other markers.
   function markerSnapCandidates(excludeId?: string): number[] {
     return [
-      ...layers.filter((l) => l.visibility).flatMap((l) => formSpans(l).flatMap((s) => [s.startTime, s.endTime])),
+      ...layers.filter((l) => l.visibility).flatMap((l) => segmentSpans(l).flatMap((s) => [s.startTime, s.endTime])),
       ...pointMarkers.filter((m) => m.id !== excludeId).map((m) => m.timestamp),
     ]
   }
@@ -824,7 +824,7 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
 
         {/* The drawing itself: the same pure figure that export uses. */}
         {pps > 0 && (
-          <FormDiagramFigure
+          <SegmentationFigure
             layers={layers}
             placements={bandLayout.placements}
             pps={pps}

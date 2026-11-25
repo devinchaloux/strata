@@ -1,8 +1,8 @@
-# Form Diagram Widget
+# Segmentation Widget
 
-*Widget type: `"form-diagram"` | v1.0 | June 2026*
+*Widget type: `"segmentation"` (called the form diagram, `"form-diagram"`, before file format 3) | v1.0 | June 2026*
 
-The form diagram is the v1 widget and the proof of concept for the Strata widget system. It is the data spine of the analysis: the layer all other widgets reference for span boundaries and section identity.
+Segmentation, shown on screen as **Segments**, is the v1 widget and the proof of concept for the Strata widget system. Each of its layers cuts the timeline into consecutive segments, one claim per stretch, drawn as brackets: form, phrases, bars, key areas, functions. It is the data spine of the analysis: the layer all other widgets reference for span boundaries and section identity.
 
 **Data model reference:** `schema/strata-schema-reference.md`, "Layers" and "Spans".
 
@@ -22,8 +22,8 @@ are the intended shape rather than code you'll find under these names.
 ### 1.1 Identity
 
 ```typescript
-type: "form-diagram"
-label: "Form Diagram"
+type: "segmentation"
+label: "Segments"
 description: "Layered section-level formal analysis synchronized to the timeline."
 ```
 
@@ -47,7 +47,7 @@ createDefaultData: (): FormDiagramData => ({
 
 ### 1.4 contributeTimePoints
 
-The form diagram offers every span's `startTime` and `endTime` as snap targets, once each (adjacent spans share a boundary). Computed from the spans when needed; never stored in the file (see `_contract.md` §1.3).
+The Segments block offers every span's `startTime` and `endTime` as snap targets, once each (adjacent spans share a boundary). Computed from the spans when needed; never stored in the file (see `_contract.md` §1.3).
 
 ```typescript
 contributeTimePoints: (data: FormDiagramData): number[] =>
@@ -60,7 +60,7 @@ Until the widget registry exists, point markers snap to these boundaries directl
 
 ## 2. Timeline Presence
 
-**As a block.** The form diagram is one block of the work area, holding every form layer (`docs/decisions.md`, "Widgets as Blocks"). Its top bar ends with ↑ ↓ to move it past another block (when there is one) and a button to hide it; it can't be removed. Hidden, it comes back from a chip above the blocks, which also takes its zoom controls meanwhile. The shared ruler stays at the bottom of all blocks.
+**As a block.** Segments is one block of the work area, holding every segmentation layer (`docs/decisions.md`, "Widgets as Blocks"). Its top bar ends with ↑ ↓ to move it past another block (when there is one) and a button to hide it; it can't be removed. Hidden, it comes back from a chip above the blocks, which also takes its zoom controls meanwhile. The shared ruler stays at the bottom of all blocks.
 
 
 `TimelinePresenceComponent` renders tick marks on the shared ruler at each span boundary.
@@ -89,12 +89,12 @@ line in the ruler marks the end.
 
 ## 3. Export Formats
 
-The Export dialog offers three formats for the form diagram, plus the commentary
+The Export dialog offers three formats for the segments, plus the commentary
 exports described in `widgets/written-analysis.md`:
 
 | Format | How it's made |
 |---|---|
-| **SVG** | `src/widgets/form-diagram/exportSvg.tsx` renders the same pure figure the editor draws (`figure.tsx`), with the print theme, for a chosen `[startTime, endTime]` range at a chosen width. Editing-only elements are never part of that figure. |
+| **SVG** | `src/widgets/segmentation/exportSvg.tsx` renders the same pure figure the editor draws (`figure.tsx`), with the print theme, for a chosen `[startTime, endTime]` range at a chosen width. Editing-only elements are never part of that figure. |
 | **PNG** | The same SVG, drawn by the browser at twice the size. If the browser can't make the image, the dialog says so and the SVG download still works. |
 | **PDF** | The same SVG, alone on a print page in a hidden frame (`src/lib/printFigure.ts`): landscape unless the figure is taller than it is wide, scaled to the page width, in Inter. You choose Save as PDF in the browser's print dialog, so the figure stays vector and no PDF library is loaded. |
 
@@ -269,6 +269,6 @@ Merged spans receive a new UUID. The source IDs are stored in `mergedFrom: strin
 > *Superseded 2026-06-22 (see `docs/decisions.md` → the hierarchical enforcement
 > reversal entry). The per-layer definition below is no longer the design.*
 
-Hierarchical enforcement is redefined as a **cross-layer nesting** constraint scoped to the **form-diagram widget type**: when enabled, a span must nest within the boundaries a coarser layer has established (each layer's boundary set must be a superset of the layer above it; bottom = finest, top = coarsest; coextensive spans allowed). It is therefore not a per-layer flag; the per-layer `FormDiagramData.hierarchicalEnforcement` field, never used, was removed in file format 2, and the setting will get its own home if the feature is built. The underlying data is unchanged either way — the schema always supports overlapping spans.
+Hierarchical enforcement is redefined as a **cross-layer nesting** constraint scoped to the **segmentation widget type**: when enabled, a span must nest within the boundaries a coarser layer has established (each layer's boundary set must be a superset of the layer above it; bottom = finest, top = coarsest; coextensive spans allowed). It is therefore not a per-layer flag; the per-layer `FormDiagramData.hierarchicalEnforcement` field, never used, was removed in file format 2, and the setting will get its own home if the feature is built. The underlying data is unchanged either way — the schema always supports overlapping spans.
 
 Activation requires user confirmation (warning about what is being given up). The warning is presented by the editor shell, not by the widget. The constraint is intentionally strict and off by default — the default is the theoretical statement.

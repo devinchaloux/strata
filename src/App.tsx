@@ -7,7 +7,7 @@ import { useMerge } from '@/hooks/useMerge'
 import { usePhone } from '@/hooks/usePhone'
 import { useTouchPan } from '@/hooks/useTouchPan'
 import { PlayerDock } from '@/components/PlayerDock'
-import { FormDiagram } from '@/components/FormDiagram'
+import { WorkArea } from '@/components/WorkArea'
 import { Inspector } from '@/components/Inspector'
 import { MergeConflictDialog } from '@/components/MergeConflictDialog'
 import { DocumentSettingsDialog } from '@/components/DocumentSettingsDialog'
@@ -38,7 +38,7 @@ import { useUIStore } from '@/store/uiStore'
 import { cn } from '@/lib/utils'
 import { EXAMPLES, exampleFileUrl, exampleLink, type Example } from '@/lib/examples'
 import { spanNeighbour, firstSpan, spanRange } from '@/lib/spanNav'
-import { formSpans } from '@/lib/layers'
+import { segmentSpans } from '@/lib/layers'
 import { newGestureKey, withHistoryGroup } from '@/store/history'
 import { computePps, scrollableWidth, clampScrollOffset } from '@/lib/timeline'
 
@@ -384,7 +384,7 @@ function selectAndReveal(id: string) {
 /** Scrolls the timeline so the span is on screen, when zoomed in. */
 function reveal(id: string) {
   const doc = useDocumentStore.getState().document
-  const span = doc?.layers.flatMap(formSpans).find((s) => s.id === id)
+  const span = doc?.layers.flatMap(segmentSpans).find((s) => s.id === id)
   const ui = useUIStore.getState()
   if (!doc || !span || ui.viewportWidth <= 0) return
   const pps = computePps(ui.zoom)
@@ -556,7 +556,7 @@ export default function App() {
   const layers = useDocumentStore((s) => s.document?.layers)
   const activeLayerId = useUIStore((s) => s.activeLayerId)
   useEffect(() => {
-    const forms = (layers ?? []).filter((l) => l.type === 'form-diagram')
+    const forms = (layers ?? []).filter((l) => l.type === 'segmentation')
     if (forms.some((l) => l.id === activeLayerId)) return
     const top = [...forms].sort((a, b) => b.displayOrder - a.displayOrder)[0]
     setActiveLayer(top?.id ?? null)
@@ -687,7 +687,7 @@ export default function App() {
           const ids = new Set(ui.selectedSpanIds)
           withHistoryGroup(newGestureKey('delete-spans'), () => {
             for (const l of doc.layers)
-              for (const s of formSpans(l)) if (ids.has(s.id)) useDocumentStore.getState().removeSpan(l.id, s.id)
+              for (const s of segmentSpans(l)) if (ids.has(s.id)) useDocumentStore.getState().removeSpan(l.id, s.id)
           })
           clearSelection()
         } else if (ui.selectedPointMarkerId) {
@@ -800,7 +800,7 @@ export default function App() {
           </ToolbarButton>
         )}
         {!folds('export') && (
-          <ToolbarButton onClick={() => setExportOpen(true)} disabled={!doc} title="Save the form diagram as an SVG, PNG, or PDF figure">
+          <ToolbarButton onClick={() => setExportOpen(true)} disabled={!doc} title="Save the segments as an SVG, PNG, or PDF figure">
             Export
           </ToolbarButton>
         )}
@@ -955,7 +955,7 @@ export default function App() {
             {...(phoneReading ? touchPan : {})}
           >
             {doc ? (
-              <FormDiagram />
+              <WorkArea />
             ) : (
               <EmptyState onNew={guardedNew} onOpen={guardedOpen} onExample={openExample} onHelp={() => setHelpOpen(true)} />
             )}
@@ -990,7 +990,7 @@ export default function App() {
       {/* Link source — set/swap/unlink the playback source (transport + settings open it) */}
       <LinkSourceDialog />
 
-      {/* Export — the form diagram as an SVG, PNG, or PDF figure */}
+      {/* Export — the Segments block as an SVG, PNG, or PDF figure */}
       <ExportDialog />
       <LibrariesDialog />
       <ShareDialog />

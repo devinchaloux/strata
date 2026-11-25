@@ -1,7 +1,7 @@
 /**
  * Marker annotation band layout.
  *
- * Point markers render inside the form diagram, in a band below the layer
+ * Point markers render inside the Segments block, in a band below the layer
  * stack, so they are part of the exported graphic rather than editor chrome
  * (see docs/decisions.md, 2026-07-24).
  *
@@ -14,7 +14,7 @@
  * mangled stub.
  */
 
-import { estimateTextWidth } from './formShape'
+import { estimateTextWidth } from './segmentShape'
 import { formatMarkerCaption } from './pointMarkerTypes'
 import type { PointMarker, VocabTerm } from '@/types/strata'
 

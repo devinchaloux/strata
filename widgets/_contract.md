@@ -3,7 +3,7 @@
 
 > **Status (2026-10-03):** this is the design, not yet the code. The types are
 > defined in `src/types/strata.ts`, but the app doesn't load widgets through a
-> registry: the form diagram, the written analysis and tempo are built
+> registry: segmentation, the written analysis and tempo are built
 > directly, and the port to `src/types/widget.ts` described below hasn't
 > happened. Widgets that draw on the timeline do so as blocks, ordered by
 > `StrataDocument.widgets` (`docs/decisions.md`, "Widgets as Blocks"). The
@@ -39,7 +39,7 @@ A brief glossary for non-technical readers. These terms appear throughout the do
 
 **Callback** — a function passed in from outside that the recipient calls when something happens. The edit component receives a callback called `onDataChange` — when the analyst places a boundary, the widget calls this function, and the application updates the document. The widget doesn't need to know how the document gets updated; it just calls the function.
 
-**Generic (`<TData>`)** — a placeholder for "whatever data type this specific widget uses." The form diagram substitutes `FormDiagramData` for `TData`. A future energy contour widget would substitute its own data type. The contract works the same way regardless of the substitution.
+**Generic (`<TData>`)** — a placeholder for "whatever data type this specific widget uses." Segmentation substitutes `SegmentationData` for `TData`. A future energy contour widget would substitute its own data type. The contract works the same way regardless of the substitution.
 
 **Pure function** — a function with no side effects: given the same inputs, it always returns the same output and changes nothing outside itself. `contributeTimePoints` is a pure function. The document store can call it as many times as it needs to without consequence.
 
@@ -53,14 +53,14 @@ A brief glossary for non-technical readers. These terms appear throughout the do
 
 Every layer in a Strata file shares the same outer structure — an id, a type identifier, a label, visibility, and a few other fields. That outer structure is the *envelope*. Inside the envelope is a `data` field whose shape is determined entirely by the widget type.
 
-The form diagram's `data` holds an array of spans. A future energy contour widget's `data` would hold an array of control points. The envelope is the same either way; only the contents differ.
+A segmentation layer's `data` holds an array of spans. A future energy contour widget's `data` would hold an array of control points. The envelope is the same either way; only the contents differ.
 
 This is the typed envelope pattern: the core schema enforces the envelope, and each widget defines what goes inside it. Adding a new widget type means defining a new data shape and registering it — the core `Layer` structure itself never changes. This is the extensibility guarantee: new widgets cannot break the core schema.
 
 ```typescript
 interface Layer {
   id: string;
-  type: LayerType;     // "form-diagram" | "energy-contour" | ...
+  type: LayerType;     // "segmentation" | "energy-contour" | ...
   label: string;
   // ... shared envelope fields ...
   data: LayerData;     // Shape defined by the widget type, not the core schema
@@ -82,11 +82,11 @@ A render component that triggers mutations or changes state outside itself viola
 
 The time points of every layer are available to every other layer as snap targets. It is the explicit inversion of siloed per-widget timelines.
 
-When the form diagram analyst places a span boundary at 94.5 seconds, that timestamp is immediately available to the energy contour widget as a snap target — without any manual import step, without either widget knowing about the other. When the energy contour analyst adds a control point at 103.0 seconds, the form diagram can snap to that too.
+When the analyst places a span boundary at 94.5 seconds, that timestamp is immediately available to the energy contour widget as a snap target — without any manual import step, without either widget knowing about the other. When the energy contour analyst adds a control point at 103.0 seconds, the Segments block can snap to that too.
 
 The pool is **computed, not stored**. Each widget definition exposes a pure function called `contributeTimePoints` that returns the timestamps a layer of its type holds; the editor gathers them from every layer when it needs snap targets. Nothing is written to the file: the points are already in each layer's own data, and a stored copy could only fall out of step with it. (Format version 1 had a stored pool, `sharedTimePoints`, which the app never filled; version 2 removed it. See `docs/decisions.md`, "Schema Review: Three Fields Cut".)
 
-Until widgets are registered through this contract, the form diagram's point markers snap to the span boundaries of every visible layer directly (`components/FormLayers.tsx`).
+Until widgets are registered through this contract, point markers snap to the span boundaries of every visible layer directly (`components/FormLayers.tsx`).
 
 ---
 
@@ -142,7 +142,7 @@ These are the inputs every display component receives. The component uses them t
 Think of this as the "read" side of a widget: everything needed to answer "what should this widget look like right now?"
 
 - `layer` — the widget's own layer data, including its label, color default, and visibility
-- `data` — the typed payload (spans for a form diagram, control points for an energy contour)
+- `data` — the typed payload (spans for segmentation, control points for an energy contour)
 - `document` — the full analysis document, read-only, for anything the widget needs beyond its own layer (vocabulary terms, shared time points, track duration)
 - `currentTime` — where playback is right now, used to highlight the active section
 - `viewState` — where the analyst is looking in the timeline
@@ -216,7 +216,7 @@ export interface WidgetEditProps<TData> extends WidgetRenderProps<TData> {
 
 ### 2.4 WidgetTimelinePresenceProps
 
-The shared ruler at the top of the timeline is an SVG drawing surface. Widgets that want to mark things on the ruler — the form diagram draws faint tick marks at span boundaries, for example — provide a `TimelinePresenceComponent` that renders SVG elements directly into that surface.
+The shared ruler at the top of the timeline is an SVG drawing surface. Widgets that want to mark things on the ruler — segmentation draws faint tick marks at span boundaries, for example — provide a `TimelinePresenceComponent` that renders SVG elements directly into that surface.
 
 This component receives a lighter version of the render props: its own layer data, the document, current time, and the viewport state. It returns SVG elements positioned within the ruler's coordinate space (x = pixel position; y = position within ruler height). Widgets that have nothing to mark on the ruler set `TimelinePresenceComponent` to `null`.
 
@@ -300,7 +300,7 @@ export interface WidgetDefinition<TData extends LayerData> {
   /** Widget type identifier. Must match a value in the LayerType union. */
   type: LayerType;
 
-  /** Human-readable name shown in the layer creation UI, e.g. "Form Diagram". */
+  /** Human-readable name shown in the layer creation UI, e.g. "Segments". */
   label: string;
 
   /** Optional description for the layer creation picker. */
@@ -308,7 +308,7 @@ export interface WidgetDefinition<TData extends LayerData> {
 
   /**
    * Default position of this widget type relative to the timeline ruler.
-   * 'above' = widget renders in the zone above the ruler (standard for form diagrams,
+   * 'above' = widget renders in the zone above the ruler (standard for segmentation,
    *           energy contours, and most analytical widgets).
    * 'below' = widget renders in the zone below the ruler (e.g. written analysis).
    *
@@ -401,24 +401,24 @@ The single-layer export flow, step by step:
 
 **Content clipping.** The exporter clips to `[startTime, endTime]`. Spans or content outside this range are not rendered. The widget is responsible for this clipping — the application passes the range, the widget respects it.
 
-**Multi-widget combined export is v2.** v1 exports one widget layer at a time. A scholar assembles multi-widget outputs (form diagram + written analysis) using other tools.
+**Multi-widget combined export is v2.** v1 exports one widget layer at a time. A scholar assembles multi-widget outputs (segments + written analysis) using other tools.
 
 ---
 
 ## 5. Widget Registry
 
-The widget registry is a lookup table from widget type identifiers (like `"form-diagram"`) to their `WidgetDefinition` objects. It is populated once at application startup and is the single mechanism by which the editor and viewer discover how to handle any layer they encounter.
+The widget registry is a lookup table from widget type identifiers (like `"segmentation"`) to their `WidgetDefinition` objects. It is populated once at application startup and is the single mechanism by which the editor and viewer discover how to handle any layer they encounter.
 
 When the editor or viewer loads a document and encounters a layer, it calls `getWidgetDefinition(layer.type)`. If the type is registered, it gets the components and functions needed to render and interact with that layer. If the type is not registered — because the document was authored with a newer version of Strata that has a widget type this version doesn't know about — the layer renders as a labeled placeholder with a "widget type not supported in this version" message. The layer data is preserved in the document store unchanged. The analyst's file is not damaged.
 
 ```typescript
 // src/widgetRegistry.ts  (Phase 1 artifact — not yet written)
-import { formDiagramWidget } from './widgets/form-diagram/definition';
+import { segmentationWidget } from './widgets/segmentation/definition';
 
 // In practice: WidgetDefinition<any> due to TypeScript generic invariance.
 // Individual registrations are type-safe at the point of registration.
 const registry = new Map<LayerType, WidgetDefinition<any>>();
-registry.set('form-diagram', formDiagramWidget);
+registry.set('segmentation', segmentationWidget);
 
 export function getWidgetDefinition(type: LayerType): WidgetDefinition<any> {
   const def = registry.get(type);

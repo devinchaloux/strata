@@ -13,7 +13,7 @@ import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { finalizeMerge, NOTE_SEPARATOR, type ConflictField } from '@/lib/mergeSpans'
 import { formatTime } from '@/lib/youtube'
-import type { FormDiagramData } from '@/types/strata'
+import type { SegmentationData } from '@/types/strata'
 import {
   Dialog,
   DialogContent,
@@ -63,7 +63,7 @@ export function MergeConflictDialog() {
   const spanTypes = doc?.vocabulary.spanTypes ?? []
   const allSpans =
     doc?.layers.flatMap((l) =>
-      l.type === 'form-diagram' ? (l.data as FormDiagramData).spans : [],
+      l.type === 'segmentation' ? (l.data as SegmentationData).spans : [],
     ) ?? []
 
   function optionLabel(field: ConflictField, value: string | null): string {

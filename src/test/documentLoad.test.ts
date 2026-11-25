@@ -1,4 +1,4 @@
-import { formSpans } from '@/lib/layers'
+import { segmentSpans } from '@/lib/layers'
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -36,14 +36,14 @@ describe('readDocument — older and hand-written files', () => {
       strataVersion: '0.1.0',
       fileFormatVersion: 1,
       title: 'Bare',
-      layers: [{ id: 'x', type: 'form-diagram', label: 'L' }],
+      layers: [{ id: 'x', type: 'segmentation', label: 'L' }],
     }
     const { doc } = readDocument(bare)
     expect(doc.vocabulary).toEqual({ spanTypes: [], pointMarkerTypes: [], modes: [] })
     expect(doc.pointMarkers).toEqual([])
     expect(doc.artist).toEqual([])
     expect(doc.source.sourceOffset).toBe(0)
-    expect(formSpans(doc.layers[0])).toEqual([])
+    expect(segmentSpans(doc.layers[0])).toEqual([])
     expect(doc.layers[0].visibility).toBe(true)
   })
 
@@ -54,7 +54,7 @@ describe('readDocument — older and hand-written files', () => {
 
   it('sorts spans by start time', () => {
     const input = makeDoc([makeLayer('L', [makeSpan('b', 50, 100), makeSpan('a', 0, 50)])])
-    expect(formSpans(readDocument(input).doc.layers[0]).map((s) => s.id)).toEqual(['a', 'b'])
+    expect(segmentSpans(readDocument(input).doc.layers[0]).map((s) => s.id)).toEqual(['a', 'b'])
   })
 })
 
@@ -72,7 +72,7 @@ describe('readDocument — problems', () => {
   it('opens a layer with overlapping spans, with a notice', () => {
     const input = makeDoc([makeLayer('Phrases', [makeSpan('a', 0, 60), makeSpan('b', 50, 100)])])
     const { doc, notices } = readDocument(input)
-    expect(formSpans(doc.layers[0])).toHaveLength(2)
+    expect(segmentSpans(doc.layers[0])).toHaveLength(2)
     expect(notices[0]).toContain('"Phrases" has two spans that overlap')
   })
 
@@ -100,7 +100,7 @@ describe('readDocument — slugs', () => {
         makeSpan('d', 30, 40),
       ]),
     ])
-    const spans = formSpans(readDocument(input).doc.layers[0])
+    const spans = segmentSpans(readDocument(input).doc.layers[0])
     expect(spans.map((s) => s.slug)).toEqual(['verse', 'hook', 'verse-2', undefined])
   })
 
@@ -108,7 +108,7 @@ describe('readDocument — slugs', () => {
     const input = makeDoc([makeLayer('L', [makeSpan('a', 0, 10, { label: 'MC' })])])
     input.pointMarkers = [{ id: 'm', timestamp: 5, label: 'MC' }]
     const out = readDocument(input).doc
-    expect(formSpans(out.layers[0])[0].slug).toBe('mc')
+    expect(segmentSpans(out.layers[0])[0].slug).toBe('mc')
     expect(out.pointMarkers[0].slug).toBe('mc-2')
   })
 })

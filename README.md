@@ -12,7 +12,7 @@ When you keep your analyses as data, you can ask questions across many recording
 
 You build an analysis in Strata from **points** (a cadence at 1:04, a key change, a new instrument entering) and **spans** (a verse from 0:30 to 1:00, a four-bar phrase, a development section). You see and work with them through **widgets**. You add the widgets each analysis needs.
 
-Strata has two widgets today. Start with the **form diagram**: you draw spans as brackets and arrange them in layers. You can give each layer its own focus, its own framework, or its own vocabulary. You keep all of them in the same analysis. You don't have to fit every observation into one hierarchy. If you hear a passage one way in one framework and another way in a second, you can record both readings side by side.
+Strata has three widgets today. Start with **Segments**: you cut the timeline into spans, drawn as brackets, and arrange them in layers. You can give each layer its own focus, its own framework, or its own vocabulary. You keep all of them in the same analysis. You don't have to fit every observation into one hierarchy. If you hear a passage one way in one framework and another way in a second, you can record both readings side by side.
 
 With **commentary**, you write about a passage. Strata shows your writing while that passage plays.
 

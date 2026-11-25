@@ -14,7 +14,7 @@
  * the functions here are pure.
  */
 
-import type { StrataDocument, Span, FormDiagramData } from '@/types/strata'
+import type { StrataDocument, Span, SegmentationData } from '@/types/strata'
 
 // A prime written after a single letter or digit (A′, A', A'' …) is part of
 // the name, not punctuation, so it's spelled out — matching the vocabulary's
@@ -48,9 +48,9 @@ export function uniqueSlug(base: string, taken: Set<string>): string {
   return `${base}-${n}`
 }
 
-/** Every form-diagram span in the document. */
+/** Every segmentation span in the document. */
 export function allSpans(doc: StrataDocument): Span[] {
-  return doc.layers.flatMap((l) => (l.type === 'form-diagram' ? (l.data as FormDiagramData).spans : []))
+  return doc.layers.flatMap((l) => (l.type === 'segmentation' ? (l.data as SegmentationData).spans : []))
 }
 
 /**
@@ -98,8 +98,8 @@ export function resolveSlugCollisions(prev: StrataDocument | null, next: StrataD
   return {
     ...next,
     layers: next.layers.map((l) => {
-      if (l.type !== 'form-diagram') return l
-      const data = l.data as FormDiagramData
+      if (l.type !== 'segmentation') return l
+      const data = l.data as SegmentationData
       if (!data.spans.some((s) => renamed.has(s.id))) return l
       return {
         ...l,

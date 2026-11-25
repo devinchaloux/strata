@@ -10,7 +10,7 @@
  * changes.
  */
 import type { Layer, Span, StrataDocument } from '@/types/strata'
-import { formSpans } from '@/lib/layers'
+import { segmentSpans } from '@/lib/layers'
 import { MIN_SPAN_WIDTH } from '@/lib/spanEdit'
 
 export interface GroupPreview {
@@ -76,7 +76,7 @@ export function placeSpan(spans: Span[], span: Span, mkId: () => string): Span[]
 export function layerAbove(layers: Layer[], layer: Layer): Layer | null {
   return (
     layers
-      .filter((l) => l.type === 'form-diagram' && l.displayOrder > layer.displayOrder)
+      .filter((l) => l.type === 'segmentation' && l.displayOrder > layer.displayOrder)
       .sort((a, b) => a.displayOrder - b.displayOrder)[0] ?? null
   )
 }
@@ -89,15 +89,15 @@ export function layerAbove(layers: Layer[], layer: Layer): Layer | null {
  * Copy to layer…, where the effect is shown first.
  */
 export function groupUpTarget(doc: StrataDocument, spanIds: string[]): { above: Layer | null; blocked: string | null } {
-  const picked = doc.layers.flatMap((l) => formSpans(l).filter((s) => spanIds.includes(s.id)))
-  const top = doc.layers.filter((l) => formSpans(l).some((s) => spanIds.includes(s.id))).sort((a, b) => b.displayOrder - a.displayOrder)[0]
+  const picked = doc.layers.flatMap((l) => segmentSpans(l).filter((s) => spanIds.includes(s.id)))
+  const top = doc.layers.filter((l) => segmentSpans(l).some((s) => spanIds.includes(s.id))).sort((a, b) => b.displayOrder - a.displayOrder)[0]
   if (!top || !picked.length) return { above: null, blocked: 'Nothing selected' }
   const found = layerAbove(doc.layers, top)
   const above = found && !found.locked ? found : null
   if (!above) return { above: null, blocked: null }
   const start = Math.min(...picked.map((s) => s.startTime))
   const end = Math.max(...picked.map((s) => s.endTime))
-  const p = groupPreview(formSpans(above), start, end)
+  const p = groupPreview(segmentSpans(above), start, end)
   return {
     above,
     blocked: p.replaced || p.cut ? `${above.label} already has a span here. Use Group into… to replace it.` : null,

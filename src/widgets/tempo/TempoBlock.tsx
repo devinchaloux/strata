@@ -3,12 +3,12 @@
  * the shared timeline, one row per tempo layer, each drawing the tempo of the
  * layer of bars it reads (lib/tempoLane.ts tempoView).
  *
- * A row is a header cell, as wide as the form diagram's layer names so the
+ * A row is a header cell, as wide as the Segments block's layer names so the
  * timelines line up, and a canvas that scrolls with the diagram: the tempo as
  * marked (a step line), as smoothed (a line through each bar, for the drawing
  * only), and each boundary's deviation from the smoothed curve in ms, with
  * the tapping scatter shaded. Hovering a bar shows its tempo; clicking it
- * selects that bar. The block's top bar carries the controls FormDiagram
+ * selects that bar. The block's top bar carries the controls WorkArea
  * hands it (move, hide, remove); each row's ⋯ opens its settings.
  */
 import { useState, type ReactNode } from 'react'
@@ -18,7 +18,7 @@ import { useUIStore } from '@/store/uiStore'
 import { computePps, scrollableWidth } from '@/lib/timeline'
 import { TEMPO_LANE_HEIGHT, deviationRange, tempoView, tempoY, type TempoView } from '@/lib/tempoLane'
 import { LOG_LAMBDA_MAX, LOG_LAMBDA_MIN } from '@/lib/normalize'
-import { formSpans } from '@/lib/layers'
+import { segmentSpans } from '@/lib/layers'
 import { Playhead } from '@/components/Playhead'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import type { StrataDocument, TempoLayer } from '@/types/strata'
@@ -96,7 +96,7 @@ function TempoRow({ doc, layer, headerWidth, reading }: { doc: StrataDocument; l
           </p>
         ) : view.marked.length + view.smoothed.length + view.deviations.length === 0 ? (
           <p className="px-2 pt-2 text-[11px]" style={{ color: 'var(--ink-muted)' }}>
-            {formSpans(view.source).length < 2 ? `${view.source.label} needs two bars or more.` : 'Nothing is chosen to show. Choose in its settings (⋯).'}
+            {segmentSpans(view.source).length < 2 ? `${view.source.label} needs two bars or more.` : 'Nothing is chosen to show. Choose in its settings (⋯).'}
           </p>
         ) : (
           <>
@@ -228,7 +228,7 @@ function TempoSettings({ doc, layer }: { doc: StrataDocument; layer: TempoLayer 
   const [open, setOpen] = useState(false)
   const display = layer.data.display ?? {}
   const show = display.show ?? ['marked']
-  const forms = doc.layers.filter((l) => l.type === 'form-diagram')
+  const forms = doc.layers.filter((l) => l.type === 'segmentation')
   const smoothingOn = show.includes('smoothed') || show.includes('deviation')
   const box = 'rounded border px-1.5 py-0.5 text-xs'
   const boxStyle = { borderColor: 'var(--hairline)', color: 'var(--ink-primary)', background: 'transparent' }

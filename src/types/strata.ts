@@ -19,7 +19,7 @@ export type SourceType = 'youtube' | 'local'
 export type BoundaryType = 'definite' | 'gradual' | 'elided'
 
 /**
- * Visual cap (end-tail) style of a form diagram bracket — the analyst's drawing
+ * Visual cap (end-tail) style of a segment bracket — the analyst's drawing
  * choice, decoupled from the analytical `BoundaryType`. The top line is always
  * flat (domes/arcs are retired). See docs/decisions.md "Form Diagram Shape Model".
  */
@@ -141,7 +141,7 @@ export interface Span {
                                   // Shown above-shape in place of the full label when the full
                                   // label doesn't fit; never itself truncated. No algorithmic
                                   // abbreviation is attempted — if neither fits, nothing renders
-                                  // (a small marker indicates a hidden label; see FormLayers).
+                                  // (a small marker indicates a hidden label; see SegmentLayers).
   slug?: string | null           // From the label; unique per document, frozen once saved (lib/slug.ts)
   startTime: number              // Recording time, seconds (float)
   endTime: number                // Must exceed startTime
@@ -204,7 +204,7 @@ export interface PointMarker {
 }
 
 // ---------------------------------------------------------------------------
-// Form Diagram Data (Widget Payload)
+// Segmentation Data (Widget Payload)
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
@@ -232,10 +232,10 @@ export interface LayerRenderingConfig {
 }
 
 // ---------------------------------------------------------------------------
-// Form Diagram Data (Widget Payload)
+// Segmentation Data (Widget Payload)
 // ---------------------------------------------------------------------------
 
-export interface FormDiagramData {
+export interface SegmentationData {
   spans: Span[]
 }
 
@@ -267,10 +267,10 @@ export interface WrittenAnalysisData {
 }
 
 /** Widget types. Extend this union when adding a widget. */
-export type LayerType = 'form-diagram' | 'written-analysis'
+export type LayerType = 'segmentation' | 'written-analysis'
 
 /** Union of all widget data payload types. */
-export type LayerData = FormDiagramData | WrittenAnalysisData
+export type LayerData = SegmentationData | WrittenAnalysisData
 // Future: | EnergyContourData | InstrumentationData
 
 /** Fields every layer carries, whatever its widget type (the typed envelope). */
@@ -346,7 +346,7 @@ export interface TempoData {
   }
 }
 
-export type FormDiagramLayer = LayerBase & { type: 'form-diagram'; data: FormDiagramData }
+export type SegmentationLayer = LayerBase & { type: 'segmentation'; data: SegmentationData }
 export type WrittenAnalysisLayer = LayerBase & { type: 'written-analysis'; data: WrittenAnalysisData }
 export type TempoLayer = LayerBase & { type: 'tempo'; data: TempoData }
 
@@ -354,10 +354,10 @@ export type TempoLayer = LayerBase & { type: 'tempo'; data: TempoData }
  * A layer is tagged by its widget type, so checking `layer.type` tells
  * TypeScript which `data` shape it holds.
  */
-export type Layer = FormDiagramLayer | WrittenAnalysisLayer | TempoLayer
+export type Layer = SegmentationLayer | WrittenAnalysisLayer | TempoLayer
 
 /** The widget types that draw as a block on the timeline (WidgetBlock). */
-export type BlockType = 'form-diagram' | 'tempo'
+export type BlockType = 'segmentation' | 'tempo'
 
 /**
  * One widget in the work area, drawn as a block: one framed card on the shared
@@ -417,7 +417,7 @@ export interface StrataDocument {
   /**
    * The widgets of the work area, top to bottom, each drawn as a block above
    * the shared ruler: one per widget type, holding that type's layers
-   * (docs/decisions.md, "Widgets as Blocks"). Absent = the form diagram alone,
+   * (docs/decisions.md, "Widgets as Blocks"). Absent = the Segments block alone,
    * plus a tempo block if there are tempo layers. The reader adds any block a
    * layer needs and drops duplicates.
    */

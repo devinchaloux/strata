@@ -1,5 +1,5 @@
 /**
- * ExportDialog — save the form diagram as a figure (SVG, PNG for slides, or PDF
+ * ExportDialog — save the Segments block as a figure (SVG, PNG for slides, or PDF
  * through the browser's print dialog).
  *
  * The range defaults to the selected spans when there are any, which is the
@@ -14,7 +14,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Download, Printer } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
-import { exportFormDiagramSvg, exportLayers } from '@/widgets/form-diagram/exportSvg'
+import { exportSegmentsSvg, exportLayers } from '@/widgets/segmentation/exportSvg'
 import { isStaleBuildError, STALE_BUILD_MESSAGE } from '@/lib/staleBuild'
 import { downloadBlob, fileBaseName } from '@/lib/fileIO'
 import { printFigure } from '@/lib/printFigure'
@@ -30,7 +30,7 @@ type RangeMode = 'all' | 'selection' | 'custom'
 function selectionRange(doc: StrataDocument, ids: string[]): [number, number] | null {
   if (ids.length === 0) return null
   const set = new Set(ids)
-  const spans = doc.layers.flatMap((l) => (l.type === 'form-diagram' ? l.data.spans : [])).filter((s) => set.has(s.id))
+  const spans = doc.layers.flatMap((l) => (l.type === 'segmentation' ? l.data.spans : [])).filter((s) => set.has(s.id))
   if (spans.length === 0) return null
   return [Math.min(...spans.map((s) => s.startTime)), Math.max(...spans.map((s) => s.endTime))]
 }
@@ -106,7 +106,7 @@ export function ExportDialog() {
   useEffect(() => {
     if (!open || !doc || !range || range[1] <= range[0]) return
     let cancelled = false
-    exportFormDiagramSvg(doc, { start: range[0], end: range[1], width, includeMarkers, includeAxis, layerIds, colorblindSafe: useUIStore.getState().colorblindSafe })
+    exportSegmentsSvg(doc, { start: range[0], end: range[1], width, includeMarkers, includeAxis, layerIds, colorblindSafe: useUIStore.getState().colorblindSafe })
       .then((s) => !cancelled && setSvg(s))
       .catch((e: unknown) => {
         if (cancelled) return
@@ -132,7 +132,7 @@ export function ExportDialog() {
 
   async function savePng() {
     try {
-      downloadBlob(await svgToPng(svg, 2), `${base}-form-diagram.png`)
+      downloadBlob(await svgToPng(svg, 2), `${base}-segmentation.png`)
     } catch (e) {
       showAppMessage("Couldn't make the PNG", [e instanceof Error ? e.message : String(e), 'You can still download the SVG.'])
     }
@@ -142,7 +142,7 @@ export function ExportDialog() {
     try {
       // Empty when no commentary falls in the range: then the figure prints alone.
       const commentary = includeCommentary && hasCommentary && range ? await commentarySectionsHtml(current, range) : ''
-      await printFigure(svg, `${base}-form-diagram`, commentary || undefined)
+      await printFigure(svg, `${base}-segmentation`, commentary || undefined)
     } catch (e) {
       showAppMessage("Couldn't open the print page", [e instanceof Error ? e.message : String(e), 'You can still download the SVG.'])
     }
@@ -166,7 +166,7 @@ export function ExportDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Export the form diagram</DialogTitle>
+          <DialogTitle>Export the segments</DialogTitle>
           <DialogDescription>Choose the layers and the time range.</DialogDescription>
         </DialogHeader>
 
@@ -287,7 +287,7 @@ export function ExportDialog() {
             <Button
               size="sm"
               disabled={!svg || noLayers}
-              onClick={() => downloadBlob(new Blob([svg], { type: 'image/svg+xml' }), `${base}-form-diagram.svg`)}
+              onClick={() => downloadBlob(new Blob([svg], { type: 'image/svg+xml' }), `${base}-segmentation.svg`)}
             >
               <Download size={13} aria-hidden /> SVG
             </Button>

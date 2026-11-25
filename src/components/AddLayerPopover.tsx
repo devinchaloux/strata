@@ -2,7 +2,7 @@
  * AddLayerPopover — the `[+]` add-layer control in the widget top bar.
  *
  * Phase 0.4 §2 "Adding a layer": a `[+]` button opens an inline form with a widget
- * type selector (v1: only "form-diagram"), an auto-focused label input, and
+ * type selector (v1: only "segmentation"), an auto-focused label input, and
  * Create/Cancel. The new layer goes on top of the stack (highest displayOrder) and
  * becomes the active layer so B (boundary) placements land in it immediately.
  *
@@ -21,7 +21,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
-import { newFormLayer } from '@/lib/layers'
+import { newSegmentLayer } from '@/lib/layers'
 
 export function AddLayerPopover() {
   const layers = useDocumentStore((s) => s.document?.layers)
@@ -41,7 +41,7 @@ export function AddLayerPopover() {
     if (!trimmed) return
     // New layer goes on top: one above the current max displayOrder.
     const maxOrder = (layers ?? []).reduce((m, l) => Math.max(m, l.displayOrder), -1)
-    const layer = newFormLayer(trimmed, maxOrder + 1)
+    const layer = newSegmentLayer(trimmed, maxOrder + 1)
     addLayer(layer)
     setActiveLayer(layer.id)
     close()
@@ -68,7 +68,7 @@ export function AddLayerPopover() {
           }}
           className="space-y-3"
         >
-          {/* Widget type — only form-diagram in v1, shown read-only for clarity. */}
+          {/* Widget type — only segmentation in v1, shown read-only for clarity. */}
           <div className="space-y-1">
             <span className="block text-xs font-medium" style={{ color: 'var(--ink-muted)' }}>
               Widget type
@@ -81,7 +81,7 @@ export function AddLayerPopover() {
                 background: 'var(--guide-faint)',
               }}
             >
-              Form diagram
+              Segments
             </div>
           </div>
 

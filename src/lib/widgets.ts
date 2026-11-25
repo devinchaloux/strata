@@ -9,14 +9,14 @@ import type { BlockType, StrataDocument, WidgetBlock } from '@/types/strata'
 
 /** What each block type is called on screen. */
 export const WIDGET_NAMES: Record<BlockType, string> = {
-  'form-diagram': 'Form diagram',
+  'segmentation': 'Segments',
   tempo: 'Tempo',
 }
 
 /**
  * The document's blocks, top to bottom: its own list with duplicates dropped,
- * the form diagram added at the bottom if missing (it is always there), and a
- * tempo block added just below the form diagram if a tempo layer needs one.
+ * the Segments block added at the bottom if missing (it is always there), and a
+ * tempo block added just below the Segments block if a tempo layer needs one.
  * Entries whose type this version doesn't know are kept, so saving
  * round-trips them; callers draw only the types they know.
  */
@@ -28,9 +28,9 @@ export function widgetBlocks(doc: Pick<StrataDocument, 'widgets' | 'layers'>): W
     seen.add(w.type)
     out.push(w)
   }
-  if (!seen.has('form-diagram')) out.push({ type: 'form-diagram' })
+  if (!seen.has('segmentation')) out.push({ type: 'segmentation' })
   if (!seen.has('tempo') && doc.layers.some((l) => l.type === 'tempo')) {
-    const at = out.findIndex((w) => w.type === 'form-diagram')
+    const at = out.findIndex((w) => w.type === 'segmentation')
     out.splice(at + 1, 0, { type: 'tempo' })
   }
   return out

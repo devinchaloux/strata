@@ -113,7 +113,7 @@ export interface UIState {
   // that used to go only to the developer console.
   appMessage: AppMessage | null
 
-  // The export dialog (SVG / PNG of the form diagram).
+  // The export dialog (SVG / PNG of the Segments block).
   exportOpen: boolean
 
   // Snapping to the beat grid: the analyst's own default, off until they
