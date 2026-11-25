@@ -31,7 +31,7 @@ export function useTimeline() {
   const loadId = useDocumentStore((s) => s.loadId)
 
   const pps = computePps(zoom)
-  // The scrollable width: the track plus the margin after its end.
+  // The scrollable width: the track plus the stroke room after its end.
   const totalWidth = scrollableWidth(duration, zoom)
   const minZoomValue = minZoom(duration, viewportWidth)
 

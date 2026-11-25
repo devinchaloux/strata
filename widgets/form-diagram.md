@@ -76,11 +76,11 @@ x   = timestamp * pps - viewState.scrollOffset   // scrollOffset is in pixels
 
 Ticks outside the visible viewport (`x < 0` or `x > viewportWidth`) are not rendered.
 
-**The end of the track.** The timeline scrolls `END_MARGIN_PX` (24px) past the
-track's end, and Fit leaves that margin on the right (lib/timeline.ts
-`scrollableWidth`, `computeFitZoom`). Past the end, the ruler and the canvas
-are shaded, with a line at the end, so a span that ends the track visibly stops
-there, an open end included.
+**The end of the track.** The timeline stops at the track's end: it scrolls
+only `END_MARGIN_PX` (2px) past it, room for the closing line of a span that
+ends the track, and Fit fills the width with the track (lib/timeline.ts
+`scrollableWidth`, `computeFitZoom`). Nothing past the end is shaded; a dashed
+line in the ruler marks the end.
 
 ---
 

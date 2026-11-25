@@ -819,15 +819,6 @@ export function FormLayers({ layers }: { layers: Layer[] }) {
         {/* The beat grid, behind everything (editor only for now). */}
         <BeatGridLines grid={doc?.beatGrid} duration={duration} pps={pps} height={svgHeight} />
 
-        {/* The end of the track: past it the canvas is shaded and a line marks
-            the end, so a span that ends the track visibly stops there. */}
-        {pps > 0 && duration > 0 && (
-          <g aria-hidden pointerEvents="none">
-            <rect x={totalWidth} y={0} width={Math.max(0, svgWidth - totalWidth)} height={svgHeight} fill="hsl(var(--muted))" />
-            <line x1={totalWidth} y1={0} x2={totalWidth} y2={svgHeight} stroke="hsl(var(--border))" strokeWidth={1} />
-          </g>
-        )}
-
         {/* The drawing itself: the same pure figure that export uses. */}
         {pps > 0 && (
           <FormDiagramFigure
