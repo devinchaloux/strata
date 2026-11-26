@@ -96,7 +96,7 @@ function TempoRow({ doc, layer, headerWidth, reading }: { doc: StrataDocument; l
           </p>
         ) : view.marked.length + view.smoothed.length + view.deviations.length === 0 ? (
           <p className="px-2 pt-2 text-[11px]" style={{ color: 'var(--ink-muted)' }}>
-            {segmentSpans(view.source).length < 2 ? `${view.source.label} needs two bars or more.` : 'Nothing is chosen to show. Choose in its settings (⋯).'}
+            {segmentSpans(view.source).length < 2 ? `Mark two bars or more on ${view.source.label} to see their tempo.` : 'Choose what to show in its settings (⋯).'}
           </p>
         ) : (
           <>
@@ -263,9 +263,9 @@ function TempoSettings({ doc, layer }: { doc: StrataDocument; layer: TempoLayer 
         <fieldset className="flex flex-col gap-1">
           <legend className="mb-1 text-[11px]" style={{ color: 'var(--ink-muted)' }}>Show</legend>
           {([
-            ['marked', 'As marked', 'Each bar’s tempo from its length, as you marked it'],
-            ['smoothed', 'Smoothed', 'A smooth curve through the tempo, for the drawing only: no bar moves'],
-            ['deviation', 'Deviation', 'How far each boundary sits from the smooth curve, in ms, with the tapping scatter shaded'],
+            ['marked', 'As marked', 'Show each bar’s tempo as you marked it.'],
+            ['smoothed', 'Smoothed', 'Draw a smooth curve through the tempo. No bar moves.'],
+            ['deviation', 'Deviation', 'Show how far each boundary sits from the smooth curve, in milliseconds. The shaded band is your tapping scatter.'],
           ] as const).map(([v, name, hint]) => (
             <label key={v} className="flex cursor-pointer items-center gap-1.5" title={hint}>
               <input type="checkbox" checked={show.includes(v)} onChange={(e) => toggle(v, e.target.checked)} />
@@ -276,7 +276,7 @@ function TempoSettings({ doc, layer }: { doc: StrataDocument; layer: TempoLayer 
         {smoothingOn && (
           <label className="flex flex-col gap-0.5">
             <span className="flex items-center justify-between text-[11px]" style={{ color: 'var(--ink-muted)' }}>
-              <span>Smoothing (drawing only)</span>
+              <span title="This changes the drawing only. No bar moves.">Smoothing</span>
               <button
                 type="button"
                 className="underline disabled:no-underline disabled:opacity-60"
@@ -303,7 +303,7 @@ function TempoSettings({ doc, layer }: { doc: StrataDocument; layer: TempoLayer 
             <input type="radio" checked={!display.scale} onChange={() => setDisplay(layer.id, { scale: undefined })} />
             From the data
           </label>
-          <label className="flex cursor-pointer items-center gap-1.5" title="A fixed range, to compare recordings on one scale">
+          <label className="flex cursor-pointer items-center gap-1.5" title="Set a fixed range to compare recordings on one scale.">
             <input type="radio" checked={!!display.scale} onChange={() => setDisplay(layer.id, { scale: display.scale ?? { min: 40, max: 200 } })} />
             Fixed
             {display.scale && (

@@ -3,7 +3,8 @@
  * its two ends where they are. docs/decisions.md, "Normalize".
  *
  * Steady puts every bar at the same length: one tempo across the run.
- * Smooth fits a curve that follows a tempo that moves (an accelerando, a
+ * Smooth (on the runs between odd bars, which it keeps; oddBars) fits a curve
+ * that follows a tempo that moves (an accelerando, a
  * ritardando) and leaves out the scatter of tapping. It is a penalized least
  * squares fit of the boundary times (a Whittaker smoother on third
  * differences, so bar lengths change smoothly): `lambda` sets how smooth. The
@@ -95,6 +96,48 @@ function leftoverCorrelation(times: number[], fitted: number[]): number {
   return den > 0 ? num / den : 0
 }
 
+/**
+ * Bars far off their neighbours: more than 25% longer or shorter than the
+ * running median of the seven bars around them (a fade held in a long last
+ * bar, a pickup, a fermata). Smooth keeps them as they are and works on the
+ * runs between them, so one odd bar isn't smoothed into the bars beside it.
+ * An accelerando changes by a few percent a bar, well inside that.
+ */
+export function oddBars(times: number[]): boolean[] {
+  const lens = times.slice(1).map((t, k) => t - times[k])
+  return lens.map((len, k) => {
+    const near = lens.slice(Math.max(0, k - 3), k + 4).sort((a, b) => a - b)
+    const median = near[near.length >> 1]
+    return Math.abs(len / median - 1) > 0.25
+  })
+}
+
+/** The runs of ordinary bars between odd ones, as [first, last] indices into the boundary times. */
+function cleanRuns(times: number[]): Array<[number, number]> {
+  const odd = oddBars(times)
+  const runs: Array<[number, number]> = []
+  let start = -1
+  odd.forEach((o, k) => {
+    if (!o && start < 0) start = k
+    if (o && start >= 0) {
+      runs.push([start, k])
+      start = -1
+    }
+  })
+  if (start >= 0) runs.push([start, odd.length])
+  return runs
+}
+
+/** smoothTimes on each run of ordinary bars, odd bars kept as marked. */
+export function smoothAnchored(times: number[], lambda: number): number[] {
+  const out = [...times]
+  for (const [a, b] of cleanRuns(times)) {
+    const fit = smoothTimes(times.slice(a, b + 1), lambda)
+    for (let k = a; k <= b; k++) out[k] = fit[k - a]
+  }
+  return out
+}
+
 /** The range the smoothing scale covers, as log10 of lambda. */
 export const LOG_LAMBDA_MIN = -2
 export const LOG_LAMBDA_MAX = 6
@@ -106,6 +149,12 @@ export const LOG_LAMBDA_MAX = 6
  * the music they run together (positive).
  */
 export function autoLogLambda(times: number[]): number {
+  // Read from the longest run of ordinary bars, so an odd bar doesn't decide it.
+  const runs = cleanRuns(times)
+  if (runs.length) {
+    const [a, b] = runs.reduce((best, r) => (r[1] - r[0] > best[1] - best[0] ? r : best))
+    if (b - a < times.length - 1) times = times.slice(a, b + 1)
+  }
   if (times.length < 6) return 0
   const corr = (g: number) => leftoverCorrelation(times, smoothTimes(times, 10 ** g))
   let lo = LOG_LAMBDA_MIN
@@ -140,7 +189,7 @@ export interface NormalizePlan {
 
 /** What normalizing a run's boundary times would do. */
 export function normalizePlan(times: number[], mode: 'steady' | 'smooth', logLambda: number): NormalizePlan {
-  const next = mode === 'steady' ? steadyTimes(times) : smoothTimes(times, 10 ** logLambda)
+  const next = mode === 'steady' ? steadyTimes(times) : smoothAnchored(times, 10 ** logLambda)
   const moves = next.map((t, k) => Math.abs(t - times[k]))
   return {
     times: next,

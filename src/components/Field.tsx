@@ -23,9 +23,11 @@ import { Info } from 'lucide-react'
 import { PALETTE_SYMBOLS, insertAt } from '@/lib/musicSymbols'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 
+// A soft filled field rather than a bordered box: on a white group, fields
+// read as places to type without a grid of outlines ("Where Controls Live").
 export const inputClass =
-  'w-full rounded border border-border bg-card px-2 py-1 text-[13px] text-foreground ' +
-  'focus:outline-hidden focus:ring-1 focus:ring-ring placeholder:text-muted-foreground'
+  'w-full rounded border border-transparent bg-(--guide-faint) px-2 py-1 text-[13px] text-foreground ' +
+  'hover:border-border focus:border-border focus:bg-card focus:outline-hidden focus:ring-1 focus:ring-ring placeholder:text-muted-foreground'
 
 export function Field({
   label,
@@ -59,7 +61,7 @@ export function Field({
   return (
     <div className={`group ${compact ? '' : 'mb-3'}`} ref={box}>
       <div className={`${compact ? 'mb-0.5' : 'mb-1'} flex items-center gap-1`}>
-        <label id={labelId} className="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <label id={labelId} className="block text-[12px] font-medium text-muted-foreground">
           {label}
         </label>
         {tooltip && (

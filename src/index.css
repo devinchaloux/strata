@@ -140,6 +140,7 @@
     --canvas: #ffffff;
     --hairline: #e5e7eb;
     --guide-faint: #f3f4f6;
+    --panel: #eef2f6; /* the Inspector's ground: white groups sit on it ("Where Controls Live") */
     --ruler: #cbd5e1;
   }
 }

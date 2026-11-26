@@ -304,7 +304,7 @@ export function PointMarkerPanel() {
         {/* Live preview of the diagram caption */}
         {caption && (
           <div className="mb-3 rounded border border-border bg-muted/30 px-2 py-1.5">
-            <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <div className="text-[12px] font-medium text-muted-foreground">
               On the diagram
             </div>
             <div className="mt-0.5 text-xs font-medium text-foreground">{caption}</div>
@@ -332,7 +332,7 @@ export function PointMarkerPanel() {
           <div className="mb-3">
             <button
               onClick={() => setMoreExpanded((v) => !v)}
-              className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
+              className="flex items-center gap-1 text-[12px] font-medium text-muted-foreground hover:text-foreground"
             >
               {moreExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
               More fields

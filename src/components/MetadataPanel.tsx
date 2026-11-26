@@ -10,10 +10,9 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { ChevronRight } from 'lucide-react'
-import { useDocumentStore, groupBoundaryOnBar } from '@/store/documentStore'
-import { NormalizePanel } from '@/components/NormalizePanel'
-import { countOf } from '@/lib/hypermeter'
+import { ChevronDown, ChevronRight } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore, type InspectorSection } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
 import { GroupPopover, CopyToLayerPopover } from '@/components/GroupPopover'
@@ -152,7 +151,7 @@ function EndsGrid({
   end: [EndSelect, EndSelect]
   showCaps: boolean
 }) {
-  const head = 'text-[11px] font-medium uppercase tracking-wide text-muted-foreground'
+  const head = 'text-[12px] font-medium text-muted-foreground'
   const select = (c: EndSelect) => (
     <select
       aria-label={c.label}
@@ -210,7 +209,7 @@ function TimingGrid({
   /** "bars 9–12", when a beat grid covers the span. */
   bars: string | null
 }) {
-  const head = 'text-[11px] font-medium uppercase tracking-wide text-muted-foreground'
+  const head = 'text-[12px] font-medium text-muted-foreground'
   const boundary = (which: 'start' | 'end') => {
     const value = (which === 'start' ? span.startBoundaryType : span.endBoundaryType) ?? 'definite'
     return (
@@ -338,7 +337,7 @@ function openCommentary(key: string, at: number) {
 function CommentaryPreview({ label, text, onOpen }: { label: string; text: string; onOpen: () => void }) {
   return (
     <div className="mb-3">
-      <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mb-1 text-[12px] font-medium text-muted-foreground">{label}</p>
       {text.trim() && (
         <button
           type="button"
@@ -390,7 +389,8 @@ function InspectorBlock({
     if (reveal?.section === id) ref.current?.scrollIntoView({ block: 'start' })
   }, [reveal, id])
   return (
-    <section ref={ref} className="border-t" style={{ borderColor: 'var(--hairline)' }}>
+    // A white group on the panel's tinted ground ("Where Controls Live").
+    <section ref={ref} className="mx-2 mb-2 rounded-lg bg-card" style={{ boxShadow: '0 0 0 1px var(--hairline)' }}>
       <button
         type="button"
         aria-expanded={open}
@@ -402,18 +402,50 @@ function InspectorBlock({
           requestAnimationFrame(() => ref.current?.parentElement?.scrollTo({ top: 0 }))
         }}
         title="Click to open or close. Double-click to open this one alone."
-        className="sticky top-0 z-10 flex w-full select-none items-center gap-2 bg-muted px-3 py-2 text-left text-[13px] font-semibold text-foreground transition-colors hover:bg-accent"
+        className={`sticky top-0 z-10 flex w-full select-none items-center gap-2 bg-card px-3 py-2 text-left text-[13px] font-semibold text-foreground transition-colors hover:bg-accent ${open ? 'rounded-t-lg' : 'rounded-lg'}`}
       >
         <ChevronRight aria-hidden size={14} className={`shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-90' : ''}`} />
         {title}
         {!open && summary && <span className="ml-auto min-w-0 truncate text-xs font-normal text-muted-foreground">{summary}</span>}
       </button>
       {open && (
-        <div id={bodyId} className="px-3 pb-1 pt-3">
+        <div id={bodyId} className="px-3 pb-2 pt-1">
           {children}
         </div>
       )}
     </section>
+  )
+}
+
+/**
+ * Merge ▾ in the footer: with the span before or the span after, in one menu
+ * rather than two buttons ("Where Controls Live"). Each choice is disabled when
+ * there is no neighbour on that side.
+ */
+function MergeMenu({ onBefore, onAfter }: { onBefore: (() => void) | null; onAfter: (() => void) | null }) {
+  const [open, setOpen] = useState(false)
+  const item = 'w-full rounded px-2 py-1 text-left text-xs text-foreground hover:bg-accent disabled:opacity-40 disabled:hover:bg-transparent'
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          disabled={!onBefore && !onAfter}
+          title="Merge with the span before or after"
+          className="flex items-center gap-1 rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
+        >
+          Merge
+          <ChevronDown size={11} aria-hidden />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" side="top" className="w-48 p-1">
+        <button className={item} disabled={!onBefore} onClick={() => { onBefore?.(); setOpen(false) }}>
+          With the span before
+        </button>
+        <button className={item} disabled={!onAfter} onClick={() => { onAfter?.(); setOpen(false) }}>
+          With the span after
+        </button>
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -607,7 +639,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           opened or closed on its own (InspectorBlock). Only the actions stay
           fixed, so a short screen scrolls the whole panel rather than a sliver. */}
       <div className="min-h-0 flex-1 overflow-y-auto">
-      <div className="flex flex-col gap-1.5 px-3 pb-2.5 pt-2">
+      <div className="m-2 flex flex-col gap-1.5 rounded-lg bg-card p-3" style={{ boxShadow: '0 0 0 1px var(--hairline)' }}>
         {/* Where this span is, and stepping to its neighbours. */}
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>
@@ -727,8 +759,6 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           </div>
         )}
 
-        <HypermeterRow layerId={layer.id} spans={[span]} />
-        <BarSetupRow layer={layer} spans={[span]} />
 
         {/* Linked to a parent or children (Group, Copy to layer): boundaries they
             share move together (lib/linkedBoundaries.ts). Unlink frees them. */}
@@ -936,9 +966,9 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
       <div className="px-3">
         <PasteHint spanIds={[span.id]} />
       </div>
-      <div className="flex flex-wrap gap-1.5 whitespace-nowrap border-t px-3 py-2" style={{ borderColor: 'var(--hairline)' }}>
-        <CopyButton spanIds={[span.id]} />
-        <PasteButton spanIds={[span.id]} />
+      {/* The span verbs everyone uses ("Where Controls Live"): Split, Merge,
+          Copy, Paste, Copy to layer and Delete. */}
+      <div className="flex flex-wrap gap-1.5 whitespace-nowrap border-t bg-card px-3 py-2" style={{ borderColor: 'var(--hairline)' }}>
         <button
           onClick={handleSplit}
           disabled={!canSplit}
@@ -947,22 +977,12 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         >
           Split
         </button>
-        <button
-          onClick={() => prevId && performMerge([prevId, span.id])}
-          disabled={!prevId}
-          title={prevId ? 'Merge with previous span' : 'No previous span in this layer'}
-          className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
-        >
-          Merge ←
-        </button>
-        <button
-          onClick={() => nextId && performMerge([span.id, nextId])}
-          disabled={!nextId}
-          title={nextId ? 'Merge with next span' : 'No next span in this layer'}
-          className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
-        >
-          → Merge
-        </button>
+        <MergeMenu
+          onBefore={prevId ? () => performMerge([prevId, span.id]) : null}
+          onAfter={nextId ? () => performMerge([span.id, nextId]) : null}
+        />
+        <CopyButton spanIds={[span.id]} />
+        <PasteButton spanIds={[span.id]} />
         <CopyToLayerPopover span={span} />
         <button
           onClick={handleDelete}
@@ -988,178 +1008,6 @@ const MIXED = Symbol('mixed')
 function commonValue<T>(spans: Span[], get: (s: Span) => T): T | typeof MIXED {
   const first = get(spans[0])
   return spans.every((s) => get(s) === first) ? first : MIXED
-}
-
-/**
- * Hypermeter (lib/hypermeter.ts): count a run of selected bars from 1, or
- * make one bar the elided "4=1" and count on from 2. Counts go into the
- * annotation, inside the shape. Elide shows only on a bar whose annotation is
- * already a count, so the Inspector stays quiet elsewhere; on an elided bar
- * where a layer above has a boundary, it offers to mark that boundary elided
- * too. The group size is shared with the layer menu.
- * docs/decisions.md, "Numbering Hypermeter" and "The Bar Layer".
- */
-function HypermeterRow({ layerId, spans }: { layerId: string; spans: Span[] }) {
-  const doc = useDocumentStore((s) => s.document)
-  const renumberSpans = useDocumentStore((s) => s.renumberSpans)
-  const elideSpan = useDocumentStore((s) => s.elideSpan)
-  const elideGroupBoundary = useDocumentStore((s) => s.elideGroupBoundary)
-  const barGroup = useUIStore((s) => s.barGroup)
-  const setBarGroup = useUIStore((s) => s.setBarGroup)
-  const single = spans.length === 1
-  if (single && countOf(spans[0].annotation) === null) return null
-  const elided = single && (spans[0].annotation ?? '').includes('=')
-  const hit = elided && doc ? groupBoundaryOnBar(doc, layerId, spans[0].id) : null
-  const offer = hit && hit.boundary.before.endBoundaryType !== 'elided' ? hit : null
-  const button = 'rounded border border-border px-2 py-0.5 text-xs text-foreground hover:bg-accent'
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex flex-wrap items-center gap-1.5 text-xs">
-        <span className="w-10 shrink-0 text-muted-foreground">Count</span>
-        {single ? (
-          <button
-            className={button}
-            title="This bar ends one group and begins the next: its count becomes 4=1, and the bars after it count on from 2"
-            onClick={() => elideSpan(layerId, spans[0].id, barGroup)}
-          >
-            Elide
-          </button>
-        ) : (
-          <button
-            className={button}
-            title="Count these bars 1, 2, 3 … from the first, in groups, into their annotations"
-            onClick={() => renumberSpans(layerId, spans.map((s) => s.id), barGroup)}
-          >
-            Count these {spans.length} from 1
-          </button>
-        )}
-        <span className="text-muted-foreground">in groups of</span>
-        <input
-          type="number"
-          min={1}
-          max={16}
-          value={barGroup}
-          onChange={(e) => setBarGroup(Number(e.target.value) || 1)}
-          aria-label="Bars in a group"
-          title="Bars in a group"
-          className="w-10 rounded border border-border bg-card px-1 py-0.5 text-center text-xs tabular-nums text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
-        />
-      </div>
-      {offer && (
-        <div className="flex items-center gap-1.5 pl-[2.875rem] text-xs">
-          <button
-            className={button}
-            title={`${offer.layer.label} has a boundary on this bar: mark it elided, so one span ends and the next begins in this bar`}
-            onClick={() => elideGroupBoundary(layerId, spans[0].id)}
-          >
-            Elide the {offer.layer.label} boundary too
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-/**
- * Quick setup between phrases and bars, on whatever is selected: a chunk of
- * the recording or all of it. Selected spans that aren't bars split into equal
- * bars on the bar layer (made below them if there is none); selected counted
- * bars make phrases, one from each bar counted 1, on the layer above; two or
- * more bars on the bar layer can be normalized (NormalizePanel).
- * docs/decisions.md, "Bars From Phrases, Phrases From Bars".
- */
-function BarSetupRow({ layer, spans }: { layer: Layer; spans: Span[] }) {
-  const splitIntoBars = useDocumentStore((s) => s.splitIntoBars)
-  const phrasesFromCount = useDocumentStore((s) => s.phrasesFromCount)
-  const gridFromBars = useDocumentStore((s) => s.gridFromBars)
-  const barGroup = useUIStore((s) => s.barGroup)
-  const setBarGroup = useUIStore((s) => s.setBarGroup)
-  const [result, setResult] = useState<string | null>(null)
-  const [normalizing, setNormalizing] = useState(false)
-  if (layer.locked || layer.type !== 'segmentation') return null
-  const isBars = layer.role === 'bars'
-  const counted = spans.some((s) => countOf(s.annotation) !== null)
-  const canNormalize = isBars && spans.length >= 2
-  const button = 'rounded border border-border px-2 py-0.5 text-xs text-foreground hover:bg-accent'
-  const n = spans.length
-  return (
-    <div className="flex flex-col gap-1 text-xs">
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="w-10 shrink-0 text-muted-foreground">Bars</span>
-        {!isBars && (
-          <>
-            <button
-              className={button}
-              title={`Split ${n === 1 ? 'this span' : `each of these ${n} spans`} into equal bars on the bar layer, numbered and counted`}
-              onClick={() => {
-                const r = splitIntoBars(spans.map((s) => s.id), barGroup)
-                setResult(
-                  r === 'occupied'
-                    ? 'The bar layer already has bars here.'
-                    : r
-                      ? `Made ${r.made} bars, numbered and counted.`
-                      : null,
-                )
-              }}
-            >
-              Split into
-            </button>
-            <input
-              type="number"
-              min={1}
-              max={16}
-              value={barGroup}
-              onChange={(e) => setBarGroup(Number(e.target.value) || 1)}
-              aria-label="Bars in each span"
-              title="Bars in each span"
-              className="w-10 rounded border border-border bg-card px-1 py-0.5 text-center text-xs tabular-nums text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
-            />
-            <span className="text-muted-foreground">bars {n === 1 ? '' : 'each'}</span>
-          </>
-        )}
-        {counted && (
-          <button
-            className={button}
-            title="Make phrases on the layer above: one starts at each bar counted 1, and these bars become their children"
-            onClick={() => {
-              const r = phrasesFromCount(spans.map((s) => s.id))
-              setResult(r ? `Made ${r.made} phrase${r.made === 1 ? '' : 's'} from the count.` : null)
-            }}
-          >
-            Phrases from the count
-          </button>
-        )}
-        {isBars && (
-          <button
-            className={button}
-            title="Make the beat grid from these bars: each a stretch at its own tempo, bars at the same tempo merged. It replaces the grid where they are."
-            onClick={() => {
-              const r = gridFromBars(spans.map((s) => s.id))
-              setResult(r ? `Made the grid here: ${r.stretches} stretch${r.stretches === 1 ? '' : 'es'} from ${r.bars} bar${r.bars === 1 ? '' : 's'}.` : null)
-            }}
-          >
-            Grid from {n === 1 ? 'this bar' : 'these'}
-          </button>
-        )}
-        {canNormalize && (
-          <button
-            className={button}
-            aria-expanded={normalizing}
-            title="Even out these bars: one steady tempo, or a smooth curve that follows a tempo that moves"
-            onClick={() => setNormalizing((v) => !v)}
-          >
-            Normalize…
-          </button>
-        )}
-      </div>
-      {normalizing && <NormalizePanel spans={spans} onClose={() => setNormalizing(false)} />}
-      {result && (
-        <span className="pl-[2.875rem] text-[11px] text-muted-foreground" role="status">
-          {result}
-        </span>
-      )}
-    </div>
-  )
 }
 
 function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
@@ -1206,7 +1054,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
 
   return (
     <div className="flex flex-col">
-      <div className="px-3 py-3">
+      <div className="m-2 rounded-lg bg-card p-3" style={{ boxShadow: '0 0 0 1px var(--hairline)' }}>
         {/* Merge — primary multi-select action */}
         <button
           onClick={() => performMerge()}
@@ -1230,15 +1078,6 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
           <PasteHint spanIds={ids} />
         </div>
 
-        {/* Recount a run of bars on one layer (hypermeter). */}
-        {entries.every((e) => e.layer.id === entries[0].layer.id) && (
-          <div className="mb-4">
-            <HypermeterRow layerId={entries[0].layer.id} spans={spans} />
-            <div className="mt-1.5">
-              <BarSetupRow layer={entries[0].layer} spans={spans} />
-            </div>
-          </div>
-        )}
 
         <CommentaryPreview
           label={`Commentary, ${formatClock(rangeStart)}–${formatClock(rangeEnd)}`}
@@ -1246,7 +1085,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
           onOpen={() => openCommentary(`range:${rangeStart}:${rangeEnd}`, (rangeStart + rangeEnd) / 2)}
         />
 
-        <div className="mb-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <div className="mb-3 border-t pt-3 text-[13px] font-semibold text-foreground" style={{ borderColor: 'var(--hairline)' }}>
           Apply to all selected
         </div>
 
@@ -1344,7 +1183,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
         </Field>
 
         {/* Colors */}
-        <div className="mt-4 mb-2 border-t pt-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground" style={{ borderColor: 'var(--hairline)' }}>
+        <div className="mt-4 mb-2 border-t pt-3 text-[12px] font-medium text-muted-foreground" style={{ borderColor: 'var(--hairline)' }}>
           Advanced
         </div>
         <div className="flex gap-2">

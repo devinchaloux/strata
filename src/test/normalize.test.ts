@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { autoLogLambda, normalizePlan, runTimes, scatter, smoothTimes, steadyTimes } from '@/lib/normalize'
+import { autoLogLambda, normalizePlan, oddBars, runTimes, scatter, smoothTimes, steadyTimes } from '@/lib/normalize'
 import { segmentSpans } from '@/lib/layers'
 import { useDocumentStore } from '@/store/documentStore'
 import type { Span } from '@/types/strata'
@@ -100,5 +100,15 @@ describe('normalizeBars in the store', () => {
   it('refuses bars that do not follow one another', () => {
     load()
     expect(store().normalizeBars(['b0', 'b2'], 'steady', 0, false)).toBeNull()
+  })
+})
+
+describe('odd bars', () => {
+  it('keeps a long last bar as marked and smooths the bars before it', () => {
+    const withFade = [...steady, steady[steady.length - 1] + 12]
+    expect(oddBars(withFade).slice(-2)).toEqual([false, true])
+    const plan = normalizePlan(withFade, 'smooth', autoLogLambda(withFade))
+    expect(plan.times[plan.times.length - 2]).toBe(withFade[withFade.length - 2])
+    expect(plan.maxMove).toBeLessThan(0.05)
   })
 })

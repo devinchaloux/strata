@@ -104,7 +104,7 @@ export function GroupPopover({ spans }: { spans: Span[] }) {
           className="mb-4 w-full rounded border border-border px-2 py-1.5 text-xs font-medium text-foreground hover:bg-accent"
           title="One span over all of these, on another layer"
         >
-          Group into
+          Group into…
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-72 p-2 text-xs">
@@ -166,7 +166,7 @@ export function CopyToLayerPopover({ span }: { span: Span }) {
           title="Copy this span to another layer"
           className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent"
         >
-          Copy to layer
+          Copy to layer…
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-72 p-2 text-xs">

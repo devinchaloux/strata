@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { beatsPerBarAt, tempoLane, tempoScale, tempoSteps, tempoY, TEMPO_LANE_HEIGHT, TEMPO_PAD_BOTTOM, TEMPO_PAD_TOP } from '@/lib/tempoLane'
+import { beatsPerBarAt, tempoLane, tempoScale, tempoSteps, tempoSummary, tempoY, TEMPO_LANE_HEIGHT, TEMPO_PAD_BOTTOM, TEMPO_PAD_TOP } from '@/lib/tempoLane'
 import type { Layer, Span } from '@/types/strata'
 import { makeDoc, makeLayer } from './fixtures'
 
@@ -47,5 +47,38 @@ describe('tempoLane', () => {
   it('cuts to a range for export, keeping each bar\'s whole-bar tempo', () => {
     const lane = tempoLane(makeDoc([barLayer()], { duration: 7 }), barLayer(), { start: 3, end: 6 })!
     expect(lane.steps.map((s) => [s.start, s.end, s.bpm])).toEqual([[0, 1, 120], [1, 2.5, 160], [2.5, 3, 160]])
+  })
+})
+
+describe('tempoSummary', () => {
+  const layerOf = (lengths: number[]): Layer => {
+    let t = 0
+    const spans = lengths.map((len, k) => {
+      const s = { id: `b${k}`, startTime: t, endTime: t + len }
+      t += len
+      return s
+    })
+    return { ...makeLayer('Bars', spans), role: 'bars' } as Layer
+  }
+  // Steady 120 BPM with up to ±30 ms of tapping scatter at the boundaries.
+  const scatter = [0.02, -0.03, 0.01, 0.03, -0.02, 0, 0.02, -0.01, -0.03, 0.02]
+  const steady = Array.from({ length: 40 }, (_, k) => 2 + (scatter[(k + 1) % 10] - scatter[k % 10]))
+
+  it('calls a steady track steady, tapping scatter and all', () => {
+    const s = tempoSummary(makeDoc([], { duration: 200 }), layerOf(steady))!
+    expect(s.moves).toBe(false)
+    expect(s.median).toBeCloseTo(120, 0)
+  })
+
+  it('is not fooled by one long last bar holding a fade', () => {
+    const s = tempoSummary(makeDoc([], { duration: 200 }), layerOf([...steady, 12]))!
+    expect(s.moves).toBe(false)
+  })
+
+  it('sees an accelerando', () => {
+    const accel = Array.from({ length: 40 }, (_, k) => 4 * 0.97 ** k)
+    const s = tempoSummary(makeDoc([], { duration: 200 }), layerOf(accel))!
+    expect(s.moves).toBe(true)
+    expect(s.high - s.low).toBeGreaterThan(50)
   })
 })

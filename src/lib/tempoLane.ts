@@ -6,7 +6,7 @@
  * stored. widgets/tempo.md; docs/decisions.md, "Widgets as Blocks".
  */
 import type { Layer, StrataDocument, TempoLayer } from '@/types/strata'
-import { autoLogLambda, smoothTimes } from '@/lib/normalize'
+import { autoLogLambda, smoothAnchored, smoothTimes } from '@/lib/normalize'
 import { segmentSpans } from '@/lib/layers'
 import { segmentAt, sortedSegments } from '@/lib/beatGrid'
 
@@ -172,7 +172,7 @@ export function tempoView(doc: StrataDocument, layer: TempoLayer): TempoView {
     let k = 0
     for (const run of boundaryRuns(marked)) {
       const g = display.smoothing ?? autoLogLambda(run)
-      const fit = smoothTimes(run, 10 ** g)
+      const fit = smoothAnchored(run, 10 ** g)
       for (let j = 0; j < run.length - 1; j++, k++) {
         const len = fit[j + 1] - fit[j]
         smoothed.push({ ...marked[k], start: fit[j], end: fit[j + 1], bpm: len > 0 ? (60 * beatsAt(run[j])) / len : marked[k].bpm })
@@ -216,4 +216,61 @@ export function deviationRange(view: TempoView): number {
   const most = Math.max(0, ...view.deviations.map((d) => Math.abs(d.ms)))
   const cap = Math.max(view.scatterMs * 4, 20)
   return Math.ceil(Math.max(view.scatterMs * 2, Math.min(most, cap), 10) / 10) * 10
+}
+
+// ---------------------------------------------------------------------------
+// Whether a layer's tempo moves (docs/decisions.md, "Where Controls Live"):
+// when a layer becomes the bar layer, Tempo is offered only if it does.
+// ---------------------------------------------------------------------------
+
+/** A smoothed tempo range wider than this, in BPM, counts as a tempo that moves. */
+export const TEMPO_MOVES_BPM = 4
+
+export interface TempoSummary {
+  /** The smoothed tempo's low and high (5th and 95th percentile with 20 bars or more), and median, in BPM. */
+  low: number
+  high: number
+  median: number
+  moves: boolean
+}
+
+/**
+ * How a layer of bars' tempo behaves, read through Normalize's smoother at its
+ * automatic setting so tapping scatter doesn't count. Odd bars far from their
+ * neighbours are set aside first, and the range leaves out the outer 5% at each
+ * end when there are 20 bars or more, so one odd bar (a long last bar holding a
+ * fade) can't make a steady track look as if it moves. Null with fewer than
+ * two bars.
+ */
+export function tempoSummary(doc: StrataDocument, layer: Layer): TempoSummary | null {
+  const beatsAt = beatsPerBarAt(doc)
+  const all = tempoSteps(layer, beatsAt)
+  if (all.length < 2) return null
+  // A bar more than 25% off the running median of its neighbours (a fade held
+  // in a long last bar, a pickup) is set aside before smoothing, which would
+  // otherwise spread its jump over the bars beside it. An accelerando changes
+  // by a few percent a bar, well inside that.
+  const median = (xs: number[]) => {
+    const o = [...xs].sort((a, b) => a - b)
+    return o[o.length >> 1]
+  }
+  const steps = all.filter((s, k) => {
+    const near = all.slice(Math.max(0, k - 3), k + 4).map((x) => x.bpm)
+    return Math.abs(s.bpm / median(near) - 1) <= 0.25
+  })
+  if (steps.length < 2) return null
+  const bpms: number[] = []
+  for (const run of boundaryRuns(steps)) {
+    const fit = run.length >= 4 ? smoothTimes(run, 10 ** autoLogLambda(run)) : run
+    for (let j = 0; j < run.length - 1; j++) {
+      const len = fit[j + 1] - fit[j]
+      if (len > 0) bpms.push((60 * beatsAt(run[j])) / len)
+    }
+  }
+  const sorted = [...bpms].sort((a, b) => a - b)
+  const at = (q: number) => sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(q * (sorted.length - 1))))]
+  const trim = sorted.length >= 20
+  const low = trim ? at(0.05) : sorted[0]
+  const high = trim ? at(0.95) : sorted[sorted.length - 1]
+  return { low, high, median: at(0.5), moves: high - low > TEMPO_MOVES_BPM }
 }
