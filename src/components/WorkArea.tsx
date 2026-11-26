@@ -669,7 +669,7 @@ function WidgetStrip({ blocks, zoom }: { blocks: WidgetBlock[]; zoom: ZoomContro
       {canAddTempo && (
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
-            <button className={chip} title="Add a widget: another kind of analysis on the same timeline">
+            <button className={chip} title="Add another kind of analysis on the same timeline.">
               <Plus size={11} />
               Add widget
             </button>
@@ -680,12 +680,12 @@ function WidgetStrip({ blocks, zoom }: { blocks: WidgetBlock[]; zoom: ZoomContro
               disabled={!hasBars}
               onClick={() => {
                 if (addTempoWidget()) setOpen(false)
-                else setNote('Make a layer the bar layer first (its ⋯ menu).')
+                else setNote('Turn on Bar layer in a layer’s ⋯ menu first.')
               }}
             >
               <span style={{ color: 'var(--ink-primary)' }}>Tempo</span>
               <span className="text-[11px]" style={{ color: 'var(--ink-muted)' }}>
-                {hasBars ? 'Each bar’s tempo, read from the bar layer.' : 'Needs a bar layer: turn one on in a layer’s ⋯ menu.'}
+                {hasBars ? 'See each bar’s tempo, read from the bar layer.' : 'Turn on Bar layer in a layer’s ⋯ menu first.'}
               </span>
             </button>
             {note && <p className="px-2 text-[11px]" style={{ color: 'var(--ink-muted)' }}>{note}</p>}
@@ -728,7 +728,7 @@ function TempoOffer() {
       className="ml-2 flex items-center gap-1.5 rounded px-2 py-0.5 text-[11px]"
       style={summary.moves ? { background: 'var(--ink-primary)', color: 'var(--canvas)' } : { background: 'var(--guide-faint)', color: 'var(--ink-secondary)' }}
     >
-      {summary.moves ? `Tempo moves from ${r(summary.low)} to ${r(summary.high)} BPM across these bars.` : `Steady at ${r(summary.median)} BPM.`}
+      {summary.moves ? `The tempo in these bars moves from ${r(summary.low)} to ${r(summary.high)} BPM.` : `The tempo in these bars holds steady at ${r(summary.median)} BPM.`}
       <button type="button" className={chip} style={{ borderColor: 'currentColor' }} onClick={show}>
         {summary.moves ? 'Show Tempo' : 'Show Tempo anyway'}
       </button>

@@ -101,7 +101,7 @@ deviation beyond it is drawn clipped, with a cap.
 
 ## 3b. Offering Tempo
 
-Turning on Bar layer (or making a bar layer with Split into bars or Fill with the grid's bars) doesn't add Tempo. A note above the blocks says what the bars' tempo does: "Tempo moves from 40 to 127 BPM across these bars" with **Show Tempo** and **Not now**, or "Steady at 120 BPM" with **Show Tempo anyway**. "Moves" means the smoothed tempo ranges more than 4 BPM (`TEMPO_MOVES_BPM`): each run of bars goes through Normalize's smoother at Auto so tapping scatter doesn't count, bars more than 25% off the running median of their neighbours are set aside first, and the range is the 5th to 95th percentile with 20 bars or more (`tempoSummary`). Add widget offers Tempo at any time.
+Turning on Bar layer (or making a bar layer with Split into bars or Fill with the grid's bars) doesn't add Tempo. A note above the blocks says what the bars' tempo does: "The tempo in these bars moves from 40 to 127 BPM" with **Show Tempo** and **Not now**, or "The tempo in these bars holds steady at 120 BPM" with **Show Tempo anyway**. "Moves" means the smoothed tempo ranges more than 4 BPM (`TEMPO_MOVES_BPM`): each run of bars goes through Normalize's smoother at Auto so tapping scatter doesn't count, bars more than 25% off the running median of their neighbours are set aside first, and the range is the 5th to 95th percentile with 20 bars or more (`tempoSummary`). Add widget offers Tempo at any time.
 
 ## 4. Normalize and display smoothing
 

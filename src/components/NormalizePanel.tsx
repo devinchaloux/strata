@@ -84,7 +84,7 @@ export function NormalizePanel({ spans, onClose }: { spans: Span[]; onClose: () 
             aria-checked={mode === m}
             onClick={() => setMode(m)}
             className={`${box} ${mode === m ? 'bg-foreground font-medium text-background' : 'bg-card text-muted-foreground hover:bg-accent'}`}
-            title={m === 'steady' ? 'Every bar the same length: one tempo across these bars' : 'A smooth curve that follows a tempo that moves, without the scatter of tapping'}
+            title={m === 'steady' ? 'Make every bar the same length, at one tempo.' : 'Follow a tempo that changes, without the scatter of tapping.'}
           >
             {m === 'steady' ? 'Steady' : 'Smooth'}
           </button>
@@ -110,24 +110,30 @@ export function NormalizePanel({ spans, onClose }: { spans: Span[]; onClose: () 
             disabled={logLambda === null}
             onClick={() => setLogLambda(null)}
             className="text-[11px] font-medium text-foreground underline disabled:no-underline"
-            title="The smoothest setting at which what is left still looks like tapping scatter"
+            title="Smooth out tapping scatter and keep the music's own changes."
           >
             {logLambda === null ? 'Auto' : 'Back to auto'}
           </button>
         </label>
       )}
 
-      <span className="min-w-0 text-[11px] leading-snug text-muted-foreground" role="status">
+      <span
+        className="min-w-0 text-[11px] leading-snug text-muted-foreground"
+        role="status"
+        title="Timing differences smaller than your marks' scatter can't be told apart from tapping."
+      >
         {short
-          ? 'Smooth needs three bars or more.'
-          : `${mode === 'steady' ? `One tempo, ${((60 * beats) / meanBar).toFixed(1)} BPM. ` : ''}${
-              plan.moved ? `Moves ${plan.moved} boundar${plan.moved === 1 ? 'y' : 'ies'}, at most ${moveText(plan.maxMove)}. ` : 'Nothing moves. '
-            }${plan.moved > 0 ? `Your marks sit about ±${ms(plan.scatter)} from this.` : ''}`}
-        {tooFar && <span style={{ color: 'hsl(var(--destructive))' }}> The tempo moves across these bars, so Steady shifts some a long way; Smooth follows it.</span>}
+          ? 'Select three bars or more to use Smooth.'
+          : `${mode === 'steady' ? `One tempo of ${((60 * beats) / meanBar).toFixed(1)} BPM. ` : ''}${
+              plan.moved ? `This moves ${plan.moved} boundar${plan.moved === 1 ? 'y' : 'ies'} by up to ${moveText(plan.maxMove)}. ` : 'Nothing would move. '
+            }${plan.moved > 0 ? `Your marks sit about ±${ms(plan.scatter)} from the result.` : ''}`}
+        {tooFar && (
+          <span style={{ color: 'hsl(var(--destructive))' }}> The tempo changes across these bars, so Steady moves some boundaries a long way. Use Smooth to follow the change.</span>
+        )}
       </span>
 
       <div className="ml-auto flex items-center gap-2">
-        <label className="flex cursor-pointer items-center gap-1 text-muted-foreground" title="Keep these bars as you marked them and put the normalized ones on a layer below">
+        <label className="flex cursor-pointer items-center gap-1 text-muted-foreground" title="Keep these bars as you marked them. The normalized bars go on a new layer below.">
           <input type="checkbox" checked={intoNew} onChange={(e) => setIntoNew(e.target.checked)} />
           Into a new layer
         </label>

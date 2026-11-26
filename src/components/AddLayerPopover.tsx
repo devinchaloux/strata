@@ -51,7 +51,7 @@ export function AddLayerPopover() {
   return (
     <Popover open={open} onOpenChange={(o) => (o ? setOpen(true) : close())}>
       <PopoverTrigger asChild>
-        <button className={MENU_TRIGGER} title="Add a layer: name it, then it goes on top">
+        <button className={MENU_TRIGGER} title="Add a layer on top of the others.">
           <Plus size={11} aria-hidden />
           Add layer…
         </button>

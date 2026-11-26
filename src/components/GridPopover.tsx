@@ -153,12 +153,12 @@ function FitLayerToGrid() {
   if (!chosen) return null
   const fit = (unit: 'bar' | 'beat') => {
     const moved = snapLayerToGrid(chosen.id, unit)
-    setResult(moved ? `Moved ${moved} boundar${moved === 1 ? 'y' : 'ies'}. Undo puts them back.` : 'Every boundary is already on the grid, or has no room to move.')
+    setResult(moved ? `Moved ${moved} boundar${moved === 1 ? 'y' : 'ies'}.` : 'Every boundary is already on the grid, or has no room to move.')
   }
   const btn = 'rounded border border-border px-2 py-0.5 text-foreground hover:bg-accent'
   return (
     <div className="mt-3 flex flex-col gap-1">
-      <div className="flex flex-wrap items-center justify-between gap-2" title="Move every boundary in a layer to its nearest bar or beat, in one undo step">
+      <div className="flex flex-wrap items-center justify-between gap-2" title="Move every boundary in a layer to its nearest bar or beat.">
         <span className="font-medium text-foreground">Fit boundaries to the grid</span>
         <span className="flex items-center gap-1">
           <select

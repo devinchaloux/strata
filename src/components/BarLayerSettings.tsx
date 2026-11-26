@@ -36,7 +36,7 @@ export function BarLayerSettings({ layer }: { layer: Layer }) {
         />
       </label>
       <span className="text-[11px]" style={{ color: 'var(--ink-muted)' }}>
-        {isBars ? 'Its tools are in Bars, in the Segments tool row.' : 'One span per bar: numbers above, counts inside.'}
+        {isBars ? 'Find its tools under Bars, in the Segments tool row.' : 'Use this layer for bars, numbered above and counted inside.'}
       </span>
     </div>
   )
