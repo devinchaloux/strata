@@ -332,7 +332,7 @@ export function CommentaryPanel() {
   const anyLyrics = doc.layers.some((l) => segmentSpans(l).some((s) => s.lyrics))
 
   // Reading: the video sits top left (PlayerDock, READING_VIDEO_W), so the
-  // commentary starts to its right, larger; the header's Show chips replace
+  // commentary starts to its right, larger; the header's View menu replaces
   // these controls, and no editing hints show.
   const hasVideo = doc.source.type === 'youtube' && !!doc.source.url
   const readingStyle = reading && hasVideo && !phone ? { marginLeft: `calc(${READING_VIDEO_W} + 40px)` } : undefined

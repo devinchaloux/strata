@@ -17,6 +17,9 @@ import type { PlaybackRate } from '@/store/uiStore'
  * - DESTROYS the player when videoId goes null (source unlinked) — the video
  *   panel unmounts with it, so a later re-link must build a fresh player on
  *   the freshly mounted container rather than cue into a dead iframe.
+ * - With `away` (Help is open), videoId goes null too, but the time, duration
+ *   and rate are kept, and the next player is built at that time and rate,
+ *   paused, so the analyst comes back where they were.
  * - Runs a requestAnimationFrame loop to poll currentTime into the UI store.
  * - Returns stable command functions (play, pause, seek, setRate).
  *
@@ -32,8 +35,12 @@ export function useYouTubePlayer(
   containerRef: React.RefObject<HTMLDivElement | null>,
   videoId: string | null,
   sourceOffset: number,
+  away = false,
 ) {
   const playerRef = useRef<YT.Player | null>(null)
+  // Where to put the next player, in recording time: set when the player goes
+  // away for Help, read once the new one is ready.
+  const resumeRef = useRef<number | null>(null)
   const rafRef = useRef<number>(0)
   // Set by a seek made while not playing. YouTube starts a video that hasn't
   // been played yet (unstarted or cued) when it is seeked, so a click on a
@@ -91,7 +98,26 @@ export function useYouTubePlayer(
   useEffect(() => {
     // Unlinked → tear the player down and reset playback state. The video
     // panel container unmounts alongside, so the instance can't be reused.
+    if (!videoId && away) {
+      // Off the page for Help: keep the time, duration and rate.
+      if (playerRef.current) {
+        cancelAnimationFrame(rafRef.current)
+        let t = useUIStore.getState().currentTime
+        try {
+          const p = playerRef.current.getCurrentTime()
+          if (isFinite(p)) t = Math.max(0, p - offsetRef.current)
+        } catch {
+          // Not ready: the last frame's time will do.
+        }
+        resumeRef.current = t
+        playerRef.current.destroy()
+        playerRef.current = null
+        setPlaybackState('paused')
+      }
+      return
+    }
     if (!videoId) {
+      resumeRef.current = null
       if (playerRef.current) {
         cancelAnimationFrame(rafRef.current)
         playerRef.current.destroy()
@@ -141,6 +167,18 @@ export function useYouTubePlayer(
         },
         events: {
           onReady: (e) => {
+            const resume = resumeRef.current
+            resumeRef.current = null
+            if (resume != null) {
+              const rate = useUIStore.getState().playbackRate
+              if (rate !== 1) e.target.setPlaybackRate(rate)
+              if (resume > 0) {
+                holdPausedRef.current = true
+                e.target.seekTo(resume + offsetRef.current, true)
+                e.target.pauseVideo()
+                setCurrentTime(resume)
+              }
+            }
             reportDuration(e.target)
             setPlayerStatus('ready')
             startLoop()

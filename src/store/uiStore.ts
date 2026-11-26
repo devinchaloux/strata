@@ -222,6 +222,9 @@ export interface UIState {
   dismissAppMessage: () => void
   setExportOpen: (open: boolean) => void
   setSnapMode: (mode: SnapMode) => void
+  /** Whether the beat grid's lines and the ruler's bar numbers show. Hiding keeps the grid and its snapping. Remembered in the browser. */
+  gridShown: boolean
+  setGridShown: (shown: boolean) => void
   setClickOn: (on: boolean) => void
   setClickVolume: (volume: number) => void
   setColorblindSafe: (on: boolean) => void
@@ -263,9 +266,9 @@ export interface UIState {
   /** Bars in a hypermetric group for Fill with bars, Count and Elide (lib/hypermeter.ts). Session only. */
   barGroup: number
   setBarGroup: (n: number) => void
-  /** Normalize's preview (lib/normalize.ts): where a run's boundaries would go, drawn over the layer. */
-  normalizePreview: { layerId: string; times: number[] } | null
-  setNormalizePreview: (preview: { layerId: string; times: number[] } | null) => void
+  /** Normalize's preview (lib/normalize.ts): where a run's boundaries would go, drawn over the layer, and, for Steady between ramps, where each steady stretch starts and ends. */
+  normalizePreview: { layerId: string; times: number[]; corners?: number[] } | null
+  setNormalizePreview: (preview: { layerId: string; times: number[]; corners?: number[] } | null) => void
   /** Normalize's mode (docs/decisions.md, "Where Controls Live"): the bars it is open on, or null when closed. */
   normalizing: string[] | null
   setNormalizing: (spanIds: string[] | null) => void
@@ -286,6 +289,9 @@ export interface UIState {
   /** A request to play or pause, from outside the transport (an embed's page). PlayerDock carries it out. */
   playRequest: { play: boolean; n: number } | null
   requestPlay: (play: boolean) => void
+  /** How Strata works is open. It takes the YouTube player off the page until it closes (docs/decisions.md, "Help Is a Page"). */
+  helpOpen: boolean
+  setHelpOpen: (open: boolean) => void
   shareOpen: boolean
   setShareOpen: (open: boolean) => void
   requestSeek: (time: number, play?: boolean) => void
@@ -297,6 +303,7 @@ export interface UIState {
 // ---------------------------------------------------------------------------
 
 const SNAP_KEY = 'strata:snapMode'
+const GRID_SHOWN_KEY = 'strata:gridShown'
 const CLICK_VOLUME_KEY = 'strata:clickVolume'
 const COLORBLIND_KEY = 'strata:colorblindSafe'
 const LYRICS_KEY = 'strata:showLyrics'
@@ -387,6 +394,7 @@ const useUIStore = create<UIState>()((set) => ({
   appMessage: null,
   exportOpen: false,
   snapMode: readSnapPreference(),
+  gridShown: readPreference(GRID_SHOWN_KEY) !== 'false',
   clickOn: false,
   clickVolume: readClickVolume(),
   colorblindSafe: readPreference(COLORBLIND_KEY) === 'on',
@@ -496,8 +504,14 @@ const useUIStore = create<UIState>()((set) => ({
   holdFollow: (ms) => set({ followHoldUntil: Date.now() + ms }),
   playRequest: null,
   requestPlay: (play) => set((s) => ({ playRequest: { play, n: (s.playRequest?.n ?? 0) + 1 } })),
+  helpOpen: false,
+  setHelpOpen: (open) => set({ helpOpen: open }),
   shareOpen: false,
   setShareOpen: (open) => set({ shareOpen: open }),
+  setGridShown: (gridShown) => {
+    writePreference(GRID_SHOWN_KEY, String(gridShown))
+    set({ gridShown })
+  },
   setSnapMode: (mode) => {
     writePreference(SNAP_KEY, mode)
     set({ snapMode: mode })

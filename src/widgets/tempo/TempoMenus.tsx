@@ -15,12 +15,13 @@ import { LOG_LAMBDA_MAX, LOG_LAMBDA_MIN } from '@/lib/normalize'
 import { MENU_TRIGGER } from '@/lib/toolRow'
 import type { TempoLayer } from '@/types/strata'
 
-type Show = 'marked' | 'smoothed' | 'deviation'
+type Show = 'marked' | 'smoothed' | 'deviation' | 'map'
 
 const VIEWS: Array<[Show, string, string]> = [
   ['marked', 'As marked', 'Each bar’s tempo as you marked it.'],
   ['smoothed', 'Smoothed', 'A smooth curve through the tempo. No bar moves.'],
   ['deviation', 'Deviation', 'How far each boundary sits from the smooth curve, in ms. The shaded band is your tapping scatter.'],
+  ['map', 'Tempo map', 'Steady stretches and even ramps, as a DAW tempo track, each with its tempo or rate. No bar moves.'],
 ]
 
 const box = 'rounded border border-border bg-(--guide-faint) px-1.5 py-0.5 text-xs tabular-nums text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring'

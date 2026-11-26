@@ -127,7 +127,7 @@ aren't part of this repository.
 - [Tempo is its own widget (`type: "tempo"`), reading the bar layer (or a beat layer); tempo is derived, never stored.](#tempo-becomes-its-own-widget-2026-11-25)
 - [A widget is a block: one kind of analysis with its own tools, drawn as a card on the shared timeline. The file lists the blocks top to bottom (`widgets`); the analyst moves them with ↑ ↓, hides and shows them, adds them, and removes any but Segments.](#widgets-as-blocks-2026-11-25)
 - [Tempo is a block of its own; its display choices are saved in the file; deviation is in milliseconds; the scale comes from the data unless fixed; it reads a source layer only.](#the-tempo-widget-settled-2026-11-25)
-- [Normalize evens out a run of selected bars, Steady or Smooth, with a preview; the run's ends stay, and it can copy to a new layer instead.](#normalize-2026-11-25)
+- [Normalize evens out a run of selected bars, Steady or Smooth (or Steady between ramps, when offered), with a preview; the run's ends stay, and it can copy to a new layer instead.](#normalize-2026-11-25)
 - [The beat grid can be made from the bar layer, or from selected bars: a stretch per bar at its own tempo, equal tempos merged, replacing the grid only where the bars are.](#the-beat-grid-from-the-bars-2026-11-25)
 - [Fit boundaries to the grid moves a layer's boundaries to bars or beats.](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02)
 - [Playback rates are 0.5×, 0.75×, 1× and 1.25×; rewind goes to 0:00.](#player-chrome-phase-03)
@@ -189,7 +189,10 @@ aren't part of this repository.
 - [A change made from a menu shows on the diagram with a toast naming it, with Undo; menus don't report results in their own text.](#menus-are-names-2026-11-26)
 - [First-run text shows keys rather than sentences about keys, names the outcome on its buttons, and puts examples in placeholders.](#first-run-text-2026-11-26)
 - [Merge, however it's made, Split from the Inspector or the right-click menu, and Delete, from a button or the Delete key, confirm with a toast and Undo; a boundary placed with B doesn't.](#merge-split-and-delete-confirm-with-a-toast-2026-11-26)
+- [The beat grid can be hidden without losing it (Grid menu, or Grid in the reading view's Show); snapping still works, and the choice is remembered in the browser.](#showing-and-hiding-the-grid-2026-11-26)
 - [Normalize's Smooth keeps bars far off their neighbours (more than 25% off the running median of seven) as marked and smooths the runs between them.](#the-controls-rebuilt-2026-11-26)
+- [Normalize offers Steady between ramps only when the bars have a steady stretch of 16 bars or more and, elsewhere, a tempo more than 4 BPM from it; its corners are proposals, moved a bar at a time.](#steady-between-ramps-2026-11-26)
+- [A tempo map is steady stretches and ramps at an even rate, a percent or a number of BPM a bar, fitted as one continuous line; the tempo widget shows it, and Steady between ramps fits the bars to it.](#the-tempo-map-2026-11-26)
 - [The Inspector sits on a tinted ground, each section a white group; labels are in sentence case and fields are filled, not outlined; Merge is one menu.](#the-controls-rebuilt-2026-11-26)
 - [The Inspector is a collapsible right-hand column that hosts the selected thing's editor; it starts collapsed and opens on a selection.](#app-shell--inspector-2026-06-27)
 - [The span Inspector is one column of sections (Timing, Describe, Shape & color, More), each folding on its own.](#the-inspector-as-sections-zoom-in-the-reading-view-2026-11-05)
@@ -203,12 +206,13 @@ aren't part of this repository.
 - [The interface says "layers".](#levels-not-layers-in-the-interface-2026-10-01)
 - [Every popover closes on a press outside it.](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24)
 - [Text is at least 11px, muted text is #475569, and every field is named for screen readers.](#space-plays-b-marks-a-boundary-2026-10-01)
-- [A help dialog holds the guide and every shortcut; Report an issue (in Help ▾) opens a prefilled form.](#help-and-beta-notice-2026-09-27)
+- [Help is a page over the whole window: the guide and every shortcut. The YouTube player leaves the page while it's open and comes back paused where it was; only Esc acts. Report an issue (in Help ▾) opens a prefilled form.](#help-is-a-page-2026-11-26)
 - [The app's text: a person does things, in plain American English, with tooltips that are never the only route.](#people-do-things-in-stratas-text-2026-11-05)
 
 **Reading, sharing, embedding and export**
 
 - [The reading view lays an analysis out for reading, with editing off.](#the-reading-view-2026-10-01)
+- [What the reading view shows is one View ▾ menu of checked rows, not a row of chips.](#reading-view-has-a-view-menu-2026-11-26)
 - [On a phone Strata reads and plays: the reading view stacks, and editing waits for a wider screen.](#read-and-play-on-a-phone-2026-11-23)
 - [While playing, the view follows a playhead that walks off it and shows where a seek lands, but leaves alone a view the reader scrolled away.](#following-the-playhead-2026-11-23)
 - [A reader hides a layer in the reading view with the eye on its name; it changes the view, never the file.](#hiding-layers-in-the-reading-view-2026-11-23)
@@ -259,7 +263,7 @@ By area, in the order the entries were made:
 
 **Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01) · [Group Spans Into Another Layer (2026-10-24)](#group-spans-into-another-layer-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Choosing What Copy to Layer Takes (2026-10-31)](#choosing-what-copy-to-layer-takes-2026-10-31)
 
-**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25) · [Bars From Phrases, Phrases From Bars (2026-11-25)](#bars-from-phrases-phrases-from-bars-2026-11-25) · [The Tempo Lane (2026-11-25)](#the-tempo-lane-2026-11-25) · [Tempo Becomes Its Own Widget (2026-11-25)](#tempo-becomes-its-own-widget-2026-11-25) · [Normalize (2026-11-25)](#normalize-2026-11-25) · [The Tempo Widget, Settled (2026-11-25)](#the-tempo-widget-settled-2026-11-25) · [Widgets as Blocks (2026-11-25)](#widgets-as-blocks-2026-11-25) · [Segments, Not Form Diagram (2026-11-25)](#segments-not-form-diagram-2026-11-25) · [The Beat Grid From the Bars (2026-11-25)](#the-beat-grid-from-the-bars-2026-11-25) · [The Bars Menu Waits for the Bar Layer (2026-11-26)](#the-bars-menu-waits-for-the-bar-layer-2026-11-26) · [The Hypermeter Is Its Own Field (2026-11-26)](#the-hypermeter-is-its-own-field-2026-11-26) · [Tempo Gets a Tool Row (2026-11-26)](#tempo-gets-a-tool-row-2026-11-26) · [A Strip Under the Layer (2026-11-26)](#a-strip-under-the-layer-2026-11-26)
+**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25) · [Bars From Phrases, Phrases From Bars (2026-11-25)](#bars-from-phrases-phrases-from-bars-2026-11-25) · [The Tempo Lane (2026-11-25)](#the-tempo-lane-2026-11-25) · [Tempo Becomes Its Own Widget (2026-11-25)](#tempo-becomes-its-own-widget-2026-11-25) · [Normalize (2026-11-25)](#normalize-2026-11-25) · [The Tempo Widget, Settled (2026-11-25)](#the-tempo-widget-settled-2026-11-25) · [Widgets as Blocks (2026-11-25)](#widgets-as-blocks-2026-11-25) · [Segments, Not Form Diagram (2026-11-25)](#segments-not-form-diagram-2026-11-25) · [The Beat Grid From the Bars (2026-11-25)](#the-beat-grid-from-the-bars-2026-11-25) · [The Bars Menu Waits for the Bar Layer (2026-11-26)](#the-bars-menu-waits-for-the-bar-layer-2026-11-26) · [The Hypermeter Is Its Own Field (2026-11-26)](#the-hypermeter-is-its-own-field-2026-11-26) · [Tempo Gets a Tool Row (2026-11-26)](#tempo-gets-a-tool-row-2026-11-26) · [A Strip Under the Layer (2026-11-26)](#a-strip-under-the-layer-2026-11-26) · [Steady Between Ramps (2026-11-26)](#steady-between-ramps-2026-11-26) · [The Tempo Map (2026-11-26)](#the-tempo-map-2026-11-26)
 
 **Point markers:** [Point Markers](#point-markers) · [Point Markers — Implementation (2026-07-03)](#point-markers--implementation-2026-07-03) · [Point Markers — Redesign (2026-07-04)](#point-markers--redesign-2026-07-04) · [Marker Band, Absent Events, and the Diagram Control Bar (2026-07-24, cont.)](#marker-band-absent-events-and-the-diagram-control-bar-2026-07-24-cont)
 
@@ -269,9 +273,9 @@ By area, in the order the entries were made:
 
 **The player and the source:** [Player Chrome (Phase 0.3)](#player-chrome-phase-03) · [Source Linking (2026-07-02)](#source-linking-2026-07-02) · [Video Curtain Covers Every Dialog (2026-09-27)](#video-curtain-covers-every-dialog-2026-09-27) · [Dialogs Stay Clear of the Player (2026-09-27)](#dialogs-stay-clear-of-the-player-2026-09-27) · [Video Below the Fold (2026-09-27)](#video-below-the-fold-2026-09-27) · [Menus Keep Clear of the Player (2026-10-02)](#menus-keep-clear-of-the-player-2026-10-02) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24)
 
-**Reading, sharing, embedding and export:** [Sharing](#sharing) · [Embeddable Viewer](#embeddable-viewer) · [Export (2026-09-27)](#export-2026-09-27) · [The Reading View (2026-10-01)](#the-reading-view-2026-10-01) · [Sharing by Link (2026-10-01)](#sharing-by-link-2026-10-01) · [Export: Choose Layers, Cut Spans at the Range (2026-10-02)](#export-choose-layers-cut-spans-at-the-range-2026-10-02) · [Share From the Toolbar; Dropbox and OneDrive Links (2026-10-02)](#share-from-the-toolbar-dropbox-and-onedrive-links-2026-10-02) · [Example Analyses (2026-10-02)](#example-analyses-2026-10-02) · [Embedding an Analysis (2026-10-03)](#embedding-an-analysis-2026-10-03) · [Starting an Analysis from a Link (2026-10-03)](#starting-an-analysis-from-a-link-2026-10-03) · [Embed Zoom (2026-11-06)](#embed-zoom-2026-11-06) · [Embed Layout on Wide Screens (2026-11-06)](#embed-layout-on-wide-screens-2026-11-06) · [Layer Names Sized to Fit (2026-11-06)](#layer-names-sized-to-fit-2026-11-06) · [Save as PDF Through the Print Dialog (2026-11-23)](#save-as-pdf-through-the-print-dialog-2026-11-23) · [Commentary in the PDF (2026-11-23)](#commentary-in-the-pdf-2026-11-23) · [Read and Play on a Phone (2026-11-23)](#read-and-play-on-a-phone-2026-11-23) · [Following the Playhead (2026-11-23)](#following-the-playhead-2026-11-23) · [Hiding Layers in the Reading View (2026-11-23)](#hiding-layers-in-the-reading-view-2026-11-23) · [The Toolbar Folds When Narrow (2026-11-23)](#the-toolbar-folds-when-narrow-2026-11-23) · [Link-Only Through the Beta (2026-11-23)](#link-only-through-the-beta-2026-11-23)
+**Reading, sharing, embedding and export:** [Sharing](#sharing) · [Embeddable Viewer](#embeddable-viewer) · [Export (2026-09-27)](#export-2026-09-27) · [The Reading View (2026-10-01)](#the-reading-view-2026-10-01) · [Sharing by Link (2026-10-01)](#sharing-by-link-2026-10-01) · [Export: Choose Layers, Cut Spans at the Range (2026-10-02)](#export-choose-layers-cut-spans-at-the-range-2026-10-02) · [Share From the Toolbar; Dropbox and OneDrive Links (2026-10-02)](#share-from-the-toolbar-dropbox-and-onedrive-links-2026-10-02) · [Example Analyses (2026-10-02)](#example-analyses-2026-10-02) · [Embedding an Analysis (2026-10-03)](#embedding-an-analysis-2026-10-03) · [Starting an Analysis from a Link (2026-10-03)](#starting-an-analysis-from-a-link-2026-10-03) · [Embed Zoom (2026-11-06)](#embed-zoom-2026-11-06) · [Embed Layout on Wide Screens (2026-11-06)](#embed-layout-on-wide-screens-2026-11-06) · [Layer Names Sized to Fit (2026-11-06)](#layer-names-sized-to-fit-2026-11-06) · [Save as PDF Through the Print Dialog (2026-11-23)](#save-as-pdf-through-the-print-dialog-2026-11-23) · [Commentary in the PDF (2026-11-23)](#commentary-in-the-pdf-2026-11-23) · [Read and Play on a Phone (2026-11-23)](#read-and-play-on-a-phone-2026-11-23) · [Following the Playhead (2026-11-23)](#following-the-playhead-2026-11-23) · [Hiding Layers in the Reading View (2026-11-23)](#hiding-layers-in-the-reading-view-2026-11-23) · [The Toolbar Folds When Narrow (2026-11-23)](#the-toolbar-folds-when-narrow-2026-11-23) · [Link-Only Through the Beta (2026-11-23)](#link-only-through-the-beta-2026-11-23) · [Reading View Has a View Menu (2026-11-26)](#reading-view-has-a-view-menu-2026-11-26)
 
-**The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03) · [A Shorter New Analysis Dialog; Darker Interface Greys (2026-10-24)](#a-shorter-new-analysis-dialog-darker-interface-greys-2026-10-24) · [People Do Things in Strata's Text (2026-11-05)](#people-do-things-in-stratas-text-2026-11-05) · [The Inspector as Sections; Zoom in the Reading View (2026-11-05)](#the-inspector-as-sections-zoom-in-the-reading-view-2026-11-05) · [Quick Pick Types on Typed Spans; Timing With Boundaries; Commentary Links (2026-11-05)](#quick-pick-types-on-typed-spans-timing-with-boundaries-commentary-links-2026-11-05) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05) · [Where Controls Live (2026-11-26)](#where-controls-live-2026-11-26) · [The Controls Rebuilt (2026-11-26)](#the-controls-rebuilt-2026-11-26) · [Menus Are Names (2026-11-26)](#menus-are-names-2026-11-26) · [The App Bar (2026-11-26)](#the-app-bar-2026-11-26) · [First-Run Text (2026-11-26)](#first-run-text-2026-11-26) · [Merge, Split and Delete Confirm With a Toast (2026-11-26)](#merge-split-and-delete-confirm-with-a-toast-2026-11-26) · [The Bars Menu Waits for the Bar Layer (2026-11-26)](#the-bars-menu-waits-for-the-bar-layer-2026-11-26) · [Tempo Gets a Tool Row (2026-11-26)](#tempo-gets-a-tool-row-2026-11-26) · [UI Review: the Layer Menu Folds, Quick Pick Counts Bars (2026-11-26)](#ui-review-the-layer-menu-folds-quick-pick-counts-bars-2026-11-26)
+**The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03) · [A Shorter New Analysis Dialog; Darker Interface Greys (2026-10-24)](#a-shorter-new-analysis-dialog-darker-interface-greys-2026-10-24) · [People Do Things in Strata's Text (2026-11-05)](#people-do-things-in-stratas-text-2026-11-05) · [The Inspector as Sections; Zoom in the Reading View (2026-11-05)](#the-inspector-as-sections-zoom-in-the-reading-view-2026-11-05) · [Quick Pick Types on Typed Spans; Timing With Boundaries; Commentary Links (2026-11-05)](#quick-pick-types-on-typed-spans-timing-with-boundaries-commentary-links-2026-11-05) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05) · [Where Controls Live (2026-11-26)](#where-controls-live-2026-11-26) · [The Controls Rebuilt (2026-11-26)](#the-controls-rebuilt-2026-11-26) · [Menus Are Names (2026-11-26)](#menus-are-names-2026-11-26) · [The App Bar (2026-11-26)](#the-app-bar-2026-11-26) · [First-Run Text (2026-11-26)](#first-run-text-2026-11-26) · [Merge, Split and Delete Confirm With a Toast (2026-11-26)](#merge-split-and-delete-confirm-with-a-toast-2026-11-26) · [Showing and Hiding the Grid (2026-11-26)](#showing-and-hiding-the-grid-2026-11-26) · [The Bars Menu Waits for the Bar Layer (2026-11-26)](#the-bars-menu-waits-for-the-bar-layer-2026-11-26) · [Tempo Gets a Tool Row (2026-11-26)](#tempo-gets-a-tool-row-2026-11-26) · [UI Review: the Layer Menu Folds, Quick Pick Counts Bars (2026-11-26)](#ui-review-the-layer-menu-folds-quick-pick-counts-bars-2026-11-26) · [Help Is a Page (2026-11-26)](#help-is-a-page-2026-11-26)
 
 **Architecture, scope and process:** [Architecture](#architecture) · [Widgets](#widgets) · [Architecture](#architecture-1) · [Launch](#launch) · [Corpus Builder](#corpus-builder) · [v1 Feature Scope (Phase 0.6)](#v1-feature-scope-phase-06) · [Energy Contour Widget](#energy-contour-widget) · [EDM as Origin — Product Claim Reframe](#edm-as-origin--product-claim-reframe) · [Tech Stack](#tech-stack) · [v1 Scope](#v1-scope) · [Widget Contract (Phase 0.2)](#widget-contract-phase-02) · [Correctness Pass (post-Phase 2 polish)](#correctness-pass-post-phase-2-polish) · [Improvement Backlog Batch 1 (2026-07-03)](#improvement-backlog-batch-1-2026-07-03) · [Improvement Backlog Batch 2 (2026-07-03)](#improvement-backlog-batch-2-2026-07-03) · [Render / Edit Split (2026-09-27)](#render--edit-split-2026-09-27) · [Large-Analysis Performance (2026-09-27)](#large-analysis-performance-2026-09-27) · [Safari and Firefox Read-Through (2026-09-27)](#safari-and-firefox-read-through-2026-09-27) · [Beta Launch Pass (2026-10-01)](#beta-launch-pass-2026-10-01) · [Releases and Open Tabs (2026-10-02)](#releases-and-open-tabs-2026-10-02) · [Faster Checks: Tests in Node, a Weekly Audit (2026-10-05)](#faster-checks-tests-in-node-a-weekly-audit-2026-10-05) · [Development Tools Upgraded (2026-10-07)](#development-tools-upgraded-2026-10-07) · [No Corpus Builder: Strata Stays a One-File Tool (2026-10-16)](#no-corpus-builder-strata-stays-a-one-file-tool-2026-10-16) · [React's Newer Checks On (2026-10-16)](#reacts-newer-checks-on-2026-10-16) · [The Corpus Builder Is Planned for Version 2 (2026-10-31)](#the-corpus-builder-is-planned-for-version-2-2026-10-31) · [Lint Tools Use a Patched minimatch (2026-11-07)](#lint-tools-use-a-patched-minimatch-2026-11-07)
 
@@ -6090,3 +6094,235 @@ boundary is already in view at the playhead.
 `useMerge`, `MergeConflictDialog`, the Inspector's Split and Delete,
 SegmentLayers' context menu, the Delete key in App.tsx, and PointMarkerPanel.
 
+---
+
+## Showing and Hiding the Grid (2026-11-26)
+
+*From the maintainer: "I don't think there's a way to turn the grid off if you
+set it up via BPM … it's more that I want it hidden, not that I want it
+deleted, because the grid is necessary for snapping but I want to be able to
+hide it when exporting."*
+
+**Decision.** A **Show** switch at the top of the Grid menu hides the beat
+grid's lines on the diagram and the bar numbers on the ruler. The grid stays
+in the file, and snapping, Fit to grid, the metronome and the bar tools keep
+using it. While it's hidden, the Grid button reads "Grid · hidden". The
+reading view's Show chips gain **Grid** (when the analysis has one), for
+laying out a figure or a printout. The choice is a view preference,
+remembered in the browser like the snap setting, not saved in the file.
+**Rejected.** *A Remove the grid button:* removing was possible already (the
+✕ on a grid row) and isn't what was asked; hiding keeps the work. *Saving the
+choice in the file:* it is how one person wants to look at the diagram, not
+part of the analysis. SVG, PNG and PDF exports already leave the grid out.
+**Why.** The grid is scaffolding for marking: needed for snapping, but noise
+in a screenshot, a print or a reading. Turning snapping off left the lines
+and bar numbers on screen, and the only way to clear them was to delete the
+grid.
+`uiStore.gridShown`; GridPopover; TimelineAxis and SegmentLayers' grid lines;
+ReadingHeader.
+
+---
+
+## Reading View Has a View Menu (2026-11-26)
+
+*From the maintainer: "The show menu in reading mode is getting too
+cumbersome and won't scale with more options."*
+
+**Decision.** The reading view's row of Show chips (Commentary, Segments,
+Lyrics, Grid, Color-blind safe) becomes one **View ▾** menu beside Share. Each
+row is a name with a check, and the menu stays open while rows are toggled.
+What it shows comes first, then a line, then how it's drawn (Color-blind
+safe). Rows appear only when the analysis has the thing: Commentary with
+commentary, Lyrics with lyrics, Grid with a beat grid. One hint line at the
+foot follows the highlighted row, as in "Menus Are Names". As before, the menu
+changes only this view, never the file. On a phone the header is now one row:
+the piece, View and Share.
+**Rejected.** *Folding only the chips that don't fit:* the bar would change
+from file to file and screen to screen. *A settings panel:* five switches
+don't need one.
+**Why.** Every new kind of content (Tempo, the planned energy contour) would
+have added a chip, and on a phone the chips already scrolled sideways. A menu
+stays the same size however many rows it holds, and it reads like the View
+menus of other apps and the settings menu of a video player.
+ReadingHeader (`ViewMenu`); `src/test/phone.test.tsx`.
+
+---
+
+## Help Is a Page (2026-11-26)
+
+*From the maintainer: "The help menu should pull a full open modal. It
+shouldn't allow playing so we don't need to worry about hiding the YouTube
+video … almost like it's its own page. It also doesn't fully work with the
+shortcuts as they're cut off." And, on a first version that kept the video
+on top: "There's not any way I can hide it if we have a full on different
+page? That seems wrong."*
+
+**Decision.** How Strata works opens as a page over the whole window, with a
+bar along its top (the title, and Close with Esc), the steps in two columns,
+and the shortcuts in two columns. Each shortcut's key column is as wide as its
+longest key, so no key is cut off. While it's open, the YouTube player is off
+the page: it is destroyed when Help opens, and built again when Help closes,
+at the same time and playback speed, paused. A local audio file just pauses.
+While Help is open, the app's keys (Space, K, B, the arrows and the rest) do
+nothing; Esc closes it and does nothing else, so it doesn't also leave the
+reading view.
+**Amends** "Video Below the Fold", which rejected turning dialogs into pages
+because the rule against covering the player holds whether it plays or not.
+That rule is about a player on the page. A player that isn't on the page
+can't be covered, and a Help page doesn't need one.
+**Rejected.** *Keeping the player on top of the page,* as for every dialog,
+with the text laid out beside it: it was the first version, and it left a
+video in the corner of a page about something else. *Help in a new browser
+tab:* it needs no player change, but it leaves the app for a page the analyst
+reads for a minute.
+**Cost.** Coming back reloads the video, which takes a moment. The playhead,
+the speed and the analysis are where they were.
+**Why.** The dialog was a narrow box kept clear of the player, and its fixed
+key column cut off keys such as "Right-click a span" and "Ctrl+Shift+S". Help is
+something to read at length, not a quick choice, so it gets the room of a page,
+with nothing else on it.
+HelpDialog (`useAppKeysOff`); `uiStore.helpOpen`; PlayerDock and
+useYouTubePlayer (`away`); `src/test/helpPage.test.tsx`,
+`src/test/youtubeAway.test.tsx`.
+
+---
+
+## Steady Between Ramps (2026-11-26)
+
+*From the maintainer, on Opus normalized with Smooth: "the BPM still shifts a
+bit more during the flat part. What would be the instructions to follow to
+bring this into something that actually more accurately reflects the DAW",
+then: "I would want some suggestions based on the rate of change, so that it
+isn't offered all of the time but only when it makes sense", and "Does it make
+sense to propose points that the user can then tweak if needed?" On the first
+version's proposal for Opus, which ended the steady stretch at bar 150: "I
+think the deconstruct is wrong … that dip and bump should still be close to
+126 BPM."*
+
+**Decision.** Normalize gains a third way, **Steady between ramps**, for a
+tempo made in a DAW: steady stretches joined by ramps. Each steady stretch is
+put on the straight line that best fits all its marks, so it has one tempo and
+no single tap at its ends tilts it. The ramps between were first smoothed,
+with the stretches, the run's ends and odd bars held. *Since "The Tempo
+Map":* the bars are fitted to their tempo map, each ramp at an even rate.
+**When it's offered.** Only when the bars have both a steady stretch of 16
+bars or more and, outside it, a tempo more than 4 BPM away from it
+(`TEMPO_MOVES_BPM`, as for the Tempo offer). Steady handles a tempo that is
+steady throughout, and Smooth one with no steady stretch. When offered, the
+strip opens on it. Detection (`findFlats`):
+1. The run is smoothed at Auto. A bar is steady when its tempo changes less
+   than 0.5% a bar (`FLAT_RATE`), and runs of eight such bars are seeds.
+2. Each seed grows or shrinks while a straight line fits its marks as well as
+   tapping allows. The leftovers' spread, read robustly, must be within 1.5
+   times the tapping scatter, and no three leftovers in a row may sit beyond 4
+   times it on the same side. A ramp leaving the line makes such a run. A
+   mistimed tap or two that comes back to the line doesn't, so it doesn't end
+   a stretch. The scatter is read robustly too, and never below 15 ms (a
+   typical tapping scatter), so bars already smoothed still find their
+   stretches. A seed that doesn't fit as a whole is trimmed from its start,
+   from its end, or from whichever end misses more, and the longest result
+   that fits is kept. Both ends then grow a bar at a time in turn, so neither
+   runs into a ramp first and tilts the line against the other.
+3. Each corner comes in by up to four bars, to where a hinge fits the 12 bars
+   either side best: steady on one side, and on the other a tempo changing at
+   a steady rate. Growing runs a bar or two into a ramp, because a ramp's first
+   bars are hard to tell from steady. The hinge may not move a corner further:
+   as a least-squares fit, it was pulled 8 bars by two mistimed taps. Once the
+   first corner is placed, the far end grows again and is placed in turn.
+**The corners are proposals.** The strip names each stretch: "126.02 BPM from
+bar 53 to bar 149". Each corner has − and + to move it a bar, and **Back to
+proposed** undoes that. The diagram marks each corner with a solid amber line
+while the preview is up. The fit can only estimate where the automation
+points were; the analyst may know.
+**Tested on** steady–ramp–steady and ramp–steady–ramp shapes with 10 to 25 ms
+of scatter, where corners land within a bar or two, and with two taps late by
+100 and 170 ms inside the stretch. It is not offered for a steady tempo, an
+accelerando, a 2 BPM drift, or rubato. On Opus it finds bars 53 to 165 at
+126.00 BPM from the original marks, and 52 to 165 from the bars already
+smoothed. The late taps at bars 160 and 161 (92 and 169 ms), around
+Deconstruct, stay inside the stretch, as the maintainer heard it.
+**Open, then settled in "The Tempo Map":** *the ramps' shape.* Here they're smoothed,
+so a ramp keeps whatever shape the marks give it, wobbles included, and a
+ramp that Smooth has already rounded can step at its corner (on the smoothed
+Opus, from 123.8 to 126.0 at bar 52). A DAW ramp is usually one even curve: straight in BPM over
+time, or bending. Fitting that shape would remove the wobble, but it means
+choosing a shape. Heavy smoothing isn't a substitute: on Opus it bends a
+48-bar ramp out of shape and moves boundaries by up to 2.6 s.
+**Rejected.** *Always showing the option:* most hand-marked tempos aren't
+DAW-shaped, and an option that doesn't apply reads as one to try. *Finding
+corners only by growing the stretches:* they ran into the ramps.
+`findFlats`, `rampsOffered` and `settleFlats` in lib/normalize.ts;
+NormalizePanel (`Corner`); the preview's `corners`;
+`src/test/flatAndRamps.test.ts`. (`flatAndRampsTimes` and `smoothFixed`, which
+smoothed the ramps, went with "The Tempo Map".)
+
+---
+
+## The Tempo Map (2026-11-26)
+
+*From the maintainer: "Fit the ramps as a constant percentage per bar", then,
+on learning that Opus's ramps aren't all that shape: "I may be over
+engineering but it would be cool if that could be detected with the tempo
+tool", and "I'd like to fix the normalized version that has extra stuff".*
+
+**Decision.** A run of bars has a **tempo map**, the way a DAW's tempo track is
+built. It is a list of pieces:
+- **steady:** one tempo;
+- **ramp:** the tempo changing evenly from one end to the other, in one of two
+  shapes, the same **percent** each bar (×r a bar) or the same **BPM** each
+  bar;
+- **as marked:** an odd bar, such as a long last bar holding a fade.
+
+The map is worked out from the bars, never stored (`lib/tempoMap.ts`). The
+tempo widget's View gains **Tempo map**, which draws it and labels each piece
+("126.00 BPM", "+3.8%/bar", "−3.0 BPM/bar"), with its corners dashed.
+Normalize's **Steady between ramps** fits the bars to the map. Its strip lists
+the pieces in order. Each corner has − and +, a corner between two ramps can
+go (×), and clicking a ramp's rate switches its shape.
+**Format.** `TempoData.display.show` gains `"map"`. The addition is optional,
+so the file format version stays 3.
+**Finding it** (`detectTempoMap`):
+1. Steady stretches come from `findFlats`, and odd bars from `oddBars`.
+2. Each stretch between them is fitted as one ramp in the better shape. When
+   that misses the marks by more than twice the tapping scatter, the stretch is
+   split where the split leaves the least miss (no ramp shorter than 4 bars),
+   and each half is tried in turn.
+3. Two ramps in a row are then merged unless the corner between them earns its
+   place: removing it would add more than 40 squared tapping scatters of miss
+   inside them (`CORNER_COST`). Hand-marked drift runs over several bars, so
+   this is well above the 2 to 6 a model-selection rule for independent
+   scatter would ask.
+**Fitting it** (`fitTempoMap`). The map is fitted as one continuous tempo line,
+because a DAW's tempo track doesn't jump at a corner:
+- Each corner has a tempo, and each ramp runs between its corners' tempos in
+  its shape, each bar at the tempo at its middle.
+- The tempos and the line's start time are found by least squares
+  (Levenberg–Marquardt) on all the marks. Each miss is measured against its
+  bar's length, since a 6-second bar can't be tapped as tightly as a 2-second
+  one.
+- A steady stretch keeps the tempo of the line through its own marks. Fitted
+  freely, the ramps' misfit pulled Opus's 126.00 to 125.96.
+- The run's ends don't pin the line: they're single taps like any other.
+  Normalize keeps them where they are, so only the first and last bar take up
+  the difference.
+- Each ramp takes whichever shape fits better, one ramp at a time, unless the
+  analyst has chosen one.
+**On Opus,** from the bars already smoothed: +1.5 BPM/bar to bar 13, +3.8%/bar
+to 34, +1.1 BPM/bar to 51, 126.00 BPM to 165, then −3.0 BPM/bar to the end,
+with the last bar as marked. One percentage per bar doesn't fit the outro.
+Fitted as one ramp, it misses by 1.2 s rms against 78 ms for BPM per bar,
+since its rate grows from about 2% a bar at 126 BPM to 8% at 33. From the
+original marks the intro and outro split more finely (the outro into two
+percent ramps). Their corners can be joined in the strip.
+**Rejected.** *A constant percentage for every ramp,* as first asked: it would
+move the outro's boundaries by up to 2 s. *Fitting each ramp on its own between
+held corners:* the tempo jumped at corners, by 5 BPM at Opus's bar 35. *A
+threshold in milliseconds for splitting:* slow bars split into near-identical
+ramps (−2.8 then −3.0 BPM a bar).
+**Open (the maintainer's call):** *the names* "tempo map", "steady",
+"ramp", "%/bar" and "BPM/bar"; and whether the map belongs in the reading view
+and in exports. It is a view of the tempo layer, so it shows wherever the
+tempo block does, but the SVG and PDF exports don't draw the tempo block yet.
+`lib/tempoMap.ts` (`detectTempoMap`, `fitTempoMap`, `rampsPlan`, `rateText`);
+`tempoView`'s `map`, `mapLabels` and `mapCorners`; TempoBlock; TempoMenus;
+NormalizePanel; `src/test/tempoMap.test.ts`.

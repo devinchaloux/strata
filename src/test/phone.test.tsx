@@ -5,7 +5,7 @@
  * header there has no Edit.
  */
 import { describe, it, expect, afterEach, beforeEach } from 'vitest'
-import { act, cleanup, render, renderHook, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react'
 import { usePhone } from '@/hooks/usePhone'
 import { ReadingHeader } from '@/components/ReadingHeader'
 import { useDocumentStore } from '@/store/documentStore'
@@ -56,11 +56,26 @@ describe('ReadingHeader', () => {
     expect(screen.getByRole('button', { name: 'Share' })).toBeTruthy()
   })
 
-  it('has no Edit on a phone, and keeps Share and the Show chips', () => {
+  it('has no Edit on a phone, and keeps Share and View', () => {
     render(<ReadingHeader phone />)
     expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Share' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Segments' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'View' })).toBeTruthy()
+  })
+
+  it('toggles what the view shows from View, and stays open', async () => {
+    const { useUIStore } = await import('@/store/uiStore')
+    useUIStore.getState().setReadingShow('diagram', true)
+    render(<ReadingHeader />)
+    fireEvent.click(screen.getByRole('button', { name: 'View' }))
+    const row = screen.getByRole('menuitemcheckbox', { name: 'Segments' })
+    expect(row.getAttribute('aria-checked')).toBe('true')
+    fireEvent.click(row)
+    expect(useUIStore.getState().readingShow.diagram).toBe(false)
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Segments' }).getAttribute('aria-checked')).toBe('false')
+    // Grid only with a grid; no commentary layer here, so no Commentary row.
+    expect(screen.queryByRole('menuitemcheckbox', { name: 'Grid' })).toBeNull()
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Color-blind safe' })).toBeTruthy()
   })
 })
 

@@ -3,6 +3,11 @@
  * its two ends where they are. docs/decisions.md, "Normalize".
  *
  * Steady puts every bar at the same length: one tempo across the run.
+ * Steady between ramps is for a tempo made in a DAW: steady stretches joined
+ * by ramps. It fits the bars to a tempo map (lib/tempoMap.ts); the steady
+ * stretches are found here (findFlats), and it is offered only when the bars
+ * have such a shape (rampsOffered).
+ *
  * Smooth (on the runs between odd bars, which it keeps; oddBars) fits a curve
  * that follows a tempo that moves (an accelerando, a
  * ritardando) and leaves out the scatter of tapping. It is a penalized least
@@ -176,6 +181,269 @@ export function scatter(times: number[], fitted: number[]): number {
   return Math.sqrt(inner.reduce((s, v) => s + v * v, 0) / inner.length)
 }
 
+// ---------------------------------------------------------------------------
+// Steady between ramps
+// ---------------------------------------------------------------------------
+
+/** A steady stretch: boundary indices `from` to `to` into the run's times (bars from+1 … to, counting from 1). */
+export interface Flat {
+  from: number
+  to: number
+}
+
+/** A bar whose smoothed tempo changes less than this from bar to bar (0.5%) counts as steady. */
+export const FLAT_RATE = 0.005
+/** Steady between ramps is offered only for a steady stretch at least this long. */
+export const FLAT_MIN_BARS = 16
+const SEED_MIN = 8
+
+/** The least-squares line through times[a..b] against the boundary index: [intercept, seconds per bar]. */
+export function lineFit(times: number[], a: number, b: number): [number, number] {
+  const n = b - a + 1
+  let sk = 0
+  let st = 0
+  for (let k = a; k <= b; k++) {
+    sk += k
+    st += times[k]
+  }
+  const mk = sk / n
+  const mt = st / n
+  let num = 0
+  let den = 0
+  for (let k = a; k <= b; k++) {
+    num += (k - mk) * (times[k] - mt)
+    den += (k - mk) ** 2
+  }
+  const slope = den > 0 ? num / den : 0
+  return [mt - slope * mk, slope]
+}
+
+/** What's left over from the line through times[a..b]. */
+function lineLeftovers(times: number[], a: number, b: number): number[] {
+  const [c, s] = lineFit(times, a, b)
+  return times.slice(a, b + 1).map((t, j) => t - (c + s * (a + j)))
+}
+
+/**
+ * How well a hinge fits times[lo..hi]: steady on one side of boundary `c`, and
+ * on the other a tempo changing at a steady rate (bar lengths changing by the
+ * same amount each bar, so times bend as a square). The sum of squared
+ * leftovers; the best corner is the one with the least.
+ */
+function hingeMiss(times: number[], c: number, lo: number, hi: number, rampAfter: boolean): number {
+  // Least squares for t = x0 + x1·k + x2·h(k)², by the 3×3 normal equations.
+  const rows: number[][] = []
+  for (let k = lo; k <= hi; k++) {
+    const h = Math.max(0, rampAfter ? k - c : c - k)
+    rows.push([1, k, h * h, times[k]])
+  }
+  const M = [0, 1, 2].map((i) => [0, 1, 2].map((j) => rows.reduce((s, r) => s + r[i] * r[j], 0)))
+  const v = [0, 1, 2].map((i) => rows.reduce((s, r) => s + r[i] * r[3], 0))
+  const x = solve3(M, v)
+  if (!x) return Infinity
+  return rows.reduce((s, r) => s + (r[3] - (x[0] + x[1] * r[1] + x[2] * r[2])) ** 2, 0)
+}
+
+function solve3(M: number[][], v: number[]): number[] | null {
+  const det = (m: number[][]) =>
+    m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])
+  const d = det(M)
+  if (Math.abs(d) < 1e-12) return null
+  return [0, 1, 2].map((c) => det(M.map((row, i) => row.map((x, j) => (j === c ? v[i] : x)))) / d)
+}
+
+const median = (xs: number[]) => {
+  const o = [...xs].sort((a, b) => a - b)
+  return o[o.length >> 1] ?? 0
+}
+
+/**
+ * The tapping scatter of a run, in seconds: how far the marks sit from the
+ * smoothed curve (Auto), read robustly (1.4826 × the median absolute
+ * deviation), and at least 15 ms, a typical tapping scatter: bars already
+ * smoothed, or laid from a grid, have lost their scatter, but a hand-marked
+ * drift of a few tens of ms is still there.
+ */
+export function tappingScatter(times: number[], fitted = smoothAnchored(times, 10 ** autoLogLambda(times))): number {
+  const left = times.map((t, k) => t - fitted[k]).slice(1, -1)
+  const m0 = median(left)
+  return Math.max(0.015, 1.4826 * median(left.map((r) => Math.abs(r - m0))))
+}
+
+/**
+ * The steady stretches in a run of hand-marked bars, as proposals.
+ *
+ * 1. Smooth the run (Auto) and read each bar's rate of change of tempo; bars
+ *    changing less than FLAT_RATE a bar are steady, and runs of at least eight
+ *    are seeds.
+ * 2. Grow or shrink each seed while a straight line still fits its marks as
+ *    well as tapping allows (`fits`), both ends a bar at a time in turn.
+ * 3. Bring each corner in, by up to four bars, to where a hinge (steady, then
+ *    a steady change) fits the twelve bars either side best: growing runs a
+ *    bar or two into a ramp, since a ramp's first bars are hard to tell from
+ *    steady. With the first corner placed, the far end grows again against
+ *    the line that leaves, and is placed in turn.
+ *
+ * Stretches shorter than FLAT_MIN_BARS are dropped. Odd bars (oddBars) are
+ * never inside a stretch.
+ */
+export function findFlats(times: number[]): Flat[] {
+  const n = times.length - 1
+  if (n < FLAT_MIN_BARS) return []
+  const odd = oddBars(times)
+  const fitted = smoothAnchored(times, 10 ** autoLogLambda(times))
+  const sigma = tappingScatter(times, fitted)
+  const med = median
+
+  const logLen = fitted.slice(1).map((t, k) => Math.log(t - fitted[k]))
+  const rate = logLen.map((_, k) => {
+    const a = Math.max(0, k - 1)
+    const b = Math.min(n - 1, k + 1)
+    return b > a ? Math.abs(logLen[b] - logLen[a]) / (b - a) : 0
+  })
+  const steady = rate.map((r, k) => r < FLAT_RATE && !odd[k])
+
+  // A line fits a stretch as well as tapping allows when its leftovers' spread
+  // (read robustly, so one bad tap can't inflate it) is within 1.5 times the
+  // scatter, and no three leftovers in a row sit beyond 4 times it on the same
+  // side. A ramp leaving the line makes such a run; a mistimed tap or two that
+  // comes back to the line doesn't, and doesn't end a stretch.
+  const fits = (a: number, b: number) => {
+    if (b - a < 2) return true
+    for (let k = a; k < b; k++) if (odd[k]) return false
+    const r = lineLeftovers(times, a, b)
+    const mr = med(r)
+    if (1.4826 * med(r.map((v) => Math.abs(v - mr))) > 1.5 * sigma) return false
+    let run = 0
+    for (let k = 0; k < r.length; k++) {
+      const far = Math.abs(r[k]) > 4 * sigma
+      run = far && k > 0 && Math.sign(r[k]) === Math.sign(r[k - 1]) && Math.abs(r[k - 1]) > 4 * sigma ? run + 1 : far ? 1 : 0
+      if (run >= 3) return false
+    }
+    return true
+  }
+
+  // Grow both ends a bar at a time in turn, so neither end runs into a ramp
+  // first and tilts the line against the other.
+  const grow = (a: number, b: number, ends: 'both' | 'from' | 'to' = 'both'): Flat => {
+    for (let more = true; more; ) {
+      more = false
+      if (ends !== 'to' && a > 0 && fits(a - 1, b)) [a, more] = [a - 1, true]
+      if (ends !== 'from' && b < n && fits(a, b + 1)) [b, more] = [b + 1, true]
+    }
+    return { from: a, to: b }
+  }
+
+  const flats: Flat[] = []
+  for (let k = 0; k < n; ) {
+    if (!steady[k]) {
+      k++
+      continue
+    }
+    let j = k
+    while (j + 1 < n && steady[j + 1]) j++
+    if (j - k + 1 >= SEED_MIN) {
+      // A seed that doesn't fit as a whole is trimmed: from its start, from its
+      // end, or from whichever end misses more, keeping the longest that fits.
+      const trims: Flat[] = []
+      for (const how of ['from', 'to', 'worse'] as const) {
+        let a = k
+        let b = j + 1
+        while (b - a > SEED_MIN && !fits(a, b)) {
+          const r = lineLeftovers(times, a, b)
+          if (how === 'from' || (how === 'worse' && Math.abs(r[0]) > Math.abs(r[r.length - 1]))) a++
+          else b--
+        }
+        if (fits(a, b)) trims.push({ from: a, to: b })
+      }
+      const best = trims.sort((x, y) => y.to - y.from - (x.to - x.from))[0]
+      if (best) flats.push(grow(best.from, best.to))
+    }
+    k = j + 1
+  }
+
+  // Corners: growing runs a bar or so into a ramp, so each corner may come in
+  // by up to 4 bars, to where a hinge fitted over the 12 bars either side fits
+  // best. Never further: the hinge is a least-squares fit, and a mistimed tap
+  // or two near a corner would pull it a long way.
+  const W = 12
+  const S = 4
+  const placeFrom = (from: number, to: number) => {
+    if (from === 0) return from
+    let a = from
+    let best = Infinity
+    for (let c = from; c <= Math.min(to - SEED_MIN, from + S); c++) {
+      const miss = hingeMiss(times, c, Math.max(0, c - W), Math.min(n, c + W), false)
+      if (miss < best) [best, a] = [miss, c]
+    }
+    return a
+  }
+  const placeTo = (from: number, to: number) => {
+    if (to === n) return to
+    let b = to
+    let best = Infinity
+    for (let c = Math.max(from + SEED_MIN, to - S); c <= to; c++) {
+      const miss = hingeMiss(times, c, Math.max(0, c - W), Math.min(n, c + W), true)
+      if (miss < best) [best, b] = [miss, c]
+    }
+    return b
+  }
+  // Place one corner, grow the other end against the line that leaves, then place it.
+  const placed = flats.map(({ from, to }) => {
+    const a = placeFrom(from, to)
+    const grown = grow(a, to, 'to')
+    return { from: a, to: placeTo(a, grown.to) }
+  })
+  return settleFlats(placed, n).filter((f) => f.to - f.from >= FLAT_MIN_BARS)
+}
+
+/** Flats in order, inside the run, each at least a bar long, and not overlapping: an overlap is split down the middle. */
+export function settleFlats(flats: Flat[], n: number): Flat[] {
+  const out = flats
+    .map((f) => ({ from: Math.max(0, Math.min(n, f.from)), to: Math.max(0, Math.min(n, f.to)) }))
+    .filter((f) => f.to > f.from)
+    .sort((x, y) => x.from - y.from)
+  for (let k = 1; k < out.length; k++) {
+    if (out[k].from < out[k - 1].to) {
+      const mid = Math.round((out[k].from + out[k - 1].to) / 2)
+      out[k - 1] = { ...out[k - 1], to: mid }
+      out[k] = { ...out[k], from: mid }
+    }
+  }
+  return out.filter((f) => f.to > f.from)
+}
+
+/**
+ * Whether to offer Steady between ramps: there is a steady stretch, and
+ * somewhere else the tempo (smoothed, Auto) moves more than `movesBpm` away
+ * from the nearest stretch's tempo, so there is a ramp to keep. With no ramp,
+ * Steady does the job; with no steady stretch, Smooth does.
+ */
+export function rampsOffered(times: number[], flats: Flat[], beatsPerBar: number, movesBpm: number): boolean {
+  if (!flats.length) return false
+  const odd = oddBars(times)
+  const fitted = smoothAnchored(times, 10 ** autoLogLambda(times))
+  const flatBpm = flats.map((f) => flatBpmOf(times, f, beatsPerBar))
+  const n = times.length - 1
+  for (let k = 0; k < n; k++) {
+    if (odd[k] || flats.some((f) => k >= f.from && k < f.to)) continue
+    const bpm = (60 * beatsPerBar) / (fitted[k + 1] - fitted[k])
+    let near = 0
+    flats.forEach((f, i) => {
+      const d = (x: Flat) => Math.min(Math.abs(k - x.from), Math.abs(k - x.to))
+      if (d(f) < d(flats[near])) near = i
+    })
+    if (Math.abs(bpm - flatBpm[near]) > movesBpm) return true
+  }
+  return false
+}
+
+/** A steady stretch's tempo: the line through its marks. */
+export function flatBpmOf(times: number[], f: Flat, beatsPerBar: number): number {
+  const [, perBar] = lineFit(times, f.from, f.to)
+  return perBar > 0 ? (60 * beatsPerBar) / perBar : 0
+}
+
 export interface NormalizePlan {
   /** The new boundary times, the first and last unchanged. */
   times: number[]
@@ -187,9 +455,10 @@ export interface NormalizePlan {
   scatter: number
 }
 
-/** What normalizing a run's boundary times would do. */
-export function normalizePlan(times: number[], mode: 'steady' | 'smooth', logLambda: number): NormalizePlan {
-  const next = mode === 'steady' ? steadyTimes(times) : smoothAnchored(times, 10 ** logLambda)
+export type NormalizeMode = 'steady' | 'smooth' | 'ramps'
+
+/** What moving a run's boundary times to `next` would do. */
+export function planFrom(times: number[], next: number[]): NormalizePlan {
   const moves = next.map((t, k) => Math.abs(t - times[k]))
   return {
     times: next,
@@ -197,6 +466,14 @@ export function normalizePlan(times: number[], mode: 'steady' | 'smooth', logLam
     maxMove: Math.max(0, ...moves),
     scatter: scatter(times, next),
   }
+}
+
+/**
+ * What normalizing a run's boundary times would do, Steady or Smooth. Steady
+ * between ramps fits a tempo map instead (rampsPlan in lib/tempoMap.ts).
+ */
+export function normalizePlan(times: number[], mode: 'steady' | 'smooth', logLambda: number): NormalizePlan {
+  return planFrom(times, mode === 'steady' ? steadyTimes(times) : smoothAnchored(times, 10 ** logLambda))
 }
 
 /**

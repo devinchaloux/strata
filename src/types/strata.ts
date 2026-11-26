@@ -365,8 +365,8 @@ export interface TempoData {
   display?: {
     /** Display-only smoothing for the smoothed and deviation views, log10 of lambda (lib/normalize.ts); null or absent = automatic. Moves no boundary. */
     smoothing?: number | null
-    /** Which views to draw. Absent = ['marked']. */
-    show?: Array<'marked' | 'smoothed' | 'deviation'>
+    /** Which views to draw; 'map' is the tempo map (lib/tempoMap.ts). Absent = ['marked']. */
+    show?: Array<'marked' | 'smoothed' | 'deviation' | 'map'>
     /** A fixed BPM range, for comparing recordings; absent = from the data. */
     scale?: { min: number; max: number } | null
   }

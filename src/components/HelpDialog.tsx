@@ -1,17 +1,22 @@
 /**
- * HelpDialog — how Strata works in eight steps, and every keyboard shortcut.
+ * HelpDialog — how Strata works, step by step, and every keyboard shortcut,
+ * as a page of its own over the whole window (docs/decisions.md, "Help Is a
+ * Page").
  *
- * Opened from the toolbar's ? button, the empty state, or the ? key. The
- * shortcut list is written out by hand: when a shortcut changes in App or
+ * Opened from Help ▾, the empty state, or the ? key. Opening it pauses
+ * playback, and while it's open the app's keys do nothing but Esc, which
+ * closes it, so reading the shortcuts can't start the track. While it's open
+ * the YouTube player is off the page altogether, not covered: PlayerDock
+ * destroys it on uiStore.helpOpen and builds it again, paused at the same
+ * time, on close (useYouTubePlayer's `away`).
+ *
+ * The shortcut list is written out by hand: when a shortcut changes in App or
  * PlayerDock, change it here too.
  */
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { useEffect } from 'react'
+import * as DialogPrimitive from '@radix-ui/react-dialog'
+import { X } from 'lucide-react'
+import { useUIStore } from '@/store/uiStore'
 import { versionLabel } from '@/lib/version'
 
 const MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘' : 'Ctrl'
@@ -20,12 +25,12 @@ const STEPS: [string, string][] = [
   ['Start', 'Click New analysis and link a YouTube video or audio file. The video plays in the corner; its dock button moves it below the play bar.'],
   ['Mark', 'Play (Space) and press B at each boundary you hear. Press M to place a point marker, such as a cadence. If you know the tempo and phrase length, use Quick setup by tempo to fill a layer with a span every few bars.'],
   ['Describe', 'Click a span to set its type and details in the Inspector. Drag a boundary to move it. Click a section’s header in the Inspector to open or close it; double-click it to open that section alone. With Quick pick (above the diagram), a row of types, shapes, or fills appears over the spans you select: click one, or press its number key.'],
-  ['Grid', 'Optional: tap T on the beat, or set a tempo in the Grid menu, to number bars and snap to beats. After four taps the grid appears; each further tap fine-tunes the tempo. Type a selected span’s length in bars, or step it with − and +: the spans after it move too. The Metronome in the play bar clicks the grid over the track. To match it, line up the first beats, then listen further in. If the click pulls ahead, lower the tempo. If it lags, raise it. For the exact tempo, pause on a downbeat far into the track and press Downbeat is here (D).'],
+  ['Grid', 'Optional: tap T on the beat, or set a tempo in the Grid menu, to number bars and snap to beats. After four taps the grid appears; each further tap fine-tunes the tempo. Type a selected span’s length in bars, or step it with − and +: the spans after it move too. The Metronome in the play bar clicks the grid over the track. To match it, line up the first beats, then listen further in. If the click pulls ahead, lower the tempo. If it lags, raise it. For the exact tempo, pause on a downbeat far into the track and press Downbeat is here (D). To hide the grid without losing it, turn off Show in the Grid menu.'],
   ['Layers', 'Add a layer (+ above the layer names) for another level of form, or another framework. Group into (several spans) builds the level above from the one below; Copy to layer (one span) copies it to any other layer, up or down. Their shared boundaries then move together.'],
   ['Bars', 'Optional: to work bar by bar, turn on Bar layer in the ⋯ menu of the layer that marks them. Its spans are bars, numbered above and counted inside. Use Bars, in the Segments tool row, to number and count them, elide a bar, make phrases or the beat grid from them, and even out hand-marked timing. Select some bars to work on those, or none to work on all of them. To make bars from phrases, select the phrases and choose Split into bars.'],
   ['Write', 'You write commentary above the diagram: hover a span’s level and press Edit, or press Write commentary in the Inspector. Markdown works, with a toolbar for bold, lists, headings, and links. The link button names a span or marker; type your own words over its label. Commentary appears while that passage plays.'],
   ['Keep', 'Use File to save a .strata file, or Export a figure (SVG, PNG, or PDF) or a commentary page (HTML). Click the analysis’s title for its settings.'],
-  ['Read', 'Open Reading view to read or teach from the video, commentary, and diagram, with editing off. Zoom the diagram with − and +, or press Fit to see the whole track. Use Share to make a link to a copy you’ve put online (Dropbox, OneDrive, GitHub, or your own site). Press Esc to go back.'],
+  ['Read', 'Open Reading view to read or teach from the video, commentary, and diagram, with editing off. Choose what it shows from View. Zoom the diagram with − and +, or press Fit to see the whole track. Use Share to make a link to a copy you’ve put online (Dropbox, OneDrive, GitHub, or your own site). Press Esc to go back.'],
 ]
 
 const KEYS: [string, [string, string][]][] = [
@@ -92,62 +97,101 @@ const KEYS: [string, [string, string][]][] = [
   ],
 ]
 
+/**
+ * While Help is open, the app's own keys (Space, B, J, the arrows …) stop at
+ * the window. Esc closes Help and goes no further, so it doesn't also leave
+ * the reading view or clear the selection. Tab goes on, to move focus.
+ */
+function useAppKeysOff(open: boolean, onOpenChange: (open: boolean) => void) {
+  useEffect(() => {
+    if (!open) return
+    const ui = useUIStore.getState()
+    if (ui.playbackState === 'playing') ui.requestPlay(false)
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Tab') return
+      e.stopImmediatePropagation()
+      if (e.key === 'Escape') onOpenChange(false)
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [open, onOpenChange])
+}
+
 export function HelpDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  useAppKeysOff(open, onOpenChange)
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>How Strata works</DialogTitle>
-          <DialogDescription>
-            Strata is in beta. Save often.
-          </DialogDescription>
-        </DialogHeader>
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Content className="fixed inset-0 z-50 bg-background focus:outline-hidden" aria-describedby={undefined}>
+          <div className="absolute inset-0 overflow-y-auto">
+            <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background/95 px-4 py-2.5 backdrop-blur sm:px-8">
+              <DialogPrimitive.Title className="text-sm font-semibold text-foreground">How Strata works</DialogPrimitive.Title>
+              <span className="hidden text-xs text-muted-foreground sm:inline">Strata is in beta. Save often.</span>
+              <DialogPrimitive.Close
+                className="ml-auto flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <X size={13} aria-hidden />
+                Close
+                <kbd className="font-sans text-[11px] text-muted-foreground">Esc</kbd>
+              </DialogPrimitive.Close>
+            </header>
 
-        <ol className="flex flex-col gap-1.5 text-sm">
-          {STEPS.map(([name, text], i) => (
-            <li key={name} className="flex gap-2">
-              <span className="w-4 shrink-0 tabular-nums text-muted-foreground">{i + 1}</span>
-              <span>
-                <span className="font-medium text-foreground">{name}.</span>{' '}
-                <span className="text-muted-foreground">{text}</span>
-              </span>
-            </li>
-          ))}
-        </ol>
+            <div className="mx-auto flex max-w-5xl flex-col gap-10 px-4 py-8 sm:px-8">
+              <section>
+                <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Step by step</h2>
+                <ol className="grid gap-x-10 gap-y-3 text-sm lg:grid-cols-2">
+                  {STEPS.map(([name, text], i) => (
+                    <li key={name} className="flex gap-2.5">
+                      <span className="w-4 shrink-0 tabular-nums text-muted-foreground">{i + 1}</span>
+                      <span className="leading-relaxed">
+                        <span className="font-medium text-foreground">{name}.</span>{' '}
+                        <span className="text-muted-foreground">{text}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </section>
 
-        <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
-          {KEYS.map(([group, rows]) => (
-            <section key={group}>
-              <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group}</h3>
-              <dl className="flex flex-col gap-1 text-xs">
-                {rows.map(([key, what]) => (
-                  <div key={key} className="flex items-baseline gap-3">
-                    <dt className="w-28 shrink-0">
-                      <kbd className="rounded border border-border bg-secondary px-1.5 py-0.5 font-sans text-xs text-foreground">
-                        {key}
-                      </kbd>
-                    </dt>
-                    <dd className="text-muted-foreground">{what}</dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
-          ))}
-        </div>
+              <section>
+                <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Keyboard and mouse</h2>
+                <div className="columns-1 gap-10 md:columns-2">
+                  {KEYS.map(([group, rows]) => (
+                    <section key={group} className="mb-6 break-inside-avoid">
+                      <h3 className="mb-2 text-[13px] font-semibold text-foreground">{group}</h3>
+                      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[13px]">
+                        {rows.map(([key, what]) => (
+                          <div key={key} className="contents">
+                            <dt className="whitespace-nowrap">
+                              <kbd className="rounded border border-border bg-secondary px-1.5 py-0.5 font-sans text-xs text-foreground">
+                                {key}
+                              </kbd>
+                            </dt>
+                            <dd className="text-muted-foreground">{what}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </section>
+                  ))}
+                </div>
+              </section>
 
-        <p className="text-xs text-muted-foreground">
-          Strata {versionLabel()}. Found a problem?{' '}
-          <a
-            className="text-primary underline underline-offset-2"
-            href="https://github.com/devinchaloux/strata/issues"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Report it on GitHub
-          </a>
-          .
-        </p>
-      </DialogContent>
-    </Dialog>
+              <p className="border-t border-border pt-4 text-xs text-muted-foreground">
+                Strata {versionLabel()}. Found a problem?{' '}
+                <a
+                  className="text-primary underline underline-offset-2"
+                  href="https://github.com/devinchaloux/strata/issues"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Report it on GitHub
+                </a>
+                .
+              </p>
+            </div>
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   )
 }
+

@@ -591,6 +591,7 @@ export function SegmentLayers({ layers }: { layers: Layer[] }) {
   // `?? []` selectors, which would return a fresh array on every render.
   const doc = useDocumentStore((s) => s.document)
   const normalizePreview = useUIStore((s) => s.normalizePreview)
+  const gridShown = useUIStore((s) => s.gridShown)
   const updatePointMarker = useDocumentStore((s) => s.updatePointMarker)
   const selectedMarkerId = useUIStore((s) => s.selectedPointMarkerId)
   const colorblindSafe = useUIStore((s) => s.colorblindSafe)
@@ -829,7 +830,7 @@ export function SegmentLayers({ layers }: { layers: Layer[] }) {
       >
 
         {/* The beat grid, behind everything (editor only for now). */}
-        <BeatGridLines grid={doc?.beatGrid} duration={duration} pps={pps} height={svgHeight} />
+        <BeatGridLines grid={gridShown ? doc?.beatGrid : undefined} duration={duration} pps={pps} height={svgHeight} />
 
         {/* The drawing itself: the same pure figure that export uses. */}
         {pps > 0 && (
@@ -868,6 +869,13 @@ export function SegmentLayers({ layers }: { layers: Layer[] }) {
             <g aria-hidden pointerEvents="none">
               {normalizePreview.times.slice(1, -1).map((t, k) => (
                 <line key={k} x1={t * pps} x2={t * pps} y1={top - 4} y2={top + h + 2} stroke={PREVIEW_AMBER} strokeWidth={1.5} strokeDasharray="3 2" />
+              ))}
+              {/* Steady between ramps: a corner, where a steady stretch meets a ramp. */}
+              {normalizePreview.corners?.map((t, k) => (
+                <g key={`c${k}`}>
+                  <line x1={t * pps} x2={t * pps} y1={top - 10} y2={top + h + 2} stroke={PREVIEW_AMBER} strokeWidth={2.5} />
+                  <path d={`M ${t * pps - 5} ${top - 14} h 10 l -5 6 z`} fill={PREVIEW_AMBER} />
+                </g>
               ))}
             </g>
           )
