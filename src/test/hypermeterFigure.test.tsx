@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { LayerFigure, SegmentationFigure } from '@/widgets/segmentation/figure'
-import { SHAPE_HEIGHT, STRIP_HEIGHT, stackHeight, layerPitch } from '@/lib/segmentShape'
+import { SHAPE_HEIGHT, STRIP_HEIGHT, STRIP_LABEL_ROOM, stackHeight, layerPitch, shapeTopY } from '@/lib/segmentShape'
 import { PRINT_THEME } from '@/widgets/segmentation/theme'
 import type { Layer, Span } from '@/types/strata'
 import { makeLayer } from './fixtures'
@@ -56,10 +56,10 @@ describe('the hypermeter on the diagram', () => {
     expect(noteBelow.find((t) => t.text === '2')!.y).toBe(inside.find((t) => t.text === '2')!.y)
   })
 
-  it('makes room for the strip, and the layer below lifts its labels clear of it', () => {
+  it('orders bracket, strip, the next layer\'s labels, its spans', () => {
     const above = { ...makeLayer('A', [span({ hypermeter: { count: 1 } })], 1), rendering: { underneath: 'hypermeter' as const } }
     const below = makeLayer('B', [span({ id: 'b', label: 'Verse' })], 0)
-    expect(layerPitch(above)).toBe(layerPitch(below) + STRIP_HEIGHT)
+    expect(layerPitch(above)).toBe(layerPitch(below) + STRIP_HEIGHT + STRIP_LABEL_ROOM)
     const label = (layers: Layer[]) => {
       const svg = renderToStaticMarkup(
         <svg>
@@ -77,10 +77,12 @@ describe('the hypermeter on the diagram', () => {
       return y
     }
     const plain = { ...above, rendering: {} }
-    // The layer below sits a strip lower, and its label exactly where it was:
-    // inside the bracket above, clear of the strip.
-    expect(stackHeight([above, below])).toBe(stackHeight([plain, below]) + STRIP_HEIGHT)
-    expect(label([above, below])).toBe(label([plain, below]))
+    const layers = [above, below]
+    // The label below the strip's bottom, and as far above its own spans as without a strip.
+    const stripBottom = shapeTopY(layers, 0) + SHAPE_HEIGHT + STRIP_HEIGHT
+    expect(label(layers) - 11 * 0.8).toBeGreaterThan(stripBottom)
+    expect(shapeTopY(layers, 1) - label(layers)).toBe(shapeTopY([plain, below], 1) - label([plain, below]))
+    expect(stackHeight(layers)).toBe(stackHeight([plain, below]) + STRIP_HEIGHT + STRIP_LABEL_ROOM)
   })
 
   it('hides for the layer, and a span can still show its own', () => {

@@ -334,7 +334,7 @@
         "underneath": {
           "type": "string",
           "enum": ["hypermeter", "annotation"],
-          "description": "What this layer draws in a thin strip under its spans, unfilled, between it and the layer below: each span's hypermeter (centered) or its annotation (at its justification). The other stays inside the span, with its line to itself. The layer below raises its labels by the strip's height, so they still sit inside these brackets. Absent: no strip; the hypermeter shares the inside annotation's line, the annotation shortened where they would meet (a centered annotation drops to the line below). Visual only."
+          "description": "What this layer draws in a thin strip under its spans, unfilled, between it and the layer below: each span's hypermeter (centered) or its annotation (at its justification). The other stays inside the span, with its line to itself. Under the strip comes room for the layer below's labels, which sit just above their own spans: bracket, strip, labels, spans. Absent: no strip; the hypermeter shares the inside annotation's line, the annotation shortened where they would meet (a centered annotation drops to the line below). Visual only."
         }
       }
     },

@@ -20,7 +20,7 @@ import { useMerge } from '@/hooks/useMerge'
 import { computePps, totalContentWidth, scrollableWidth, snapTime } from '@/lib/timeline'
 import { groupUpTarget } from '@/lib/groupSpans'
 import { segmentSpans } from '@/lib/layers'
-import { stackHeight, shapeTopY, layerBodyHeight, layerIndexAtY, layerFonts, estimateTextWidth, layerLabelLayout, LABEL_RISE, labelLift } from '@/lib/segmentShape'
+import { stackHeight, shapeTopY, layerBodyHeight, layerIndexAtY, layerFonts, estimateTextWidth, layerLabelLayout, LABEL_RISE } from '@/lib/segmentShape'
 import { layoutMarkerBand, BAND_TOP_GAP, BAND_ROW_HEIGHT, GLYPH_HALF, type MarkerPlacement } from '@/lib/markerBand'
 import { MIN_SPAN_WIDTH, MIN_BOUNDARY_DRAG_PX } from '@/lib/spanEdit'
 import { newGestureKey, withHistoryGroup } from '@/store/history'
@@ -279,7 +279,7 @@ function HiddenLabelPeek({ layers, pps, totalWidth }: { layers: Layer[]; pps: nu
       const h = font + 6
       const mid = ((span.startTime + span.endTime) / 2) * pps
       const x = Math.max(0, Math.min(mid - w / 2, totalWidth - w))
-      const y = shapeTopY(layers, i) - LABEL_RISE - labelLift(layers, i) - h + 3
+      const y = shapeTopY(layers, i) - LABEL_RISE - h + 3
       peeks.push(
         <g key={span.id} pointerEvents="none">
           <rect x={x} y={y} width={w} height={h} rx={3} fill="hsl(var(--card))" stroke={SELECT_BLUE} strokeWidth={1} />

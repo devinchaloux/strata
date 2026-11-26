@@ -78,10 +78,11 @@ export const CORNER_MAX_RATIO = 0.3
  *   LAYER_PITCH   vertical advance for a bracket-shape layer = shape + hairline gap
  *   STACK_TOP_PAD headroom above the top layer for its label
  *   LABEL_RISE    how far a label baseline sits above its shape's top edge
- *   STRIP_HEIGHT  a layer's strip, under its shapes, when it draws its
- *                 hypermeter or annotation there (rendering.underneath); the
- *                 layer below lifts its labels by as much (labelLift), so they
- *                 still rise into this layer's brackets, clear of the strip
+ *   STRIP_HEIGHT  a layer's strip, right under its shapes, when it draws
+ *                 its hypermeter or annotation there (rendering.underneath)
+ *   STRIP_LABEL_ROOM  under a strip, room for the layer below's labels, which
+ *                 then sit just above their own spans rather than rising into
+ *                 this layer's brackets: bracket, strip, labels, spans
  *
  * Bar-shape (key-area) layers are thinner, so the stack is no longer uniform
  * per-layer height — layerBodyHeight/layerPitch resolve each layer's own
@@ -92,6 +93,7 @@ export const LAYER_PITCH = SHAPE_HEIGHT + LAYER_GAP
 export const STACK_TOP_PAD = 18
 export const LABEL_RISE = 4
 export const STRIP_HEIGHT = 13
+export const STRIP_LABEL_ROOM = 15
 
 /** A layer's shape body height, resolved from its spanShape (bracket = default). */
 export function layerBodyHeight(layer: Layer): number {
@@ -103,17 +105,13 @@ export function stripHeight(layer: Layer): number {
   return layer.rendering?.underneath ? STRIP_HEIGHT : 0
 }
 
-/** A layer's vertical advance in the stack = its body height + its strip + the hairline gap. */
-export function layerPitch(layer: Layer): number {
-  return layerBodyHeight(layer) + stripHeight(layer) + LAYER_GAP
-}
-
 /**
- * How much higher than LABEL_RISE layer i's above-labels sit: the strip of the
- * layer above it, so they clear the strip and rise into its brackets as usual.
+ * A layer's vertical advance in the stack = its body height + the hairline gap,
+ * and with a strip, the strip and room under it for the next layer's labels.
  */
-export function labelLift(layers: Layer[], i: number): number {
-  return i > 0 ? stripHeight(layers[i - 1]) : 0
+export function layerPitch(layer: Layer): number {
+  const strip = stripHeight(layer)
+  return layerBodyHeight(layer) + (strip ? strip + STRIP_LABEL_ROOM : 0) + LAYER_GAP
 }
 
 /** Total pixel height of a flush stack of the given (visible) layers. */

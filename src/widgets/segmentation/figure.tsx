@@ -30,7 +30,6 @@ import {
   layerFonts,
   LABEL_RISE,
   STRIP_HEIGHT,
-  labelLift as liftFor,
   STROKE_WIDTH,
   ISLAND_INSET,
   shapeTopY,
@@ -81,12 +80,9 @@ function SpanFigure({
   theme,
   Decoration,
   join,
-  labelLift = 0,
 }: {
   span: Span
   layer: Layer
-  /** How much higher above-labels sit, clearing the strip of the layer above (segmentShape.labelLift). */
-  labelLift?: number
   /** Sides that join an open-capped neighbour (segmentShape.openJoins). */
   join?: { start: boolean; end: boolean }
   pps: number
@@ -124,7 +120,7 @@ function SpanFigure({
   // the layer below.
   const insideLabelY = bodyHeight / 2 + fonts.label * 0.36
   const insideAnnotY = fonts.annotation + 6
-  const aboveLabelY = -LABEL_RISE - labelLift
+  const aboveLabelY = -LABEL_RISE
   const aboveAnnotY = aboveLabelY - fonts.label
   // The layer's strip under its shapes (rendering.underneath), when it has one.
   const underneath = layer.rendering?.underneath
@@ -319,12 +315,9 @@ export const LayerFigure = memo(function LayerFigure({
   totalWidth,
   theme,
   Decoration,
-  labelLift = 0,
 }: {
   layer: Layer
   topY: number
-  /** How much higher its above-labels sit, clearing the strip of the layer above. */
-  labelLift?: number
   pps: number
   totalWidth: number
   theme: FigureTheme
@@ -347,7 +340,6 @@ export const LayerFigure = memo(function LayerFigure({
           join={joins.get(span.id)}
           theme={theme}
           Decoration={Decoration}
-          labelLift={labelLift}
         />
       ))}
     </g>
@@ -524,7 +516,6 @@ export function SegmentationFigure({
           key={layer.id}
           layer={layer}
           topY={shapeTopY(layers, i)}
-          labelLift={liftFor(layers, i)}
           pps={pps}
           totalWidth={totalWidth}
           theme={theme}
