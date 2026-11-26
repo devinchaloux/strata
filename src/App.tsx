@@ -634,10 +634,12 @@ export default function App() {
               for (const s of segmentSpans(l)) if (ids.has(s.id)) useDocumentStore.getState().removeSpan(l.id, s.id)
           })
           clearSelection()
+          ui.showToast(ids.size === 1 ? 'Deleted 1 span' : `Deleted ${ids.size} spans`)
         } else if (ui.selectedPointMarkerId) {
           e.preventDefault()
           store.removePointMarker(ui.selectedPointMarkerId)
           selectPointMarker(null)
+          ui.showToast('Deleted the marker')
         }
         return
       }

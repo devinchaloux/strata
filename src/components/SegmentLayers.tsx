@@ -132,6 +132,7 @@ function SpanMenuItems({ span, layer }: { span: Span; layer: Layer }) {
   function handleDelete() {
     removeSpan(layer.id, span.id)
     selectSpan(null)
+    useUIStore.getState().showToast('Deleted 1 span')
   }
 
   if (isMulti) {

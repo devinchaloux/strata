@@ -589,6 +589,8 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   function handleDelete() {
     removeSpan(layer.id, span.id)
     selectSpan(null)
+    // What changed, with Undo ("Menus Are Names").
+    useUIStore.getState().showToast('Deleted 1 span')
   }
 
   function handleSplit() {
