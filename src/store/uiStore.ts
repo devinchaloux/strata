@@ -263,6 +263,12 @@ export interface UIState {
   /** Normalize's preview (lib/normalize.ts): where a run's boundaries would go, drawn over the layer. */
   normalizePreview: { layerId: string; times: number[] } | null
   setNormalizePreview: (preview: { layerId: string; times: number[] } | null) => void
+  /** Normalize's mode (docs/decisions.md, "Where Controls Live"): the bars it is open on, or null when closed. */
+  normalizing: string[] | null
+  setNormalizing: (spanIds: string[] | null) => void
+  /** The bar layer to offer Tempo for, just after it became one (docs/decisions.md, "Where Controls Live"). Session only. */
+  tempoOffer: string | null
+  setTempoOffer: (layerId: string | null) => void
   /** Until this time (ms), playback doesn't scroll the timeline: the reader has panned it by hand. */
   followHoldUntil: number
   holdFollow: (ms: number) => void
@@ -461,6 +467,10 @@ const useUIStore = create<UIState>()((set) => ({
   setBarGroup: (n) => set({ barGroup: Math.max(1, Math.min(16, Math.round(n))) }),
   normalizePreview: null,
   setNormalizePreview: (normalizePreview) => set({ normalizePreview }),
+  tempoOffer: null,
+  setTempoOffer: (tempoOffer) => set({ tempoOffer }),
+  normalizing: null,
+  setNormalizing: (normalizing) => set(normalizing ? { normalizing } : { normalizing: null, normalizePreview: null }),
   followHoldUntil: 0,
   holdFollow: (ms) => set({ followHoldUntil: Date.now() + ms }),
   playRequest: null,

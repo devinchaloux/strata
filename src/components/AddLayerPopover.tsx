@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { newSegmentLayer } from '@/lib/layers'
+import { MENU_TRIGGER } from '@/lib/toolRow'
 
 export function AddLayerPopover() {
   const layers = useDocumentStore((s) => s.document?.layers)
@@ -50,13 +51,9 @@ export function AddLayerPopover() {
   return (
     <Popover open={open} onOpenChange={(o) => (o ? setOpen(true) : close())}>
       <PopoverTrigger asChild>
-        <button
-          className="rounded p-0.5 hover:bg-accent"
-          style={{ color: 'var(--ink-muted)' }}
-          title="Add a layer"
-          aria-label="Add a layer"
-        >
-          <Plus size={15} />
+        <button className={MENU_TRIGGER} title="Add a layer: name it, then it goes on top">
+          <Plus size={11} aria-hidden />
+          Add layer…
         </button>
       </PopoverTrigger>
 

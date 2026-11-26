@@ -20,6 +20,7 @@ import { useRef, useState, type ReactNode } from 'react'
 import {
   ArrowDown,
   ArrowUp,
+  ChevronDown,
   ChevronsLeft,
   ChevronsRight,
   Eye,
@@ -30,7 +31,11 @@ import {
   Trash2,
 } from 'lucide-react'
 import { TempoBlock } from '@/widgets/tempo/TempoBlock'
+import { BarsMenu } from '@/components/BarsMenu'
+import { NormalizeMode } from '@/components/NormalizePanel'
+import { MENU_TRIGGER } from '@/lib/toolRow'
 import { WIDGET_NAMES, widgetBlocks } from '@/lib/widgets'
+import { tempoSummary } from '@/lib/tempoLane'
 import {
   DndContext,
   PointerSensor,
@@ -525,7 +530,11 @@ function WidgetTopBar({
   blockControls?: ReactNode
 }) {
   const updateLayer = useDocumentStore((s) => s.updateLayer)
+  // Two rows (docs/decisions.md, "Where Controls Live"): the block's name and
+  // view, then its tools. This bar is only drawn while editing; reading has its
+  // own one-row bar.
   return (
+    <div className="flex flex-col">
     <div className="flex items-center gap-1 pl-1.5 pr-2" style={{ height: TOP_BAR_HEIGHT }}>
       <button
         onClick={onToggleCollapsed}
@@ -536,13 +545,9 @@ function WidgetTopBar({
       >
         {collapsed ? <ChevronsRight size={15} /> : <ChevronsLeft size={15} />}
       </button>
-
-      <AddLayerPopover />
-
-      <span aria-hidden style={{ width: 1, height: 12, background: 'var(--hairline)', margin: '0 4px' }} />
-      <DiagramControlBar />
-      <GridPopover />
-      <QuickEntrySwitch />
+      <span className="mr-1 text-[12px] font-medium" style={{ color: 'var(--ink-primary)' }}>
+        Segments
+      </span>
 
       {hidden.length > 0 && (
         <div className="flex items-center gap-1 overflow-hidden">
@@ -568,6 +573,20 @@ function WidgetTopBar({
         <ZoomControls {...zoom} />
         {blockControls}
       </div>
+    </div>
+    {/* The tool row: about six things (docs/decisions.md, "Where Controls Live"). */}
+    <div
+      className="flex flex-wrap items-center gap-1.5 border-t px-2 py-1"
+      style={{ borderColor: 'var(--hairline)', background: 'var(--guide-faint)' }}
+    >
+      <DiagramControlBar />
+      <span aria-hidden style={{ width: 1, height: 14, background: 'var(--hairline)', margin: '0 2px' }} />
+      <AddLayerPopover />
+      <GridPopover />
+      <BarsMenu />
+      <QuickEntrySwitch />
+    </div>
+    <NormalizeMode />
     </div>
   )
 }
@@ -636,6 +655,7 @@ function WidgetStrip({ blocks, zoom }: { blocks: WidgetBlock[]; zoom: ZoomContro
   const hidden = blocks.filter((w) => w.hidden && w.type in WIDGET_NAMES)
   const canAddTempo = !blocks.some((w) => w.type === 'tempo')
   if (!hidden.length && !canAddTempo && !zoom) return null
+  const offer = canAddTempo ? <TempoOffer /> : null
   const chip = 'flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] hover:bg-accent'
   return (
     <div className="flex shrink-0 items-center gap-1 pb-1" style={{ color: 'var(--ink-muted)' }}>
@@ -672,12 +692,50 @@ function WidgetStrip({ blocks, zoom }: { blocks: WidgetBlock[]; zoom: ZoomContro
           </PopoverContent>
         </Popover>
       )}
+      {offer}
       {zoom && (
         <div className="ml-auto">
           <ZoomControls {...zoom} />
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * Just after a layer becomes the bar layer: Tempo offered if the bars' tempo
+ * moves, or a note that it's steady (lib/tempoLane.ts tempoSummary; more than
+ * TEMPO_MOVES_BPM). Nothing is added unasked (docs/decisions.md, "Where
+ * Controls Live").
+ */
+function TempoOffer() {
+  const layerId = useUIStore((s) => s.tempoOffer)
+  const setTempoOffer = useUIStore((s) => s.setTempoOffer)
+  const doc = useDocumentStore((s) => s.document)
+  const addTempoWidget = useDocumentStore((s) => s.addTempoWidget)
+  const layer = layerId ? doc?.layers.find((l) => l.id === layerId && l.role === 'bars') : null
+  const summary = doc && layer ? tempoSummary(doc, layer) : null
+  if (!summary) return null
+  const r = (x: number) => Math.round(x)
+  const show = () => {
+    addTempoWidget()
+    setTempoOffer(null)
+  }
+  const chip = 'rounded border px-1.5 py-0.5 text-[11px] hover:bg-accent'
+  return (
+    <span
+      role="status"
+      className="ml-2 flex items-center gap-1.5 rounded px-2 py-0.5 text-[11px]"
+      style={summary.moves ? { background: 'var(--ink-primary)', color: 'var(--canvas)' } : { background: 'var(--guide-faint)', color: 'var(--ink-secondary)' }}
+    >
+      {summary.moves ? `Tempo moves from ${r(summary.low)} to ${r(summary.high)} BPM across these bars.` : `Steady at ${r(summary.median)} BPM.`}
+      <button type="button" className={chip} style={{ borderColor: 'currentColor' }} onClick={show}>
+        {summary.moves ? 'Show Tempo' : 'Show Tempo anyway'}
+      </button>
+      <button type="button" className={chip} style={{ borderColor: 'transparent' }} onClick={() => setTempoOffer(null)} aria-label="Not now">
+        {summary.moves ? 'Not now' : '×'}
+      </button>
+    </span>
   )
 }
 
@@ -707,10 +765,11 @@ function QuickEntrySwitch() {
         <button
           type="button"
           title="Set a type, shape, or fill in one click"
-          className="ml-1 flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className={MENU_TRIGGER}
         >
           Quick pick
           <span className="rounded bg-accent px-1 text-[11px] text-foreground">{mode === 'off' ? 'off' : current?.[1].toLowerCase()}</span>
+          <ChevronDown size={11} aria-hidden />
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-44 p-2 text-xs">

@@ -17,7 +17,8 @@ import { firstBarNumbers, segmentEnd, sortedSegments, type SnapMode } from '@/li
 import { formatClock } from '@/lib/youtube'
 import { TimeInput } from '@/components/TimeInput'
 import { useState } from 'react'
-import { ChevronRight, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, X } from 'lucide-react'
+import { MENU_TRIGGER } from '@/lib/toolRow'
 import type { GridSegment } from '@/types/strata'
 
 const SNAP_OPTIONS: [SnapMode, string][] = [
@@ -158,12 +159,13 @@ export function GridPopover() {
         <button
           type="button"
           title="Bar and beat lines, and snapping to them"
-          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className={MENU_TRIGGER}
         >
           Grid
           {segs.length > 0 && snapMode !== 'off' && (
             <span className="rounded bg-accent px-1 text-[11px] text-foreground">snap {snapMode === 'bar' ? 'bars' : 'beats'}</span>
           )}
+          <ChevronDown size={11} aria-hidden />
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-104 p-3 text-xs">
