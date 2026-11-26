@@ -5994,8 +5994,9 @@ instead of section types, which never apply to a bar: **1–8** on the number
 keys set the hypermeter of every selected bar, **=1** on "=" elides one
 counted bar as the Bars menu's Elide does (the bars after it count on), and
 **None** clears it. There is no library chooser there, and More… opens the
-Inspector's Describe section, where the Hypermeter field is. Other layers
-keep their types.
+Inspector's Describe section, where the Hypermeter field is. The Quick pick
+chip in the tool row reads "counts" instead of "types" while the selection
+is on the bar layer. Other layers keep their types.
 
 **Why.** Settings you make once shouldn't crowd the ones you reach for, and
 a menu taller than the block it belongs to reads as a page. Quick pick is

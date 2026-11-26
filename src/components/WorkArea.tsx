@@ -746,7 +746,7 @@ function TempoOffer() {
  * Shape / Fill switch didn't say what it switched.
  */
 const QUICK_PICK: [QuickEntry, string, string][] = [
-  ['type', 'Types', 'The layer’s span types, such as Verse or Chorus.'],
+  ['type', 'Types', 'The layer’s span types, such as Verse or Chorus. On the bar layer, counts.'],
   ['shape', 'Shapes', 'How each end and the line look.'],
   ['fill', 'Fills', 'A fill color.'],
   ['off', 'Off', 'Nothing pops up.'],
@@ -756,6 +756,10 @@ function QuickEntrySwitch() {
   const mode = useUIStore((s) => s.quickEntry)
   const setMode = useUIStore((s) => s.setQuickEntry)
   const current = QUICK_PICK.find(([m]) => m === mode)
+  // On the bar layer, Types offers counts (QuickEntryBar), and the chip says so.
+  const selected = useUIStore((s) => s.selectedSpanIds[0])
+  const barLayer = useDocumentStore((s) => s.document?.layers.find((l) => l.role === 'bars' && l.type === 'segmentation'))
+  const counting = !!selected && !!barLayer && segmentSpans(barLayer).some((x) => x.id === selected)
   // Controlled, so a pick closes the menu: otherwise the only way out was a
   // click outside it, which on the diagram also cleared the selection.
   const [open, setOpen] = useState(false)
@@ -768,7 +772,7 @@ function QuickEntrySwitch() {
           className={MENU_TRIGGER}
         >
           Quick pick
-          <span className="rounded bg-accent px-1 text-[11px] text-foreground">{mode === 'off' ? 'off' : current?.[1].toLowerCase()}</span>
+          <span className="rounded bg-accent px-1 text-[11px] text-foreground">{mode === 'off' ? 'off' : mode === 'type' && counting ? 'counts' : current?.[1].toLowerCase()}</span>
           <ChevronDown size={11} aria-hidden />
         </button>
       </PopoverTrigger>
