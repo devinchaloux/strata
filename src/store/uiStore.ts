@@ -288,6 +288,12 @@ export interface UIState {
   holdFollow: (ms: number) => void
   /** A request to play or pause, from outside the transport (an embed's page). PlayerDock carries it out. */
   playRequest: { play: boolean; n: number } | null
+  /** Re-taps of each boundary this session, by retapKey (lib/retap.ts): times in seconds. Cleared when another analysis loads. */
+  retaps: Record<string, number[]>
+  /** Add a re-tap and return the boundary's taps so far. */
+  addRetap: (key: string, time: number) => number[]
+  clearRetaps: () => void
+  clearRetap: (key: string) => void
   requestPlay: (play: boolean) => void
   /** How Strata works is open. It takes the YouTube player off the page until it closes (docs/decisions.md, "Help Is a Page"). */
   helpOpen: boolean
@@ -362,7 +368,7 @@ function readCopyFields(): CopyField[] {
 
 const NO_PICKER_REQUEST = { typePickerPending: false, fillPickerPending: false, copyPickerPending: false }
 
-const useUIStore = create<UIState>()((set) => ({
+const useUIStore = create<UIState>()((set, get) => ({
   currentTime: 0,
   duration: 0,
   playbackState: 'unstarted',
@@ -503,6 +509,14 @@ const useUIStore = create<UIState>()((set) => ({
   followHoldUntil: 0,
   holdFollow: (ms) => set({ followHoldUntil: Date.now() + ms }),
   playRequest: null,
+  retaps: {},
+  addRetap: (key, time) => {
+    const taps = [...(get().retaps[key] ?? []), time]
+    set((s) => ({ retaps: { ...s.retaps, [key]: taps } }))
+    return taps
+  },
+  clearRetaps: () => set({ retaps: {} }),
+  clearRetap: (key) => set((s) => ({ retaps: Object.fromEntries(Object.entries(s.retaps).filter(([k]) => k !== key)) })),
   requestPlay: (play) => set((s) => ({ playRequest: { play, n: (s.playRequest?.n ?? 0) + 1 } })),
   helpOpen: false,
   setHelpOpen: (open) => set({ helpOpen: open }),

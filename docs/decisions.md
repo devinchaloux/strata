@@ -192,6 +192,7 @@ aren't part of this repository.
 - [The beat grid can be hidden without losing it (Grid menu, or Grid in the reading view's Show); snapping still works, and the choice is remembered in the browser.](#showing-and-hiding-the-grid-2026-11-26)
 - [Normalize's Smooth keeps bars far off their neighbours (more than 25% off the running median of seven) as marked and smooths the runs between them.](#the-controls-rebuilt-2026-11-26)
 - [Normalize offers Steady between ramps only when the bars have a steady stretch of 16 bars or more and, elsewhere, a tempo more than 4 BPM from it; its corners are proposals, moved a bar at a time.](#steady-between-ramps-2026-11-26)
+- [R re-taps: the nearest boundary on the active layer moves to the average of its re-taps this session, the original mark set aside.](#re-tapping-boundaries-2026-11-26)
 - [A tempo map is steady stretches and ramps at an even rate, a percent or a number of BPM a bar, fitted as one continuous line; the tempo widget shows it, and Steady between ramps fits the bars to it.](#the-tempo-map-2026-11-26)
 - [The Inspector sits on a tinted ground, each section a white group; labels are in sentence case and fields are filled, not outlined; Merge is one menu.](#the-controls-rebuilt-2026-11-26)
 - [The Inspector is a collapsible right-hand column that hosts the selected thing's editor; it starts collapsed and opens on a selection.](#app-shell--inspector-2026-06-27)
@@ -263,7 +264,7 @@ By area, in the order the entries were made:
 
 **Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01) · [Group Spans Into Another Layer (2026-10-24)](#group-spans-into-another-layer-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Choosing What Copy to Layer Takes (2026-10-31)](#choosing-what-copy-to-layer-takes-2026-10-31)
 
-**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25) · [Bars From Phrases, Phrases From Bars (2026-11-25)](#bars-from-phrases-phrases-from-bars-2026-11-25) · [The Tempo Lane (2026-11-25)](#the-tempo-lane-2026-11-25) · [Tempo Becomes Its Own Widget (2026-11-25)](#tempo-becomes-its-own-widget-2026-11-25) · [Normalize (2026-11-25)](#normalize-2026-11-25) · [The Tempo Widget, Settled (2026-11-25)](#the-tempo-widget-settled-2026-11-25) · [Widgets as Blocks (2026-11-25)](#widgets-as-blocks-2026-11-25) · [Segments, Not Form Diagram (2026-11-25)](#segments-not-form-diagram-2026-11-25) · [The Beat Grid From the Bars (2026-11-25)](#the-beat-grid-from-the-bars-2026-11-25) · [The Bars Menu Waits for the Bar Layer (2026-11-26)](#the-bars-menu-waits-for-the-bar-layer-2026-11-26) · [The Hypermeter Is Its Own Field (2026-11-26)](#the-hypermeter-is-its-own-field-2026-11-26) · [Tempo Gets a Tool Row (2026-11-26)](#tempo-gets-a-tool-row-2026-11-26) · [A Strip Under the Layer (2026-11-26)](#a-strip-under-the-layer-2026-11-26) · [Steady Between Ramps (2026-11-26)](#steady-between-ramps-2026-11-26) · [The Tempo Map (2026-11-26)](#the-tempo-map-2026-11-26)
+**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25) · [Bars From Phrases, Phrases From Bars (2026-11-25)](#bars-from-phrases-phrases-from-bars-2026-11-25) · [The Tempo Lane (2026-11-25)](#the-tempo-lane-2026-11-25) · [Tempo Becomes Its Own Widget (2026-11-25)](#tempo-becomes-its-own-widget-2026-11-25) · [Normalize (2026-11-25)](#normalize-2026-11-25) · [The Tempo Widget, Settled (2026-11-25)](#the-tempo-widget-settled-2026-11-25) · [Widgets as Blocks (2026-11-25)](#widgets-as-blocks-2026-11-25) · [Segments, Not Form Diagram (2026-11-25)](#segments-not-form-diagram-2026-11-25) · [The Beat Grid From the Bars (2026-11-25)](#the-beat-grid-from-the-bars-2026-11-25) · [The Bars Menu Waits for the Bar Layer (2026-11-26)](#the-bars-menu-waits-for-the-bar-layer-2026-11-26) · [The Hypermeter Is Its Own Field (2026-11-26)](#the-hypermeter-is-its-own-field-2026-11-26) · [Tempo Gets a Tool Row (2026-11-26)](#tempo-gets-a-tool-row-2026-11-26) · [A Strip Under the Layer (2026-11-26)](#a-strip-under-the-layer-2026-11-26) · [Steady Between Ramps (2026-11-26)](#steady-between-ramps-2026-11-26) · [The Tempo Map (2026-11-26)](#the-tempo-map-2026-11-26) · [Re-Tapping Boundaries (2026-11-26)](#re-tapping-boundaries-2026-11-26)
 
 **Point markers:** [Point Markers](#point-markers) · [Point Markers — Implementation (2026-07-03)](#point-markers--implementation-2026-07-03) · [Point Markers — Redesign (2026-07-04)](#point-markers--redesign-2026-07-04) · [Marker Band, Absent Events, and the Diagram Control Bar (2026-07-24, cont.)](#marker-band-absent-events-and-the-diagram-control-bar-2026-07-24-cont)
 
@@ -6349,3 +6350,47 @@ tempo block does, but the SVG and PDF exports don't draw the tempo block yet.
 `lib/tempoMap.ts` (`detectTempoMap`, `fitTempoMap`, `rampsPlan`, `rateText`);
 `tempoView`'s `map`, `mapLabels` and `mapCorners`; TempoBlock; TempoMenus;
 NormalizePanel; `src/test/tempoMap.test.ts`.
+
+---
+
+## Re-Tapping Boundaries (2026-11-26)
+
+*From the maintainer, after Steady between ramps moved the raw Opus bars too
+far: "I'm replaying it zoomed in and a lot of my initial presses are off. So
+I've got a better idea … I need a way to jitter boundaries by repressing and
+have it fix it."*
+
+**Decision.** While the track plays, **R** re-taps. The nearest boundary on the
+active layer between two touching spans moves to the tap, if the tap is within
+40% of the shorter span beside it (`RETAP_REACH`), so it can't reach the next
+boundary. Further re-taps of the same boundary, on later passes, move it to the
+average of its re-taps.
+- **The original mark doesn't count** once a boundary is re-tapped: it's the
+  one being fixed.
+- **No snapping:** a re-tap isn't snapped to the grid, because the timing is
+  the point.
+- **Feedback:** a toast says what moved ("Bar 37 · 3 taps · −42 ms"), with
+  Undo. Each re-tap is one undo step, and linked boundaries move with it, as
+  for a drag.
+- **Session only:** the taps are kept for the session (`uiStore.retaps`), not
+  in the file. They're cleared when another analysis loads. A boundary that
+  isn't where its taps put it was moved since (by Undo, a drag or Normalize),
+  so its taps start over.
+- R does nothing in the reading view, and with no boundary near enough it says
+  so.
+
+**Why.** Correcting marks by ear fixes them at the source, which no fit can do.
+Normalize and the tempo map can only guess which deviations are tapping and
+which are music. A re-tap is new evidence, and the average of n taps scatters
+about 1/√n as much: three passes cut 20 ms of scatter to about 12. Bad first
+presses are why the tempo map had to split the raw Opus ramps so finely.
+**Rejected.** *Averaging in the original mark:* the analyst re-taps because it's
+wrong. *The median instead of the mean:* with two or three taps they are
+nearly the same, and the mean moves on every tap, so each tap visibly counts.
+*Storing the taps in the file:* they're a working aid, like the tap-along
+taps for the grid.
+**Open (the maintainer's call):** *a re-tap mode,* where B re-taps instead of
+splitting, for a whole pass of corrections with the key already under the
+finger. And whether to show each boundary's tap count on the diagram.
+`lib/retap.ts`; PlayerDock (the R key); `uiStore.retaps`; HelpDialog;
+`src/test/retap.test.ts`.

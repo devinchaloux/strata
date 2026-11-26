@@ -9,6 +9,8 @@ import { extractVideoId, formatClock, isInputFocused } from '@/lib/youtube'
 import { pickAudioFile } from '@/lib/fileIO'
 import { setPlayerElement } from '@/lib/playerClearance'
 import { snapToActiveGrid } from '@/store/snap'
+import { retapKey, retapTarget, retapTime } from '@/lib/retap'
+import { segmentSpans } from '@/lib/layers'
 import { fitTaps, sortedSegments } from '@/lib/beatGrid'
 import { ClickScheduler, beatsIn } from '@/lib/metronome'
 import { beatMatch, beatMatchKey } from '@/store/beatMatch'
@@ -180,9 +182,11 @@ export function PlayerDock() {
   const isLinked = videoId != null || isLocal
 
   // A loaded document's audio File never survives into another document —
-  // clear the runtime handle whenever a different document loads.
+  // clear the runtime handle whenever a different document loads. Its
+  // re-taps go too.
   useEffect(() => {
     setAudioFile(null)
+    useUIStore.getState().clearRetaps()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadId])
 
@@ -343,6 +347,44 @@ export function PlayerDock() {
       if (ui.playerStatus !== 'ready') return
       if (ui.playbackState === 'playing') engineRef.current.pause()
       else engineRef.current.play()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  // R re-taps: the nearest boundary on the active layer moves to the average
+  // of its re-taps (lib/retap.ts; docs/decisions.md, "Re-Tapping
+  // Boundaries"). Not snapped to the grid: the timing is the point.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'r' && e.key !== 'R') return
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
+      if (isInputFocused()) return
+      const ui = useUIStore.getState()
+      if (ui.playerStatus !== 'ready' || !ui.activeLayerId || ui.readingView) return
+      e.preventDefault()
+      const t = engineRef.current.now()
+      const doc = useDocumentStore.getState().document
+      const layer = doc?.layers.find((l) => l.id === ui.activeLayerId)
+      if (!doc || !layer) return
+      const spans = segmentSpans(layer)
+      const target = retapTarget(spans, t)
+      if (!target) {
+        ui.showToast('No boundary near enough to re-tap', { undo: false })
+        return
+      }
+      // A boundary that isn't where its taps put it was moved since (Undo, a
+      // drag, Normalize): its taps start over.
+      const key = retapKey(layer.id, target.rightId)
+      const before = ui.retaps[key]
+      if (before?.length && Math.abs(retapTime(before) - target.time) > 0.001) ui.clearRetap(key)
+      const taps = ui.addRetap(key, t)
+      const at = retapTime(taps)
+      useDocumentStore.getState().setAdjacentBoundary(layer.id, target.leftId, target.rightId, at)
+      const right = spans.find((s) => s.id === target.rightId)
+      const name = layer.role === 'bars' && right?.label ? `Bar ${right.label}` : right?.label ? `Start of ${right.label}` : formatClock(target.time)
+      const ms = Math.round((at - target.time) * 1000)
+      ui.showToast(`${name} · ${taps.length} ${taps.length === 1 ? 'tap' : 'taps'} · ${ms > 0 ? '+' : ms < 0 ? '−' : '±'}${Math.abs(ms)} ms`)
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)

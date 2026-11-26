@@ -215,6 +215,7 @@ Full design rationale in `docs/decisions.md`. This section is the implementation
 |---|---|
 | **B** | Place a boundary at `currentTime` — split the span containing `currentTime`, or mark a boundary in empty layer space. (Space until 2026-10-01; Space now plays and pauses.) |
 | **Shift+B** | End the span containing `currentTime` there, leaving the rest of it empty. |
+| **R** | Re-tap: move the nearest boundary on the active layer (within 40% of the shorter span beside it) to the average of its re-taps this session. The original mark isn't counted; not snapped to the grid; a toast says what moved ("Bar 37 · 3 taps · −42 ms"), with Undo. A boundary moved since its last re-tap (Undo, a drag, Normalize) starts its taps over. `lib/retap.ts`, `uiStore.retaps`. |
 | **Delete** | Remove the selected spans (or the selected point marker), one undo step; not while typing in a field. Backspace does not delete spans. |
 | **Ctrl/⌘+C, Ctrl/⌘+V** | Copy the selected spans; paste the chosen parts of them (label and type by default; annotation, hypermeter, commentary, lyrics, fill, pattern, shape by choice in the Inspector's Paste menu), one undo step. One copied span pastes onto every selected span; several paste onto the same number, paired in time order (at the same time, the higher layer first), and a different number is refused with a note saying how many to select. Not in a text field or over selected page text. store/spanClipboard.ts. |
 | **← / →** | Select the previous / next span in the layer; `Shift` extends the selection |
