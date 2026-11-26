@@ -266,9 +266,9 @@ export interface UIState {
   /** Bars in a hypermetric group for Fill with bars, Count and Elide (lib/hypermeter.ts). Session only. */
   barGroup: number
   setBarGroup: (n: number) => void
-  /** Normalize's preview (lib/normalize.ts): where a run's boundaries would go, drawn over the layer. */
-  normalizePreview: { layerId: string; times: number[] } | null
-  setNormalizePreview: (preview: { layerId: string; times: number[] } | null) => void
+  /** Normalize's preview (lib/normalize.ts): where a run's boundaries would go, drawn over the layer, and, for Steady between ramps, where each steady stretch starts and ends. */
+  normalizePreview: { layerId: string; times: number[]; corners?: number[] } | null
+  setNormalizePreview: (preview: { layerId: string; times: number[]; corners?: number[] } | null) => void
   /** Normalize's mode (docs/decisions.md, "Where Controls Live"): the bars it is open on, or null when closed. */
   normalizing: string[] | null
   setNormalizing: (spanIds: string[] | null) => void

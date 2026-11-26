@@ -118,6 +118,8 @@ Two different acts, sharing one smoother:
 | Use | Cleaning up hand-marked bars | Showing the shape of a tempo without losing the marks |
 | Undo | One step | A display setting |
 
+For a tempo made in a DAW, Normalize's **Steady between ramps** puts each steady stretch at one tempo and smooths the ramps between them. It is offered only when the bars have that shape.
+
 An analyst who wants to show micro-timing keeps the bars as marked and turns
 on the smoothed and deviation views.
 

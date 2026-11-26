@@ -870,6 +870,13 @@ export function SegmentLayers({ layers }: { layers: Layer[] }) {
               {normalizePreview.times.slice(1, -1).map((t, k) => (
                 <line key={k} x1={t * pps} x2={t * pps} y1={top - 4} y2={top + h + 2} stroke={PREVIEW_AMBER} strokeWidth={1.5} strokeDasharray="3 2" />
               ))}
+              {/* Steady between ramps: a corner, where a steady stretch meets a ramp. */}
+              {normalizePreview.corners?.map((t, k) => (
+                <g key={`c${k}`}>
+                  <line x1={t * pps} x2={t * pps} y1={top - 10} y2={top + h + 2} stroke={PREVIEW_AMBER} strokeWidth={2.5} />
+                  <path d={`M ${t * pps - 5} ${top - 14} h 10 l -5 6 z`} fill={PREVIEW_AMBER} />
+                </g>
+              ))}
             </g>
           )
         })()}

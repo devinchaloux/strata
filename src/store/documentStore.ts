@@ -8,7 +8,7 @@ import { boundaryMoves, followLinks, repairParentLinks, splitTimeNearChildren, r
 import { sortedSegments, segmentAt, segmentEnd, extendBack, snapToGrid, barTiling, barLength } from '@/lib/beatGrid'
 import { barNumberLabels, boundaryOnBar, countRun, countsByGroups, elideCounts, numberedGridBars, parseHypermeter, phraseRuns, placeOf, splitEvenly } from '@/lib/hypermeter'
 import { roundTempo, segmentForAdjusting, tempoThroughDownbeat } from '@/lib/metronome'
-import { normalizePlan, runTimes } from '@/lib/normalize'
+import { normalizePlan, runTimes, type Flat, type NormalizeMode } from '@/lib/normalize'
 import { gridFromBars as makeGridFromBars, spliceGrid } from '@/lib/gridFromBars'
 import { beatsPerBarAt } from '@/lib/tempoLane'
 import type { SegmentationData } from '@/types/strata'
@@ -174,9 +174,11 @@ interface DocumentState {
   // null when the spans don't follow one another or are too few.
   normalizeBars: (
     spanIds: string[],
-    mode: 'steady' | 'smooth',
+    mode: NormalizeMode,
     logLambda: number,
     intoNewLayer: boolean,
+    /** For 'ramps': the steady stretches, as boundary indices into the run (findFlats proposes them). */
+    flats?: Flat[],
   ) => { moved: number; layerId: string } | null
   // Widgets as blocks (lib/widgets.ts). One undo step each.
   // Add the tempo widget: a tempo layer reading the bar layer, and its block
@@ -1011,13 +1013,13 @@ const useDocumentStore = create<DocumentState>()(
         return { made: fresh.length, layerId: targetId }
       },
 
-      normalizeBars: (spanIds, mode, logLambda, intoNewLayer) => {
+      normalizeBars: (spanIds, mode, logLambda, intoNewLayer, flats) => {
         const doc = get().document
         const picked = pickedOnOneLayer(doc, spanIds)
         if (!doc || !picked || picked.spans.length < 2) return null
         const times = runTimes(picked.spans)
         if (!times) return null
-        const plan = normalizePlan(times, mode, logLambda)
+        const plan = normalizePlan(times, mode, logLambda, flats)
         const run = picked.spans
         const placed = (s: Span, k: number): Span => ({ ...s, startTime: plan.times[k], endTime: plan.times[k + 1] })
         if (!intoNewLayer) {

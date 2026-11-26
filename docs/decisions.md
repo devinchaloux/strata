@@ -127,7 +127,7 @@ aren't part of this repository.
 - [Tempo is its own widget (`type: "tempo"`), reading the bar layer (or a beat layer); tempo is derived, never stored.](#tempo-becomes-its-own-widget-2026-11-25)
 - [A widget is a block: one kind of analysis with its own tools, drawn as a card on the shared timeline. The file lists the blocks top to bottom (`widgets`); the analyst moves them with ↑ ↓, hides and shows them, adds them, and removes any but Segments.](#widgets-as-blocks-2026-11-25)
 - [Tempo is a block of its own; its display choices are saved in the file; deviation is in milliseconds; the scale comes from the data unless fixed; it reads a source layer only.](#the-tempo-widget-settled-2026-11-25)
-- [Normalize evens out a run of selected bars, Steady or Smooth, with a preview; the run's ends stay, and it can copy to a new layer instead.](#normalize-2026-11-25)
+- [Normalize evens out a run of selected bars, Steady or Smooth (or Steady between ramps, when offered), with a preview; the run's ends stay, and it can copy to a new layer instead.](#normalize-2026-11-25)
 - [The beat grid can be made from the bar layer, or from selected bars: a stretch per bar at its own tempo, equal tempos merged, replacing the grid only where the bars are.](#the-beat-grid-from-the-bars-2026-11-25)
 - [Fit boundaries to the grid moves a layer's boundaries to bars or beats.](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02)
 - [Playback rates are 0.5×, 0.75×, 1× and 1.25×; rewind goes to 0:00.](#player-chrome-phase-03)
@@ -191,6 +191,7 @@ aren't part of this repository.
 - [Merge, however it's made, Split from the Inspector or the right-click menu, and Delete, from a button or the Delete key, confirm with a toast and Undo; a boundary placed with B doesn't.](#merge-split-and-delete-confirm-with-a-toast-2026-11-26)
 - [The beat grid can be hidden without losing it (Grid menu, or Grid in the reading view's Show); snapping still works, and the choice is remembered in the browser.](#showing-and-hiding-the-grid-2026-11-26)
 - [Normalize's Smooth keeps bars far off their neighbours (more than 25% off the running median of seven) as marked and smooths the runs between them.](#the-controls-rebuilt-2026-11-26)
+- [Normalize offers Steady between ramps only when the bars have a steady stretch of 16 bars or more and, elsewhere, a tempo more than 4 BPM from it; its corners are proposals, moved a bar at a time.](#steady-between-ramps-2026-11-26)
 - [The Inspector sits on a tinted ground, each section a white group; labels are in sentence case and fields are filled, not outlined; Merge is one menu.](#the-controls-rebuilt-2026-11-26)
 - [The Inspector is a collapsible right-hand column that hosts the selected thing's editor; it starts collapsed and opens on a selection.](#app-shell--inspector-2026-06-27)
 - [The span Inspector is one column of sections (Timing, Describe, Shape & color, More), each folding on its own.](#the-inspector-as-sections-zoom-in-the-reading-view-2026-11-05)
@@ -261,7 +262,7 @@ By area, in the order the entries were made:
 
 **Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01) · [Group Spans Into Another Layer (2026-10-24)](#group-spans-into-another-layer-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Choosing What Copy to Layer Takes (2026-10-31)](#choosing-what-copy-to-layer-takes-2026-10-31)
 
-**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25) · [Bars From Phrases, Phrases From Bars (2026-11-25)](#bars-from-phrases-phrases-from-bars-2026-11-25) · [The Tempo Lane (2026-11-25)](#the-tempo-lane-2026-11-25) · [Tempo Becomes Its Own Widget (2026-11-25)](#tempo-becomes-its-own-widget-2026-11-25) · [Normalize (2026-11-25)](#normalize-2026-11-25) · [The Tempo Widget, Settled (2026-11-25)](#the-tempo-widget-settled-2026-11-25) · [Widgets as Blocks (2026-11-25)](#widgets-as-blocks-2026-11-25) · [Segments, Not Form Diagram (2026-11-25)](#segments-not-form-diagram-2026-11-25) · [The Beat Grid From the Bars (2026-11-25)](#the-beat-grid-from-the-bars-2026-11-25) · [The Bars Menu Waits for the Bar Layer (2026-11-26)](#the-bars-menu-waits-for-the-bar-layer-2026-11-26) · [The Hypermeter Is Its Own Field (2026-11-26)](#the-hypermeter-is-its-own-field-2026-11-26) · [Tempo Gets a Tool Row (2026-11-26)](#tempo-gets-a-tool-row-2026-11-26) · [A Strip Under the Layer (2026-11-26)](#a-strip-under-the-layer-2026-11-26)
+**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25) · [Bars From Phrases, Phrases From Bars (2026-11-25)](#bars-from-phrases-phrases-from-bars-2026-11-25) · [The Tempo Lane (2026-11-25)](#the-tempo-lane-2026-11-25) · [Tempo Becomes Its Own Widget (2026-11-25)](#tempo-becomes-its-own-widget-2026-11-25) · [Normalize (2026-11-25)](#normalize-2026-11-25) · [The Tempo Widget, Settled (2026-11-25)](#the-tempo-widget-settled-2026-11-25) · [Widgets as Blocks (2026-11-25)](#widgets-as-blocks-2026-11-25) · [Segments, Not Form Diagram (2026-11-25)](#segments-not-form-diagram-2026-11-25) · [The Beat Grid From the Bars (2026-11-25)](#the-beat-grid-from-the-bars-2026-11-25) · [The Bars Menu Waits for the Bar Layer (2026-11-26)](#the-bars-menu-waits-for-the-bar-layer-2026-11-26) · [The Hypermeter Is Its Own Field (2026-11-26)](#the-hypermeter-is-its-own-field-2026-11-26) · [Tempo Gets a Tool Row (2026-11-26)](#tempo-gets-a-tool-row-2026-11-26) · [A Strip Under the Layer (2026-11-26)](#a-strip-under-the-layer-2026-11-26) · [Steady Between Ramps (2026-11-26)](#steady-between-ramps-2026-11-26)
 
 **Point markers:** [Point Markers](#point-markers) · [Point Markers — Implementation (2026-07-03)](#point-markers--implementation-2026-07-03) · [Point Markers — Redesign (2026-07-04)](#point-markers--redesign-2026-07-04) · [Marker Band, Absent Events, and the Diagram Control Bar (2026-07-24, cont.)](#marker-band-absent-events-and-the-diagram-control-bar-2026-07-24-cont)
 
@@ -6182,3 +6183,58 @@ with nothing else on it.
 HelpDialog (`useAppKeysOff`); `uiStore.helpOpen`; PlayerDock and
 useYouTubePlayer (`away`); `src/test/helpPage.test.tsx`,
 `src/test/youtubeAway.test.tsx`.
+
+---
+
+## Steady Between Ramps (2026-11-26)
+
+*From the maintainer, on Opus normalized with Smooth: "the BPM still shifts a
+bit more during the flat part. What would be the instructions to follow to
+bring this into something that actually more accurately reflects the DAW",
+then: "I would want some suggestions based on the rate of change, so that it
+isn't offered all of the time but only when it makes sense", and "Does it make
+sense to propose points that the user can then tweak if needed?"*
+
+**Decision.** Normalize gains a third way, **Steady between ramps**, for a
+tempo made in a DAW: steady stretches joined by ramps. Each steady stretch is
+put on the straight line that best fits all its marks, so it has one tempo and
+no single tap at its ends tilts it. The ramps between are smoothed (the
+smoothing scale applies to them), with the stretches, the run's ends and odd
+bars held, so a ramp leaves a stretch at the stretch's tempo.
+**When it's offered.** Only when the bars have both a steady stretch of 16
+bars or more and, outside it, a tempo more than 4 BPM away from it
+(`TEMPO_MOVES_BPM`, as for the Tempo offer). Steady handles a tempo that is
+steady throughout, and Smooth one with no steady stretch. When offered, the
+strip opens on it. Detection (`findFlats`):
+1. The run is smoothed at Auto. A bar is steady when its tempo changes less
+   than 0.5% a bar (`FLAT_RATE`), and runs of eight such bars are seeds.
+2. Each seed grows or shrinks while a straight line fits its marks as well as
+   tapping allows. The leftovers' spread must be within 1.5 times the tapping
+   scatter, and no leftover beyond 4 times it. The scatter is read robustly,
+   and never below 10 ms, so bars already smoothed still find their stretches.
+3. Each corner is placed where a hinge fits the 12 bars either side best: steady
+   on one side, and on the other a tempo changing at a steady rate. Growing
+   alone runs a bar or two into a ramp, because a ramp's first bars are hard to
+   tell from steady.
+**The corners are proposals.** The strip names each stretch: "126.02 BPM from
+bar 53 to bar 149". Each corner has − and + to move it a bar, and **Back to
+proposed** undoes that. The diagram marks each corner with a solid amber line
+while the preview is up. The fit can only estimate where the automation
+points were; the analyst may know.
+**Tested on** steady–ramp–steady and ramp–steady–ramp shapes with 10 to 25 ms
+of scatter, where corners land within a bar. It is not offered for a steady
+tempo, an accelerando, a 2 BPM drift, or rubato. On Opus it finds bars 53 to
+149 or 150 at 126.02 BPM, from the original marks or from the bars already
+smoothed.
+**Open (the maintainer's call):** *the ramps' shape.* Here they're smoothed,
+so a ramp keeps whatever shape the marks give it, wobbles included (Opus's
+bars 155–164). A DAW ramp is usually one even curve: straight in BPM over
+time, or bending. Fitting that shape would remove the wobble, but it means
+choosing a shape. Heavy smoothing isn't a substitute: on Opus it bends a
+48-bar ramp out of shape and moves boundaries by up to 2.6 s.
+**Rejected.** *Always showing the option:* most hand-marked tempos aren't
+DAW-shaped, and an option that doesn't apply reads as one to try. *Finding
+corners only by growing the stretches:* they ran into the ramps.
+`findFlats`, `rampsOffered`, `flatAndRampsTimes`, `smoothFixed` and
+`settleFlats` in lib/normalize.ts; NormalizePanel (`Corner`); the preview's
+`corners`; `src/test/flatAndRamps.test.ts`.
