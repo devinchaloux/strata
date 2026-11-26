@@ -179,6 +179,8 @@ aren't part of this repository.
 - [Big jobs open as a mode inside their block; `⋯` menus hold settings, never one-off jobs; nothing moves without a named new home.](#where-controls-live-2026-11-26)
 - [The bar tools, Elide included, live in Segments' Bars menu; Tempo is offered, not added, when the bar layer's smoothed tempo ranges more than 4 BPM.](#where-controls-live-2026-11-26)
 - [An ellipsis marks a menu item or tool that asks for something before it acts; buttons named for a place (Share, Export) and ▾ menus get none.](#where-controls-live-2026-11-26)
+- [Normalize's Smooth keeps bars far off their neighbours (more than 25% off the running median of seven) as marked and smooths the runs between them.](#the-controls-rebuilt-2026-11-26)
+- [The Inspector sits on a tinted ground, each section a white group; labels are in sentence case and fields are filled, not outlined; Merge is one menu.](#the-controls-rebuilt-2026-11-26)
 - [The Inspector is a collapsible right-hand column that hosts the selected thing's editor; it starts collapsed and opens on a selection.](#app-shell--inspector-2026-06-27)
 - [The span Inspector is one column of sections (Timing, Describe, Shape & color, More), each folding on its own.](#the-inspector-as-sections-zoom-in-the-reading-view-2026-11-05)
 - [Timing lays out each end with its boundary type.](#quick-pick-types-on-typed-spans-timing-with-boundaries-commentary-links-2026-11-05)
@@ -259,7 +261,7 @@ By area, in the order the entries were made:
 
 **Reading, sharing, embedding and export:** [Sharing](#sharing) · [Embeddable Viewer](#embeddable-viewer) · [Export (2026-09-27)](#export-2026-09-27) · [The Reading View (2026-10-01)](#the-reading-view-2026-10-01) · [Sharing by Link (2026-10-01)](#sharing-by-link-2026-10-01) · [Export: Choose Layers, Cut Spans at the Range (2026-10-02)](#export-choose-layers-cut-spans-at-the-range-2026-10-02) · [Share From the Toolbar; Dropbox and OneDrive Links (2026-10-02)](#share-from-the-toolbar-dropbox-and-onedrive-links-2026-10-02) · [Example Analyses (2026-10-02)](#example-analyses-2026-10-02) · [Embedding an Analysis (2026-10-03)](#embedding-an-analysis-2026-10-03) · [Starting an Analysis from a Link (2026-10-03)](#starting-an-analysis-from-a-link-2026-10-03) · [Embed Zoom (2026-11-06)](#embed-zoom-2026-11-06) · [Embed Layout on Wide Screens (2026-11-06)](#embed-layout-on-wide-screens-2026-11-06) · [Layer Names Sized to Fit (2026-11-06)](#layer-names-sized-to-fit-2026-11-06) · [Save as PDF Through the Print Dialog (2026-11-23)](#save-as-pdf-through-the-print-dialog-2026-11-23) · [Commentary in the PDF (2026-11-23)](#commentary-in-the-pdf-2026-11-23) · [Read and Play on a Phone (2026-11-23)](#read-and-play-on-a-phone-2026-11-23) · [Following the Playhead (2026-11-23)](#following-the-playhead-2026-11-23) · [Hiding Layers in the Reading View (2026-11-23)](#hiding-layers-in-the-reading-view-2026-11-23) · [The Toolbar Folds When Narrow (2026-11-23)](#the-toolbar-folds-when-narrow-2026-11-23) · [Link-Only Through the Beta (2026-11-23)](#link-only-through-the-beta-2026-11-23)
 
-**The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03) · [A Shorter New Analysis Dialog; Darker Interface Greys (2026-10-24)](#a-shorter-new-analysis-dialog-darker-interface-greys-2026-10-24) · [People Do Things in Strata's Text (2026-11-05)](#people-do-things-in-stratas-text-2026-11-05) · [The Inspector as Sections; Zoom in the Reading View (2026-11-05)](#the-inspector-as-sections-zoom-in-the-reading-view-2026-11-05) · [Quick Pick Types on Typed Spans; Timing With Boundaries; Commentary Links (2026-11-05)](#quick-pick-types-on-typed-spans-timing-with-boundaries-commentary-links-2026-11-05) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05) · [Where Controls Live (2026-11-26)](#where-controls-live-2026-11-26)
+**The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03) · [A Shorter New Analysis Dialog; Darker Interface Greys (2026-10-24)](#a-shorter-new-analysis-dialog-darker-interface-greys-2026-10-24) · [People Do Things in Strata's Text (2026-11-05)](#people-do-things-in-stratas-text-2026-11-05) · [The Inspector as Sections; Zoom in the Reading View (2026-11-05)](#the-inspector-as-sections-zoom-in-the-reading-view-2026-11-05) · [Quick Pick Types on Typed Spans; Timing With Boundaries; Commentary Links (2026-11-05)](#quick-pick-types-on-typed-spans-timing-with-boundaries-commentary-links-2026-11-05) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05) · [Where Controls Live (2026-11-26)](#where-controls-live-2026-11-26) · [The Controls Rebuilt (2026-11-26)](#the-controls-rebuilt-2026-11-26)
 
 **Architecture, scope and process:** [Architecture](#architecture) · [Widgets](#widgets) · [Architecture](#architecture-1) · [Launch](#launch) · [Corpus Builder](#corpus-builder) · [v1 Feature Scope (Phase 0.6)](#v1-feature-scope-phase-06) · [Energy Contour Widget](#energy-contour-widget) · [EDM as Origin — Product Claim Reframe](#edm-as-origin--product-claim-reframe) · [Tech Stack](#tech-stack) · [v1 Scope](#v1-scope) · [Widget Contract (Phase 0.2)](#widget-contract-phase-02) · [Correctness Pass (post-Phase 2 polish)](#correctness-pass-post-phase-2-polish) · [Improvement Backlog Batch 1 (2026-07-03)](#improvement-backlog-batch-1-2026-07-03) · [Improvement Backlog Batch 2 (2026-07-03)](#improvement-backlog-batch-2-2026-07-03) · [Render / Edit Split (2026-09-27)](#render--edit-split-2026-09-27) · [Large-Analysis Performance (2026-09-27)](#large-analysis-performance-2026-09-27) · [Safari and Firefox Read-Through (2026-09-27)](#safari-and-firefox-read-through-2026-09-27) · [Beta Launch Pass (2026-10-01)](#beta-launch-pass-2026-10-01) · [Releases and Open Tabs (2026-10-02)](#releases-and-open-tabs-2026-10-02) · [Faster Checks: Tests in Node, a Weekly Audit (2026-10-05)](#faster-checks-tests-in-node-a-weekly-audit-2026-10-05) · [Development Tools Upgraded (2026-10-07)](#development-tools-upgraded-2026-10-07) · [No Corpus Builder: Strata Stays a One-File Tool (2026-10-16)](#no-corpus-builder-strata-stays-a-one-file-tool-2026-10-16) · [React's Newer Checks On (2026-10-16)](#reacts-newer-checks-on-2026-10-16) · [The Corpus Builder Is Planned for Version 2 (2026-10-31)](#the-corpus-builder-is-planned-for-version-2-2026-10-31) · [Lint Tools Use a Patched minimatch (2026-11-07)](#lint-tools-use-a-patched-minimatch-2026-11-07)
 
@@ -5697,4 +5699,51 @@ get weight, labels sit beside values.
 The build follows in this order: block rows and menus; the Bars menu and
 Normalize as a mode; offering Tempo; the Inspector restyled; the layer menu
 trimmed; then the app bar on the same budget.
+
+---
+
+## The Controls Rebuilt (2026-11-26)
+
+*The build of "Where Controls Live", and what it settled along the way.*
+
+**Decision.** The Segments block has its two rows: the first with the layer
+names' collapse, "Segments", hidden layers, zoom and move / hide; the second,
+while editing, with Boundary and Marker, then Add layer…, Grid ▾, Bars ▾ and
+Quick pick ▾, the menus drawn as chips with a ▾. **Bars ▾** holds every bar
+tool, each item with a line saying what it does and what it will act on, and
+why when it can't; items that ask first open a form inside the menu with a
+way back. The bar tools left the Inspector (its Count and Bars rows) and the
+layer menu (Number, Count, Beat grid, Fill). **Fit boundaries to the grid**
+moved from the layer menu to the Grid menu, for a chosen layer. **Normalize**
+opens as a strip under the tool row and closes with Apply, Cancel or Esc. The
+**Tempo offer** appears above the blocks when a layer becomes the bar layer
+(by its switch, or by Split into bars or Fill making one).
+
+**Decision.** Normalize's **Smooth** keeps any bar more than 25% off the
+running median of the seven bars around it as marked, and smooths the runs of
+ordinary bars between such bars; Auto is read from the longest run. The same
+rule sets such bars aside when deciding whether the tempo moves, and the
+Tempo block's smoothed view uses the anchored smoother too.
+**Why.** With "all bars" now the default scope, the maintainer's 198-bar
+track normalized whole: its last bar, 25 seconds holding the fade, dragged
+the smooth curve so that boundaries moved by up to 5.2 s and the scatter read
+±394 ms. Anchored, the same press moves nothing more than 128 ms, with a
+scatter of ±22 ms. A held fade, a pickup or a fermata is the analyst's mark,
+not tapping error, and shouldn't be smoothed into its neighbours. An
+accelerando changes by a few percent a bar, well inside 25%.
+
+**Decision.** The Inspector sits on a tinted ground (`--panel`, #eef2f6),
+its title area and each section a white group; field labels are in sentence
+case; fields are filled (the faint guide grey) rather than outlined, taking an
+outline on hover and focus. The footer is Split, Merge ▾ (with the span
+before or after), Copy, Paste, Copy to layer… and Delete. Every Timing
+control stays: typed times, boundary types, To end, Length in bars, Part of
+and Unlink.
+**Why.** "The inspector is a bit too white": every field had the same grey
+uppercase label over the same white box, with hairlines between, so nothing
+grouped and nothing led. Groups with weight and quieter labels let the eye
+find a section, then a field.
+`BarsMenu`, `NormalizeMode`, `FitLayerToGrid` (GridPopover), `TempoOffer`
+(WorkArea), `MergeMenu` (MetadataPanel); `oddBars` and `smoothAnchored` in
+lib/normalize.ts; `tempoSummary` in lib/tempoLane.ts.
 

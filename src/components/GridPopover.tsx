@@ -137,6 +137,59 @@ function GridSetup() {
   )
 }
 
+/**
+ * Fit boundaries to the grid: every boundary of a layer moved to its nearest
+ * bar or beat, in one undo step (snapLayerToGrid). The layer defaults to the
+ * active one.
+ */
+function FitLayerToGrid() {
+  const doc = useDocumentStore((s) => s.document)
+  const snapLayerToGrid = useDocumentStore((s) => s.snapLayerToGrid)
+  const activeLayerId = useUIStore((s) => s.activeLayerId)
+  const [layerId, setLayerId] = useState<string | null>(null)
+  const [result, setResult] = useState<string | null>(null)
+  const layers = (doc?.layers ?? []).filter((l) => l.type === 'segmentation').sort((a, b) => b.displayOrder - a.displayOrder)
+  const chosen = layers.find((l) => l.id === (layerId ?? activeLayerId)) ?? layers[0]
+  if (!chosen) return null
+  const fit = (unit: 'bar' | 'beat') => {
+    const moved = snapLayerToGrid(chosen.id, unit)
+    setResult(moved ? `Moved ${moved} boundar${moved === 1 ? 'y' : 'ies'}. Undo puts them back.` : 'Every boundary is already on the grid, or has no room to move.')
+  }
+  const btn = 'rounded border border-border px-2 py-0.5 text-foreground hover:bg-accent'
+  return (
+    <div className="mt-3 flex flex-col gap-1">
+      <div className="flex flex-wrap items-center justify-between gap-2" title="Move every boundary in a layer to its nearest bar or beat, in one undo step">
+        <span className="font-medium text-foreground">Fit boundaries to the grid</span>
+        <span className="flex items-center gap-1">
+          <select
+            value={chosen.id}
+            onChange={(e) => setLayerId(e.target.value)}
+            aria-label="Layer to fit"
+            className="max-w-[8rem] rounded border border-border bg-card px-1 py-0.5 text-foreground"
+          >
+            {layers.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.label}
+              </option>
+            ))}
+          </select>
+          <button type="button" className={btn} onClick={() => fit('bar')}>
+            Bars
+          </button>
+          <button type="button" className={btn} onClick={() => fit('beat')}>
+            Beats
+          </button>
+        </span>
+      </div>
+      {result && (
+        <span className="text-[11px] text-muted-foreground" role="status">
+          {result}
+        </span>
+      )}
+    </div>
+  )
+}
+
 export function GridPopover() {
   const doc = useDocumentStore((s) => s.document)
   const startGridAt = useDocumentStore((s) => s.startGridAt)
@@ -193,6 +246,10 @@ export function GridPopover() {
                 ))}
               </div>
             </div>
+
+            {/* A one-off job on a layer, so it lives here rather than in the
+                layer's ⋯ menu ("Where Controls Live"). */}
+            <FitLayerToGrid />
 
             <p className="mt-3 font-medium text-foreground">The grid</p>
             <p className="text-muted-foreground">Each row runs at one tempo and meter. Edit any value.</p>

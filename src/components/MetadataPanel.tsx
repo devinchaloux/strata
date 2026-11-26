@@ -9,8 +9,9 @@
  * boundary placement — slice 3).
  */
 
-import { useEffect, useRef } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore, type InspectorSection } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
@@ -150,7 +151,7 @@ function EndsGrid({
   end: [EndSelect, EndSelect]
   showCaps: boolean
 }) {
-  const head = 'text-[11px] font-medium uppercase tracking-wide text-muted-foreground'
+  const head = 'text-[12px] font-medium text-muted-foreground'
   const select = (c: EndSelect) => (
     <select
       aria-label={c.label}
@@ -208,7 +209,7 @@ function TimingGrid({
   /** "bars 9–12", when a beat grid covers the span. */
   bars: string | null
 }) {
-  const head = 'text-[11px] font-medium uppercase tracking-wide text-muted-foreground'
+  const head = 'text-[12px] font-medium text-muted-foreground'
   const boundary = (which: 'start' | 'end') => {
     const value = (which === 'start' ? span.startBoundaryType : span.endBoundaryType) ?? 'definite'
     return (
@@ -336,7 +337,7 @@ function openCommentary(key: string, at: number) {
 function CommentaryPreview({ label, text, onOpen }: { label: string; text: string; onOpen: () => void }) {
   return (
     <div className="mb-3">
-      <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mb-1 text-[12px] font-medium text-muted-foreground">{label}</p>
       {text.trim() && (
         <button
           type="button"
@@ -388,7 +389,8 @@ function InspectorBlock({
     if (reveal?.section === id) ref.current?.scrollIntoView({ block: 'start' })
   }, [reveal, id])
   return (
-    <section ref={ref} className="border-t" style={{ borderColor: 'var(--hairline)' }}>
+    // A white group on the panel's tinted ground ("Where Controls Live").
+    <section ref={ref} className="mx-2 mb-2 rounded-lg bg-card" style={{ boxShadow: '0 0 0 1px var(--hairline)' }}>
       <button
         type="button"
         aria-expanded={open}
@@ -400,18 +402,50 @@ function InspectorBlock({
           requestAnimationFrame(() => ref.current?.parentElement?.scrollTo({ top: 0 }))
         }}
         title="Click to open or close. Double-click to open this one alone."
-        className="sticky top-0 z-10 flex w-full select-none items-center gap-2 bg-muted px-3 py-2 text-left text-[13px] font-semibold text-foreground transition-colors hover:bg-accent"
+        className={`sticky top-0 z-10 flex w-full select-none items-center gap-2 bg-card px-3 py-2 text-left text-[13px] font-semibold text-foreground transition-colors hover:bg-accent ${open ? 'rounded-t-lg' : 'rounded-lg'}`}
       >
         <ChevronRight aria-hidden size={14} className={`shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-90' : ''}`} />
         {title}
         {!open && summary && <span className="ml-auto min-w-0 truncate text-xs font-normal text-muted-foreground">{summary}</span>}
       </button>
       {open && (
-        <div id={bodyId} className="px-3 pb-1 pt-3">
+        <div id={bodyId} className="px-3 pb-2 pt-1">
           {children}
         </div>
       )}
     </section>
+  )
+}
+
+/**
+ * Merge ▾ in the footer: with the span before or the span after, in one menu
+ * rather than two buttons ("Where Controls Live"). Each choice is disabled when
+ * there is no neighbour on that side.
+ */
+function MergeMenu({ onBefore, onAfter }: { onBefore: (() => void) | null; onAfter: (() => void) | null }) {
+  const [open, setOpen] = useState(false)
+  const item = 'w-full rounded px-2 py-1 text-left text-xs text-foreground hover:bg-accent disabled:opacity-40 disabled:hover:bg-transparent'
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          disabled={!onBefore && !onAfter}
+          title="Merge with the span before or after"
+          className="flex items-center gap-1 rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
+        >
+          Merge
+          <ChevronDown size={11} aria-hidden />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" side="top" className="w-48 p-1">
+        <button className={item} disabled={!onBefore} onClick={() => { onBefore?.(); setOpen(false) }}>
+          With the span before
+        </button>
+        <button className={item} disabled={!onAfter} onClick={() => { onAfter?.(); setOpen(false) }}>
+          With the span after
+        </button>
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -605,7 +639,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
           opened or closed on its own (InspectorBlock). Only the actions stay
           fixed, so a short screen scrolls the whole panel rather than a sliver. */}
       <div className="min-h-0 flex-1 overflow-y-auto">
-      <div className="flex flex-col gap-1.5 px-3 pb-2.5 pt-2">
+      <div className="m-2 flex flex-col gap-1.5 rounded-lg bg-card p-3" style={{ boxShadow: '0 0 0 1px var(--hairline)' }}>
         {/* Where this span is, and stepping to its neighbours. */}
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>
@@ -932,9 +966,9 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
       <div className="px-3">
         <PasteHint spanIds={[span.id]} />
       </div>
-      <div className="flex flex-wrap gap-1.5 whitespace-nowrap border-t px-3 py-2" style={{ borderColor: 'var(--hairline)' }}>
-        <CopyButton spanIds={[span.id]} />
-        <PasteButton spanIds={[span.id]} />
+      {/* The span verbs everyone uses ("Where Controls Live"): Split, Merge,
+          Copy, Paste, Copy to layer and Delete. */}
+      <div className="flex flex-wrap gap-1.5 whitespace-nowrap border-t bg-card px-3 py-2" style={{ borderColor: 'var(--hairline)' }}>
         <button
           onClick={handleSplit}
           disabled={!canSplit}
@@ -943,22 +977,12 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         >
           Split
         </button>
-        <button
-          onClick={() => prevId && performMerge([prevId, span.id])}
-          disabled={!prevId}
-          title={prevId ? 'Merge with previous span' : 'No previous span in this layer'}
-          className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
-        >
-          Merge ←
-        </button>
-        <button
-          onClick={() => nextId && performMerge([span.id, nextId])}
-          disabled={!nextId}
-          title={nextId ? 'Merge with next span' : 'No next span in this layer'}
-          className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
-        >
-          → Merge
-        </button>
+        <MergeMenu
+          onBefore={prevId ? () => performMerge([prevId, span.id]) : null}
+          onAfter={nextId ? () => performMerge([span.id, nextId]) : null}
+        />
+        <CopyButton spanIds={[span.id]} />
+        <PasteButton spanIds={[span.id]} />
         <CopyToLayerPopover span={span} />
         <button
           onClick={handleDelete}
@@ -1030,7 +1054,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
 
   return (
     <div className="flex flex-col">
-      <div className="px-3 py-3">
+      <div className="m-2 rounded-lg bg-card p-3" style={{ boxShadow: '0 0 0 1px var(--hairline)' }}>
         {/* Merge — primary multi-select action */}
         <button
           onClick={() => performMerge()}
@@ -1061,7 +1085,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
           onOpen={() => openCommentary(`range:${rangeStart}:${rangeEnd}`, (rangeStart + rangeEnd) / 2)}
         />
 
-        <div className="mb-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <div className="mb-3 border-t pt-3 text-[13px] font-semibold text-foreground" style={{ borderColor: 'var(--hairline)' }}>
           Apply to all selected
         </div>
 
@@ -1159,7 +1183,7 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
         </Field>
 
         {/* Colors */}
-        <div className="mt-4 mb-2 border-t pt-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground" style={{ borderColor: 'var(--hairline)' }}>
+        <div className="mt-4 mb-2 border-t pt-3 text-[12px] font-medium text-muted-foreground" style={{ borderColor: 'var(--hairline)' }}>
           Advanced
         </div>
         <div className="flex gap-2">

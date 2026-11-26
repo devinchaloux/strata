@@ -2,8 +2,9 @@
  * LayerSettingsPopover — the `⋯` layer settings menu in the expanded track header.
  *
  * Controls: rename, description, library, fill/stroke default colors, size,
- * key-area shape (thin bars), whether B fills gaps, fit to the grid, the bar
- * layer (BarLayerSettings), lock, and delete.
+ * key-area shape (thin bars), whether B fills gaps, the bar layer
+ * (BarLayerSettings), lock, and delete: settings only (docs/decisions.md,
+ * "Where Controls Live"). Fit to grid is in the Grid menu.
  *
  * Hierarchical enforcement is deliberately NOT here: it was redefined as a
  * cross-layer nesting constraint scoped to the segmentation widget (not per-layer),
@@ -17,7 +18,6 @@
  * throw.
  */
 
-import { useState } from 'react'
 import { Lock, Trash2 } from 'lucide-react'
 import { MoreHorizontal } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
@@ -45,14 +45,8 @@ export function LayerSettingsPopover({
   onRequestDelete: () => void
 }) {
   const updateLayer = useDocumentStore((s) => s.updateLayer)
-  const snapLayerToGrid = useDocumentStore((s) => s.snapLayerToGrid)
-  const hasGrid = useDocumentStore((s) => (s.document?.beatGrid?.length ?? 0) > 0)
-  const [fitResult, setFitResult] = useState<string | null>(null)
 
-  function fit(unit: 'bar' | 'beat') {
-    const moved = snapLayerToGrid(layer.id, unit)
-    setFitResult(moved ? `Moved ${moved} boundar${moved === 1 ? 'y' : 'ies'}. Undo puts them back.` : 'Every boundary is already on the grid, or has no room to move.')
-  }
+
 
   const labelStyle = { color: 'var(--ink-muted)' }
   const fieldClass =
@@ -224,39 +218,7 @@ export function LayerSettingsPopover({
             />
           </label>
 
-          {/* Fit to grid — retroactive snapping, one undo step. */}
-          <div className="flex flex-col gap-1">
-            <div
-              className="flex items-center justify-between gap-2"
-              title="Move every boundary in this layer to its nearest bar or beat, in one undo step"
-            >
-              <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
-                Fit to grid
-              </span>
-              <span className="flex gap-1">
-                {(['bar', 'beat'] as const).map((unit) => (
-                  <button
-                    key={unit}
-                    type="button"
-                    disabled={!hasGrid}
-                    onClick={() => fit(unit)}
-                    className="rounded border px-2 py-0.5 text-xs hover:bg-accent disabled:opacity-50"
-                    style={{ borderColor: 'var(--hairline)', color: 'var(--ink-primary)' }}
-                  >
-                    {unit === 'bar' ? 'Bars' : 'Beats'}
-                  </button>
-                ))}
-              </span>
-            </div>
-            {(!hasGrid || fitResult) && (
-              <span className="text-[11px]" role="status" style={{ color: 'var(--ink-muted)' }}>
-                {!hasGrid ? 'Needs a beat grid.' : fitResult}
-              </span>
-            )}
-          </div>
-
-          {/* The bar layer: numbering and counting its bars, or filling an
-              empty layer with the grid's bars (BarLayerSettings). */}
+          {/* The bar layer switch (BarLayerSettings); its tools are in Bars. */}
           {layer.type === 'segmentation' && (
             <>
               <div className="h-px" style={{ background: 'var(--hairline)' }} />

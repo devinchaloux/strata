@@ -26,7 +26,7 @@ diagram. It worked, but tempo is analysis in its own right:
 - a performance analyst may care more about the tempo than the brackets;
 - it should hide, reorder and export like any layer;
 - it has views of its own (marked, smoothed, deviation, §3) that would crowd
-  the bar layer's settings;
+  the bar tools, which belong to Segments' Bars menu;
 - comparing performances (§5) needs tempo to be something a document has, not
   a way of drawing bars.
 
@@ -98,6 +98,10 @@ deviation beyond it is drawn clipped, with a cap.
   fixed), and the drawing, which scrolls and zooms with the Segments block and
   carries the playhead. The tempo band is 52 px and the deviation band 40 px.
 - The marked line fades when the smoothed one is shown, so both read.
+
+## 3b. Offering Tempo
+
+Turning on Bar layer (or making a bar layer with Split into bars or Fill with the grid's bars) doesn't add Tempo. A note above the blocks says what the bars' tempo does: "Tempo moves from 40 to 127 BPM across these bars" with **Show Tempo** and **Not now**, or "Steady at 120 BPM" with **Show Tempo anyway**. "Moves" means the smoothed tempo ranges more than 4 BPM (`TEMPO_MOVES_BPM`): each run of bars goes through Normalize's smoother at Auto so tapping scatter doesn't count, bars more than 25% off the running median of their neighbours are set aside first, and the range is the 5th to 95th percentile with 20 bars or more (`tempoSummary`). Add widget offers Tempo at any time.
 
 ## 4. Normalize and display smoothing
 
