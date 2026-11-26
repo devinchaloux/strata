@@ -1,3 +1,4 @@
+import { Toast } from '@/components/Toast'
 import { useCallback, useEffect, useRef, useState, useLayoutEffect } from 'react'
 import { useStore } from 'zustand'
 import { Undo2, Redo2, Settings, CircleHelp, Ellipsis } from 'lucide-react'
@@ -992,6 +993,9 @@ export default function App() {
 
       {/* Export — the Segments block as an SVG, PNG, or PDF figure */}
       <ExportDialog />
+
+      {/* What a menu action just changed, with Undo (Toast). */}
+      <Toast />
       <LibrariesDialog />
       <ShareDialog />
       <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} />

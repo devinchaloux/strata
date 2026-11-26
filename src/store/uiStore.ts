@@ -266,6 +266,14 @@ export interface UIState {
   /** Normalize's mode (docs/decisions.md, "Where Controls Live"): the bars it is open on, or null when closed. */
   normalizing: string[] | null
   setNormalizing: (spanIds: string[] | null) => void
+  /**
+   * A short message at the foot of the screen after an action from a menu
+   * changes the document, with Undo (docs/decisions.md, "Menus Are Names").
+   * `n` counts messages, so the same text shown twice restarts its timer.
+   */
+  toast: { text: string; undo: boolean; n: number } | null
+  showToast: (text: string, options?: { undo?: boolean }) => void
+  clearToast: () => void
   /** The bar layer to offer Tempo for, just after it became one (docs/decisions.md, "Where Controls Live"). Session only. */
   tempoOffer: string | null
   setTempoOffer: (layerId: string | null) => void
@@ -467,6 +475,9 @@ const useUIStore = create<UIState>()((set) => ({
   setBarGroup: (n) => set({ barGroup: Math.max(1, Math.min(16, Math.round(n))) }),
   normalizePreview: null,
   setNormalizePreview: (normalizePreview) => set({ normalizePreview }),
+  toast: null,
+  showToast: (text, options) => set((s) => ({ toast: { text, undo: options?.undo ?? true, n: (s.toast?.n ?? 0) + 1 } })),
+  clearToast: () => set({ toast: null }),
   tempoOffer: null,
   setTempoOffer: (tempoOffer) => set({ tempoOffer }),
   normalizing: null,

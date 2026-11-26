@@ -728,12 +728,12 @@ function TempoOffer() {
       className="ml-2 flex items-center gap-1.5 rounded px-2 py-0.5 text-[11px]"
       style={summary.moves ? { background: 'var(--ink-primary)', color: 'var(--canvas)' } : { background: 'var(--guide-faint)', color: 'var(--ink-secondary)' }}
     >
-      {summary.moves ? `The tempo in these bars moves from ${r(summary.low)} to ${r(summary.high)} BPM.` : `The tempo in these bars holds steady at ${r(summary.median)} BPM.`}
+      {summary.moves ? `Tempo varies, ${r(summary.low)}–${r(summary.high)} BPM` : `Steady tempo, ${r(summary.median)} BPM`}
       <button type="button" className={chip} style={{ borderColor: 'currentColor' }} onClick={show}>
-        {summary.moves ? 'Show Tempo' : 'Show Tempo anyway'}
+        {summary.moves ? 'Show Tempo' : 'Show'}
       </button>
-      <button type="button" className={chip} style={{ borderColor: 'transparent' }} onClick={() => setTempoOffer(null)} aria-label="Not now">
-        {summary.moves ? 'Not now' : '×'}
+      <button type="button" className={chip} style={{ borderColor: 'transparent' }} onClick={() => setTempoOffer(null)} aria-label="Not now" title="Not now">
+        ×
       </button>
     </span>
   )

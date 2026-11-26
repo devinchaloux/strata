@@ -35,9 +35,11 @@ export function BarLayerSettings({ layer }: { layer: Layer }) {
           aria-label="Bar layer"
         />
       </label>
-      <span className="text-[11px]" style={{ color: 'var(--ink-muted)' }}>
-        {isBars ? 'Find its tools under Bars, in the Segments tool row.' : 'Use this layer for bars, numbered above and counted inside.'}
-      </span>
+      {isBars && (
+        <span className="text-[11px]" style={{ color: 'var(--ink-muted)' }}>
+          Tools: Bars ▾ in the Segments tool row
+        </span>
+      )}
     </div>
   )
 }
