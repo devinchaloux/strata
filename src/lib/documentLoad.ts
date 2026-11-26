@@ -23,6 +23,7 @@ import { findOverlaps } from '@/lib/spanEdit'
 import { formatTime } from '@/lib/youtube'
 import { FILE_FORMAT_VERSION, migrate } from '@/lib/migrations'
 import { slugify, uniqueSlug } from '@/lib/slug'
+import { parseHypermeter } from '@/lib/hypermeter'
 
 /** The newest file format this build understands. */
 export const SUPPORTED_FILE_FORMAT_VERSION = FILE_FORMAT_VERSION
@@ -207,7 +208,7 @@ function readLayer(raw: unknown, index: number, spanIds: Set<string>, notices: s
   const data = isObj(raw.data) ? raw.data : {}
   const rawSpans = Array.isArray(data.spans) ? data.spans : []
   const spans = rawSpans
-    .map((s, j) => readSpan(s, `"${label}", span ${j + 1}`, spanIds))
+    .map((s, j) => readSpan(s, `"${label}", span ${j + 1}`, spanIds, notices))
     .sort((a, b) => a.startTime - b.startTime)
 
   const overlaps = findOverlaps(spans)
@@ -244,7 +245,7 @@ function readAnalysisLayer(base: Obj, raw: Obj, where: string): Layer {
   return { ...base, type: 'written-analysis', data: { blocks } } as Layer
 }
 
-function readSpan(raw: unknown, where: string, spanIds: Set<string>): Span {
+function readSpan(raw: unknown, where: string, spanIds: Set<string>, notices: string[]): Span {
   if (!isObj(raw)) throw new DocumentError(`${where} is not a span object.`)
   if (typeof raw.id !== 'string' || raw.id === '') throw new DocumentError(`${where} has no id.`)
   if (spanIds.has(raw.id)) throw new DocumentError(`${where} reuses the id "${raw.id}", which another span already has.`)
@@ -255,7 +256,22 @@ function readSpan(raw: unknown, where: string, spanIds: Set<string>): Span {
   if (raw.endTime <= raw.startTime) {
     throw new DocumentError(`${where} ends (${raw.endTime}s) at or before it starts (${raw.startTime}s).`)
   }
+  if (raw.hypermeter != null && !isHypermeter(raw.hypermeter)) {
+    // Written as text by hand ("4=1"), it is read as one; anything else can't be drawn.
+    const read = typeof raw.hypermeter === 'string' ? parseHypermeter(raw.hypermeter) : null
+    if (read) return { ...raw, hypermeter: read } as unknown as Span
+    notices.push(`${where} has a hypermeter Strata can't read (${JSON.stringify(raw.hypermeter)}). It was left out.`)
+    const rest = { ...raw }
+    delete rest.hypermeter
+    return rest as unknown as Span
+  }
   return raw as unknown as Span
+}
+
+/** A hypermeter as the format writes it: { count, becomes? }, whole numbers from 1. */
+function isHypermeter(v: unknown): boolean {
+  const whole = (n: unknown) => Number.isInteger(n) && (n as number) >= 1
+  return isObj(v) && whole(v.count) && (v.becomes === undefined || whole(v.becomes))
 }
 
 /** Grid segments that make sense (a start, a positive tempo, whole beats per bar), in time order. */

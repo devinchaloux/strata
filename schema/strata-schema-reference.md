@@ -73,7 +73,7 @@ Strata stores the grid as a few **stretches** rather than as individual beats. E
 
 Strata works out every beat and bar line from these few numbers. When you correct a tempo, you change one number. Every bar line after it moves with it.
 
-A layer can also mark the bars one by one: the **bar layer** (`role: "bars"` on the layer). Each of its spans is a bar. The span's label is the bar number and its annotation the bar's place in its hypermetric group: `1`, `2`, `3`, and `4=1` for an elided bar, which ends one group and begins the next. Where the grid computes bars from a tempo, the bar layer records them as you heard them, so it suits music whose tempo moves. A document has at most one bar layer. The two meet in both directions: Strata can fill an empty layer with the grid's bars, or make the grid from the bar layer, a stretch per bar at that bar's tempo.
+A layer can also mark the bars one by one: the **bar layer** (`role: "bars"` on the layer). Each of its spans is a bar. The span's label is the bar number and its hypermeter the bar's place in its hypermetric group: `1`, `2`, `3`, and `4=1` for an elided bar, which ends one group and begins the next (see "Hypermeter" under Spans). Where the grid computes bars from a tempo, the bar layer records them as you heard them, so it suits music whose tempo moves. A document has at most one bar layer. The two meet in both directions: Strata can fill an empty layer with the grid's bars, or make the grid from the bar layer, a stretch per bar at that bar's tempo.
 
 ## Layers
 
@@ -101,11 +101,13 @@ Each layer also carries its own settings:
 | Default colors | Fill and outline for spans that have no color of their own, or no color at all (`"none"`) | `fillColorDefault`, `strokeColorDefault` |
 | Shape | Brackets, or thin flat bars (suited to a layer of key areas) | `spanShape` |
 | Library | The vocabulary you usually draw this layer's types from. It's a preference only: you can use any type | `library` |
-| Bar layer | Marks the one layer that has a span for every bar: its labels are bar numbers, its annotations the hypermetric counts ("4=1" for an elided bar) | `role: "bars"` |
+| Bar layer | Marks the one layer that has a span for every bar: its labels are bar numbers, its hypermeter each bar's place in its group | `role: "bars"` |
+| Show hypermeter | Whether the layer's spans draw their hypermeter. On unless you turn it off; a span can override it | `showHypermeter` |
+| Hypermeter line | Whether the hypermeter shares the annotation's line (the default) or the annotation moves to a line below it | `rendering.hypermeterLine` |
 | Filling gaps | Whether a boundary in an empty stretch fills the stretch on both sides or starts a span there, for a layer that begins partway through | `fillGaps` |
 | Text size | Small, medium, or large labels | `fontScale` |
 
-Two more settings have no control in the app yet. When a file sets where a layer's labels and annotations sit (`rendering`), Strata draws them there. Strata reserves `position`, above or below the time ruler, for later.
+Two more settings have no control in the app yet. When a file sets where a layer's labels and annotations sit (the rest of `rendering`), Strata draws them there. Strata reserves `position`, above or below the time ruler, for later.
 
 Strata keeps a layer of a kind it doesn't know unchanged in the file, so a file made by a newer version loses nothing.
 
@@ -124,6 +126,8 @@ A span (`spans`) is a stretch of the recording that you claim as a section: a ve
 | Short label | A shorter form Strata draws when the full label doesn't fit | Dr | `shortLabel` |
 | Type | What kind of section it is, from the vocabulary | drop | `type` |
 | Annotation | A short observation Strata draws on the span itself | filter sweep → snare roll | `annotation` |
+| Hypermeter | Its place in a hypermetric group, drawn centered inside the span (below) | 4=1 | `hypermeter` |
+| Show hypermeter | Whether this span draws its hypermeter, whatever its layer says. Absent: as the layer says | false | `showHypermeter` |
 | Notes | Your own working note. Strata shows it only in the Inspector and never exports it. You save it in the file with everything else, so anyone you send the file to can read it | check the bass entry | `notes` |
 | Lyrics | The words sung in this stretch, which Strata shows with it in the commentary panel | — | `lyrics` |
 | Key area | A Roman numeral relative to the home key, which Strata draws as a caption across the span | ♭VI | `keyArea` |
@@ -152,6 +156,14 @@ The **boundary type** is the claim. You make it for each end of a span:
 In the file, a clean boundary is `definite`, and the other two are `gradual` and `elided`. You mark an elision on each side separately, so one span can claim it while its neighbor does not. The two spans still meet at one exact moment. The overlap you see is only drawn.
 
 The **drawing** is your visual choice: the shape of each end (rounded, square, angled, open, or an elision end that reaches past the boundary), a solid or dashed line, fill and outline colors (or none), a faint pattern over the fill (hatching, cross-hatching, dots, or lines), and which of two elided brackets sits on top. In the file, these are `startCap`, `endCap`, `lineStyle`, `fillColor`, `strokeColor`, `fillPattern`, and `endOnTop`. When you choose a boundary type, Strata suggests a matching end shape. You can then change it. None of these drawing choices records anything about the music.
+
+### Hypermeter
+
+A span's **hypermeter** is its place in a hypermetric group, the span taken as one hyperbeat. Usually that's a bar on the bar layer, counted 1, 2, 3, 4. Any span can carry one, though: a phrase can be one hyperbeat of a group of phrases, after Lerdahl and Jackendoff's metrical levels above the bar. An **elided** hyperbeat ends one group and begins the next. Strata writes it `4=1`.
+
+In the file it's a small record, `{ "count": 4 }`, or `{ "count": 4, "becomes": 1 }` for the elided one. It's kept apart from the annotation, so a bar can carry both a count and an observation, and a query can find every elision without reading text.
+
+Strata draws the hypermeter centered inside the span. By default it shares the annotation's line, and the annotation gives way where they would meet. A layer can put the annotation on a line below it instead (`rendering.hypermeterLine: "own"`). You can hide the hypermeter for a whole layer (`showHypermeter` on the layer) or for single spans (`showHypermeter` on the span, which wins). Hiding it is a drawing choice: the count stays in the file.
 
 ### Linking the levels
 

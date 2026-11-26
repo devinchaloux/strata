@@ -1,13 +1,29 @@
 import { describe, it, expect } from 'vitest'
-import { barNumberLabels, boundaryOnBar, countLabels, countOf, countsByGroups, elideLabels, gridBars, holdsCount, phraseRuns, splitEvenly, writeCounts } from '@/lib/hypermeter'
+import {
+  barNumberLabels,
+  boundaryOnBar,
+  countRun,
+  countsByGroups,
+  elideCounts,
+  gridBars,
+  hypermeterShown,
+  hypermeterText,
+  parseHypermeter,
+  phraseRuns,
+  placeOf,
+  splitEvenly,
+} from '@/lib/hypermeter'
 import { readDocument } from '@/lib/documentLoad'
-import type { GridSegment, Span } from '@/types/strata'
+import type { GridSegment, Hypermeter, Span } from '@/types/strata'
 import { segmentSpans } from '@/lib/layers'
 import { useDocumentStore } from '@/store/documentStore'
 import { makeDoc, makeLayer } from './fixtures'
 
 // 120 bpm in 4/4: a bar is 2 seconds.
 const seg = (start: number, extra: Partial<GridSegment> = {}): GridSegment => ({ id: `s${start}`, start, bpm: 120, beatsPerBar: 4, ...extra })
+// Hypermeter written as analysts write it, both ways: "4=1" ⇄ { count: 4, becomes: 1 }.
+const hm = (text: string): Hypermeter => parseHypermeter(text)!
+const texts = (hs: Array<Hypermeter | null | undefined>) => hs.map((h) => hypermeterText(h) || null)
 
 describe('gridBars', () => {
   it('gives one [start, end] per bar of the grid', () => {
@@ -24,33 +40,49 @@ describe('gridBars', () => {
   })
 })
 
-describe('countLabels', () => {
+describe('countRun', () => {
   it('counts in groups', () => {
-    expect(countLabels(6, 4)).toEqual(['1', '2', '3', '4', '1', '2'])
-    expect(countLabels(4, 3)).toEqual(['1', '2', '3', '1'])
+    expect(texts(countRun(6, 4))).toEqual(['1', '2', '3', '4', '1', '2'])
+    expect(texts(countRun(4, 3))).toEqual(['1', '2', '3', '1'])
   })
 })
 
-describe('countOf', () => {
-  it('reads a count, and an elided bar as what it becomes', () => {
-    expect(countOf('3')).toBe(3)
-    expect(countOf('4=1')).toBe(1)
-    expect(countOf('Verse')).toBeNull()
-    expect(countOf(null)).toBeNull()
+describe('reading and writing a hypermeter', () => {
+  it('reads "4" and "4=1", and nothing else', () => {
+    expect(parseHypermeter('3')).toEqual({ count: 3 })
+    expect(parseHypermeter(' 4 = 1 ')).toEqual({ count: 4, becomes: 1 })
+    expect(parseHypermeter('Verse')).toBeNull()
+    expect(parseHypermeter('0')).toBeNull()
+    expect(parseHypermeter('')).toBeNull()
+    expect(hypermeterText({ count: 4, becomes: 1 })).toBe('4=1')
+  })
+
+  it('places an elided hyperbeat as what it becomes', () => {
+    expect(placeOf(hm('3'))).toBe(3)
+    expect(placeOf(hm('4=1'))).toBe(1)
+    expect(placeOf(null)).toBeNull()
+  })
+
+  it('is shown as the span says, else as its layer says, else shown', () => {
+    expect(hypermeterShown({}, {})).toBe(true)
+    expect(hypermeterShown({}, { showHypermeter: false })).toBe(false)
+    expect(hypermeterShown({ showHypermeter: true }, { showHypermeter: false })).toBe(true)
+    expect(hypermeterShown({ showHypermeter: false }, {})).toBe(false)
   })
 })
 
-describe('elideLabels', () => {
+describe('elideCounts', () => {
+  const run = (...t: Array<string | null>) => t.map((x) => (x ? hm(x) : null))
   it('turns a bar into "4=1" and counts on from 2', () => {
-    expect(elideLabels(['1', '2', '3', '4', '1', '2', '3'], 3, 4)).toEqual(['1', '2', '3', '4=1', '2', '3', '4'])
+    expect(texts(elideCounts(run('1', '2', '3', '4', '1', '2', '3'), 3, 4))).toEqual(['1', '2', '3', '4=1', '2', '3', '4'])
   })
 
   it('takes the count the bar would have had', () => {
-    expect(elideLabels(['1', '2', '3', '1', '2'], 2, 4)).toEqual(['1', '2', '3=1', '2', '3'])
+    expect(texts(elideCounts(run('1', '2', '3', '1', '2'), 2, 4))).toEqual(['1', '2', '3=1', '2', '3'])
   })
 
-  it('stops at a bar whose label is not a count', () => {
-    expect(elideLabels(['1', '2', '3', '4', 'Drop', '2'], 3, 4)).toEqual(['1', '2', '3', '4=1', 'Drop', '2'])
+  it('stops at a bar with no hypermeter', () => {
+    expect(texts(elideCounts(run('1', '2', '3', '4', null, '2'), 3, 4))).toEqual(['1', '2', '3', '4=1', null, '2'])
   })
 })
 
@@ -64,7 +96,7 @@ describe('in the store', () => {
   }
   const spansOf = (i = 0) => segmentSpans(store().document!.layers[i])
   const labels = () => spansOf().map((s) => s.label)
-  const counts = (i = 0) => spansOf(i).map((s) => s.annotation)
+  const counts = (i = 0) => texts(spansOf(i).map((s) => s.hypermeter))
 
   it('fills the empty bar layer with the grid\'s bars', () => {
     const id = load()
@@ -96,12 +128,13 @@ describe('in the store', () => {
     expect(counts()).toEqual(['1', '2', '3', '4', '1', '2', '3', '1'])
   })
 
-  it('never counts over an annotation that holds a note', () => {
+  it('counts beside an annotation, never in it', () => {
     const id = load()
     store().numberBars(id, 4)
     store().updateSpan(id, spansOf()[5].id, { annotation: 'Drop' })
-    store().renumberSpans(id, spansOf().map((s) => s.id), 4)
-    expect(counts()).toEqual(['1', '2', '3', '4', '1', 'Drop', '3', '4'])
+    store().renumberSpans(id, spansOf().map((s) => s.id), 3)
+    expect(counts()).toEqual(['1', '2', '3', '1', '2', '3', '1', '2'])
+    expect(spansOf().map((s) => s.annotation ?? null)).toEqual([null, null, null, null, null, 'Drop', null, null])
   })
 
   it('elides a bar and counts on, and one undo puts it back', () => {
@@ -122,6 +155,7 @@ describe('the bar layer', () => {
   const phrase = (id: string, start: number, end: number, extra: Partial<Span> = {}): Span => ({ id, startTime: start, endTime: end, ...extra })
   const layerOf = (id: string) => store().document!.layers.find((l) => l.id === id)!
   const field = (id: string, f: 'label' | 'annotation') => segmentSpans(layerOf(id)).map((s) => s[f])
+  const counted = (id: string) => texts(segmentSpans(layerOf(id)).map((s) => s.hypermeter))
 
   // Eight bars below; above them phrases of 3 and 5 bars.
   function load(barSpans: Span[] = Array.from({ length: 8 }, (_, k) => bar(k))) {
@@ -147,10 +181,11 @@ describe('the bar layer', () => {
     expect(layerOf('Phrases').role).toBeUndefined()
   })
 
-  it('moves counts written as labels into the annotations', () => {
-    load(Array.from({ length: 8 }, (_, k) => bar(k, { label: String((k % 4) + 1) })))
+  it('moves counts written as labels into the hypermeter', () => {
+    load(Array.from({ length: 8 }, (_, k) => bar(k, { label: k === 3 ? '4=1' : String((k % 4) + 1) })))
     store().setBarLayer('Bars', true)
-    expect(field('Bars', 'annotation')).toEqual(['1', '2', '3', '4', '1', '2', '3', '4'])
+    expect(counted('Bars')).toEqual(['1', '2', '3', '4=1', '1', '2', '3', '4'])
+    expect(field('Bars', 'annotation')).toEqual(Array(8).fill(undefined))
     expect(field('Bars', 'label')).toEqual(['1', '2', '3', '4', '5', '6', '7', '8'])
   })
 
@@ -169,14 +204,15 @@ describe('the bar layer', () => {
 
   it('counts by the phrases above, each from 1 to its end', () => {
     load()
-    expect(store().countBars('Bars', 'Phrases', 4)).toEqual({ counted: 8, skipped: 0 })
-    expect(field('Bars', 'annotation')).toEqual(['1', '2', '3', '1', '2', '3', '4', '5'])
+    expect(store().countBars('Bars', 'Phrases', 4)).toBe(8)
+    expect(counted('Bars')).toEqual(['1', '2', '3', '1', '2', '3', '4', '5'])
   })
 
-  it('counts in groups, and reports the notes it left alone', () => {
+  it('counts in groups, a bar with a note included, and keeps the note', () => {
     load([bar(0), bar(1, { annotation: 'Hook' }), bar(2), bar(3)])
-    expect(store().countBars('Bars', null, 2)).toEqual({ counted: 3, skipped: 1 })
-    expect(field('Bars', 'annotation')).toEqual(['1', 'Hook', '1', '2'])
+    expect(store().countBars('Bars', null, 2)).toBe(4)
+    expect(counted('Bars')).toEqual(['1', '2', '1', '2'])
+    expect(field('Bars', 'annotation')).toEqual([undefined, 'Hook', undefined, undefined])
   })
 
   it('elides the phrase boundary on an elided bar', () => {
@@ -195,6 +231,13 @@ describe('the bar layer', () => {
     const { doc: read } = readDocument(JSON.parse(JSON.stringify(doc)))
     expect(read.layers.map((l) => l.role)).toEqual(['bars', undefined])
   })
+
+  it('loads a hypermeter, reads one written as text, and leaves out one it can\'t read', () => {
+    const doc = makeDoc([makeLayer('A', [bar(0, { hypermeter: { count: 4, becomes: 1 } }), bar(1, { hypermeter: '2' as never }), bar(2, { hypermeter: { count: 0 } })])])
+    const { doc: read, notices } = readDocument(JSON.parse(JSON.stringify(doc)))
+    expect(segmentSpans(read.layers[0]).map((s) => s.hypermeter)).toEqual([{ count: 4, becomes: 1 }, { count: 2 }, undefined])
+    expect(notices.some((n) => n.includes("hypermeter Strata can't read"))).toBe(true)
+  })
 })
 
 describe('bar-layer helpers', () => {
@@ -203,16 +246,9 @@ describe('bar-layer helpers', () => {
     expect(barNumberLabels(2, 0)).toEqual(['0', '1'])
   })
 
-  it('writes counts only over counts or nothing', () => {
-    expect(holdsCount('')).toBe(true)
-    expect(holdsCount('4=1')).toBe(true)
-    expect(holdsCount('Hook')).toBe(false)
-    expect(writeCounts(['1', 'Hook', null], ['2', '3', '4'])).toEqual(['2', 'Hook', '4'])
-  })
-
   it('counts by groups, and in fixed groups where there is none', () => {
     const bars: Array<[number, number]> = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6]]
-    expect(countsByGroups(bars, [[0, 3]], 2)).toEqual(['1', '2', '3', '1', '2', '1'])
+    expect(texts(countsByGroups(bars, [[0, 3]], 2))).toEqual(['1', '2', '3', '1', '2', '1'])
   })
 
   it('finds a boundary on a bar, at its start or its end', () => {
@@ -241,7 +277,7 @@ describe('bars from phrases, phrases from bars', () => {
     const made = segmentSpans(bars)
     expect(made.map((b) => [b.startTime, b.endTime])).toEqual([[8, 10], [10, 12], [12, 14], [14, 16], [16, 18], [18, 20]])
     expect(made.map((b) => b.label)).toEqual(['1', '2', '3', '4', '5', '6'])
-    expect(made.map((b) => b.annotation)).toEqual(['1', '2', '3', '1', '2', '3'])
+    expect(texts(made.map((b) => b.hypermeter))).toEqual(['1', '2', '3', '1', '2', '3'])
     expect(made.map((b) => b.parentId)).toEqual(['p2', 'p2', 'p2', 'p3', 'p3', 'p3'])
     // The first phrase next: its bars go in, and numbering goes on from the bar before.
     store().splitIntoBars(['p1'], 4)
@@ -260,7 +296,7 @@ describe('bars from phrases, phrases from bars', () => {
 
   it('makes phrases from a chunk of counted bars, eliding where a bar is 4=1', () => {
     const counts = ['1', '2', '3', '4', '1', '2', '3', '4=1', '2', '3', '4']
-    const bars = counts.map((c, k) => sp(`b${k}`, k * 2, k * 2 + 2, { annotation: c }))
+    const bars = counts.map((c, k) => sp(`b${k}`, k * 2, k * 2 + 2, { hypermeter: hm(c) }))
     store().loadDocument({ ...makeDoc([{ ...makeLayer('Bars', bars, 0), role: 'bars' as const }, makeLayer('Phrases', [sp('far', 30, 40)], 1)]), duration: 40 })
     // Bars 2 onward only: the first phrase starts at the first selected bar.
     const r = store().phrasesFromCount(bars.slice(2).map((b) => b.id))
@@ -277,7 +313,7 @@ describe('bars from phrases, phrases from bars', () => {
 
   it('splits evenly and finds runs', () => {
     expect(splitEvenly(0, 6, 3)).toEqual([[0, 2], [2, 4], [4, 6]])
-    const runs = phraseRuns([sp('a', 0, 1, { annotation: '1' }), sp('b', 1, 2, { annotation: '2' }), sp('c', 2, 3, { annotation: '2=1' }), sp('d', 3, 4, { annotation: 'Hook' })])
+    const runs = phraseRuns([sp('a', 0, 1, { hypermeter: hm('1') }), sp('b', 1, 2, { hypermeter: hm('2') }), sp('c', 2, 3, { hypermeter: hm('2=1') }), sp('d', 3, 4, { annotation: 'Hook' })])
     expect(runs).toEqual([
       { start: 0, end: 2, ids: ['a', 'b'], elided: false },
       { start: 2, end: 4, ids: ['c', 'd'], elided: true },
@@ -294,7 +330,7 @@ describe('numbering and counting a selection', () => {
     store().loadDocument({ ...makeDoc([{ ...makeLayer('Bars', bars), role: 'bars' as const }]), duration: 12 })
     store().numberBarLayer('Bars', 10, ['b2', 'b3', 'b4'])
     expect(segmentSpans(layer()).map((s) => s.label ?? null)).toEqual([null, null, '10', '11', '12', null])
-    expect(store().countBars('Bars', null, 2, ['b2', 'b3', 'b4'])).toEqual({ counted: 3, skipped: 0 })
-    expect(segmentSpans(layer()).map((s) => s.annotation ?? null)).toEqual([null, null, '1', '2', '1', null])
+    expect(store().countBars('Bars', null, 2, ['b2', 'b3', 'b4'])).toBe(3)
+    expect(texts(segmentSpans(layer()).map((s) => s.hypermeter))).toEqual([null, null, '1', '2', '1', null])
   })
 })

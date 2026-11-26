@@ -1,12 +1,12 @@
 import { create } from 'zustand'
 import { temporal } from 'zundo'
-import type { StrataDocument, Layer, LayerBase, Span, PointMarker, GridSegment, VocabTerm, BlockType, TempoData, TempoLayer } from '@/types/strata'
+import type { StrataDocument, Layer, LayerBase, Span, PointMarker, GridSegment, Hypermeter, VocabTerm, BlockType, TempoData, TempoLayer } from '@/types/strata'
 import { moveBlock, setBlockHidden, widgetBlocks } from '@/lib/widgets'
 import { segmentSpans, newSegmentLayer } from '@/lib/layers'
 import { groupUpTarget, placeSpan, copyOfSpan, layerAbove, DEFAULT_COPY_FIELDS, type CopyField } from '@/lib/groupSpans'
 import { boundaryMoves, followLinks, repairParentLinks, splitTimeNearChildren, relinkToPieces } from '@/lib/linkedBoundaries'
 import { sortedSegments, segmentAt, segmentEnd, extendBack, snapToGrid, barTiling, barLength } from '@/lib/beatGrid'
-import { barNumberLabels, boundaryOnBar, countLabels, countOf, countsByGroups, elideLabels, numberedGridBars, phraseRuns, splitEvenly, writeCounts } from '@/lib/hypermeter'
+import { barNumberLabels, boundaryOnBar, countRun, countsByGroups, elideCounts, numberedGridBars, parseHypermeter, phraseRuns, placeOf, splitEvenly } from '@/lib/hypermeter'
 import { roundTempo, segmentForAdjusting, tempoThroughDownbeat } from '@/lib/metronome'
 import { normalizePlan, runTimes } from '@/lib/normalize'
 import { gridFromBars as makeGridFromBars, spliceGrid } from '@/lib/gridFromBars'
@@ -124,29 +124,29 @@ interface DocumentState {
   // meter. One undo step; returns how many spans it made (0 when there is no
   // tempo to go on, or the layer already has spans in that stretch).
   fillLayerWithBars: (layerId: string, start: number, barsPer: number) => number
-  // Hypermeter and the bar layer (lib/hypermeter.ts). Counts go into span
-  // annotations, never over one that holds other text. Each is one undo step.
+  // Hypermeter and the bar layer (lib/hypermeter.ts). Counts go into each
+  // span's hypermeter, never into its annotation. Each is one undo step.
   // Fill the bar layer, while it is empty, with one span per bar of the grid:
-  // labels are the grid's bar numbers, annotations counted 1 to `group` and
+  // labels are the grid's bar numbers, hypermeter counted 1 to `group` and
   // round again. Returns how many spans it made (0 when the layer isn't the
   // bar layer, has spans, or there is no grid).
   numberBars: (layerId: string, group: number) => number
   // Recount the given spans of a layer 1 to `group`, in time order.
   renumberSpans: (layerId: string, spanIds: string[], group: number) => void
   // Make a span the elided bar ("4=1") and count on from 2 after it, until a
-  // span whose annotation isn't a count.
+  // span with no hypermeter.
   elideSpan: (layerId: string, spanId: string, group: number) => void
   // Make a layer the bar layer, or an ordinary one again. Turning it on takes
   // the role from any other layer; where every label is empty or a count, the
-  // counts move into empty annotations and the labels become bar numbers from 1.
+  // counts move into the spans' hypermeter (where it is empty) and the labels
+  // become bar numbers from 1.
   setBarLayer: (layerId: string, on: boolean) => void
   // Label a layer's spans (or only `spanIds`) with bar numbers from `first`, in time order.
   numberBarLayer: (layerId: string, first: number, spanIds?: string[]) => void
   // Count the bars of a layer (or only `spanIds`): by the spans of layer
   // `byLayerId` (each group counts from 1 to its end), or in groups of `group`
-  // from the first when it is null. Returns how many bars it counted and how
-  // many it skipped for holding a note.
-  countBars: (layerId: string, byLayerId: string | null, group: number, spanIds?: string[]) => { counted: number; skipped: number }
+  // from the first when it is null. Returns how many bars it counted.
+  countBars: (layerId: string, byLayerId: string | null, group: number, spanIds?: string[]) => number
   // Mark elided the boundary another layer has on this bar (lib/hypermeter.ts
   // boundaryOnBar): the end of the span that ends there. The nearest layer
   // above with one there is used. Returns that layer's id, or null if none has one.
@@ -155,7 +155,7 @@ interface DocumentState {
   // recording or all of it). One undo step each.
   // Split each selected span into `barsEach` equal bars on the bar layer (null
   // when there is none; the analyst identifies it first): each bar's parent
-  // is its phrase, its annotation its count, its label its bar number, going on
+  // is its phrase, its hypermeter its count, its label its bar number, going on
   // from the bar before. Refused ('occupied') when the bar layer already has
   // bars in that stretch.
   splitIntoBars: (spanIds: string[], barsEach: number) => { made: number; layerId: string } | 'occupied' | null
@@ -344,23 +344,26 @@ function pickedOnOneLayer(doc: StrataDocument | null, spanIds: string[]): { laye
 }
 
 /**
- * Write `texts` as the annotations of `spans`, one to one, leaving alone any
- * annotation that holds other text (lib/hypermeter.ts writeCounts) unless
- * `force`. Null when nothing changes.
+ * Write `counts` as the hypermeter of `spans`, one to one; a null count clears
+ * it. Annotations are never touched. Null when nothing changes.
  */
-function writeAnnotations(
-  doc: StrataDocument,
-  spans: Span[],
-  texts: Array<string | null | undefined>,
-  force = false,
-): StrataDocument | null {
-  const out = force ? texts : writeCounts(spans.map((s) => s.annotation), texts)
-  const changed = new Map<string, string | null>()
+function writeHypermeter(doc: StrataDocument, spans: Span[], counts: Array<Hypermeter | null | undefined>): StrataDocument | null {
+  const same = (a: Hypermeter | null | undefined, b: Hypermeter | null | undefined) =>
+    (a?.count ?? null) === (b?.count ?? null) && (a?.becomes ?? null) === (b?.becomes ?? null)
+  const changed = new Map<string, Hypermeter | null>()
   spans.forEach((s, k) => {
-    if ((out[k] ?? null) !== (s.annotation ?? null)) changed.set(s.id, out[k] ?? null)
+    if (!same(s.hypermeter, counts[k])) changed.set(s.id, counts[k] ?? null)
   })
   if (!changed.size) return null
-  return patchSpans(doc, new Set(changed.keys()), (s) => ({ ...s, annotation: changed.get(s.id) }))
+  return patchSpans(doc, new Set(changed.keys()), (s) => withHypermeter(s, changed.get(s.id) ?? null))
+}
+
+/** `span` with hypermeter `h`, or without the field when `h` is null. */
+function withHypermeter(span: Span, h: Hypermeter | null): Span {
+  if (h) return { ...span, hypermeter: h }
+  const rest = { ...span }
+  delete rest.hypermeter
+  return rest
 }
 
 /**
@@ -854,8 +857,8 @@ const useDocumentStore = create<DocumentState>()(
         if (!doc || !layer || layer.type !== 'segmentation' || layer.role !== 'bars' || segmentSpans(layer).length > 0) return 0
         const bars = numberedGridBars(sortedSegments(doc.beatGrid), doc.duration)
         if (!bars.length) return 0
-        const counts = countLabels(bars.length, group)
-        const fresh: Span[] = bars.map((b, k) => ({ id: crypto.randomUUID(), startTime: b.start, endTime: b.end, annotation: counts[k] }))
+        const counts = countRun(bars.length, group)
+        const fresh: Span[] = bars.map((b, k) => ({ id: crypto.randomUUID(), startTime: b.start, endTime: b.end, hypermeter: counts[k] }))
         const filled = { ...doc, layers: mapLayer(doc.layers, layerId, (l) => mapSegmentSpans(l, () => fresh)) }
         const next = relabelSpans(filled, new Map(fresh.map((s, k) => [s.id, String(bars[k].bar)])), get().frozenSlugIds)
         set({ document: { ...next, updatedAt: now() } })
@@ -868,7 +871,7 @@ const useDocumentStore = create<DocumentState>()(
         if (!doc || !layer) return
         const run = segmentSpans(layer).filter((s) => spanIds.includes(s.id)).sort((a, b) => a.startTime - b.startTime)
         if (!run.length) return
-        const next = writeAnnotations(doc, run, countLabels(run.length, group))
+        const next = writeHypermeter(doc, run, countRun(run.length, group))
         if (next) set({ document: { ...next, updatedAt: now() } })
       },
 
@@ -879,8 +882,8 @@ const useDocumentStore = create<DocumentState>()(
         const spans = [...segmentSpans(layer)].sort((a, b) => a.startTime - b.startTime)
         const at = spans.findIndex((s) => s.id === spanId)
         if (at < 0) return
-        const after = elideLabels(spans.map((s) => s.annotation), at, group)
-        const next = writeAnnotations(doc, spans.slice(at), after.slice(at), true)
+        const after = elideCounts(spans.map((s) => s.hypermeter), at, group)
+        const next = writeHypermeter(doc, spans.slice(at), after.slice(at))
         if (next) set({ document: { ...next, updatedAt: now() } })
       },
 
@@ -890,12 +893,13 @@ const useDocumentStore = create<DocumentState>()(
         if (!doc || !layer || layer.type !== 'segmentation' || (layer.role === 'bars') === on) return
         let next: StrataDocument = { ...doc, layers: withBarRole(doc.layers, layerId, on) }
         const spans = [...segmentSpans(layer)].sort((a, b) => a.startTime - b.startTime)
-        // Counts written as labels (before counts moved into annotations) move
-        // down, and the labels become bar numbers. Labels that are words stay.
-        if (on && spans.length && spans.every((s) => !s.label?.trim() || countOf(s.label) !== null)) {
+        // Counts written as labels (before counts had a field of their own)
+        // move into the hypermeter, and the labels become bar numbers. Labels
+        // that are words stay.
+        if (on && spans.length && spans.every((s) => !s.label?.trim() || parseHypermeter(s.label) !== null)) {
           if (spans.some((s) => s.label?.trim())) {
-            const moved = new Set(spans.filter((s) => s.label?.trim() && !s.annotation?.trim()).map((s) => s.id))
-            next = patchSpans(next, moved, (s) => ({ ...s, annotation: s.label }))
+            const moved = new Set(spans.filter((s) => s.label?.trim() && !s.hypermeter).map((s) => s.id))
+            next = patchSpans(next, moved, (s) => withHypermeter(s, parseHypermeter(s.label)))
           }
           const numbers = barNumberLabels(spans.length)
           next = relabelSpans(next, new Map(spans.map((s, k) => [s.id, numbers[k]])), get().frozenSlugIds)
@@ -919,22 +923,19 @@ const useDocumentStore = create<DocumentState>()(
       countBars: (layerId, byLayerId, group, spanIds) => {
         const doc = get().document
         const layer = doc?.layers.find((l) => l.id === layerId)
-        const none = { counted: 0, skipped: 0 }
-        if (!doc || !layer || layer.type !== 'segmentation') return none
+        if (!doc || !layer || layer.type !== 'segmentation') return 0
         const spans = [...segmentSpans(layer)]
           .filter((s) => !spanIds || spanIds.includes(s.id))
           .sort((a, b) => a.startTime - b.startTime)
-        if (!spans.length) return none
+        if (!spans.length) return 0
         const by = byLayerId ? doc.layers.find((l) => l.id === byLayerId) : null
         const bars = spans.map((s): [number, number] => [s.startTime, s.endTime])
         const counts = by && by.type === 'segmentation'
           ? countsByGroups(bars, segmentSpans(by).map((g): [number, number] => [g.startTime, g.endTime]), group)
-          : countLabels(spans.length, group)
-        const written = writeCounts(spans.map((s) => s.annotation), counts)
-        const skipped = written.filter((t, k) => t !== counts[k]).length
-        const next = writeAnnotations(doc, spans, written)
+          : countRun(spans.length, group)
+        const next = writeHypermeter(doc, spans, counts)
         if (next) set({ document: { ...next, updatedAt: now() } })
-        return { counted: spans.length - skipped, skipped }
+        return spans.length
       },
 
       elideGroupBoundary: (layerId, spanId) => {
@@ -970,7 +971,7 @@ const useDocumentStore = create<DocumentState>()(
             startTime,
             endTime,
             parentId: p.id,
-            annotation: String(k + 1),
+            hypermeter: { count: k + 1 },
           })),
         )
         layers = mapLayer(layers, barLayer.id, (l) => mapSegmentSpans(l, (spans) => [...spans, ...fresh].sort((a, b) => a.startTime - b.startTime)))
@@ -984,7 +985,7 @@ const useDocumentStore = create<DocumentState>()(
         const picked = pickedOnOneLayer(doc, spanIds)
         if (!doc || !picked) return null
         const { layer: source, spans: bars } = picked
-        if (!bars.some((b) => countOf(b.annotation) !== null)) return null
+        if (!bars.some((b) => placeOf(b.hypermeter) !== null)) return null
         const start = bars[0].startTime
         const end = bars[bars.length - 1].endTime
         let layers = doc.layers
@@ -1044,6 +1045,8 @@ const useDocumentStore = create<DocumentState>()(
         const copies: Span[] = run.map((s, k) => {
           const c: Span = { id: crypto.randomUUID(), startTime: plan.times[k], endTime: plan.times[k + 1] }
           if (s.annotation != null) c.annotation = s.annotation
+          if (s.hypermeter) c.hypermeter = s.hypermeter
+          if (s.showHypermeter !== undefined) c.showHypermeter = s.showHypermeter
           if (s.type != null) c.type = s.type
           return c
         })

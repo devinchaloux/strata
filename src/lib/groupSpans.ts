@@ -110,12 +110,13 @@ export function groupUpTarget(doc: StrataDocument, spanIds: string[]): { above: 
  * commentary start off: copied, they would show twice at the same moment.
  * docs/decisions.md, "Choosing What Copy to Layer Takes".
  */
-export type CopyField = 'label' | 'type' | 'annotation' | 'keyArea' | 'colours' | 'pattern' | 'shape' | 'lyrics' | 'notes' | 'commentary'
+export type CopyField = 'label' | 'type' | 'annotation' | 'hypermeter' | 'keyArea' | 'colours' | 'pattern' | 'shape' | 'lyrics' | 'notes' | 'commentary'
 
 export const COPY_FIELDS: { id: CopyField; name: string }[] = [
   { id: 'label', name: 'Label' },
   { id: 'type', name: 'Type' },
   { id: 'annotation', name: 'Annotation' },
+  { id: 'hypermeter', name: 'Hypermeter' },
   { id: 'keyArea', name: 'Key area' },
   { id: 'colours', name: 'Colors' },
   { id: 'pattern', name: 'Pattern' },
@@ -125,13 +126,14 @@ export const COPY_FIELDS: { id: CopyField; name: string }[] = [
   { id: 'commentary', name: 'Commentary' },
 ]
 
-export const DEFAULT_COPY_FIELDS: CopyField[] = ['label', 'type', 'annotation', 'keyArea', 'colours', 'pattern', 'shape']
+export const DEFAULT_COPY_FIELDS: CopyField[] = ['label', 'type', 'annotation', 'hypermeter', 'keyArea', 'colours', 'pattern', 'shape']
 
 /** The span fields each copy choice carries (commentary is copied by the store, its own way). */
 const COPY_KEYS: Record<Exclude<CopyField, 'commentary'>, (keyof Span)[]> = {
   label: ['label', 'shortLabel', 'slug'],
   type: ['type'],
   annotation: ['annotation'],
+  hypermeter: ['hypermeter', 'showHypermeter'],
   keyArea: ['keyArea'],
   colours: ['fillColor', 'strokeColor'],
   pattern: ['fillPattern'],

@@ -115,8 +115,9 @@ aren't part of this repository.
 - [The metronome clicks the grid and tunes it to a thousandth of a BPM.](#click-track-and-beat-matching-2026-10-24)
 - [Quick setup by tempo fills a layer with a span every N bars.](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24)
 - [A span's length in bars can be stepped or typed, and later boundaries move with it.](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24)
-- [One layer can be the bar layer (`role: "bars"`): each span a bar, its label the bar number, its annotation the hypermetric count.](#the-bar-layer-2026-11-25)
-- [Hypermetric counts go into annotations, inside the shape, and never over an annotation holding other text.](#the-bar-layer-2026-11-25)
+- [One layer can be the bar layer (`role: "bars"`): each span a bar, its label the bar number, its hypermeter its place in a group.](#the-hypermeter-is-its-own-field-2026-11-26)
+- [Any span can carry a hypermeter (`hypermeter: { count, becomes? }`, written "4" or "4=1"), its own field beside the annotation, which it never replaces.](#the-hypermeter-is-its-own-field-2026-11-26)
+- [The hypermeter is drawn centered inside the span, on the annotation's line or with the annotation on a line below, chosen per layer; it shows or hides per layer, and a span's own choice wins.](#the-hypermeter-is-its-own-field-2026-11-26)
 - [The bar layer counts its bars by a layer above (each span from 1) or in groups; selected bars recount from 1; Elide makes a bar "4=1" and offers to elide the boundary above it.](#the-bar-layer-2026-11-25)
 - [Fill from grid fills the bar layer, while it is empty, with the grid's bars, numbered and counted.](#the-bars-menu-waits-for-the-bar-layer-2026-11-26)
 - [Selected spans split into equal bars on the bar layer; selected counted bars make phrases on the layer above. Either works on a chunk or the whole track.](#bars-from-phrases-phrases-from-bars-2026-11-25)
@@ -246,13 +247,13 @@ aren't part of this repository.
 
 By area, in the order the entries were made:
 
-**File format and schema:** [File Format](#file-format) · [Span Data Model](#span-data-model) · [File-Level Metadata](#file-level-metadata) · [Schema](#schema) · [Shared Time Point Pool](#shared-time-point-pool) · [Source References](#source-references) · [Schema Finalization (Phase 0.1)](#schema-finalization-phase-01) · [Schema Revision (Phase 0.1 — Session 2)](#schema-revision-phase-01--session-2) · [Schema Changes (Phase 2 prep, 2026-06-20)](#schema-changes-phase-2-prep-2026-06-20) · [Trust and Format Integrity, Round 1 (2026-09-27)](#trust-and-format-integrity-round-1-2026-09-27) · [File Format Integrity, Round 2 (2026-09-27)](#file-format-integrity-round-2-2026-09-27) · [Fill Patterns (2026-10-24)](#fill-patterns-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05) · [Strata's Version in Help (2026-11-23)](#stratas-version-in-help-2026-11-23)
+**File format and schema:** [File Format](#file-format) · [Span Data Model](#span-data-model) · [File-Level Metadata](#file-level-metadata) · [Schema](#schema) · [Shared Time Point Pool](#shared-time-point-pool) · [Source References](#source-references) · [Schema Finalization (Phase 0.1)](#schema-finalization-phase-01) · [Schema Revision (Phase 0.1 — Session 2)](#schema-revision-phase-01--session-2) · [Schema Changes (Phase 2 prep, 2026-06-20)](#schema-changes-phase-2-prep-2026-06-20) · [Trust and Format Integrity, Round 1 (2026-09-27)](#trust-and-format-integrity-round-1-2026-09-27) · [File Format Integrity, Round 2 (2026-09-27)](#file-format-integrity-round-2-2026-09-27) · [Fill Patterns (2026-10-24)](#fill-patterns-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05) · [Strata's Version in Help (2026-11-23)](#stratas-version-in-help-2026-11-23) · [The Hypermeter Is Its Own Field (2026-11-26)](#the-hypermeter-is-its-own-field-2026-11-26)
 
 **Drawing and editing segments:** [Merge UX (Phase 0.5)](#merge-ux-phase-05) · [Hierarchical Enforcement](#hierarchical-enforcement) · [Form Diagram Editor — Interaction Model](#form-diagram-editor--interaction-model) · [Merge](#merge) · [Form Diagram Editor (Phase 0.4)](#form-diagram-editor-phase-04) · [Phase 2 Implementation (Form Diagram — Milestone A)](#phase-2-implementation-form-diagram--milestone-a) · [Merge Implementation (Phase 2.5)](#merge-implementation-phase-25) · [Form Diagram Shape Model — Adjoin Rework (2026-06-27)](#form-diagram-shape-model--adjoin-rework-2026-06-27) · [Label Collision Strategy (2026-06-27)](#label-collision-strategy-2026-06-27) · [Phase 2.5 Merge — Interaction Completion (2026-06-30)](#phase-25-merge--interaction-completion-2026-06-30) · [Elision Rendering & Boundary-First Shape Control (2026-07-25)](#elision-rendering--boundary-first-shape-control-2026-07-25) · [Keyboard Navigation of Spans (2026-09-27)](#keyboard-navigation-of-spans-2026-09-27) · [Space Plays, B Marks a Boundary (2026-10-01)](#space-plays-b-marks-a-boundary-2026-10-01) · [Paused Clicks Stay Paused; Open Caps Fill and Join; Issue Links (2026-10-01)](#paused-clicks-stay-paused-open-caps-fill-and-join-issue-links-2026-10-01) · [Quick Type (2026-10-01)](#quick-type-2026-10-01) · [Quick Entry (2026-10-02)](#quick-entry-2026-10-02) · [B in an Empty Stretch; Shift+B; Fit to the Grid (2026-10-02)](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02) · [Hidden Labels Show on Hover and Selection (2026-10-02)](#hidden-labels-show-on-hover-and-selection-2026-10-02) · [Inside Text Keeps Clear of Rounded and Angled Ends (2026-10-02)](#inside-text-keeps-clear-of-rounded-and-angled-ends-2026-10-02) · [Quick Setup From the Tempo; a Plainer Grid Menu and Quick Pick (2026-10-24)](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24) · [Typed Phrase Lengths; Quick Pick Fixes and Drawn Shapes (2026-10-24)](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24) · [Muted Fills; Same Label, Same Fill; Legible Text on Any Fill (2026-10-24)](#muted-fills-same-label-same-fill-legible-text-on-any-fill-2026-10-24) · [To End (2026-10-24)](#to-end-2026-10-24) · [Quick Pick Colours, and a Colour-Blind Safe Switch (2026-10-24)](#quick-pick-colours-and-a-colour-blind-safe-switch-2026-10-24) · [Fill Patterns (2026-10-24)](#fill-patterns-2026-10-24) · [Backspace No Longer Deletes Spans (2026-10-24)](#backspace-no-longer-deletes-spans-2026-10-24) · [Copy and Paste Between Spans (2026-10-24)](#copy-and-paste-between-spans-2026-10-24) · [Copy and Paste Several Spans (2026-10-24)](#copy-and-paste-several-spans-2026-10-24) · [Splitting a Parent (2026-10-31)](#splitting-a-parent-2026-10-31) · [The Track's End Shows; Quick Pick Closes; Filling a Letter Family (2026-11-05)](#the-tracks-end-shows-quick-pick-closes-filling-a-letter-family-2026-11-05) · [The Timeline Stops at the Track's End (2026-11-25)](#the-timeline-stops-at-the-tracks-end-2026-11-25)
 
 **Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01) · [Group Spans Into Another Layer (2026-10-24)](#group-spans-into-another-layer-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Choosing What Copy to Layer Takes (2026-10-31)](#choosing-what-copy-to-layer-takes-2026-10-31)
 
-**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25) · [Bars From Phrases, Phrases From Bars (2026-11-25)](#bars-from-phrases-phrases-from-bars-2026-11-25) · [The Tempo Lane (2026-11-25)](#the-tempo-lane-2026-11-25) · [Tempo Becomes Its Own Widget (2026-11-25)](#tempo-becomes-its-own-widget-2026-11-25) · [Normalize (2026-11-25)](#normalize-2026-11-25) · [The Tempo Widget, Settled (2026-11-25)](#the-tempo-widget-settled-2026-11-25) · [Widgets as Blocks (2026-11-25)](#widgets-as-blocks-2026-11-25) · [Segments, Not Form Diagram (2026-11-25)](#segments-not-form-diagram-2026-11-25) · [The Beat Grid From the Bars (2026-11-25)](#the-beat-grid-from-the-bars-2026-11-25) · [The Bars Menu Waits for the Bar Layer (2026-11-26)](#the-bars-menu-waits-for-the-bar-layer-2026-11-26)
+**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25) · [Bars From Phrases, Phrases From Bars (2026-11-25)](#bars-from-phrases-phrases-from-bars-2026-11-25) · [The Tempo Lane (2026-11-25)](#the-tempo-lane-2026-11-25) · [Tempo Becomes Its Own Widget (2026-11-25)](#tempo-becomes-its-own-widget-2026-11-25) · [Normalize (2026-11-25)](#normalize-2026-11-25) · [The Tempo Widget, Settled (2026-11-25)](#the-tempo-widget-settled-2026-11-25) · [Widgets as Blocks (2026-11-25)](#widgets-as-blocks-2026-11-25) · [Segments, Not Form Diagram (2026-11-25)](#segments-not-form-diagram-2026-11-25) · [The Beat Grid From the Bars (2026-11-25)](#the-beat-grid-from-the-bars-2026-11-25) · [The Bars Menu Waits for the Bar Layer (2026-11-26)](#the-bars-menu-waits-for-the-bar-layer-2026-11-26) · [The Hypermeter Is Its Own Field (2026-11-26)](#the-hypermeter-is-its-own-field-2026-11-26)
 
 **Point markers:** [Point Markers](#point-markers) · [Point Markers — Implementation (2026-07-03)](#point-markers--implementation-2026-07-03) · [Point Markers — Redesign (2026-07-04)](#point-markers--redesign-2026-07-04) · [Marker Band, Absent Events, and the Diagram Control Bar (2026-07-24, cont.)](#marker-band-absent-events-and-the-diagram-control-bar-2026-07-24-cont)
 
@@ -5826,3 +5827,68 @@ one: two more homes for bar tools, against "one kind of control per place".
 makes it; the tools then work on that layer. One switch is the only way in,
 so the menu's presence says something true: there is a bar layer.
 `BarsMenu`; `numberBars` and `splitIntoBars` in the store.
+
+---
+
+## The Hypermeter Is Its Own Field (2026-11-26)
+
+*From the maintainer, on counts in annotations: "I'm wondering if it
+shouldn't be written as an annotation, but is supplemental to an annotation.
+It shows up where an annotation exists (I'd argue it should be centered) but
+it doesn't overwrite an annotation." Then: it should be "toggleable as
+visible or not in the graph (including in spans - not as a whole)", and it
+"can go in any span because Lerdahl and Jackendoff had the concept of
+hyperbeats." The structured form, the name and the visibility were chosen
+from options; where the annotation goes was left to the analyst: "Can we
+choose?"*
+
+**Decision.** A span's place in a hypermetric group is its own optional
+field, **`hypermeter: { count, becomes? }`**: `count` the place (whole, from
+1), `becomes` only on an elided hyperbeat, the place it starts in the next
+group. It is written as analysts write it, "4" and "4=1", in the Inspector,
+on the diagram and in the reference; the file holds the numbers. Any span can
+carry one, not only a bar: a span is one hyperbeat at its level (after
+Lerdahl and Jackendoff's metrical levels above the bar). The bar layer's
+tools (Count, Elide, Fill from grid, Split into bars, Phrases from count,
+turning the bar layer on) read and write this field and never touch an
+annotation, so a bar can hold a count and a note at once, and Count no
+longer skips bars with notes. This replaces "Hypermetric counts go into
+annotations" ("The Bar Layer", 2026-11-25).
+
+**Decision.** It is drawn **centered inside the span**, on the inside
+annotation's line, in the label's ink. Where both sit on one line the
+annotation stops short of the count (a centered annotation has no side to
+keep to, so it drops to the line below); with the layer's **Hypermeter
+line** set to **Own** (`rendering.hypermeterLine: "own"`), the annotation
+goes on a line below it. A count with no room is left out whole rather than
+cut. A layer's **Show hypermeter** (`showHypermeter`, on unless turned off)
+shows or hides its spans' counts; a span's own **Show**, in the Inspector
+(`Span.showHypermeter`), wins over its layer. Both settings appear in the
+layer menu once the layer has a count. Hiding is a drawing choice: the count
+stays in the file. Copy to layer and Paste can take the hypermeter
+(Copy to layer by default, as it took counts when they were annotations);
+a merge keeps the first span's, as it keeps the first span's start.
+
+**Not yet.** Files whose counts are annotations are left as they are, at the
+maintainer's word ("Don't worry about existing files right now"); turning
+the bar layer on still moves counts written as labels. How a hypermetric
+reinterpretation beyond elision is written stays open; it would be another
+field of `hypermeter`.
+
+**Rejected.** *A string* (`hypermeter: "4=1"`): flexible for notation not
+yet settled, but every query would parse text, and the reason for the field
+was to make "every elision in the corpus" a query. *An annotation style* for
+counts: the count would still be the annotation's text, so the two would
+still compete for one field. *Showing or hiding per layer only:* the
+maintainer wanted it per span as well. *One placement for everyone:* the
+maintainer asked to choose.
+
+**Why.** The label names a span, the annotation observes something about it,
+and the count says where it falls in a larger meter: three claims, three
+fields. Sharing one field made a note and a count exclude each other, which
+is why Count had to skip bars with notes.
+`Span.hypermeter`, `Span.showHypermeter`, `Layer.showHypermeter` and
+`rendering.hypermeterLine` in the schema; lib/hypermeter.ts (`countRun`,
+`elideCounts`, `placeOf`, `parseHypermeter`, `hypermeterText`,
+`hypermeterShown`); `SpanFigure` in widgets/segmentation/figure.tsx;
+`HypermeterField`; `LayerSettingsPopover`; the store's bar tools.

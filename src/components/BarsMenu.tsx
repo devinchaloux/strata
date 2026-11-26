@@ -16,7 +16,7 @@ import { ChevronDown, ChevronLeft } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useDocumentStore, groupBoundaryOnBar } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
-import { countOf } from '@/lib/hypermeter'
+import { placeOf } from '@/lib/hypermeter'
 import { segmentSpans } from '@/lib/layers'
 import { MENU_TRIGGER } from '@/lib/toolRow'
 import type { Layer, Span } from '@/types/strata'
@@ -82,8 +82,8 @@ export function BarsMenu() {
   const firstNumber = first ?? (Number.isInteger(Number(bars[0]?.label)) ? Number(bars[0]?.label) : 1)
   // An empty bar layer: the rows that act on bars wait for some.
   const none = !allBars.length && 'Fill from grid or split phrases first.'
-  const counted = bars.some((s) => countOf(s.annotation) !== null)
-  const elided = one && (one.annotation ?? '').includes('=') ? groupBoundaryOnBar(doc, barLayer.id, one.id) : null
+  const counted = bars.some((s) => placeOf(s.hypermeter) !== null)
+  const elided = one?.hypermeter?.becomes != null ? groupBoundaryOnBar(doc, barLayer.id, one.id) : null
   const offer = elided && elided.boundary.before.endBoundaryType !== 'elided' ? elided : null
 
   // Closing from code skips onOpenChange, so it resets the view itself: the
@@ -208,14 +208,13 @@ export function BarsMenu() {
               type="button"
               className={`${primary} self-start`}
               onClick={() => {
-                const r = countBars(barLayer.id, byLayer?.id ?? null, barGroup, ids)
-                showToast(r.skipped ? `Counted ${plural(r.counted, 'bar')}, ${r.skipped} notes kept` : `Counted ${plural(r.counted, 'bar')}`)
+                showToast(`Counted ${plural(countBars(barLayer.id, byLayer?.id ?? null, barGroup, ids), 'bar')}`)
                 close()
               }}
             >
               Count {plural(n, 'bar')}
             </button>
-            <Hint>{byLayer ? `Counts start at 1 in each span of ${byLayer.label}.` : 'Counts start again after each group.'} Notes are kept.</Hint>
+            <Hint>{byLayer ? `Counts start at 1 in each span of ${byLayer.label}.` : 'Counts start again after each group.'}</Hint>
           </div>
         )}
 
@@ -262,7 +261,7 @@ export function BarsMenu() {
                 elideSpan(barLayer.id, one.id, barGroup)
                 showToast(one.label ? `Elided bar ${one.label}` : 'Elided the bar')
               },
-              (!one || countOf(one.annotation) === null) && 'Select one counted bar to elide it.',
+              (!one || !one.hypermeter) && 'Select one counted bar to elide it.',
             )}
             {offer &&
               row(`Elide the ${offer.layer.label} boundary too`, `Mark the ${offer.layer.label} boundary on this bar elided.`, () => {
