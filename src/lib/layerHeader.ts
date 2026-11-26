@@ -11,7 +11,7 @@ export const HEADER_WIDTH_RAIL = 34
 // What each row holds besides the name, in px. Reading: the row's padding
 // (px-2) and the column's border. Editing: also the drag grip, the hide
 // button and the settings button, with the gaps between them
-// (FormDiagram.tsx, SortableLayerHeaderRow).
+// (WorkArea.tsx, SortableLayerHeaderRow).
 const CHROME = { reading: 16 + 1, editing: 4 + 13 + 4 + 14 + 4 + 4 + 18 + 6 + 1 }
 // A little room so a name never sits flush against the next thing.
 const SLACK = 6

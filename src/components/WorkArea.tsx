@@ -1,5 +1,5 @@
 /**
- * FormDiagram — the form-diagram *widget*: a bounded block of a widget top bar,
+ * WorkArea — the segmentation *widget*: a bounded block of a widget top bar,
  * the layer-header column, and the stack of form layers, sitting on the shared
  * timeline ruler.
  *
@@ -16,15 +16,21 @@
  * Stacking order is macro-on-top (highest displayOrder at the top).
  */
 
-import { useRef, useState } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import {
+  ArrowDown,
+  ArrowUp,
   ChevronsLeft,
   ChevronsRight,
   Eye,
   EyeOff,
   GripVertical,
   Navigation,
+  Plus,
+  Trash2,
 } from 'lucide-react'
+import { TempoBlock } from '@/widgets/tempo/TempoBlock'
+import { WIDGET_NAMES, widgetBlocks } from '@/lib/widgets'
 import {
   DndContext,
   PointerSensor,
@@ -46,7 +52,7 @@ import { useUIStore, type QuickEntry } from '@/store/uiStore'
 import { useTimeline } from '@/hooks/useTimeline'
 import { computeFitZoom, computePps, offsetShowing, scrollableWidth, timeInView } from '@/lib/timeline'
 import { TimelineAxis } from './TimelineAxis'
-import { FormLayers } from './FormLayers'
+import { SegmentLayers } from './SegmentLayers'
 import { LayerSettingsPopover } from './LayerSettingsPopover'
 import { AddLayerPopover } from './AddLayerPopover'
 import { DiagramControlBar } from './DiagramControlBar'
@@ -55,7 +61,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { QuickSetup } from './QuickSetup'
 import { VIDEO_MINI_WIDTH } from './PlayerDock'
 import { CommentaryPanel } from '@/widgets/written-analysis/CommentaryPanel'
-import { formSpans, analysisLayers, quickSetupLayer } from '@/lib/layers'
+import { segmentSpans, analysisLayers, quickSetupLayer } from '@/lib/layers'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -68,10 +74,10 @@ import {
 } from '@/components/ui/alert-dialog'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { STACK_TOP_PAD, stackHeight, layerPitch } from '@/lib/formShape'
+import { STACK_TOP_PAD, stackHeight, layerPitch } from '@/lib/segmentShape'
 import { markerBandHeight } from '@/lib/markerBand'
 import { HEADER_WIDTH_RAIL, layerHeaderWidth, measureLabel } from '@/lib/layerHeader'
-import type { Layer } from '@/types/strata'
+import type { BlockType, Layer, WidgetBlock } from '@/types/strata'
 import { usePhone } from '@/hooks/usePhone'
 
 const TOP_BAR_HEIGHT = 24
@@ -291,7 +297,7 @@ function LayerHeaders({ layers, collapsed, width }: { layers: Layer[]; collapsed
   // confirming removes the layer, which would unmount a dialog nested in that row
   // mid-close (Radix throws). One hoisted dialog, keyed by the pending layer.
   const [pendingDelete, setPendingDelete] = useState<Layer | null>(null)
-  const pendingSpanCount = pendingDelete ? formSpans(pendingDelete).length : 0
+  const pendingSpanCount = pendingDelete ? segmentSpans(pendingDelete).length : 0
   function confirmDelete() {
     if (pendingDelete) removeLayer(pendingDelete.id)
     setPendingDelete(null)
@@ -510,11 +516,13 @@ function WidgetTopBar({
   onToggleCollapsed,
   hidden,
   zoom,
+  blockControls,
 }: {
   collapsed: boolean
   onToggleCollapsed: () => void
   hidden: Layer[]
   zoom: ZoomControlProps
+  blockControls?: ReactNode
 }) {
   const updateLayer = useDocumentStore((s) => s.updateLayer)
   return (
@@ -556,9 +564,119 @@ function WidgetTopBar({
         </div>
       )}
 
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-1">
         <ZoomControls {...zoom} />
+        {blockControls}
       </div>
+    </div>
+  )
+}
+
+/**
+ * A block's own controls, at the right of its top bar (lib/widgets.ts): move
+ * it up or down, hide it, and, for any block but the Segments block, remove it.
+ * Moving shows only when there is another block to move past.
+ */
+function BlockControls({ type, index, count }: { type: BlockType; index: number; count: number }) {
+  const moveWidget = useDocumentStore((s) => s.moveWidget)
+  const setWidgetHidden = useDocumentStore((s) => s.setWidgetHidden)
+  const removeWidget = useDocumentStore((s) => s.removeWidget)
+  const [confirming, setConfirming] = useState(false)
+  const name = WIDGET_NAMES[type]
+  const icon = 'flex h-5 w-5 items-center justify-center rounded hover:bg-accent disabled:opacity-30 disabled:hover:bg-transparent'
+  const style = { color: 'var(--ink-muted)' }
+  return (
+    <span className="flex items-center gap-0.5">
+      {count > 1 && (
+        <>
+          <span aria-hidden style={{ width: 1, height: 12, background: 'var(--hairline)', margin: '0 3px' }} />
+          <button className={icon} style={style} disabled={index === 0} onClick={() => moveWidget(type, -1)} title={`Move ${name} up`} aria-label={`Move ${name} up`}>
+            <ArrowUp size={13} />
+          </button>
+          <button className={icon} style={style} disabled={index === count - 1} onClick={() => moveWidget(type, 1)} title={`Move ${name} down`} aria-label={`Move ${name} down`}>
+            <ArrowDown size={13} />
+          </button>
+        </>
+      )}
+      <button className={icon} style={style} onClick={() => setWidgetHidden(type, true)} title={`Hide ${name}`} aria-label={`Hide ${name}`}>
+        <EyeOff size={13} />
+      </button>
+      {type !== 'segmentation' &&
+        (confirming ? (
+          <span className="flex items-center gap-1 text-[11px]" style={style}>
+            Remove {name}?
+            <button className="rounded px-1 hover:bg-accent" style={{ color: 'hsl(var(--destructive))' }} onClick={() => removeWidget(type)}>
+              Remove
+            </button>
+            <button className="rounded px-1 hover:bg-accent" onClick={() => setConfirming(false)}>
+              Keep
+            </button>
+          </span>
+        ) : (
+          <button className={icon} style={style} onClick={() => setConfirming(true)} title={`Remove ${name}`} aria-label={`Remove ${name}`}>
+            <Trash2 size={13} />
+          </button>
+        ))}
+    </span>
+  )
+}
+
+/**
+ * Above the blocks, in the editor: the hidden blocks, each brought back with
+ * a click, and Add widget. When the Segments block is hidden, the zoom controls
+ * it carries come here. Nothing shows while every block is shown and nothing
+ * more can be added, so the strip costs no room most of the time.
+ */
+function WidgetStrip({ blocks, zoom }: { blocks: WidgetBlock[]; zoom: ZoomControlProps | null }) {
+  const setWidgetHidden = useDocumentStore((s) => s.setWidgetHidden)
+  const addTempoWidget = useDocumentStore((s) => s.addTempoWidget)
+  const hasBars = useDocumentStore((s) => !!s.document?.layers.some((l) => l.role === 'bars' && l.type === 'segmentation'))
+  const [open, setOpen] = useState(false)
+  const [note, setNote] = useState<string | null>(null)
+  const hidden = blocks.filter((w) => w.hidden && w.type in WIDGET_NAMES)
+  const canAddTempo = !blocks.some((w) => w.type === 'tempo')
+  if (!hidden.length && !canAddTempo && !zoom) return null
+  const chip = 'flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] hover:bg-accent'
+  return (
+    <div className="flex shrink-0 items-center gap-1 pb-1" style={{ color: 'var(--ink-muted)' }}>
+      {hidden.length > 0 && <span className="text-[11px]">Hidden:</span>}
+      {hidden.map((w) => (
+        <button key={w.type} className={chip} onClick={() => setWidgetHidden(w.type, false)} title={`Show ${WIDGET_NAMES[w.type]}`}>
+          <Eye size={11} />
+          {WIDGET_NAMES[w.type]}
+        </button>
+      ))}
+      {canAddTempo && (
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <button className={chip} title="Add a widget: another kind of analysis on the same timeline">
+              <Plus size={11} />
+              Add widget
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="flex w-72 flex-col gap-1 p-2 text-[13px]">
+            <button
+              className="flex flex-col items-start rounded px-2 py-1.5 text-left hover:bg-accent disabled:opacity-50 disabled:hover:bg-transparent"
+              disabled={!hasBars}
+              onClick={() => {
+                if (addTempoWidget()) setOpen(false)
+                else setNote('Make a layer the bar layer first (its ⋯ menu).')
+              }}
+            >
+              <span style={{ color: 'var(--ink-primary)' }}>Tempo</span>
+              <span className="text-[11px]" style={{ color: 'var(--ink-muted)' }}>
+                {hasBars ? 'Each bar’s tempo, read from the bar layer.' : 'Needs a bar layer: turn one on in a layer’s ⋯ menu.'}
+              </span>
+            </button>
+            {note && <p className="px-2 text-[11px]" style={{ color: 'var(--ink-muted)' }}>{note}</p>}
+          </PopoverContent>
+        </Popover>
+      )}
+      {zoom && (
+        <div className="ml-auto">
+          <ZoomControls {...zoom} />
+        </div>
+      )}
     </div>
   )
 }
@@ -620,10 +738,10 @@ function QuickEntrySwitch() {
 }
 
 // ---------------------------------------------------------------------------
-// FormDiagram
+// WorkArea
 // ---------------------------------------------------------------------------
 
-export function FormDiagram() {
+export function WorkArea() {
   const doc = useDocumentStore((s) => s.document)
   const collapsed = useUIStore((s) => s.headersCollapsed)
   const toggleCollapsed = useUIStore((s) => s.toggleHeadersCollapsed)
@@ -655,11 +773,26 @@ export function FormDiagram() {
     isFit: Math.abs(timeline.zoom - fitZoom) < 1e-3,
   }
 
+  // Widgets as blocks (lib/widgets.ts): the Segments block's card and the other
+  // blocks, top to bottom in the file's order, above the one shared ruler.
+  const blocks = widgetBlocks(doc)
+  const segmentsAt = blocks.findIndex((w) => w.type === 'segmentation')
+  const segmentsHidden = !!blocks[segmentsAt]?.hidden
+  const renderBlock = (w: WidgetBlock, i: number) =>
+    w.type === 'tempo' && !w.hidden ? (
+      <TempoBlock
+        key="tempo"
+        headerWidth={headerWidth}
+        reading={reading}
+        controls={reading ? undefined : <BlockControls type="tempo" index={i} count={blocks.length} />}
+      />
+    ) : null
+
   // Macro-on-top; hidden layers are pulled out of the stack (slot reclaimed).
-  // Only form-diagram layers draw here. A layer of a type this build doesn't
+  // Only segmentation layers draw here. A layer of a type this build doesn't
   // know is kept in the document untouched (the loader warns about it).
   const sorted = doc.layers
-    .filter((l) => l.type === 'form-diagram')
+    .filter((l) => l.type === 'segmentation')
     .sort((a, b) => b.displayOrder - a.displayOrder)
   const hiddenByReader = (l: Layer) => reading && readingHidden.includes(l.id)
   const visible = sorted.filter((l) => l.visibility && !hiddenByReader(l))
@@ -669,13 +802,9 @@ export function FormDiagram() {
   // layer does (its Hide button is on the commentary itself).
   const hidden = [...sorted.filter((l) => !l.visibility), ...analysisLayers(doc).filter((l) => !l.visibility)]
 
-  // The widget card must also make room for the marker band that FormLayers
+  // The widget card must also make room for the marker band that SegmentLayers
   // draws below the stack, or the band is clipped by the card.
-  const stackH = stackHeight(visible) + markerBandHeight(
-    doc.pointMarkers,
-    doc.vocabulary.pointMarkerTypes,
-    timeline.pps,
-  )
+  const stackH = stackHeight(visible) + markerBandHeight(doc.pointMarkers, doc.vocabulary.pointMarkerTypes, timeline.pps)
   // As wide as the longest visible name needs (lib/layerHeader.ts). Measuring
   // a handful of names is cheap, so it runs each render rather than in a memo
   // (which couldn't sit below the early return above).
@@ -685,7 +814,7 @@ export function FormDiagram() {
   // A linked analysis with no spans yet gets the quick setup (QuickSetup.tsx).
   const linked = !!doc.source.url || (doc.source.type === 'local' && !!doc.source.filename)
   const quickLayer =
-    !reading && linked && !doc.layers.some((l) => formSpans(l).length > 0) ? quickSetupLayer(doc, activeLayerId) : null
+    !reading && linked && !doc.layers.some((l) => segmentSpans(l).length > 0) ? quickSetupLayer(doc, activeLayerId) : null
 
   return (
     // px-2 insets the whole diagram (widget card + ruler) together, so the
@@ -718,16 +847,18 @@ export function FormDiagram() {
       {/* The widget is a framed card: the top bar (collapse / add / hidden
           chips) and the layer stack read as one object distinct from the shared
           timeline below. The border overlay (absolute, pointer-events-none, z-10)
-          paints above the absolutely-positioned FormLayers SVG so all four edges
+          paints above the absolutely-positioned SegmentLayers SVG so all four edges
           are visible — an inset outline would be covered by the SVG on bottom/right. */}
       {/* Reading can hide the diagram; it stays mounted (hidden) so the
           timeline keeps its measurements. */}
       {/* data-touch-pan: a finger drags the diagram sideways here, and only
           here (hooks/useTouchPan). */}
       <div className={showDiagram ? 'contents' : 'hidden'} data-touch-pan>
+      {!reading && <WidgetStrip blocks={blocks} zoom={segmentsHidden ? zoomProps : null} />}
+      {blocks.slice(0, segmentsAt).map((w, i) => renderBlock(w, i))}
       <div
         data-keeps-selection
-        className="relative shrink-0 overflow-hidden rounded-md bg-(--canvas)"
+        className={`relative shrink-0 overflow-hidden rounded-md bg-(--canvas) ${segmentsHidden ? 'hidden' : ''}`}
         style={{ marginBottom: 4 }}
       >
         {/* Editing controls are off while reading. The reading view keeps
@@ -739,6 +870,7 @@ export function FormDiagram() {
             onToggleCollapsed={toggleCollapsed}
             hidden={hidden}
             zoom={zoomProps}
+            blockControls={<BlockControls type="segmentation" index={segmentsAt} count={blocks.length} />}
           />
         )}
         {/* Reading (and an embed) keeps two controls: the layer names'
@@ -781,7 +913,7 @@ export function FormDiagram() {
         <div className={phoneReading ? 'overflow-y-auto overscroll-contain' : undefined} style={phoneReading ? { maxHeight: PHONE_STACK_MAX } : undefined}>
           <div className="flex w-full" style={{ height: stackH }}>
             <LayerHeaders layers={visible} collapsed={collapsed} width={headerWidth} />
-            <FormLayers layers={visible} />
+            <SegmentLayers layers={visible} />
           </div>
         </div>
         <div
@@ -790,6 +922,8 @@ export function FormDiagram() {
           style={{ border: '1px solid var(--ruler)' }}
         />
       </div>
+
+      {blocks.slice(segmentsAt + 1).map((w, k) => renderBlock(w, segmentsAt + 1 + k))}
 
       {/* Ruler row — offset cell matches header width so zero aligns with spans */}
       <div className="flex shrink-0 border-t" style={{ borderColor: 'var(--hairline)' }}>

@@ -3,7 +3,7 @@
  *
  * A persistent, full-height, collapsible column to the right of the work area; it
  * pushes the diagram, transport, and video to the left. Its CONTENT is contextual:
- * for v1 it hosts the form-diagram's span MetadataPanel. As more widgets arrive,
+ * for v1 it hosts the segmentation's span MetadataPanel. As more widgets arrive,
  * the host mounts the active widget's contextual edit UI here instead.
  *
  * The Inspector owns the chrome — width, border, full height, internal scroll, and

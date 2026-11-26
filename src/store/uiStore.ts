@@ -113,7 +113,7 @@ export interface UIState {
   // that used to go only to the developer console.
   appMessage: AppMessage | null
 
-  // The export dialog (SVG / PNG of the form diagram).
+  // The export dialog (SVG / PNG of the Segments block).
   exportOpen: boolean
 
   // Snapping to the beat grid: the analyst's own default, off until they
@@ -257,9 +257,12 @@ export interface UIState {
   /** The focused stretch: the rest of the diagram is dimmed and playback loops here. */
   focusRange: { start: number; end: number } | null
   setFocusRange: (range: { start: number; end: number } | null) => void
-  /** Bars in a hypermetric group for Number bars, Number from 1 and Elide (lib/hypermeter.ts). Session only. */
+  /** Bars in a hypermetric group for Fill with bars, Count and Elide (lib/hypermeter.ts). Session only. */
   barGroup: number
   setBarGroup: (n: number) => void
+  /** Normalize's preview (lib/normalize.ts): where a run's boundaries would go, drawn over the layer. */
+  normalizePreview: { layerId: string; times: number[] } | null
+  setNormalizePreview: (preview: { layerId: string; times: number[] } | null) => void
   /** Until this time (ms), playback doesn't scroll the timeline: the reader has panned it by hand. */
   followHoldUntil: number
   holdFollow: (ms: number) => void
@@ -456,6 +459,8 @@ const useUIStore = create<UIState>()((set) => ({
   barGroup: 4,
   setFocusRange: (range) => set({ focusRange: range }),
   setBarGroup: (n) => set({ barGroup: Math.max(1, Math.min(16, Math.round(n))) }),
+  normalizePreview: null,
+  setNormalizePreview: (normalizePreview) => set({ normalizePreview }),
   followHoldUntil: 0,
   holdFollow: (ms) => set({ followHoldUntil: Date.now() + ms }),
   playRequest: null,

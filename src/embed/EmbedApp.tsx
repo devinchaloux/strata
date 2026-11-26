@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
-import { FormDiagram } from '@/components/FormDiagram'
+import { WorkArea } from '@/components/WorkArea'
 import { PlayerDock } from '@/components/PlayerDock'
 import { fetchSharedAnalysis, shareUrl } from '@/lib/shareLink'
 import { onlyLayers, readCommand, resolveFocus, viewAround, type EmbedEvent, type EmbedParams } from '@/lib/embed'
@@ -178,7 +178,7 @@ export function EmbedApp({ params }: { params: EmbedParams }) {
         style={{ touchAction: 'pan-y' }}
         {...touchPan}
       >
-        {doc && <FormDiagram />}
+        {doc && <WorkArea />}
       </div>
       {/* PlayerDock's transport bar and video place themselves in this grid
           (embed-transport, embed-video). */}

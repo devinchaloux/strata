@@ -9,9 +9,10 @@
  * boundary placement — slice 3).
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
-import { useDocumentStore } from '@/store/documentStore'
+import { useDocumentStore, groupBoundaryOnBar } from '@/store/documentStore'
+import { NormalizePanel } from '@/components/NormalizePanel'
 import { countOf } from '@/lib/hypermeter'
 import { useUIStore, type InspectorSection } from '@/store/uiStore'
 import { useMerge } from '@/hooks/useMerge'
@@ -24,18 +25,18 @@ import { TimeInput } from './TimeInput'
 import { TypePicker } from './TypePicker'
 import { labelFollowsType, letterFamily, familyLabels } from '@/lib/vocabulary'
 import { blockForSpan, blockForRange } from '@/widgets/written-analysis/commentary'
-import { capFromBoundaryType } from '@/lib/formShape'
+import { capFromBoundaryType } from '@/lib/segmentShape'
 import { slugify } from '@/lib/slug'
 import { ColorPicker } from '@/components/ui/color-picker'
 import { Field, inputClass } from '@/components/Field'
 import { toAccidentals } from '@/lib/musicSymbols'
 import { barAt, barLength, segmentAt, sortedSegments } from '@/lib/beatGrid'
 import { CAP_ICONS } from '@/lib/capIcons'
-import { formSpans, analysisLayers } from '@/lib/layers'
+import { segmentSpans, analysisLayers } from '@/lib/layers'
 import type {
   Span,
   Layer,
-  FormDiagramData,
+  SegmentationData,
   BoundaryType,
   CapStyle,
   LineStyle,
@@ -97,8 +98,8 @@ function findSpans(layers: Layer[], spanIds: string[]): SpanEntry[] {
   const out: SpanEntry[] = []
   for (const id of spanIds) {
     for (const layer of layers) {
-      if (layer.type !== 'form-diagram') continue
-      const span = (layer.data as FormDiagramData).spans.find((s) => s.id === id)
+      if (layer.type !== 'segmentation') continue
+      const span = (layer.data as SegmentationData).spans.find((s) => s.id === id)
       if (span) {
         out.push({ layer, span })
         break
@@ -273,7 +274,7 @@ function TimingGrid({
  */
 function OverlapFields({ layer, span }: { layer: Layer; span: Span }) {
   const updateSpan = useDocumentStore((s) => s.updateSpan)
-  const spans = (layer.data as FormDiagramData).spans
+  const spans = (layer.data as SegmentationData).spans
   const prev = spans.find((s) => s.endTime === span.startTime && s.id !== span.id)
   const next = spans.find((s) => s.startTime === span.endTime && s.id !== span.id)
   const capAt = (s: Span, side: 'start' | 'end') =>
@@ -479,7 +480,7 @@ function SpanLinks({ span }: { span: Span }) {
   const doc = useDocumentStore((s) => s.document)
   const updateSpans = useDocumentStore((s) => s.updateSpans)
   if (!doc) return null
-  const all = doc.layers.flatMap((l) => formSpans(l).map((s) => ({ s, l })))
+  const all = doc.layers.flatMap((l) => segmentSpans(l).map((s) => ({ s, l })))
   const parent = span.parentId ? all.find((e) => e.s.id === span.parentId) : undefined
   const children = all.filter((e) => e.s.parentId === span.id)
   if (!parent && !children.length) return null
@@ -583,7 +584,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   // Its length in bars of the grid where it ends, for the − / + bar buttons.
   const endSeg = segs.length ? segmentAt(segs, Math.max(span.startTime, span.endTime - 1e-3), doc?.duration ?? 0)?.seg : null
   const barsLong = endSeg ? Math.round((duration / barLength(endSeg)) * 10) / 10 : null
-  const siblings = formSpans(layer)
+  const siblings = segmentSpans(layer)
   const position = siblings.findIndex((s) => s.id === span.id) + 1
   // For To end: how many spans come after this one, and whether it already ends the track.
   const after = siblings.filter((s) => s.startTime >= span.endTime - 1e-6).length
@@ -727,6 +728,7 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
         )}
 
         <HypermeterRow layerId={layer.id} spans={[span]} />
+        <BarSetupRow layer={layer} spans={[span]} />
 
         {/* Linked to a parent or children (Group, Copy to layer): boundaries they
             share move together (lib/linkedBoundaries.ts). Unlink frees them. */}
@@ -989,51 +991,173 @@ function commonValue<T>(spans: Span[], get: (s: Span) => T): T | typeof MIXED {
 }
 
 /**
- * Hypermeter (lib/hypermeter.ts): recount a run of selected bars from 1, or
- * make one bar the elided "4=1" and count on from 2. Elide shows only on a bar
- * whose label is already a count, so the Inspector stays quiet elsewhere.
- * The group size is shared with the layer menu's Number bars.
+ * Hypermeter (lib/hypermeter.ts): count a run of selected bars from 1, or
+ * make one bar the elided "4=1" and count on from 2. Counts go into the
+ * annotation, inside the shape. Elide shows only on a bar whose annotation is
+ * already a count, so the Inspector stays quiet elsewhere; on an elided bar
+ * where a layer above has a boundary, it offers to mark that boundary elided
+ * too. The group size is shared with the layer menu.
+ * docs/decisions.md, "Numbering Hypermeter" and "The Bar Layer".
  */
 function HypermeterRow({ layerId, spans }: { layerId: string; spans: Span[] }) {
+  const doc = useDocumentStore((s) => s.document)
   const renumberSpans = useDocumentStore((s) => s.renumberSpans)
   const elideSpan = useDocumentStore((s) => s.elideSpan)
+  const elideGroupBoundary = useDocumentStore((s) => s.elideGroupBoundary)
   const barGroup = useUIStore((s) => s.barGroup)
   const setBarGroup = useUIStore((s) => s.setBarGroup)
   const single = spans.length === 1
-  if (single && countOf(spans[0].label) === null) return null
+  if (single && countOf(spans[0].annotation) === null) return null
+  const elided = single && (spans[0].annotation ?? '').includes('=')
+  const hit = elided && doc ? groupBoundaryOnBar(doc, layerId, spans[0].id) : null
+  const offer = hit && hit.boundary.before.endBoundaryType !== 'elided' ? hit : null
   const button = 'rounded border border-border px-2 py-0.5 text-xs text-foreground hover:bg-accent'
   return (
-    <div className="flex items-center gap-1.5 text-xs">
-      <span className="w-10 shrink-0 text-muted-foreground">Count</span>
-      {single ? (
-        <button
-          className={button}
-          title="This bar ends one group and begins the next: it becomes 4=1, and the bars after it count on from 2"
-          onClick={() => elideSpan(layerId, spans[0].id, barGroup)}
-        >
-          Elide
-        </button>
-      ) : (
-        <button
-          className={button}
-          title="Count these bars 1, 2, 3 … from the first, in groups"
-          onClick={() => renumberSpans(layerId, spans.map((s) => s.id), barGroup)}
-        >
-          Number from 1
-        </button>
+    <div className="flex flex-col gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5 text-xs">
+        <span className="w-10 shrink-0 text-muted-foreground">Count</span>
+        {single ? (
+          <button
+            className={button}
+            title="This bar ends one group and begins the next: its count becomes 4=1, and the bars after it count on from 2"
+            onClick={() => elideSpan(layerId, spans[0].id, barGroup)}
+          >
+            Elide
+          </button>
+        ) : (
+          <button
+            className={button}
+            title="Count these bars 1, 2, 3 … from the first, in groups, into their annotations"
+            onClick={() => renumberSpans(layerId, spans.map((s) => s.id), barGroup)}
+          >
+            Count these {spans.length} from 1
+          </button>
+        )}
+        <span className="text-muted-foreground">in groups of</span>
+        <input
+          type="number"
+          min={1}
+          max={16}
+          value={barGroup}
+          onChange={(e) => setBarGroup(Number(e.target.value) || 1)}
+          aria-label="Bars in a group"
+          title="Bars in a group"
+          className="w-10 rounded border border-border bg-card px-1 py-0.5 text-center text-xs tabular-nums text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
+        />
+      </div>
+      {offer && (
+        <div className="flex items-center gap-1.5 pl-[2.875rem] text-xs">
+          <button
+            className={button}
+            title={`${offer.layer.label} has a boundary on this bar: mark it elided, so one span ends and the next begins in this bar`}
+            onClick={() => elideGroupBoundary(layerId, spans[0].id)}
+          >
+            Elide the {offer.layer.label} boundary too
+          </button>
+        </div>
       )}
-      <span className="text-muted-foreground">in</span>
-      <input
-        type="number"
-        min={1}
-        max={16}
-        value={barGroup}
-        onChange={(e) => setBarGroup(Number(e.target.value) || 1)}
-        aria-label="Bars in a group"
-        title="Bars in a group"
-        className="w-10 rounded border border-border bg-card px-1 py-0.5 text-center text-xs tabular-nums text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
-      />
-      <span className="text-muted-foreground">s</span>
+    </div>
+  )
+}
+
+/**
+ * Quick setup between phrases and bars, on whatever is selected: a chunk of
+ * the recording or all of it. Selected spans that aren't bars split into equal
+ * bars on the bar layer (made below them if there is none); selected counted
+ * bars make phrases, one from each bar counted 1, on the layer above; two or
+ * more bars on the bar layer can be normalized (NormalizePanel).
+ * docs/decisions.md, "Bars From Phrases, Phrases From Bars".
+ */
+function BarSetupRow({ layer, spans }: { layer: Layer; spans: Span[] }) {
+  const splitIntoBars = useDocumentStore((s) => s.splitIntoBars)
+  const phrasesFromCount = useDocumentStore((s) => s.phrasesFromCount)
+  const gridFromBars = useDocumentStore((s) => s.gridFromBars)
+  const barGroup = useUIStore((s) => s.barGroup)
+  const setBarGroup = useUIStore((s) => s.setBarGroup)
+  const [result, setResult] = useState<string | null>(null)
+  const [normalizing, setNormalizing] = useState(false)
+  if (layer.locked || layer.type !== 'segmentation') return null
+  const isBars = layer.role === 'bars'
+  const counted = spans.some((s) => countOf(s.annotation) !== null)
+  const canNormalize = isBars && spans.length >= 2
+  const button = 'rounded border border-border px-2 py-0.5 text-xs text-foreground hover:bg-accent'
+  const n = spans.length
+  return (
+    <div className="flex flex-col gap-1 text-xs">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="w-10 shrink-0 text-muted-foreground">Bars</span>
+        {!isBars && (
+          <>
+            <button
+              className={button}
+              title={`Split ${n === 1 ? 'this span' : `each of these ${n} spans`} into equal bars on the bar layer, numbered and counted`}
+              onClick={() => {
+                const r = splitIntoBars(spans.map((s) => s.id), barGroup)
+                setResult(
+                  r === 'occupied'
+                    ? 'The bar layer already has bars here.'
+                    : r
+                      ? `Made ${r.made} bars, numbered and counted.`
+                      : null,
+                )
+              }}
+            >
+              Split into
+            </button>
+            <input
+              type="number"
+              min={1}
+              max={16}
+              value={barGroup}
+              onChange={(e) => setBarGroup(Number(e.target.value) || 1)}
+              aria-label="Bars in each span"
+              title="Bars in each span"
+              className="w-10 rounded border border-border bg-card px-1 py-0.5 text-center text-xs tabular-nums text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
+            />
+            <span className="text-muted-foreground">bars {n === 1 ? '' : 'each'}</span>
+          </>
+        )}
+        {counted && (
+          <button
+            className={button}
+            title="Make phrases on the layer above: one starts at each bar counted 1, and these bars become their children"
+            onClick={() => {
+              const r = phrasesFromCount(spans.map((s) => s.id))
+              setResult(r ? `Made ${r.made} phrase${r.made === 1 ? '' : 's'} from the count.` : null)
+            }}
+          >
+            Phrases from the count
+          </button>
+        )}
+        {isBars && (
+          <button
+            className={button}
+            title="Make the beat grid from these bars: each a stretch at its own tempo, bars at the same tempo merged. It replaces the grid where they are."
+            onClick={() => {
+              const r = gridFromBars(spans.map((s) => s.id))
+              setResult(r ? `Made the grid here: ${r.stretches} stretch${r.stretches === 1 ? '' : 'es'} from ${r.bars} bar${r.bars === 1 ? '' : 's'}.` : null)
+            }}
+          >
+            Grid from {n === 1 ? 'this bar' : 'these'}
+          </button>
+        )}
+        {canNormalize && (
+          <button
+            className={button}
+            aria-expanded={normalizing}
+            title="Even out these bars: one steady tempo, or a smooth curve that follows a tempo that moves"
+            onClick={() => setNormalizing((v) => !v)}
+          >
+            Normalize…
+          </button>
+        )}
+      </div>
+      {normalizing && <NormalizePanel spans={spans} onClose={() => setNormalizing(false)} />}
+      {result && (
+        <span className="pl-[2.875rem] text-[11px] text-muted-foreground" role="status">
+          {result}
+        </span>
+      )}
     </div>
   )
 }
@@ -1110,6 +1234,9 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
         {entries.every((e) => e.layer.id === entries[0].layer.id) && (
           <div className="mb-4">
             <HypermeterRow layerId={entries[0].layer.id} spans={spans} />
+            <div className="mt-1.5">
+              <BarSetupRow layer={entries[0].layer} spans={spans} />
+            </div>
           </div>
         )}
 

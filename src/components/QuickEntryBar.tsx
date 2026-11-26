@@ -31,8 +31,8 @@ import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { newGestureKey, withHistoryGroup } from '@/store/history'
 import { applySpanType } from '@/store/typeActions'
-import { formSpans } from '@/lib/layers'
-import { capFromBoundaryType, shapeTopY, layerBodyHeight } from '@/lib/formShape'
+import { segmentSpans } from '@/lib/layers'
+import { capFromBoundaryType, shapeTopY, layerBodyHeight } from '@/lib/segmentShape'
 import { quickTypes } from '@/lib/typeSuggestions'
 import { LIBRARIES, letterFamily, familyLabels } from '@/lib/vocabulary'
 import { isInputFocused } from '@/lib/youtube'
@@ -120,9 +120,9 @@ export function QuickEntryBar({
   // The selection, if it all sits in one visible layer.
   const target = useMemo(() => {
     if (!selected.length) return null
-    const idx = layers.findIndex((l) => formSpans(l).some((s) => s.id === selected[0]))
+    const idx = layers.findIndex((l) => segmentSpans(l).some((s) => s.id === selected[0]))
     if (idx < 0 || !layers[idx].visibility) return null
-    const spans = formSpans(layers[idx]).filter((s) => selected.includes(s.id))
+    const spans = segmentSpans(layers[idx]).filter((s) => selected.includes(s.id))
     if (spans.length !== selected.length) return null
     return {
       layer: layers[idx],
@@ -190,7 +190,7 @@ export function QuickEntryBar({
     const letter = letterFamily(target.spans[0])
     const family =
       letter && target.spans.every((s) => letterFamily(s) === letter)
-        ? formSpans(target.layer).filter((s) => letterFamily(s) === letter)
+        ? segmentSpans(target.layer).filter((s) => letterFamily(s) === letter)
         : []
     const selectFamily: Option[] =
       family.length > target.spans.length

@@ -5,7 +5,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { groupPreview, placeSpan, layerAbove, copyOfSpan, DEFAULT_COPY_FIELDS } from '@/lib/groupSpans'
-import { formSpans } from '@/lib/layers'
+import { segmentSpans } from '@/lib/layers'
 import { useDocumentStore } from '@/store/documentStore'
 import { makeDoc, makeLayer, makeSpan } from './fixtures'
 import { resolveMerge } from '@/lib/mergeSpans'
@@ -58,15 +58,15 @@ describe('in the store', () => {
     const phrases = makeLayer('phrases', [makeSpan('p1', 0, 8, { label: 'a' }), makeSpan('p2', 8, 16), makeSpan('p3', 16, 24)], 0)
     store().loadDocument(makeDoc([phrases, makeLayer('sections', [], 1)]))
     const id = store().groupSpans(['p1', 'p2'], { layerId: 'sections' })!
-    expect(formSpans(layer('sections'))).toEqual([{ id, startTime: 0, endTime: 16 }])
-    expect(formSpans(layer('phrases'))).toHaveLength(3)
+    expect(segmentSpans(layer('sections'))).toEqual([{ id, startTime: 0, endTime: 16 }])
+    expect(segmentSpans(layer('phrases'))).toHaveLength(3)
   })
 
   it('copies one span up a layer whole, with a slug of its own', () => {
     const phrases = makeLayer('phrases', [makeSpan('p1', 0, 8, { label: 'Intro', type: 'intro', slug: 'intro' })], 0)
     store().loadDocument(makeDoc([phrases, makeLayer('sections', [], 1)]))
     const id = store().groupIntoLayerAbove(['p1'])!
-    const copy = formSpans(layer('sections'))[0]
+    const copy = segmentSpans(layer('sections'))[0]
     expect(copy).toMatchObject({ id, startTime: 0, endTime: 8, label: 'Intro', type: 'intro' })
     expect(copy.slug).not.toBe('intro')
   })
@@ -75,7 +75,7 @@ describe('in the store', () => {
     const phrases = makeLayer('phrases', [makeSpan('p1', 0, 8)], 0)
     store().loadDocument(makeDoc([phrases, makeLayer('sections', [makeSpan('s1', 0, 16, { label: 'Verse' })], 1)]))
     expect(store().groupIntoLayerAbove(['p1'])).toBeNull()
-    expect(formSpans(layer('sections'))).toEqual([makeSpan('s1', 0, 16, { label: 'Verse' })])
+    expect(segmentSpans(layer('sections'))).toEqual([makeSpan('s1', 0, 16, { label: 'Verse' })])
   })
 
   it('makes a layer just above when there is none', () => {
@@ -86,7 +86,7 @@ describe('in the store', () => {
     expect(layers).toHaveLength(2)
     const made = layers.find((l) => l.id !== 'phrases')!
     expect(made.displayOrder).toBe(1)
-    expect(formSpans(made)).toHaveLength(1)
+    expect(segmentSpans(made)).toHaveLength(1)
   })
 
   it('refuses a locked layer or one of the spans’ own', () => {
@@ -100,13 +100,13 @@ describe('in the store', () => {
     const phrases = makeLayer('phrases', [makeSpan('p1', 0, 8), makeSpan('p2', 8, 16)], 0)
     store().loadDocument(makeDoc([phrases, makeLayer('sections', [], 1)]))
     const id = store().groupSpans(['p1', 'p2'], { layerId: 'sections' })
-    expect(formSpans(layer('phrases')).map((s) => s.parentId)).toEqual([id, id])
+    expect(segmentSpans(layer('phrases')).map((s) => s.parentId)).toEqual([id, id])
   })
 })
 
 describe('linked boundaries', () => {
   const store = () => useDocumentStore.getState()
-  const spansOf = (id: string) => times(formSpans(store().document!.layers.find((l) => l.id === id)!))
+  const spansOf = (id: string) => times(segmentSpans(store().document!.layers.find((l) => l.id === id)!))
   // Phrases of 8 s; sections grouped from them: 0–16 and 16–32.
   function load() {
     const phrases = makeLayer('phrases', [makeSpan('p1', 0, 8), makeSpan('p2', 8, 16), makeSpan('p3', 16, 24), makeSpan('p4', 24, 32)], 0)
@@ -129,14 +129,14 @@ describe('linked boundaries', () => {
 
   it('moves the phrases when the section boundary is dragged', () => {
     load()
-    const [a, b] = formSpans(store().document!.layers.find((l) => l.id === 'sections')!)
+    const [a, b] = segmentSpans(store().document!.layers.find((l) => l.id === 'sections')!)
     store().setAdjacentBoundary('sections', a.id, b.id, 15)
     expect(spansOf('phrases')).toEqual([[0, 8], [8, 15], [15, 24], [24, 32]])
   })
 
   it('carries a move through more than one level', () => {
     load()
-    const secs = formSpans(store().document!.layers.find((l) => l.id === 'sections')!)
+    const secs = segmentSpans(store().document!.layers.find((l) => l.id === 'sections')!)
     store().groupSpans([secs[0].id], { layerId: 'top' })
     store().setAdjacentBoundary('phrases', 'p2', 'p3', 17)
     expect(spansOf('top')).toEqual([[0, 17]])
@@ -161,7 +161,7 @@ describe('linked boundaries', () => {
 describe('copy to layer', () => {
   const store = () => useDocumentStore.getState()
   const layer = (id: string) => store().document!.layers.find((l) => l.id === id)!
-  const span = (layerId: string, id: string) => formSpans(layer(layerId)).find((s) => s.id === id)!
+  const span = (layerId: string, id: string) => segmentSpans(layer(layerId)).find((s) => s.id === id)!
 
   it('makes the copy the parent when it goes up', () => {
     store().loadDocument(makeDoc([makeLayer('phrases', [makeSpan('p1', 0, 8)], 0), makeLayer('sections', [], 1)]))
@@ -184,7 +184,7 @@ describe('copy to layer', () => {
     expect(made.displayOrder).toBe(0)
     expect(layer('sections').displayOrder).toBe(1)
     expect(layer('top').displayOrder).toBe(2)
-    expect(formSpans(made)[0]).toMatchObject({ id, parentId: 's1' })
+    expect(segmentSpans(made)[0]).toMatchObject({ id, parentId: 's1' })
   })
 
   it('doesn’t carry a merge record onto the copy', () => {
@@ -198,13 +198,13 @@ describe('copy to layer', () => {
     store().loadDocument(makeDoc([makeLayer('phrases', [], 0), makeLayer('sections', [makeSpan('s1', 0, 16), makeSpan('s2', 16, 32)], 1)]))
     store().groupSpans(['s1'], { layerId: 'phrases' })
     store().setAdjacentBoundary('sections', 's1', 's2', 14)
-    expect(times(formSpans(layer('phrases')))).toEqual([[0, 14]])
+    expect(times(segmentSpans(layer('phrases')))).toEqual([[0, 14]])
   })
 })
 
 describe('parent links when a parent goes', () => {
   const store = () => useDocumentStore.getState()
-  const parents = () => formSpans(store().document!.layers.find((l) => l.id === 'phrases')!).map((s) => s.parentId ?? null)
+  const parents = () => segmentSpans(store().document!.layers.find((l) => l.id === 'phrases')!).map((s) => s.parentId ?? null)
   // Phrases p1–p4 grouped two by two into sections s1 (0–16) and s2 (16–32).
   function load() {
     const phrases = makeLayer('phrases', [makeSpan('p1', 0, 8), makeSpan('p2', 8, 16), makeSpan('p3', 16, 24), makeSpan('p4', 24, 32)], 0)
@@ -216,7 +216,7 @@ describe('parent links when a parent goes', () => {
 
   it('hands the children of merged parents to the merged span', () => {
     const { s1, s2 } = load()
-    const sections = formSpans(store().document!.layers.find((l) => l.id === 'sections')!)
+    const sections = segmentSpans(store().document!.layers.find((l) => l.id === 'sections')!)
     const { draft } = resolveMerge(sections, () => 'merged')
     store().mergeSpans('sections', [s1, s2], draft)
     expect(parents()).toEqual(['merged', 'merged', 'merged', 'merged'])
@@ -244,7 +244,7 @@ describe('parent links when a parent goes', () => {
 
 describe('splitting a parent', () => {
   const store = () => useDocumentStore.getState()
-  const spansOf = (id: string) => formSpans(store().document!.layers.find((l) => l.id === id)!)
+  const spansOf = (id: string) => segmentSpans(store().document!.layers.find((l) => l.id === id)!)
   // Phrases of 8 s, p1–p4, grouped into one section 0–32.
   function load() {
     const phrases = makeLayer('phrases', [makeSpan('p1', 0, 8), makeSpan('p2', 8, 16), makeSpan('p3', 16, 24), makeSpan('p4', 24, 32)], 0)
@@ -313,7 +313,7 @@ describe('what Copy to layer takes', () => {
     store().loadDocument(makeDoc([makeLayer('phrases', [full], 0), makeLayer('sections', [], 1)]))
     store().setSpanCommentary('v', 'The verse **returns**.')
     const id = store().groupSpans(['v'], { layerId: 'sections' }, ['label', 'commentary'])!
-    const copy = formSpans(store().document!.layers.find((l) => l.id === 'sections')!)[0]
+    const copy = segmentSpans(store().document!.layers.find((l) => l.id === 'sections')!)[0]
     expect(copy).toMatchObject({ id, label: 'Verse' })
     expect(copy.type).toBeUndefined()
     expect(blockForSpan(store().document!, id)?.text).toBe('The verse **returns**.')

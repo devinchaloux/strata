@@ -1,5 +1,5 @@
 /**
- * DiagramControlBar — the form diagram's placement actions, Boundary and
+ * DiagramControlBar — the Segments block's placement actions, Boundary and
  * Marker, each labelled with its keyboard shortcut. They sit in the widget's
  * top bar, beside Add layer (they used to take a strip of their own along the
  * bottom).

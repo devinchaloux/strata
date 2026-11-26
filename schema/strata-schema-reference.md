@@ -14,8 +14,10 @@ flowchart TB
   F --> V["Vocabulary<br/>your own terms, imported packs"]
   F --> L["Layers"]
   F --> P["Point markers<br/>single moments, seen by every layer"]
-  L --> FD["Form diagram layer<br/>spans: label, type, boundaries, part of"]
+  L --> FD["Segmentation layer<br/>spans: label, type, boundaries, part of"]
   L --> C["Commentary layer<br/>writing about a span or a stretch of time"]
+  L --> T["Tempo layer<br/>the tempo of a layer of bars"]
+  F --> W["Widgets<br/>which blocks show, top to bottom"]
 ```
 
 The details about the track, its timing, and its vocabulary sit at the top. The analysis itself lives in the layers, mostly as spans. Commentary sits alongside the spans. Point markers belong to the whole analysis, so every layer sees them. The sections below explain each part.
@@ -71,14 +73,17 @@ Strata stores the grid as a few **stretches** rather than as individual beats. E
 
 Strata works out every beat and bar line from these few numbers. When you correct a tempo, you change one number. Every bar line after it moves with it.
 
+A layer can also mark the bars one by one: the **bar layer** (`role: "bars"` on the layer). Each of its spans is a bar. The span's label is the bar number and its annotation the bar's place in its hypermetric group: `1`, `2`, `3`, and `4=1` for an elided bar, which ends one group and begins the next. Where the grid computes bars from a tempo, the bar layer records them as you heard them, so it suits music whose tempo moves. A document has at most one bar layer. The two meet in both directions: Strata can fill an empty layer with the grid's bars, or make the grid from the bar layer, a stretch per bar at that bar's tempo.
+
 ## Layers
 
 A layer (`layers`) holds one reading of the timeline: large-scale form, sections, phrases, or one framework's view of the piece. A file can hold as many layers as your analysis needs. You can give your layers different focuses, frameworks, and vocabularies within the same analysis.
 
-There are two kinds today:
+There are three kinds today:
 
-- **Form diagram layers** (`type: "form-diagram"`) hold spans, the sections drawn as brackets.
+- **Segmentation layers** (`type: "segmentation"`) hold spans that cut the timeline into consecutive segments, drawn as brackets: sections, phrases, bars, key areas. On screen they make up the **Segments** block. (Before format 3 they were called form diagram layers, `"form-diagram"`.)
 - **A commentary layer** (`type: "written-analysis"`) holds your written commentary. Strata makes one the first time you write commentary. You never manage it directly.
+- **Tempo layers** (`type: "tempo"`) show the tempo of a layer of bars, usually the bar layer. The tempo itself isn't stored: each bar's tempo is worked out from its length, so it always agrees with the bars. The layer keeps only which layer it reads (`data.source`) and how to show it (`data.display`): as marked, smoothed for the drawing (no bar moves), and each boundary's deviation from the smooth curve in milliseconds, with an optional fixed BPM range for comparing recordings.
 
 Within one form layer, spans never overlap. You lay a layer's sections end to end, with gaps where you make no claim. When two readings overlap, put them on two layers.
 
@@ -87,7 +92,7 @@ Each layer also carries its own settings:
 | Setting | What it does | In the file |
 | --- | --- | --- |
 | Identity | A permanent internal code | `id` |
-| Kind | Form diagram or commentary | `type` |
+| Kind | Segmentation, commentary or tempo | `type` |
 | Content | The layer's spans or commentary | `data` |
 | Name and description | The name beside the layer, and an optional longer note on its framework ("Phrase-level hypermeter, 4-bar units") | `label`, `description` |
 | Shown or hidden | Strata leaves hidden layers out of exports | `visibility` |
@@ -96,12 +101,17 @@ Each layer also carries its own settings:
 | Default colors | Fill and outline for spans that have no color of their own, or no color at all (`"none"`) | `fillColorDefault`, `strokeColorDefault` |
 | Shape | Brackets, or thin flat bars (suited to a layer of key areas) | `spanShape` |
 | Library | The vocabulary you usually draw this layer's types from. It's a preference only: you can use any type | `library` |
+| Bar layer | Marks the one layer that has a span for every bar: its labels are bar numbers, its annotations the hypermetric counts ("4=1" for an elided bar) | `role: "bars"` |
 | Filling gaps | Whether a boundary in an empty stretch fills the stretch on both sides or starts a span there, for a layer that begins partway through | `fillGaps` |
 | Text size | Small, medium, or large labels | `fontScale` |
 
 Two more settings have no control in the app yet. When a file sets where a layer's labels and annotations sit (`rendering`), Strata draws them there. Strata reserves `position`, above or below the time ruler, for later.
 
 Strata keeps a layer of a kind it doesn't know unchanged in the file, so a file made by a newer version loses nothing.
+
+### Widgets
+
+Each kind of analysis that draws on the timeline is a **widget**, shown as a block: Segments is one block holding every segmentation layer, and tempo is another holding every tempo layer. All blocks share the one time ruler at the bottom. The file lists the blocks top to bottom (`widgets`), each with its kind (`type`) and whether you hid it (`hidden`), so a reader sees them as you arranged them. A file without the list shows Segments alone, plus tempo if it has a tempo layer.
 
 ## Spans
 
@@ -238,6 +248,7 @@ Each file records the version of the format it uses (`fileFormatVersion`). When 
 
 | Version | What changed |
 | --- | --- |
+| 3 (November 2026) | The form diagram became **segmentation**: its layers' `type` (and its entry in `widgets`) changed from `"form-diagram"` to `"segmentation"`. The name says what every such layer does, whatever the framework: cut the timeline into consecutive segments. Nothing else changed. Strata renames it when it opens an older file. |
 | 2 (October 2026) | Removed three details that were unused or unwanted: a shared pool of time points (`sharedTimePoints`; the beat grid took over its job), a hierarchy setting on each layer that Strata never used (`hierarchicalEnforcement`), and a confidence rating on spans and markers (`confidence`). Strata drops them when it opens a version-1 file. Colors may now be `"none"`. |
 | 1 | The first published format. |
 

@@ -16,7 +16,7 @@ export function useTouchPan() {
 
   function onPointerDown(e: React.PointerEvent) {
     if (e.pointerType !== 'touch') return
-    // Only on the diagram (FormDiagram marks it): a swipe on the commentary
+    // Only on the diagram (WorkArea marks it): a swipe on the commentary
     // above it scrolls the commentary.
     if (!(e.target as Element).closest?.('[data-touch-pan]')) return
     pan.current = { x: e.clientX, offset: useUIStore.getState().scrollOffset, moved: false }

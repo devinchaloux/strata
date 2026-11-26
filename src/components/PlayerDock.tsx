@@ -547,7 +547,7 @@ export function PlayerDock() {
         {!readingView && !embed && <MetronomePopover disabled={!isReady} />}
 
         {/* The point-marker button and the Spacebar context indicator both used
-            to sit here. They moved into the form diagram's control bar
+            to sit here. They moved into the Segments block's control bar
             (2026-07-24): markers now render inside the diagram, so the controls
             that create them belong there too rather than in the player chrome.
             The M shortcut still works globally — this handler stays, only its

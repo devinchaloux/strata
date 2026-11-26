@@ -18,7 +18,7 @@
  */
 
 /** The file format this build writes. */
-export const FILE_FORMAT_VERSION = 2
+export const FILE_FORMAT_VERSION = 3
 
 type Json = Record<string, unknown>
 
@@ -58,6 +58,14 @@ export const MIGRATIONS: Record<number, (doc: Json) => Json> = {
       return { ...layer, data }
     })
     return out
+  },
+
+  // 2 → 3 (docs/decisions.md, "Segments, Not Form Diagram"): the widget once
+  // called the form diagram is segmentation. Its layers' type and its block in
+  // `widgets` change from "form-diagram" to "segmentation"; nothing else does.
+  2: (doc) => {
+    const rename = (x: Json) => (x.type === 'form-diagram' ? { ...x, type: 'segmentation' } : x)
+    return mapList(mapList(doc, 'layers', rename), 'widgets', rename)
   },
 }
 

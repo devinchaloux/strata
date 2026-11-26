@@ -11,7 +11,7 @@ import { create } from 'zustand'
 import { useDocumentStore } from '@/store/documentStore'
 import { newGestureKey, withHistoryGroup } from '@/store/history'
 import { blockForSpan } from '@/widgets/written-analysis/commentary'
-import { formSpans } from '@/lib/layers'
+import { segmentSpans } from '@/lib/layers'
 import type { Span } from '@/types/strata'
 
 export type PasteField = 'label' | 'type' | 'annotation' | 'commentary' | 'lyrics' | 'fill' | 'pattern' | 'shape'
@@ -74,8 +74,8 @@ function inOrder(ids: string[]): Span[] {
   const doc = useDocumentStore.getState().document
   if (!doc) return []
   return doc.layers
-    .filter((l) => l.type === 'form-diagram')
-    .flatMap((l) => formSpans(l).filter((s) => ids.includes(s.id)).map((span) => ({ span, order: l.displayOrder })))
+    .filter((l) => l.type === 'segmentation')
+    .flatMap((l) => segmentSpans(l).filter((s) => ids.includes(s.id)).map((span) => ({ span, order: l.displayOrder })))
     .sort((a, b) => a.span.startTime - b.span.startTime || b.order - a.order)
     .map((e) => e.span)
 }

@@ -39,7 +39,7 @@ describe('format 1 → 2', () => {
     expect(before.fileFormatVersion).toBe(1)
     expect(before.sharedTimePoints?.length).toBeGreaterThan(0)
     const after = up(before)
-    expect(after.fileFormatVersion).toBe(2)
+    expect(after.fileFormatVersion).toBe(FILE_FORMAT_VERSION)
     const text = JSON.stringify(after)
     expect(text).not.toContain('sharedTimePoints')
     expect(text).not.toContain('hierarchicalEnforcement')
@@ -60,3 +60,26 @@ describe('format 1 → 2', () => {
     expect(after.layers[0]).toEqual(layer)
   })
 })
+
+describe('format 2 → 3', () => {
+  const step = (doc: Record<string, unknown>) => MIGRATIONS[2](doc) as { layers: Array<{ type: string }>; widgets?: Array<{ type: string; hidden?: boolean }> }
+
+  it('renames the form diagram to segmentation, in layers and in widgets', () => {
+    const after = step({
+      fileFormatVersion: 2,
+      layers: [{ id: 'a', type: 'form-diagram', data: { spans: [] } }, { id: 'b', type: 'written-analysis', data: { blocks: [] } }],
+      widgets: [{ type: 'tempo' }, { type: 'form-diagram', hidden: true }],
+    })
+    expect(after.layers.map((l) => l.type)).toEqual(['segmentation', 'written-analysis'])
+    expect(after.widgets).toEqual([{ type: 'tempo' }, { type: 'segmentation', hidden: true }])
+  })
+
+  it('takes the bundled version-1 demo all the way to the current format', () => {
+    const demo = JSON.parse(readFileSync(resolve(__dirname, '../../public/demos/alive.strata'), 'utf8'))
+    const after = migrate(demo) as { fileFormatVersion: number; layers: Array<{ type: string }> }
+    expect(after.fileFormatVersion).toBe(FILE_FORMAT_VERSION)
+    expect(after.layers.some((l) => l.type === 'form-diagram')).toBe(false)
+    expect(after.layers.some((l) => l.type === 'segmentation')).toBe(true)
+  })
+})
+

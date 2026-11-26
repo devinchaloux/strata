@@ -42,19 +42,20 @@ export function totalContentWidth(duration: number, zoom: number): number {
 }
 
 /**
- * Empty space kept after the end of the track, in pixels. Without it the end of
- * the track sits on the diagram's right edge at Fit, so a span that ends the
- * track looks cut off, and an open end looks as if it runs on past the track.
+ * Room kept after the end of the track, in pixels: just enough for the closing
+ * line of a span that ends the track (half the widest stroke) not to be clipped.
+ * The timeline stops at the track's end; there is no shaded stretch past it.
+ * docs/decisions.md, "The Timeline Stops at the Track's End".
  */
-export const END_MARGIN_PX = 24
+export const END_MARGIN_PX = 2
 
-/** How far the timeline scrolls: the track plus the margin after its end. */
+/** How far the timeline scrolls: the track plus the stroke room after its end. */
 export function scrollableWidth(duration: number, zoom: number): number {
   return duration > 0 ? totalContentWidth(duration, zoom) + END_MARGIN_PX : 0
 }
 
 /**
- * The zoom at which the whole track, and the margin after it, exactly fills the
+ * The zoom at which the whole track, and the stroke room after it, exactly fills the
  * viewport. Returns 1 when inputs aren't known yet so callers have a safe fallback.
  */
 export function computeFitZoom(duration: number, viewportWidth: number): number {

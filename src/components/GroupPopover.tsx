@@ -15,7 +15,7 @@ import { useEffect, useState } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useDocumentStore, type GroupTarget } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
-import { formSpans } from '@/lib/layers'
+import { segmentSpans } from '@/lib/layers'
 import { groupPreview, layerAbove, COPY_FIELDS, type CopyField } from '@/lib/groupSpans'
 import type { Span } from '@/types/strata'
 
@@ -40,17 +40,17 @@ function useTargets(spans: Span[], copy: boolean) {
   const ids = spans.map((s) => s.id)
   const start = Math.min(...spans.map((s) => s.startTime))
   const end = Math.max(...spans.map((s) => s.endTime))
-  const sources = doc.layers.filter((l) => formSpans(l).some((s) => ids.includes(s.id)))
+  const sources = doc.layers.filter((l) => segmentSpans(l).some((s) => ids.includes(s.id)))
   const top = [...sources].sort((a, b) => b.displayOrder - a.displayOrder)[0]
   const above = top ? layerAbove(doc.layers, top) : null
   const targets = doc.layers
-    .filter((l) => l.type === 'form-diagram' && !sources.includes(l))
+    .filter((l) => l.type === 'segmentation' && !sources.includes(l))
     .sort((a, b) =>
       copy ? b.displayOrder - a.displayOrder : a.id === above?.id ? -1 : b.id === above?.id ? 1 : b.displayOrder - a.displayOrder,
     )
     .map((l) => ({
       layer: l,
-      preview: groupPreview(formSpans(l), start, end),
+      preview: groupPreview(segmentSpans(l), start, end),
       where: copy ? (top && l.displayOrder > top.displayOrder ? 'above' : 'below') : l.id === above?.id ? 'just above' : null,
     }))
   /** Place the span; true when it was made (and is now selected). */

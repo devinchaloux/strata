@@ -27,7 +27,7 @@
     "fileFormatVersion": {
       "type": "integer",
       "minimum": 1,
-      "description": "Version of this file format (2 at present). It goes up when a change means older files must be upgraded to be read correctly; the app upgrades an older file when it opens it (src/lib/migrations.ts)."
+      "description": "Version of this file format (3 at present). It goes up when a change means older files must be upgraded to be read correctly; the app upgrades an older file when it opens it (src/lib/migrations.ts)."
     },
     "createdAt": {
       "type": "string",
@@ -121,6 +121,11 @@
     "showCadenceCaptions": {
       "type": "boolean",
       "description": "Whether cadence-related point marker detail (type abbreviation, harmonic context) renders on the diagram. Point markers aren't layer-owned, so this is document-level rather than per-layer. Omit/absent = true (shown)."
+    },
+    "widgets": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/WidgetBlock" },
+      "description": "The widgets of the work area, top to bottom, each drawn as a block above the shared time ruler. One entry per widget type; a block holds every layer of its type. Absent = segments alone, plus a tempo block if there are tempo layers. A reader adds a block any layer needs, drops duplicates, and keeps an entry whose type it doesn't know."
     }
 
   },
@@ -341,8 +346,8 @@
         },
         "type": {
           "type": "string",
-          "enum": ["form-diagram", "written-analysis"],
-          "description": "Widget type: 'form-diagram' (spans on a timeline) or 'written-analysis' (commentary anchored to spans or times). Possible future types: 'energy-contour', 'instrumentation'. A reader that meets a type it doesn't know should keep the layer unchanged."
+          "enum": ["segmentation", "written-analysis", "tempo"],
+          "description": "Widget type: 'segmentation' (spans that cut the timeline into consecutive segments, drawn as brackets; called the form diagram before format 3), 'written-analysis' (commentary anchored to spans or times) or 'tempo' (the tempo of a layer of bars, read from their lengths). Possible future types: 'energy-contour', 'instrumentation'. A reader that meets a type it doesn't know should keep the layer unchanged."
         },
         "label": {
           "type": "string",
@@ -390,6 +395,11 @@
           "enum": ["bracket", "bar"],
           "description": "How this layer's spans are drawn. Absent or 'bracket' = brackets. 'bar' draws thin flat bars instead — meant for key-area layers (Span.keyArea captions), though any layer may use it. Purely visual; the same span data and editing apply either way."
         },
+        "role": {
+          "type": "string",
+          "enum": ["bars"],
+          "description": "What the layer is for. 'bars' marks the bar layer: one span per bar, each span's label its bar number and its annotation the hypermetric count ('1', '2' …, '4=1' for an elided bar). At most one layer in a document has it; a reader that finds more keeps the first. Absent = an ordinary layer. Unrelated to spanShape 'bar', which is only a way of drawing."
+        },
         "fillGaps": {
           "type": "boolean",
           "description": "Editing behavior: whether a boundary placed in an empty stretch of this layer fills it on both sides (true, the default when absent) or starts a span there and leaves the stretch before it empty (false)."
@@ -410,14 +420,72 @@
       },
       "allOf": [
         {
-          "if": { "properties": { "type": { "const": "form-diagram" } } },
-          "then": { "properties": { "data": { "$ref": "#/$defs/FormDiagramData" } } }
+          "if": { "properties": { "type": { "const": "segmentation" } } },
+          "then": { "properties": { "data": { "$ref": "#/$defs/SegmentationData" } } }
         },
         {
           "if": { "properties": { "type": { "const": "written-analysis" } } },
           "then": { "properties": { "data": { "$ref": "#/$defs/WrittenAnalysisData" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "tempo" } } },
+          "then": { "properties": { "data": { "$ref": "#/$defs/TempoData" } } }
         }
       ]
+    },
+
+    "WidgetBlock": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "description": "One widget in the work area, drawn as a framed block on the shared timeline.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "The widget type the block draws: 'segmentation' or 'tempo'. It holds every layer of that type."
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "Hidden by the analyst: not drawn, and left out of exports. Absent = shown."
+        }
+      }
+    },
+
+    "TempoData": {
+      "type": "object",
+      "required": ["source"],
+      "additionalProperties": false,
+      "description": "A tempo layer's settings. The tempo itself is never stored: each unit's tempo is 60 x its beats / its length in seconds, read from the source layer's spans, with the beats from the beat grid's meter at the unit, else the document's meter, else 4.",
+      "properties": {
+        "source": {
+          "type": "object",
+          "required": ["layerId", "unit"],
+          "additionalProperties": false,
+          "properties": {
+            "layerId": { "type": "string", "description": "The segmentation layer whose spans are the units, usually the bar layer." },
+            "unit": { "type": "string", "enum": ["bar", "beat"], "description": "What each span of the source is." }
+          }
+        },
+        "display": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "smoothing": { "type": ["number", "null"], "description": "Display-only smoothing for the smoothed and deviation views, as log10 of the smoother's lambda (the same smoother as Normalize). Null or absent = automatic: the smoothest at which what is left looks like tapping scatter. It moves no boundary." },
+            "show": {
+              "type": "array",
+              "items": { "type": "string", "enum": ["marked", "smoothed", "deviation"] },
+              "description": "Which views to draw: the tempo as marked, as smoothed, and each boundary's deviation from the smoothed curve in milliseconds. Absent = marked only."
+            },
+            "scale": {
+              "type": ["object", "null"],
+              "required": ["min", "max"],
+              "additionalProperties": false,
+              "properties": { "min": { "type": "number" }, "max": { "type": "number" } },
+              "description": "A fixed BPM range, for comparing recordings. Absent or null = from the data, lowest to highest, out to the nearest 10."
+            }
+          }
+        }
+      }
     },
 
     "WrittenAnalysisData": {
@@ -467,11 +535,11 @@
       }
     },
 
-    "FormDiagramData": {
+    "SegmentationData": {
       "type": "object",
       "required": ["spans"],
       "additionalProperties": false,
-      "description": "Data payload for a form-diagram layer.",
+      "description": "Data payload for a segmentation layer.",
       "properties": {
         "spans": {
           "type": "array",

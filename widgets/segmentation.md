@@ -1,8 +1,8 @@
-# Form Diagram Widget
+# Segmentation Widget
 
-*Widget type: `"form-diagram"` | v1.0 | June 2026*
+*Widget type: `"segmentation"` (called the form diagram, `"form-diagram"`, before file format 3) | v1.0 | June 2026*
 
-The form diagram is the v1 widget and the proof of concept for the Strata widget system. It is the data spine of the analysis: the layer all other widgets reference for span boundaries and section identity.
+Segmentation, shown on screen as **Segments**, is the v1 widget and the proof of concept for the Strata widget system. Each of its layers cuts the timeline into consecutive segments, one claim per stretch, drawn as brackets: form, phrases, bars, key areas, functions. It is the data spine of the analysis: the layer all other widgets reference for span boundaries and section identity.
 
 **Data model reference:** `schema/strata-schema-reference.md`, "Layers" and "Spans".
 
@@ -22,8 +22,8 @@ are the intended shape rather than code you'll find under these names.
 ### 1.1 Identity
 
 ```typescript
-type: "form-diagram"
-label: "Form Diagram"
+type: "segmentation"
+label: "Segments"
 description: "Layered section-level formal analysis synchronized to the timeline."
 ```
 
@@ -47,7 +47,7 @@ createDefaultData: (): FormDiagramData => ({
 
 ### 1.4 contributeTimePoints
 
-The form diagram offers every span's `startTime` and `endTime` as snap targets, once each (adjacent spans share a boundary). Computed from the spans when needed; never stored in the file (see `_contract.md` §1.3).
+The Segments block offers every span's `startTime` and `endTime` as snap targets, once each (adjacent spans share a boundary). Computed from the spans when needed; never stored in the file (see `_contract.md` §1.3).
 
 ```typescript
 contributeTimePoints: (data: FormDiagramData): number[] =>
@@ -59,6 +59,9 @@ Until the widget registry exists, point markers snap to these boundaries directl
 ---
 
 ## 2. Timeline Presence
+
+**As a block.** Segments is one block of the work area, holding every segmentation layer (`docs/decisions.md`, "Widgets as Blocks"). Its top bar ends with ↑ ↓ to move it past another block (when there is one) and a button to hide it; it can't be removed. Hidden, it comes back from a chip above the blocks, which also takes its zoom controls meanwhile. The shared ruler stays at the bottom of all blocks.
+
 
 `TimelinePresenceComponent` renders tick marks on the shared ruler at each span boundary.
 
@@ -76,22 +79,22 @@ x   = timestamp * pps - viewState.scrollOffset   // scrollOffset is in pixels
 
 Ticks outside the visible viewport (`x < 0` or `x > viewportWidth`) are not rendered.
 
-**The end of the track.** The timeline scrolls `END_MARGIN_PX` (24px) past the
-track's end, and Fit leaves that margin on the right (lib/timeline.ts
-`scrollableWidth`, `computeFitZoom`). Past the end, the ruler and the canvas
-are shaded, with a line at the end, so a span that ends the track visibly stops
-there, an open end included.
+**The end of the track.** The timeline stops at the track's end: it scrolls
+only `END_MARGIN_PX` (2px) past it, room for the closing line of a span that
+ends the track, and Fit fills the width with the track (lib/timeline.ts
+`scrollableWidth`, `computeFitZoom`). Nothing past the end is shaded; a dashed
+line in the ruler marks the end.
 
 ---
 
 ## 3. Export Formats
 
-The Export dialog offers three formats for the form diagram, plus the commentary
+The Export dialog offers three formats for the segments, plus the commentary
 exports described in `widgets/written-analysis.md`:
 
 | Format | How it's made |
 |---|---|
-| **SVG** | `src/widgets/form-diagram/exportSvg.tsx` renders the same pure figure the editor draws (`figure.tsx`), with the print theme, for a chosen `[startTime, endTime]` range at a chosen width. Editing-only elements are never part of that figure. |
+| **SVG** | `src/widgets/segmentation/exportSvg.tsx` renders the same pure figure the editor draws (`figure.tsx`), with the print theme, for a chosen `[startTime, endTime]` range at a chosen width. Editing-only elements are never part of that figure. |
 | **PNG** | The same SVG, drawn by the browser at twice the size. If the browser can't make the image, the dialog says so and the SVG download still works. |
 | **PDF** | The same SVG, alone on a print page in a hidden frame (`src/lib/printFigure.ts`): landscape unless the figure is taller than it is wide, scaled to the page width, in Inter. You choose Save as PDF in the browser's print dialog, so the figure stays vector and no PDF library is loaded. |
 
@@ -235,7 +238,13 @@ While the source is linked and no layer has spans, the open area above the diagr
 
 A selected span inside the grid shows its **Length** in bars in the Inspector: a field to type a length in ("this phrase is 2 bars", `setSpanBars`), between − and + buttons. Each changes the span's end by one bar (of the grid where it ends) and moves every later boundary in the layer by the same amount, so the spans after it keep their lengths. The layer still ends where it did: lengthening pushes the last span's start later and drops a span pushed past the end; shortening stretches the last span to fill. On the last span itself, only its end moves, within the track. `resizeSpanByBars` in the store, `rippleSpanEnd` in lib/spanEdit.ts.
 
-**Number bars** (layer settings, beside Fit to grid) fills an empty layer with one span per bar of the grid, labelled 1 to N and round again, N being the group size beside it (4 by default, kept for the session). With bars selected on one layer, the Inspector's **Number from 1** recounts them from 1 in groups of N. On one selected bar whose label is a count, **Elide** makes it the elided bar, labelled with the count it would have had and "=1" ("4=1"), and counts the bars after it on from 2 until a bar whose label isn't a count. One undo step each; the counts are ordinary labels. `numberBars`, `renumberSpans` and `elideSpan` in the store, lib/hypermeter.ts.
+**The bar layer.** A switch in a form layer's settings, **Bar layer**, makes it the document's one bar layer (`role: "bars"`; turning it on elsewhere turns it off here). Each span is a bar: the label is its bar number, the annotation its hypermetric count, drawn inside the shape. Turning it on numbers the bars from 1 when every label is empty or a count (counts written as labels move into empty annotations; labels that are words stay). On the bar layer the settings offer **Number from bar** (a first bar number, 0 for a pickup) and **Count**: *by* a form layer above with spans, where each of its spans counts its bars from 1 to its end (a bar belongs to the span its middle falls in), or *in groups of* N (4 by default, kept for the session). On an empty layer, **Fill with the grid's bars** makes one span per bar of the grid, labelled with the grid's bar numbers, counted in groups of N, and makes it the bar layer. With bars selected on one layer, the Inspector's **Count these N from 1** recounts them in groups of N. On one selected bar whose annotation is a count, **Elide** makes it the elided bar, its count the one it would have had and "=1" ("4=1"), and counts the bars after it on from 2 until one whose annotation isn't a count; on an elided bar where a layer above has a boundary at the bar's start or end, **Elide the … boundary too** marks the end of the span ending there elided. Counts never overwrite an annotation that holds other text. One undo step each. `setBarLayer`, `numberBarLayer`, `countBars`, `numberBars`, `renumberSpans`, `elideSpan` and `elideGroupBoundary` in the store, lib/hypermeter.ts, `BarLayerSettings`.
+
+**Bars from phrases, phrases from bars.** Both work on the selected spans, a chunk of the track or all of it. With spans selected on one unlocked layer that isn't the bar layer, the Inspector's **Split into N bars** (N shared with the group size) divides each selected span into N equal bars on the bar layer, or on a new "Bars" layer just below theirs, made the bar layer, when there is none. Each bar's `parentId` is its span, its annotation its count 1 to N, its label its bar number, going on from the nearest numbered bar before. Refused, with a note, when the bar layer has bars in that stretch. With bars selected whose annotations hold counts, **Phrases from the count** makes a phrase from the first selected bar and from each bar counted 1 ("1" or "4=1"), on the layer just above when it is empty in that stretch, else on a new "Phrases" layer just above. The bars become the phrases' children; a phrase starting on an elided bar marks the end of the one before it elided. One undo step each. `splitIntoBars` and `phrasesFromCount` in the store, `splitEvenly` and `phraseRuns` in lib/hypermeter.ts.
+
+**The beat grid from the bars.** On the bar layer the settings offer **Beat grid from the bars** (every bar), and with bars of the bar layer selected the Inspector's Bars row offers **Grid from these**. Each bar becomes a grid stretch from its start at 60 × beats ÷ its length BPM (beats from the grid's meter there, else the document's), bars that follow one another within 0.01 BPM of the first of a stretch merging into it. A run's first stretch takes `firstBar` from its first bar's label when that is a whole number; a run's last stretch ends where the run does. The grid is replaced over the bars' stretch only: a stretch running in stops at its start; one running on resumes at its first downbeat at or after the end. Tempos are exact. One undo step. `gridFromBars` in the store, lib/gridFromBars.ts.
+
+**Normalize.** With two or more bars of the bar layer selected, one after another, the Inspector's Bars row offers **Normalize…**, which opens a panel below it. **Steady** spaces the run's boundaries evenly between its first and last (one tempo, shown in BPM, with a warning when that moves a boundary more than a quarter of a bar). **Smooth** (three bars or more) fits the boundary times with a Whittaker smoother on third differences, its amount on a **Smoothing** range (log10 λ from −2 to 6), starting at **Auto**: the largest λ at which the leftovers' lag-1 correlation is still ≤ 0. The ends never move. While the panel is open, amber dashed lines on the layer show the new inner boundaries (`uiStore.normalizePreview`), and the panel reports how many boundaries move, the largest move, and the scatter (RMS distance of the marks from the result). **Apply** moves the bars, carrying moves through parent and child links, or, with **Into a new layer**, copies the run (label, annotation, type) normalized to "<layer> (normalized)" just below, reusing that layer where it has nothing in the stretch. One undo step. `normalizeBars` in the store, lib/normalize.ts, `NormalizePanel`.
 
 **To end** (beside the End time in the Inspector, and **Extend to the end** on right-click) runs a span to the end of the track and removes the spans after it in its layer, one undo step: for an ending that stops being metered, where a quick setup laid out spans the music doesn't have. Their commentary survives, anchored to their times. `extendToEnd` in the store, `extendSpanToEnd` in lib/spanEdit.ts.
 
@@ -262,6 +271,6 @@ Merged spans receive a new UUID. The source IDs are stored in `mergedFrom: strin
 > *Superseded 2026-06-22 (see `docs/decisions.md` → the hierarchical enforcement
 > reversal entry). The per-layer definition below is no longer the design.*
 
-Hierarchical enforcement is redefined as a **cross-layer nesting** constraint scoped to the **form-diagram widget type**: when enabled, a span must nest within the boundaries a coarser layer has established (each layer's boundary set must be a superset of the layer above it; bottom = finest, top = coarsest; coextensive spans allowed). It is therefore not a per-layer flag; the per-layer `FormDiagramData.hierarchicalEnforcement` field, never used, was removed in file format 2, and the setting will get its own home if the feature is built. The underlying data is unchanged either way — the schema always supports overlapping spans.
+Hierarchical enforcement is redefined as a **cross-layer nesting** constraint scoped to the **segmentation widget type**: when enabled, a span must nest within the boundaries a coarser layer has established (each layer's boundary set must be a superset of the layer above it; bottom = finest, top = coarsest; coextensive spans allowed). It is therefore not a per-layer flag; the per-layer `FormDiagramData.hierarchicalEnforcement` field, never used, was removed in file format 2, and the setting will get its own home if the feature is built. The underlying data is unchanged either way — the schema always supports overlapping spans.
 
 Activation requires user confirmation (warning about what is being given up). The warning is presented by the editor shell, not by the widget. The constraint is intentionally strict and off by default — the default is the theoretical statement.

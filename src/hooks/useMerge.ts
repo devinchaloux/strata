@@ -18,11 +18,11 @@ import { useMemo } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { mergeEligibility, resolveMerge, type MergeEligibility } from '@/lib/mergeSpans'
-import type { FormDiagramData, Layer, Span } from '@/types/strata'
+import type { SegmentationData, Layer, Span } from '@/types/strata'
 
-/** Spans of a layer (empty for non-form-diagram layers). */
+/** Spans of a layer (empty for non-segmentation layers). */
 function spansOf(layer: Layer): Span[] {
-  return layer.type === 'form-diagram' ? (layer.data as FormDiagramData).spans : []
+  return layer.type === 'segmentation' ? (layer.data as SegmentationData).spans : []
 }
 
 export function useMerge() {

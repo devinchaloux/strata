@@ -7,11 +7,11 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { useDocumentStore } from '@/store/documentStore'
 import { copySpans, pasteCheck, pasteOnto, useSpanClipboard } from '@/store/spanClipboard'
 import { blockForSpan } from '@/widgets/written-analysis/commentary'
-import { formSpans } from '@/lib/layers'
+import { segmentSpans } from '@/lib/layers'
 import { makeDoc, makeLayer, makeSpan } from './fixtures'
 
 const store = () => useDocumentStore.getState()
-const span = (id: string) => store().document!.layers.flatMap(formSpans).find((s) => s.id === id)!
+const span = (id: string) => store().document!.layers.flatMap(segmentSpans).find((s) => s.id === id)!
 
 beforeEach(() => {
   store().loadDocument(

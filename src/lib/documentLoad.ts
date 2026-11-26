@@ -17,7 +17,8 @@
  * layer the app can't draw is kept in the document and saved back unchanged.
  */
 
-import type { StrataDocument, Layer, Span, FormDiagramData, GridSegment } from '@/types/strata'
+import type { StrataDocument, Layer, Span, SegmentationData, GridSegment, WidgetBlock } from '@/types/strata'
+import { widgetBlocks } from '@/lib/widgets'
 import { findOverlaps } from '@/lib/spanEdit'
 import { formatTime } from '@/lib/youtube'
 import { FILE_FORMAT_VERSION, migrate } from '@/lib/migrations'
@@ -66,10 +67,10 @@ export function readDocument(raw: unknown): LoadResult {
 
   // ── 2 & 3. Validate and normalize, layer by layer ──
   const spanIds = new Set<string>()
-  const layers = input.layers.map((raw, i) => readLayer(raw, i, spanIds, notices))
+  const layers = oneBarLayer(input.layers.map((raw, i) => readLayer(raw, i, spanIds, notices)))
   const lastSpanEnd = Math.max(
     0,
-    ...layers.flatMap((l) => (l.type === 'form-diagram' ? l.data.spans.map((s) => s.endTime) : [])),
+    ...layers.flatMap((l) => (l.type === 'segmentation' ? l.data.spans.map((s) => s.endTime) : [])),
   )
 
   const now = new Date().toISOString()
@@ -101,6 +102,11 @@ export function readDocument(raw: unknown): LoadResult {
     layers,
   } as StrataDocument
   if (input.beatGrid !== undefined) doc.beatGrid = readBeatGrid(input.beatGrid, notices)
+  // Widgets as blocks: a list, deduplicated, with the blocks its layers need.
+  // A file that never had one gets none, unless a tempo layer needs a block.
+  if (Array.isArray(input.widgets) || layers.some((l) => l.type === 'tempo')) {
+    doc.widgets = widgetBlocks({ widgets: Array.isArray(input.widgets) ? input.widgets.filter(isObj) as unknown as WidgetBlock[] : [], layers })
+  }
 
   return { doc: fillMissingSlugs(doc), notices }
 }
@@ -112,7 +118,7 @@ export function readDocument(raw: unknown): LoadResult {
  * are never changed: something may already point at them.
  */
 function fillMissingSlugs(doc: StrataDocument): StrataDocument {
-  const spans = doc.layers.flatMap((l) => (l.type === 'form-diagram' ? l.data.spans : []))
+  const spans = doc.layers.flatMap((l) => (l.type === 'segmentation' ? l.data.spans : []))
   const markers = doc.pointMarkers
   if (![...spans, ...markers].some((s) => s.label && !s.slug)) return doc
   const taken = new Set([...spans, ...markers].map((s) => s.slug).filter((x): x is string => !!x))
@@ -133,12 +139,31 @@ function fillMissingSlugs(doc: StrataDocument): StrataDocument {
   return {
     ...doc,
     layers: doc.layers.map((l) =>
-      l.type === 'form-diagram'
+      l.type === 'segmentation'
         ? { ...l, data: { ...l.data, spans: l.data.spans.map((s) => (assigned.has(s.id) ? { ...s, slug: assigned.get(s.id)! } : s)) } }
         : l,
     ),
     pointMarkers: markers.map((m) => (assigned.has(m.id) ? { ...m, slug: assigned.get(m.id)! } : m)),
   }
+}
+
+/**
+ * A document has at most one bar layer (Layer.role 'bars'): the first form
+ * layer that claims it keeps it, and any other loses it. A role this version
+ * doesn't know is kept as it is, so saving round-trips it.
+ */
+function oneBarLayer(layers: Layer[]): Layer[] {
+  let found = false
+  return layers.map((l) => {
+    if (l.role !== 'bars') return l
+    if (l.type === 'segmentation' && !found) {
+      found = true
+      return l
+    }
+    const rest = { ...l }
+    delete rest.role
+    return rest
+  })
 }
 
 function readLayer(raw: unknown, index: number, spanIds: Set<string>, notices: string[]): Layer {
@@ -159,8 +184,20 @@ function readLayer(raw: unknown, index: number, spanIds: Set<string>, notices: s
 
   if (raw.type === 'written-analysis') return readAnalysisLayer(base, raw, where)
 
-  if (raw.type !== 'form-diagram') {
-    // Kept verbatim so saving round-trips it; FormDiagram only draws its own type.
+  if (raw.type === 'tempo') {
+    // Tempo reads another layer; one with no readable source is kept as it is.
+    const data = isObj(raw.data) ? raw.data : {}
+    const source = isObj(data.source) ? data.source : null
+    if (source && typeof source.layerId === 'string') {
+      const unit = source.unit === 'beat' ? 'beat' : 'bar'
+      return { ...base, type: 'tempo', data: { ...data, source: { layerId: source.layerId, unit } } } as Layer
+    }
+    notices.push(`"${label}" is a tempo layer that doesn't say which layer to read. It is kept in the file unchanged.`)
+    return base as unknown as Layer
+  }
+
+  if (raw.type !== 'segmentation') {
+    // Kept verbatim so saving round-trips it; WorkArea only draws its own type.
     notices.push(
       `"${label}" is a ${String(raw.type)} layer, which this version of Strata can't display yet. It is kept in the file unchanged.`,
     )
@@ -184,8 +221,8 @@ function readLayer(raw: unknown, index: number, spanIds: Set<string>, notices: s
     )
   }
 
-  const formData: FormDiagramData = { ...data, spans }
-  return { ...base, type: 'form-diagram', data: formData } as Layer
+  const segmentData: SegmentationData = { ...data, spans }
+  return { ...base, type: 'segmentation', data: segmentData } as Layer
 }
 
 /** A written-analysis layer: commentary blocks, each anchored to a span or a time range. */

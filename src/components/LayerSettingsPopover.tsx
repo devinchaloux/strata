@@ -2,11 +2,11 @@
  * LayerSettingsPopover — the `⋯` layer settings menu in the expanded track header.
  *
  * Controls: rename, description, library, fill/stroke default colors, size,
- * key-area shape (thin bars), whether B fills gaps, fit to the grid, lock, and
- * delete.
+ * key-area shape (thin bars), whether B fills gaps, fit to the grid, the bar
+ * layer (BarLayerSettings), lock, and delete.
  *
  * Hierarchical enforcement is deliberately NOT here: it was redefined as a
- * cross-layer nesting constraint scoped to the form-diagram widget (not per-layer),
+ * cross-layer nesting constraint scoped to the segmentation widget (not per-layer),
  * so its control belongs at the widget level and its enforcement logic is its own
  * future work item. See docs/decisions.md and _private/open-questions.md.
  *
@@ -21,14 +21,13 @@ import { useState } from 'react'
 import { Lock, Trash2 } from 'lucide-react'
 import { MoreHorizontal } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
-import { useUIStore } from '@/store/uiStore'
-import { formSpans } from '@/lib/layers'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { Switch } from '@/components/ui/switch'
+import { BarLayerSettings } from '@/components/BarLayerSettings'
 import { ColorPicker } from '@/components/ui/color-picker'
 import { cn } from '@/lib/utils'
 import { LIBRARIES } from '@/lib/vocabulary'
@@ -49,16 +48,6 @@ export function LayerSettingsPopover({
   const snapLayerToGrid = useDocumentStore((s) => s.snapLayerToGrid)
   const hasGrid = useDocumentStore((s) => (s.document?.beatGrid?.length ?? 0) > 0)
   const [fitResult, setFitResult] = useState<string | null>(null)
-  const numberBars = useDocumentStore((s) => s.numberBars)
-  const barGroup = useUIStore((s) => s.barGroup)
-  const setBarGroup = useUIStore((s) => s.setBarGroup)
-  const [numberResult, setNumberResult] = useState<string | null>(null)
-  const isEmpty = layer.type === 'form-diagram' && formSpans(layer).length === 0
-
-  function number() {
-    const made = numberBars(layer.id, barGroup)
-    setNumberResult(made ? `Made ${made} bars, counted in ${barGroup}s.` : 'The grid has no bars to number.')
-  }
 
   function fit(unit: 'bar' | 'beat') {
     const moved = snapLayerToGrid(layer.id, unit)
@@ -266,47 +255,13 @@ export function LayerSettingsPopover({
             )}
           </div>
 
-          {/* Number bars (lib/hypermeter.ts): one span per bar of the grid,
-              counted in groups. Only on an empty layer, so it never writes
-              over spans; recounting existing bars is the Inspector's. */}
-          {layer.type === 'form-diagram' && (
-            <div className="flex flex-col gap-1">
-              <div
-                className="flex items-center justify-between gap-2"
-                title="Fill this layer with one span per bar, counted 1 to 4 and round again"
-              >
-                <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
-                  Number bars
-                </span>
-                <span className="flex items-center gap-1">
-                  <input
-                    type="number"
-                    min={1}
-                    max={16}
-                    value={barGroup}
-                    onChange={(e) => setBarGroup(Number(e.target.value) || 1)}
-                    aria-label="Bars in a group"
-                    title="Bars in a group"
-                    className="w-10 rounded border px-1 py-0.5 text-center text-xs tabular-nums"
-                    style={{ borderColor: 'var(--hairline)', color: 'var(--ink-primary)' }}
-                  />
-                  <button
-                    type="button"
-                    disabled={!hasGrid || !isEmpty}
-                    onClick={number}
-                    className="rounded border px-2 py-0.5 text-xs hover:bg-accent disabled:opacity-50"
-                    style={{ borderColor: 'var(--hairline)', color: 'var(--ink-primary)' }}
-                  >
-                    Fill
-                  </button>
-                </span>
-              </div>
-              {(!hasGrid || !isEmpty || numberResult) && (
-                <span className="text-[11px]" role="status" style={{ color: 'var(--ink-muted)' }}>
-                  {!hasGrid ? 'Needs a beat grid.' : numberResult ?? 'Fills an empty layer. To recount bars, select them.'}
-                </span>
-              )}
-            </div>
+          {/* The bar layer: numbering and counting its bars, or filling an
+              empty layer with the grid's bars (BarLayerSettings). */}
+          {layer.type === 'segmentation' && (
+            <>
+              <div className="h-px" style={{ background: 'var(--hairline)' }} />
+              <BarLayerSettings layer={layer} />
+            </>
           )}
 
           <div className="h-px" style={{ background: 'var(--hairline)' }} />

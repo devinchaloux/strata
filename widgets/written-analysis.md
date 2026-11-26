@@ -27,7 +27,7 @@ lookup, re-anchoring, the text format, HTML export) and `CommentaryPanel.tsx`
 
 ## 2. Reading
 
-- The panel sits in the open area above the form diagram and shows a moment
+- The panel sits in the open area above the blocks and shows a moment
   as a **stack**: in each visible layer, from the top of the diagram down
   (rotation → section → phrase), the span sounding then, with its layer, label,
   times, annotation and commentary. Lower levels are indented, so the nesting

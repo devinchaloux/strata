@@ -18,14 +18,14 @@ import type {
   StrataDocument,
   WrittenAnalysisLayer,
 } from '@/types/strata'
-import { formSpans, analysisLayers } from '@/lib/layers'
+import { segmentSpans, analysisLayers } from '@/lib/layers'
 import { spanTypeName } from '@/lib/vocabulary'
 import { slugLinksForExport } from './markdownText'
 
 /** Blank-line separator used when two pieces of commentary are combined. */
 export const JOIN = '\n\n'
 
-const allSpans = (doc: StrataDocument): Span[] => doc.layers.flatMap(formSpans)
+const allSpans = (doc: StrataDocument): Span[] => doc.layers.flatMap(segmentSpans)
 
 /** The time range an anchor covers now, or null for a span that no longer exists. */
 export function anchorRange(doc: StrataDocument, anchor: BlockAnchor): [number, number] | null {
@@ -328,10 +328,10 @@ export interface StackRow {
 export function stackAt(doc: StrataDocument, t: number): StackRow[] {
   const visibleBlocks = allBlocks(doc).filter(({ layer }) => layer.visibility)
   return doc.layers
-    .filter((l) => l.type === 'form-diagram' && l.visibility)
+    .filter((l) => l.type === 'segmentation' && l.visibility)
     .sort((a, b) => b.displayOrder - a.displayOrder)
     .flatMap((layer) => {
-      const span = formSpans(layer).find((s) => t >= s.startTime && t < s.endTime)
+      const span = segmentSpans(layer).find((s) => t >= s.startTime && t < s.endTime)
       if (!span) return []
       const block = visibleBlocks.find(({ block: b }) => 'spanId' in b.anchor && b.anchor.spanId === span.id)?.block
       return [{ layer, span, block }]

@@ -1,4 +1,4 @@
-import { formSpans } from '@/lib/layers'
+import { segmentSpans } from '@/lib/layers'
 import { describe, it, expect } from 'vitest'
 import { parseStrataFile, createEmptyDocument } from '@/lib/fileIO'
 import { FILE_FORMAT_VERSION } from '@/lib/migrations'
@@ -74,7 +74,7 @@ describe('JSON roundtrip', () => {
     doc.layers = [
       {
         id: 'layer-1',
-        type: 'form-diagram',
+        type: 'segmentation',
         label: 'Large-scale form',
         visibility: true,
         locked: false,
@@ -99,7 +99,7 @@ describe('JSON roundtrip', () => {
       { id: 'pm-1', timestamp: 16.0, label: 'Midpoint', slug: 'midpoint', flagged: true },
     ]
     const parsed = parseStrataFile(JSON.stringify(doc, null, 2))
-    expect(formSpans(parsed.layers[0])[0].label).toBe('Intro')
+    expect(segmentSpans(parsed.layers[0])[0].label).toBe('Intro')
     expect(parsed.pointMarkers[0].flagged).toBe(true)
     expect(parsed).toEqual(doc)
   })
@@ -115,7 +115,7 @@ describe('createEmptyDocument', () => {
     expect(doc.title).toBe('Untitled Analysis')
     // One empty form layer, so B has somewhere to place the first boundary.
     expect(doc.layers).toHaveLength(1)
-    expect(doc.layers[0]).toMatchObject({ type: 'form-diagram', label: 'Form', data: { spans: [] } })
+    expect(doc.layers[0]).toMatchObject({ type: 'segmentation', label: 'Form', data: { spans: [] } })
     expect(doc.fileFormatVersion).toBe(FILE_FORMAT_VERSION)
     expect(doc.strataVersion).toBe('0.1.0')
   })

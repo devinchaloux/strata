@@ -17,9 +17,9 @@ describe('svgSize', () => {
 
 describe('figurePrintHtml', () => {
   it('puts the figure alone on a landscape page', () => {
-    const html = figurePrintHtml(wide, 'alive-form-diagram')
+    const html = figurePrintHtml(wide, 'alive-segmentation')
     const page = new DOMParser().parseFromString(html, 'text/html')
-    expect(page.title).toBe('alive-form-diagram')
+    expect(page.title).toBe('alive-segmentation')
     expect(page.body.children).toHaveLength(1)
     expect(page.body.querySelector('svg text')?.textContent).toBe('Rotation 1')
     expect(html).toContain('size: landscape')

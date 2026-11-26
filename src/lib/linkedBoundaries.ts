@@ -13,7 +13,7 @@
  * docs/decisions.md, "Group Spans Into Another Layer".
  */
 import type { StrataDocument, Span } from '@/types/strata'
-import { formSpans } from '@/lib/layers'
+import { segmentSpans } from '@/lib/layers'
 import { findOverlaps, MIN_SPAN_WIDTH } from '@/lib/spanEdit'
 
 const EPS = 1e-6
@@ -73,18 +73,18 @@ export function followLinks(doc: StrataDocument, layerId: string, moves: Move[])
     const from = layers.find((l) => l.id === fromId)
     if (!from) continue
     for (const other of layers) {
-      if (done.has(other.id) || other.type !== 'form-diagram') continue
-      const there = formSpans(other)
-      const pairs = formSpans(from).flatMap((x) =>
+      if (done.has(other.id) || other.type !== 'segmentation') continue
+      const there = segmentSpans(other)
+      const pairs = segmentSpans(from).flatMap((x) =>
         there.filter((y) => x.parentId === y.id || y.parentId === x.id).map((y) => [x, y] as const),
       )
       if (!pairs.length) continue
       const crossing = fromMoves.filter(([old, now]) => pairs.some(([x, y]) => hasEdgeAt(x, now) && hasEdgeAt(y, old)))
       if (!crossing.length) continue
-      const next = applyMoves(formSpans(other), crossing)
+      const next = applyMoves(segmentSpans(other), crossing)
       if (!next) continue
       done.add(other.id)
-      layers = layers.map((l) => (l.id === other.id && l.type === 'form-diagram' ? { ...l, data: { ...l.data, spans: next } } : l))
+      layers = layers.map((l) => (l.id === other.id && l.type === 'segmentation' ? { ...l, data: { ...l.data, spans: next } } : l))
       queue.push([other.id, crossing])
     }
   }
@@ -100,7 +100,7 @@ export function followLinks(doc: StrataDocument, layerId: string, moves: Move[])
  * Fields Cut".
  */
 export function repairParentLinks(doc: StrataDocument): StrataDocument {
-  const spans = doc.layers.flatMap((l) => formSpans(l))
+  const spans = doc.layers.flatMap((l) => segmentSpans(l))
   const live = new Set(spans.map((s) => s.id))
   if (!spans.some((s) => s.parentId && !live.has(s.parentId))) return doc
   const heirOf = new Map<string, string>()
@@ -108,7 +108,7 @@ export function repairParentLinks(doc: StrataDocument): StrataDocument {
   return {
     ...doc,
     layers: doc.layers.map((l) =>
-      l.type === 'form-diagram' && l.data.spans.some((s) => s.parentId && !live.has(s.parentId))
+      l.type === 'segmentation' && l.data.spans.some((s) => s.parentId && !live.has(s.parentId))
         ? {
             ...l,
             data: {
@@ -137,7 +137,7 @@ export const SPLIT_SNAP_SEC = 0.5
  */
 export function splitTimeNearChildren(doc: StrataDocument, parent: Span, time: number): number {
   const edges = doc.layers
-    .flatMap((l) => formSpans(l))
+    .flatMap((l) => segmentSpans(l))
     .filter((s) => s.parentId === parent.id)
     .flatMap((s) => [s.startTime, s.endTime])
     .filter((t) => t > parent.startTime + EPS && t < parent.endTime - EPS)
@@ -159,7 +159,7 @@ export function splitTimeNearChildren(doc: StrataDocument, parent: Span, time: n
  * piece on a tie), or is unlinked if none overlaps it.
  */
 export function relinkToPieces(doc: StrataDocument, parentId: string, pieceIds: string[]): StrataDocument {
-  const spans = doc.layers.flatMap((l) => formSpans(l))
+  const spans = doc.layers.flatMap((l) => segmentSpans(l))
   const pieces = pieceIds.map((id) => spans.find((s) => s.id === id)).filter((s): s is Span => !!s)
   const overlap = (a: Span, b: Span) => Math.max(0, Math.min(a.endTime, b.endTime) - Math.max(a.startTime, b.startTime))
   const choose = (child: Span): string | null => {
@@ -169,7 +169,7 @@ export function relinkToPieces(doc: StrataDocument, parentId: string, pieceIds: 
   }
   let changed = false
   const layers = doc.layers.map((l) => {
-    if (l.type !== 'form-diagram' || !l.data.spans.some((s) => s.parentId === parentId)) return l
+    if (l.type !== 'segmentation' || !l.data.spans.some((s) => s.parentId === parentId)) return l
     const next = l.data.spans.map((s) => {
       if (s.parentId !== parentId) return s
       const to = choose(s)

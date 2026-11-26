@@ -12,7 +12,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Bold, Code, Heading, Italic, Link2, List, ListOrdered, Quote } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { formSpans } from '@/lib/layers'
+import { segmentSpans } from '@/lib/layers'
 import { PALETTE_SYMBOLS } from '@/lib/musicSymbols'
 import { replaceSelection, toggleLinePrefix, toggleWrap, type Edit } from '@/lib/textEdit'
 import type { StrataDocument } from '@/types/strata'
@@ -49,7 +49,7 @@ function LinkPicker({ doc, onPick }: { doc: StrataDocument; onPick: (slug: strin
   const [query, setQuery] = useState('')
   const targets = useMemo(() => {
     const spans = doc.layers.flatMap((l) =>
-      formSpans(l)
+      segmentSpans(l)
         .filter((s) => s.slug)
         .map((s) => ({ slug: s.slug!, name: s.label || s.slug!, where: `${l.label} · ${mmss(s.startTime)}`, time: s.startTime })),
     )

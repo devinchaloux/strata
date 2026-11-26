@@ -217,7 +217,7 @@ export function createEmptyDocument(): StrataDocument {
     layers: [
       {
         id: crypto.randomUUID(),
-        type: 'form-diagram',
+        type: 'segmentation',
         label: 'Form',
         visibility: true,
         locked: false,

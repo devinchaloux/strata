@@ -25,13 +25,13 @@ import {
   BAR_HEIGHT,
   LAYER_GAP,
   STACK_TOP_PAD,
-} from '@/lib/formShape'
+} from '@/lib/segmentShape'
 import type { Layer } from '@/types/strata'
 
 function makeLayer(spanShape?: 'bracket' | 'bar'): Layer {
   return {
     id: `layer-${spanShape ?? 'bracket'}-${Math.random()}`,
-    type: 'form-diagram',
+    type: 'segmentation',
     label: 'L',
     visibility: true,
     locked: false,

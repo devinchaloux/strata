@@ -23,11 +23,11 @@ export interface TimelineAxisProps {
 }
 
 // Presentational ruler. The timeline state lives in useTimeline, lifted to
-// FormDiagram so the zoom controls can render in the widget top bar (off the
+// WorkArea so the zoom controls can render in the widget top bar (off the
 // time labels) — the ruler just draws ticks, cursor, and the scrollbar.
 //
 // Point markers used to live in a lane above the ticks. They now render inside
-// the form diagram (FormLayers) so they belong to the exported graphic rather
+// the Segments block (SegmentLayers) so they belong to the exported graphic rather
 // than the editor chrome — see docs/decisions.md, 2026-07-24.
 export function TimelineAxis({
   containerRef,
@@ -103,16 +103,6 @@ export function TimelineAxis({
                 height={height}
                 fill="hsl(var(--background))"
               />
-
-              {/* Past the end of the track: shaded, with a line at the end. */}
-              <rect
-                x={duration * pps}
-                y={0}
-                width={Math.max(0, svgWidth - duration * pps)}
-                height={height}
-                fill="hsl(var(--muted))"
-              />
-              <line x1={duration * pps} y1={0} x2={duration * pps} y2={height} stroke="hsl(var(--border))" />
 
               {/* Bar-number strip: segment bands, then bar numbers */}
               {strip > 0 &&

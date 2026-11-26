@@ -8,7 +8,7 @@ import type { StrataDocument, Layer, Span } from '@/types/strata'
 export function makeLayer(id: string, spans: Span[] = [], displayOrder = 0): Layer {
   return {
     id,
-    type: 'form-diagram',
+    type: 'segmentation',
     label: id,
     visibility: true,
     locked: false,

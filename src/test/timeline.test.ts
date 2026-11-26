@@ -45,6 +45,11 @@ describe('computeFitZoom', () => {
     expect(scrollableWidth(240, fit)).toBeCloseTo(1200)
   })
 
+  it('leaves only room for a closing stroke past the end, no margin to scroll into', () => {
+    expect(END_MARGIN_PX).toBeGreaterThanOrEqual(1.25) // half the widest span stroke
+    expect(END_MARGIN_PX).toBeLessThanOrEqual(2)
+  })
+
   it('long track on a narrow viewport fits below 100%', () => {
     expect(computeFitZoom(600, 800)).toBeLessThan(1)
   })

@@ -19,7 +19,7 @@ export type SourceType = 'youtube' | 'local'
 export type BoundaryType = 'definite' | 'gradual' | 'elided'
 
 /**
- * Visual cap (end-tail) style of a form diagram bracket — the analyst's drawing
+ * Visual cap (end-tail) style of a segment bracket — the analyst's drawing
  * choice, decoupled from the analytical `BoundaryType`. The top line is always
  * flat (domes/arcs are retired). See docs/decisions.md "Form Diagram Shape Model".
  */
@@ -141,7 +141,7 @@ export interface Span {
                                   // Shown above-shape in place of the full label when the full
                                   // label doesn't fit; never itself truncated. No algorithmic
                                   // abbreviation is attempted — if neither fits, nothing renders
-                                  // (a small marker indicates a hidden label; see FormLayers).
+                                  // (a small marker indicates a hidden label; see SegmentLayers).
   slug?: string | null           // From the label; unique per document, frozen once saved (lib/slug.ts)
   startTime: number              // Recording time, seconds (float)
   endTime: number                // Must exceed startTime
@@ -204,7 +204,7 @@ export interface PointMarker {
 }
 
 // ---------------------------------------------------------------------------
-// Form Diagram Data (Widget Payload)
+// Segmentation Data (Widget Payload)
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
@@ -232,10 +232,10 @@ export interface LayerRenderingConfig {
 }
 
 // ---------------------------------------------------------------------------
-// Form Diagram Data (Widget Payload)
+// Segmentation Data (Widget Payload)
 // ---------------------------------------------------------------------------
 
-export interface FormDiagramData {
+export interface SegmentationData {
   spans: Span[]
 }
 
@@ -267,10 +267,10 @@ export interface WrittenAnalysisData {
 }
 
 /** Widget types. Extend this union when adding a widget. */
-export type LayerType = 'form-diagram' | 'written-analysis'
+export type LayerType = 'segmentation' | 'written-analysis'
 
 /** Union of all widget data payload types. */
-export type LayerData = FormDiagramData | WrittenAnalysisData
+export type LayerData = SegmentationData | WrittenAnalysisData
 // Future: | EnergyContourData | InstrumentationData
 
 /** Fields every layer carries, whatever its widget type (the typed envelope). */
@@ -313,6 +313,14 @@ export interface LayerBase {
    */
   fillGaps?: boolean
   /**
+   * What the layer is for, where Strata offers tools for it. 'bars' marks the
+   * bar layer: one span per bar, its label the bar number and its annotation
+   * the hypermetric count (lib/hypermeter.ts). At most one layer in a document
+   * has it. Absent = an ordinary layer. Not to be confused with spanShape
+   * 'bar', which is only a way of drawing.
+   */
+  role?: 'bars'
+  /**
    * Text size for this layer's labels and annotations: sm (9.5 / 8.5 px),
    * md (11 / 9, the default when absent) or lg (13 / 11). Uniform within a
    * layer; there is no per-span font size.
@@ -320,14 +328,47 @@ export interface LayerBase {
   fontScale?: 'sm' | 'md' | 'lg'
 }
 
-export type FormDiagramLayer = LayerBase & { type: 'form-diagram'; data: FormDiagramData }
+/**
+ * A tempo layer (widgets/tempo.md): the tempo of a source layer of bars (or,
+ * later, beats), read from its spans' lengths and never stored. Only what to
+ * read and how to show it is kept.
+ */
+export interface TempoData {
+  /** The layer whose spans are the units, and what they are. */
+  source: { layerId: string; unit: 'bar' | 'beat' }
+  display?: {
+    /** Display-only smoothing for the smoothed and deviation views, log10 of lambda (lib/normalize.ts); null or absent = automatic. Moves no boundary. */
+    smoothing?: number | null
+    /** Which views to draw. Absent = ['marked']. */
+    show?: Array<'marked' | 'smoothed' | 'deviation'>
+    /** A fixed BPM range, for comparing recordings; absent = from the data. */
+    scale?: { min: number; max: number } | null
+  }
+}
+
+export type SegmentationLayer = LayerBase & { type: 'segmentation'; data: SegmentationData }
 export type WrittenAnalysisLayer = LayerBase & { type: 'written-analysis'; data: WrittenAnalysisData }
+export type TempoLayer = LayerBase & { type: 'tempo'; data: TempoData }
 
 /**
  * A layer is tagged by its widget type, so checking `layer.type` tells
  * TypeScript which `data` shape it holds.
  */
-export type Layer = FormDiagramLayer | WrittenAnalysisLayer
+export type Layer = SegmentationLayer | WrittenAnalysisLayer | TempoLayer
+
+/** The widget types that draw as a block on the timeline (WidgetBlock). */
+export type BlockType = 'segmentation' | 'tempo'
+
+/**
+ * One widget in the work area, drawn as a block: one framed card on the shared
+ * timeline, holding every layer of its type. StrataDocument.widgets lists them
+ * top to bottom.
+ */
+export interface WidgetBlock {
+  type: BlockType
+  /** Hidden by the analyst: not drawn, and left out of exports. Absent = shown. */
+  hidden?: boolean
+}
 
 // ---------------------------------------------------------------------------
 // Top-Level Document
@@ -372,4 +413,13 @@ export interface StrataDocument {
    * is document-level rather than per-layer. Omit/absent = true (shown).
    */
   showCadenceCaptions?: boolean
+
+  /**
+   * The widgets of the work area, top to bottom, each drawn as a block above
+   * the shared ruler: one per widget type, holding that type's layers
+   * (docs/decisions.md, "Widgets as Blocks"). Absent = the Segments block alone,
+   * plus a tempo block if there are tempo layers. The reader adds any block a
+   * layer needs and drops duplicates.
+   */
+  widgets?: WidgetBlock[]
 }

@@ -5,7 +5,7 @@
  * picker and the quick-type bar on the diagram.
  */
 import type { StrataDocument } from '@/types/strata'
-import { formSpans } from '@/lib/layers'
+import { segmentSpans } from '@/lib/layers'
 import {
   LIBRARIES,
   findTerm,
@@ -32,10 +32,10 @@ export function typeSuggestions(doc: StrataDocument, kind: TermKind, layerId?: s
   const custom = kind === 'span' ? doc.vocabulary.spanTypes : doc.vocabulary.pointMarkerTypes
   const resolve = (ids: string[]) => ids.map((id) => findTerm(id, kind, custom)).filter((t): t is PickerTerm => !!t)
   const layer = layerId ? doc.layers.find((l) => l.id === layerId) : undefined
-  const layerIds = layer ? typesInOrder(formSpans(layer).map((s) => ({ type: s.type, time: s.startTime }))) : []
+  const layerIds = layer ? typesInOrder(segmentSpans(layer).map((s) => ({ type: s.type, time: s.startTime }))) : []
   const fileIds =
     kind === 'span'
-      ? typesInOrder(doc.layers.flatMap(formSpans).map((s) => ({ type: s.type, time: s.startTime })))
+      ? typesInOrder(doc.layers.flatMap(segmentSpans).map((s) => ({ type: s.type, time: s.startTime })))
       : typesInOrder(doc.pointMarkers.map((m) => ({ type: m.type, time: m.timestamp })))
   // The file's own terms not yet used come last; imported packs have their own group.
   const unusedOwn = custom.filter((t) => !t.source && !fileIds.includes(t.id) && !isLetterId(t.id)).map((t) => t.id)

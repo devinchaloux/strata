@@ -40,6 +40,7 @@ aren't part of this repository.
 - [Lyrics, annotation and notes are separate span fields; lyrics stay in the file.](#shared-links-treat-lyrics-like-any-other-view-2026-10-03)
 - [`fileFormatVersion` changes only when the meaning of existing data changes; files upgrade on load, one step at a time, and are never downgraded.](#file-format-integrity-round-2-2026-09-27)
 - [Format 2 removed `sharedTimePoints`, `hierarchicalEnforcement` and `confidence`.](#schema-review-three-fields-cut-2026-10-31)
+- [The widget once called the form diagram is segmentation (`type: "segmentation"`, "Segments" on screen); format 3 renamed it.](#segments-not-form-diagram-2026-11-25)
 - [The JSON Schema is the published contract; `src/types/strata.ts` mirrors it, and a test checks what the app writes against it.](#file-format-integrity-round-2-2026-09-27)
 - [Every document enters through one reader, which refuses what it can't interpret, names where, and keeps layers it can't draw.](#trust-and-format-integrity-round-1-2026-09-27)
 - [Saved files record the app version that wrote them.](#file-format-integrity-round-2-2026-09-27)
@@ -66,7 +67,7 @@ aren't part of this repository.
 - [Text on a fill meets 4.5:1.](#muted-fills-same-label-same-fill-legible-text-on-any-fill-2026-10-24)
 - [A colour-blind safe switch is the viewer's preference and never changes the file.](#quick-pick-colours-and-a-colour-blind-safe-switch-2026-10-24)
 - [A span can carry one of four faint fill patterns.](#fill-patterns-2026-10-24)
-- [The timeline keeps a shaded margin past the track's end.](#the-tracks-end-shows-quick-pick-closes-filling-a-letter-family-2026-11-05)
+- [The timeline stops at the track's end, with no shaded margin past it.](#the-timeline-stops-at-the-tracks-end-2026-11-25)
 
 **Drawing and editing spans**
 
@@ -114,7 +115,16 @@ aren't part of this repository.
 - [The metronome clicks the grid and tunes it to a thousandth of a BPM.](#click-track-and-beat-matching-2026-10-24)
 - [Quick setup by tempo fills a layer with a span every N bars.](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24)
 - [A span's length in bars can be stepped or typed, and later boundaries move with it.](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24)
-- [Number bars fills an empty layer with one span per bar, counted in groups; selected bars recount from 1, and Elide makes a bar "4=1".](#numbering-hypermeter-2026-11-20)
+- [One layer can be the bar layer (`role: "bars"`): each span a bar, its label the bar number, its annotation the hypermetric count.](#the-bar-layer-2026-11-25)
+- [Hypermetric counts go into annotations, inside the shape, and never over an annotation holding other text.](#the-bar-layer-2026-11-25)
+- [The bar layer counts its bars by a layer above (each span from 1) or in groups; selected bars recount from 1; Elide makes a bar "4=1" and offers to elide the boundary above it.](#the-bar-layer-2026-11-25)
+- [Fill with the grid's bars makes an empty layer the bar layer, numbered and counted.](#the-bar-layer-2026-11-25)
+- [Selected spans split into equal bars on the bar layer; selected counted bars make phrases on the layer above. Either works on a chunk or the whole track.](#bars-from-phrases-phrases-from-bars-2026-11-25)
+- [Tempo is its own widget (`type: "tempo"`), reading the bar layer (or a beat layer); tempo is derived, never stored.](#tempo-becomes-its-own-widget-2026-11-25)
+- [A widget is a block: one kind of analysis with its own tools, drawn as a card on the shared timeline. The file lists the blocks top to bottom (`widgets`); the analyst moves them with ↑ ↓, hides and shows them, adds them, and removes any but Segments.](#widgets-as-blocks-2026-11-25)
+- [Tempo is a block of its own; its display choices are saved in the file; deviation is in milliseconds; the scale comes from the data unless fixed; it reads a source layer only.](#the-tempo-widget-settled-2026-11-25)
+- [Normalize evens out a run of selected bars, Steady or Smooth, with a preview; the run's ends stay, and it can copy to a new layer instead.](#normalize-2026-11-25)
+- [The beat grid can be made from the bar layer, or from selected bars: a stretch per bar at its own tempo, equal tempos merged, replacing the grid only where the bars are.](#the-beat-grid-from-the-bars-2026-11-25)
 - [Fit boundaries to the grid moves a layer's boundaries to bars or beats.](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02)
 - [Playback rates are 0.5×, 0.75×, 1× and 1.25×; rewind goes to 0:00.](#player-chrome-phase-03)
 - [The play bar's clock reads m:ss; editable times keep milliseconds.](#ui-review-fixes-and-tighter-chrome-2026-09-27)
@@ -130,7 +140,7 @@ aren't part of this repository.
 **Point markers and keys**
 
 - [M or the Marker button places a marker at the playhead; markers drag and snap to boundaries.](#file-format-integrity-round-2-2026-09-27)
-- [Markers sit in a band at the foot of the form diagram, which takes no space while there are none.](#marker-band-absent-events-and-the-diagram-control-bar-2026-07-24-cont)
+- [Markers sit in a band at the foot of the Segments block, which takes no space while there are none.](#marker-band-absent-events-and-the-diagram-control-bar-2026-07-24-cont)
 - [Selecting a marker and selecting spans exclude each other.](#point-markers--implementation-2026-07-03)
 - [A marker's `kind` picks which fields lead, and never restricts what it holds.](#point-markers--redesign-2026-07-04)
 - [Built-in marker types (cadences, Sonata Theory, general events) ship in code.](#ui-copy-pass--point-marker-vocabulary-2026-07-24)
@@ -164,6 +174,11 @@ aren't part of this repository.
 
 **The interface**
 
+- [The Inspector describes the selection; its footer keeps the span verbs everyone uses (Split, Merge, Copy, Paste, Delete).](#where-controls-live-2026-11-26)
+- [Each block has two rows in edit mode, its name and view, then its tools; a tool row holds about six things, and more become named menus whose items say what they do and what they act on.](#where-controls-live-2026-11-26)
+- [Big jobs open as a mode inside their block; `⋯` menus hold settings, never one-off jobs; nothing moves without a named new home.](#where-controls-live-2026-11-26)
+- [The bar tools, Elide included, live in Segments' Bars menu; Tempo is offered, not added, when the bar layer's smoothed tempo ranges more than 4 BPM.](#where-controls-live-2026-11-26)
+- [An ellipsis marks a menu item or tool that asks for something before it acts; buttons named for a place (Share, Export) and ▾ menus get none.](#where-controls-live-2026-11-26)
 - [The Inspector is a collapsible right-hand column that hosts the selected thing's editor; it starts collapsed and opens on a selection.](#app-shell--inspector-2026-06-27)
 - [The span Inspector is one column of sections (Timing, Describe, Shape & color, More), each folding on its own.](#the-inspector-as-sections-zoom-in-the-reading-view-2026-11-05)
 - [Timing lays out each end with its boundary type.](#quick-pick-types-on-typed-spans-timing-with-boundaries-commentary-links-2026-11-05)
@@ -206,7 +221,7 @@ aren't part of this repository.
 - [Tailwind and shadcn/ui on Radix, never a hand-rolled primitive.](#phase-2-implementation-layer-management--24-part-2)
 - [Files save in place where the browser allows, by download elsewhere, with a crash copy every 30 seconds.](#tech-stack)
 - [A widget is a `WidgetDefinition` object whose render component never edits.](#widget-contract-phase-02)
-- [The form diagram's figure is one pure component, shared by the editor, export and embed.](#render--edit-split-2026-09-27)
+- [The Segments block's figure is one pure component, shared by the editor, export and embed.](#render--edit-split-2026-09-27)
 - [The time point pool is computed from the layers, never stored.](#schema-review-three-fields-cut-2026-10-31)
 - [The energy contour, when built, uses control points with a 0–1 intensity and stored transitions.](#energy-contour-widget)
 - [A sound-layers widget will name its rows from a shared list.](#sound-layers-come-from-a-shared-list-2026-10-01)
@@ -228,11 +243,11 @@ By area, in the order the entries were made:
 
 **File format and schema:** [File Format](#file-format) · [Span Data Model](#span-data-model) · [File-Level Metadata](#file-level-metadata) · [Schema](#schema) · [Shared Time Point Pool](#shared-time-point-pool) · [Source References](#source-references) · [Schema Finalization (Phase 0.1)](#schema-finalization-phase-01) · [Schema Revision (Phase 0.1 — Session 2)](#schema-revision-phase-01--session-2) · [Schema Changes (Phase 2 prep, 2026-06-20)](#schema-changes-phase-2-prep-2026-06-20) · [Trust and Format Integrity, Round 1 (2026-09-27)](#trust-and-format-integrity-round-1-2026-09-27) · [File Format Integrity, Round 2 (2026-09-27)](#file-format-integrity-round-2-2026-09-27) · [Fill Patterns (2026-10-24)](#fill-patterns-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05) · [Strata's Version in Help (2026-11-23)](#stratas-version-in-help-2026-11-23)
 
-**Drawing and editing the form diagram:** [Merge UX (Phase 0.5)](#merge-ux-phase-05) · [Hierarchical Enforcement](#hierarchical-enforcement) · [Form Diagram Editor — Interaction Model](#form-diagram-editor--interaction-model) · [Merge](#merge) · [Form Diagram Editor (Phase 0.4)](#form-diagram-editor-phase-04) · [Phase 2 Implementation (Form Diagram — Milestone A)](#phase-2-implementation-form-diagram--milestone-a) · [Merge Implementation (Phase 2.5)](#merge-implementation-phase-25) · [Form Diagram Shape Model — Adjoin Rework (2026-06-27)](#form-diagram-shape-model--adjoin-rework-2026-06-27) · [Label Collision Strategy (2026-06-27)](#label-collision-strategy-2026-06-27) · [Phase 2.5 Merge — Interaction Completion (2026-06-30)](#phase-25-merge--interaction-completion-2026-06-30) · [Elision Rendering & Boundary-First Shape Control (2026-07-25)](#elision-rendering--boundary-first-shape-control-2026-07-25) · [Keyboard Navigation of Spans (2026-09-27)](#keyboard-navigation-of-spans-2026-09-27) · [Space Plays, B Marks a Boundary (2026-10-01)](#space-plays-b-marks-a-boundary-2026-10-01) · [Paused Clicks Stay Paused; Open Caps Fill and Join; Issue Links (2026-10-01)](#paused-clicks-stay-paused-open-caps-fill-and-join-issue-links-2026-10-01) · [Quick Type (2026-10-01)](#quick-type-2026-10-01) · [Quick Entry (2026-10-02)](#quick-entry-2026-10-02) · [B in an Empty Stretch; Shift+B; Fit to the Grid (2026-10-02)](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02) · [Hidden Labels Show on Hover and Selection (2026-10-02)](#hidden-labels-show-on-hover-and-selection-2026-10-02) · [Inside Text Keeps Clear of Rounded and Angled Ends (2026-10-02)](#inside-text-keeps-clear-of-rounded-and-angled-ends-2026-10-02) · [Quick Setup From the Tempo; a Plainer Grid Menu and Quick Pick (2026-10-24)](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24) · [Typed Phrase Lengths; Quick Pick Fixes and Drawn Shapes (2026-10-24)](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24) · [Muted Fills; Same Label, Same Fill; Legible Text on Any Fill (2026-10-24)](#muted-fills-same-label-same-fill-legible-text-on-any-fill-2026-10-24) · [To End (2026-10-24)](#to-end-2026-10-24) · [Quick Pick Colours, and a Colour-Blind Safe Switch (2026-10-24)](#quick-pick-colours-and-a-colour-blind-safe-switch-2026-10-24) · [Fill Patterns (2026-10-24)](#fill-patterns-2026-10-24) · [Backspace No Longer Deletes Spans (2026-10-24)](#backspace-no-longer-deletes-spans-2026-10-24) · [Copy and Paste Between Spans (2026-10-24)](#copy-and-paste-between-spans-2026-10-24) · [Copy and Paste Several Spans (2026-10-24)](#copy-and-paste-several-spans-2026-10-24) · [Splitting a Parent (2026-10-31)](#splitting-a-parent-2026-10-31) · [The Track's End Shows; Quick Pick Closes; Filling a Letter Family (2026-11-05)](#the-tracks-end-shows-quick-pick-closes-filling-a-letter-family-2026-11-05)
+**Drawing and editing segments:** [Merge UX (Phase 0.5)](#merge-ux-phase-05) · [Hierarchical Enforcement](#hierarchical-enforcement) · [Form Diagram Editor — Interaction Model](#form-diagram-editor--interaction-model) · [Merge](#merge) · [Form Diagram Editor (Phase 0.4)](#form-diagram-editor-phase-04) · [Phase 2 Implementation (Form Diagram — Milestone A)](#phase-2-implementation-form-diagram--milestone-a) · [Merge Implementation (Phase 2.5)](#merge-implementation-phase-25) · [Form Diagram Shape Model — Adjoin Rework (2026-06-27)](#form-diagram-shape-model--adjoin-rework-2026-06-27) · [Label Collision Strategy (2026-06-27)](#label-collision-strategy-2026-06-27) · [Phase 2.5 Merge — Interaction Completion (2026-06-30)](#phase-25-merge--interaction-completion-2026-06-30) · [Elision Rendering & Boundary-First Shape Control (2026-07-25)](#elision-rendering--boundary-first-shape-control-2026-07-25) · [Keyboard Navigation of Spans (2026-09-27)](#keyboard-navigation-of-spans-2026-09-27) · [Space Plays, B Marks a Boundary (2026-10-01)](#space-plays-b-marks-a-boundary-2026-10-01) · [Paused Clicks Stay Paused; Open Caps Fill and Join; Issue Links (2026-10-01)](#paused-clicks-stay-paused-open-caps-fill-and-join-issue-links-2026-10-01) · [Quick Type (2026-10-01)](#quick-type-2026-10-01) · [Quick Entry (2026-10-02)](#quick-entry-2026-10-02) · [B in an Empty Stretch; Shift+B; Fit to the Grid (2026-10-02)](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02) · [Hidden Labels Show on Hover and Selection (2026-10-02)](#hidden-labels-show-on-hover-and-selection-2026-10-02) · [Inside Text Keeps Clear of Rounded and Angled Ends (2026-10-02)](#inside-text-keeps-clear-of-rounded-and-angled-ends-2026-10-02) · [Quick Setup From the Tempo; a Plainer Grid Menu and Quick Pick (2026-10-24)](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24) · [Typed Phrase Lengths; Quick Pick Fixes and Drawn Shapes (2026-10-24)](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24) · [Muted Fills; Same Label, Same Fill; Legible Text on Any Fill (2026-10-24)](#muted-fills-same-label-same-fill-legible-text-on-any-fill-2026-10-24) · [To End (2026-10-24)](#to-end-2026-10-24) · [Quick Pick Colours, and a Colour-Blind Safe Switch (2026-10-24)](#quick-pick-colours-and-a-colour-blind-safe-switch-2026-10-24) · [Fill Patterns (2026-10-24)](#fill-patterns-2026-10-24) · [Backspace No Longer Deletes Spans (2026-10-24)](#backspace-no-longer-deletes-spans-2026-10-24) · [Copy and Paste Between Spans (2026-10-24)](#copy-and-paste-between-spans-2026-10-24) · [Copy and Paste Several Spans (2026-10-24)](#copy-and-paste-several-spans-2026-10-24) · [Splitting a Parent (2026-10-31)](#splitting-a-parent-2026-10-31) · [The Track's End Shows; Quick Pick Closes; Filling a Letter Family (2026-11-05)](#the-tracks-end-shows-quick-pick-closes-filling-a-letter-family-2026-11-05) · [The Timeline Stops at the Track's End (2026-11-25)](#the-timeline-stops-at-the-tracks-end-2026-11-25)
 
 **Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01) · [Group Spans Into Another Layer (2026-10-24)](#group-spans-into-another-layer-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Choosing What Copy to Layer Takes (2026-10-31)](#choosing-what-copy-to-layer-takes-2026-10-31)
 
-**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24)
+**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25) · [Bars From Phrases, Phrases From Bars (2026-11-25)](#bars-from-phrases-phrases-from-bars-2026-11-25) · [The Tempo Lane (2026-11-25)](#the-tempo-lane-2026-11-25) · [Tempo Becomes Its Own Widget (2026-11-25)](#tempo-becomes-its-own-widget-2026-11-25) · [Normalize (2026-11-25)](#normalize-2026-11-25) · [The Tempo Widget, Settled (2026-11-25)](#the-tempo-widget-settled-2026-11-25) · [Widgets as Blocks (2026-11-25)](#widgets-as-blocks-2026-11-25) · [Segments, Not Form Diagram (2026-11-25)](#segments-not-form-diagram-2026-11-25) · [The Beat Grid From the Bars (2026-11-25)](#the-beat-grid-from-the-bars-2026-11-25)
 
 **Point markers:** [Point Markers](#point-markers) · [Point Markers — Implementation (2026-07-03)](#point-markers--implementation-2026-07-03) · [Point Markers — Redesign (2026-07-04)](#point-markers--redesign-2026-07-04) · [Marker Band, Absent Events, and the Diagram Control Bar (2026-07-24, cont.)](#marker-band-absent-events-and-the-diagram-control-bar-2026-07-24-cont)
 
@@ -244,7 +259,7 @@ By area, in the order the entries were made:
 
 **Reading, sharing, embedding and export:** [Sharing](#sharing) · [Embeddable Viewer](#embeddable-viewer) · [Export (2026-09-27)](#export-2026-09-27) · [The Reading View (2026-10-01)](#the-reading-view-2026-10-01) · [Sharing by Link (2026-10-01)](#sharing-by-link-2026-10-01) · [Export: Choose Layers, Cut Spans at the Range (2026-10-02)](#export-choose-layers-cut-spans-at-the-range-2026-10-02) · [Share From the Toolbar; Dropbox and OneDrive Links (2026-10-02)](#share-from-the-toolbar-dropbox-and-onedrive-links-2026-10-02) · [Example Analyses (2026-10-02)](#example-analyses-2026-10-02) · [Embedding an Analysis (2026-10-03)](#embedding-an-analysis-2026-10-03) · [Starting an Analysis from a Link (2026-10-03)](#starting-an-analysis-from-a-link-2026-10-03) · [Embed Zoom (2026-11-06)](#embed-zoom-2026-11-06) · [Embed Layout on Wide Screens (2026-11-06)](#embed-layout-on-wide-screens-2026-11-06) · [Layer Names Sized to Fit (2026-11-06)](#layer-names-sized-to-fit-2026-11-06) · [Save as PDF Through the Print Dialog (2026-11-23)](#save-as-pdf-through-the-print-dialog-2026-11-23) · [Commentary in the PDF (2026-11-23)](#commentary-in-the-pdf-2026-11-23) · [Read and Play on a Phone (2026-11-23)](#read-and-play-on-a-phone-2026-11-23) · [Following the Playhead (2026-11-23)](#following-the-playhead-2026-11-23) · [Hiding Layers in the Reading View (2026-11-23)](#hiding-layers-in-the-reading-view-2026-11-23) · [The Toolbar Folds When Narrow (2026-11-23)](#the-toolbar-folds-when-narrow-2026-11-23) · [Link-Only Through the Beta (2026-11-23)](#link-only-through-the-beta-2026-11-23)
 
-**The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03) · [A Shorter New Analysis Dialog; Darker Interface Greys (2026-10-24)](#a-shorter-new-analysis-dialog-darker-interface-greys-2026-10-24) · [People Do Things in Strata's Text (2026-11-05)](#people-do-things-in-stratas-text-2026-11-05) · [The Inspector as Sections; Zoom in the Reading View (2026-11-05)](#the-inspector-as-sections-zoom-in-the-reading-view-2026-11-05) · [Quick Pick Types on Typed Spans; Timing With Boundaries; Commentary Links (2026-11-05)](#quick-pick-types-on-typed-spans-timing-with-boundaries-commentary-links-2026-11-05) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05)
+**The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03) · [A Shorter New Analysis Dialog; Darker Interface Greys (2026-10-24)](#a-shorter-new-analysis-dialog-darker-interface-greys-2026-10-24) · [People Do Things in Strata's Text (2026-11-05)](#people-do-things-in-stratas-text-2026-11-05) · [The Inspector as Sections; Zoom in the Reading View (2026-11-05)](#the-inspector-as-sections-zoom-in-the-reading-view-2026-11-05) · [Quick Pick Types on Typed Spans; Timing With Boundaries; Commentary Links (2026-11-05)](#quick-pick-types-on-typed-spans-timing-with-boundaries-commentary-links-2026-11-05) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05) · [Where Controls Live (2026-11-26)](#where-controls-live-2026-11-26)
 
 **Architecture, scope and process:** [Architecture](#architecture) · [Widgets](#widgets) · [Architecture](#architecture-1) · [Launch](#launch) · [Corpus Builder](#corpus-builder) · [v1 Feature Scope (Phase 0.6)](#v1-feature-scope-phase-06) · [Energy Contour Widget](#energy-contour-widget) · [EDM as Origin — Product Claim Reframe](#edm-as-origin--product-claim-reframe) · [Tech Stack](#tech-stack) · [v1 Scope](#v1-scope) · [Widget Contract (Phase 0.2)](#widget-contract-phase-02) · [Correctness Pass (post-Phase 2 polish)](#correctness-pass-post-phase-2-polish) · [Improvement Backlog Batch 1 (2026-07-03)](#improvement-backlog-batch-1-2026-07-03) · [Improvement Backlog Batch 2 (2026-07-03)](#improvement-backlog-batch-2-2026-07-03) · [Render / Edit Split (2026-09-27)](#render--edit-split-2026-09-27) · [Large-Analysis Performance (2026-09-27)](#large-analysis-performance-2026-09-27) · [Safari and Firefox Read-Through (2026-09-27)](#safari-and-firefox-read-through-2026-09-27) · [Beta Launch Pass (2026-10-01)](#beta-launch-pass-2026-10-01) · [Releases and Open Tabs (2026-10-02)](#releases-and-open-tabs-2026-10-02) · [Faster Checks: Tests in Node, a Weekly Audit (2026-10-05)](#faster-checks-tests-in-node-a-weekly-audit-2026-10-05) · [Development Tools Upgraded (2026-10-07)](#development-tools-upgraded-2026-10-07) · [No Corpus Builder: Strata Stays a One-File Tool (2026-10-16)](#no-corpus-builder-strata-stays-a-one-file-tool-2026-10-16) · [React's Newer Checks On (2026-10-16)](#reacts-newer-checks-on-2026-10-16) · [The Corpus Builder Is Planned for Version 2 (2026-10-31)](#the-corpus-builder-is-planned-for-version-2-2026-10-31) · [Lint Tools Use a Patched minimatch (2026-11-07)](#lint-tools-use-a-patched-minimatch-2026-11-07)
 
@@ -5265,3 +5280,421 @@ that fails. *A Google API key* for Drive: a key to guard and a quota to watch,
 for one host. *Strata-hosted files:* accounts, storage and moderation.
 *Analyses as atproto records* stay deferred and watched (2026-10-17).
 **Why.** No server, nothing to moderate, and three common hosts already work.
+
+---
+
+## The Timeline Stops at the Track's End (2026-11-25)
+
+*From the maintainer, on a nine-minute analysis with every bar marked: "I
+really want to get rid of this gray bar at the end. I want the scrolling to
+stop … I don't want any of this dead space."*
+
+**Decision.** The timeline stops at the track's end. It scrolls only 2px past
+it (`END_MARGIN_PX`), room for the closing line of a span that ends the track,
+and Fit fills the width with the track. The shading past the end and its line
+are gone; the ruler's dashed line still marks the end. This replaces the 24px
+shaded margin of "The Track's End Shows" (2026-11-05).
+**Why.** The shaded stretch read as one more bar after the last one, which on
+a layer of bars is wrong, and it was space nobody could use. The problem it
+solved, an open last end that looked as if it ran on, is answered by the
+timeline itself stopping there: nothing is drawn past the end to run into.
+
+---
+
+## The Bar Layer (2026-11-25)
+
+*From the maintainer, after counting with Number bars on a nine-minute track
+with all 198 bars marked by hand: "In my head, this is an annotation. It is not
+a label." And then: "the label really should be the bar number … and the
+grouping is the annotation." An analyst who marks every bar is trying to show
+something with it, and the hour that skeleton takes should pay off.*
+
+**Decision.** A layer can be **the bar layer** (`Layer.role: "bars"`, a new
+optional field, so no format version bump). Each span on it is a bar: its
+label is the bar number, its annotation its place in the hypermetric group
+(`1`, `2` …, `4=1` for an elided bar). A document has at most one; making a
+layer the bar layer takes the role from any other, and a reader that finds two
+keeps the first. A switch in the layer menu turns it on. Turning it on numbers
+the bars from 1 where every label is empty or a count, moving counts written as
+labels into empty annotations; labels that are words stay. The menu then
+numbers the bars from a first bar (0 for a pickup), and counts them **by a
+layer above**, each of whose spans counts its bars from 1 to its end (a six-bar
+phrase counts to 6, an expansion on to 7 or 8, with no group size set), or **in
+groups** of a set size. Fill with the grid's bars, on an empty layer, makes it
+the bar layer, labelled with the grid's own bar numbers and counted in groups.
+
+**Decision.** Hypermetric counts go into span annotations, on any layer, and a
+count is never written over an annotation that holds other text; the menu says
+how many it left alone. This replaces counts as labels ("Numbering Hypermeter",
+2026-11-20). The Inspector's row reads "Count these N from 1, in groups of N"
+(the old "in [4] s" read as nothing).
+
+**Decision.** On an elided bar, the Inspector offers **Elide the Phrases
+boundary too** when a layer above (the nearest with one) has a boundary at the
+bar's start or end. It marks the end of the span that ends there elided, since
+elision is recorded per side. It is an offer, not automatic: a hypermetric
+elision often goes with a phrase elision, but they are different claims.
+
+**Rejected.** *Counts as labels with an option to put them inside:* on the bar
+layer the label is needed for the bar number, and as labels the counts made a
+slug each ("1", "1-2" … 198 on one track), useless as link targets. Bar numbers
+make good ones. *A choice per layer between label and annotation for counts:*
+the bar layer settles which is which. *A structured count field* (`count: 4,
+becomesCount: 1`) would make "every elision in the corpus" a query; it is a
+format design for later. How a hypermetric reinterpretation is written is still
+open.
+
+**Why.** The text zones ruling already put bar numbers and analytical detail
+inside the shape and the name above; counts as labels contradicted it. Knowing
+which layer holds the bars lets Strata offer tools for it without guessing:
+counting from the phrases already drawn, and next (agreed with the maintainer,
+in this order) a tempo lane drawn from the bar lengths, a Normalize that evens
+out tapping error, steady or along a smooth curve, with a preview, and a beat
+grid made from the bars. Quick setup should help whichever layers an analysis
+has: bars only, phrases only, both, or neither.
+`setBarLayer`, `numberBarLayer`, `countBars`, `elideGroupBoundary`,
+`numberBars`, `renumberSpans` and `elideSpan` in the store; `lib/hypermeter.ts`;
+`BarLayerSettings`.
+
+---
+
+## Bars From Phrases, Phrases From Bars (2026-11-25)
+
+*From the maintainer, on quick setup for analyses that have bars but no
+phrases, phrases but no bars, or both: "it should allow to do it with a span
+only … it may not be the whole entire recording, but it may be like a chunk of
+the recording."*
+
+**Decision.** Both tools work on the selected spans, so they set up a chunk of
+the recording as readily as all of it. With spans selected on one layer that
+isn't the bar layer, the Inspector's **Split into N bars** divides each into N
+equal bars on the bar layer, or on a new "Bars" layer made the bar layer just
+below theirs when there is none. Each bar's parent is the span it came from,
+its annotation its count (1 to N), and its label its bar number, going on from
+the numbered bar before. It is refused if the bar layer already has bars in
+that stretch. With counted bars selected, **Phrases from the count** makes one
+phrase from the first selected bar and from every bar counted 1, each running
+to the bar before the next; they go on the layer just above when it has
+nothing in that stretch, else on a new "Phrases" layer there. The bars become
+the phrases' children. A phrase that starts on an elided bar ("4=1") marks the
+end of the phrase before it elided, as Elide's offer does. One undo step each.
+**Rejected.** *Whole-layer only, from the layer menu:* an analysis often marks
+bars for one passage, and selecting a whole layer covers the rest. *Writing over
+bars already there:* like Fill with bars, splitting never replaces spans.
+**Why.** Marking every bar of a nine-minute track by ear took over an hour.
+Tapping 33 phrase boundaries and splitting each into six takes a fraction of
+that. Equal bars inside a tapped phrase are close wherever the tempo is steady
+across the phrase; where it moves (an accelerando), the planned Normalize, with
+its smooth mode, is what evens them along the curve.
+`splitIntoBars` and `phrasesFromCount` in the store; `splitEvenly` and
+`phraseRuns` in lib/hypermeter.ts; `BarSetupRow` in MetadataPanel.
+
+---
+
+## The Tempo Lane (2026-11-25)
+
+*From the maintainer, on a track whose bars are all marked by hand: "one of
+the things that I wanted to show is that the tempo steadily increases until
+… it kind of locks in, and then it slows down at the end."*
+
+**Decision.** A switch on the bar layer, **Tempo lane** (`Layer.showTempo`, a
+new optional field, so no format version bump), draws each bar's tempo under
+the diagram, between the marker band and the ruler: a step line, one level per
+bar, in a 52px band. A bar's tempo is its beats over its length in minutes;
+the beats come from the beat grid's meter at the bar, else the document's
+meter, else 4. The scale runs from the lowest tempo to the highest, out to the
+nearest 10, with dashed guide lines at both ends and at a round tempo between
+them when there's room; the top one reads "140 BPM". In the editor the scale's
+labels stay at the left edge as the drawing scrolls. Hovering a bar shows
+"Bar 37: 103 BPM". The lane follows the bar layer: hidden with it, and drawn
+in the reading view and in an SVG export that includes it, where an exported
+range keeps each bar's whole-bar tempo.
+**Rejected.** *Storing the tempos:* they follow from the bar boundaries, and a
+stored copy would go stale the moment a boundary moved. *A lane on by default:*
+it changes what a reader sees, so the analyst turns it on. *Clipping the scale
+to leave out an outlier bar,* such as a long last bar that holds the decay to
+the end: the lane shows the bars as marked.
+**Why.** Marking every bar is how an analyst shows tempo they can hear moving.
+The narrowing brackets imply it; the lane states it, with numbers.
+`lib/tempoLane.ts`; `TempoLaneFigure` in widgets/form-diagram/figure.tsx; drawn
+by FormLayers and exportSvg; the switch in BarLayerSettings.
+
+---
+
+## Tempo Becomes Its Own Widget (2026-11-25)
+
+*From the maintainer, on the tempo lane: "this feels like a separate widget
+entirely … I wonder what else could be done with it (thinking about
+performances!)" And: "linking it to a bar layer (or even a beat layer) is a
+smart idea."*
+
+**Decision.** Tempo is planned as its own widget type, `"tempo"`, a layer that
+reads a source layer of bars (or, later, beats) and draws each one's tempo.
+This reverses the tempo lane above: `Layer.showTempo` is removed before it
+reached a merged file, so no file carries it and nothing needs migrating. The
+drawing and the tempo arithmetic stay in the code (`lib/tempoLane.ts`,
+`TempoLaneFigure`) as groundwork. The widget will offer display-only smoothing
+(the "normalization draw") that changes no boundary, beside Normalize, which
+does. Its draft spec, with the questions still open, is `widgets/tempo.md`.
+**Why.** Tempo is analysis in its own right, above all for performances:
+comparing recordings bar by bar, rubato as the deviation from a smooth curve,
+tempo with loudness. It should hide, reorder and export like any layer, and
+its views would crowd the bar layer's settings. Deciding before the merge kept
+the format change free.
+
+---
+
+## Normalize (2026-11-25)
+
+*From the maintainer: "there probably needs to be a scale for normalization if
+anyone wants to try to normalize but also measure some micro adjustments."*
+
+**Decision.** With two or more bars on the bar layer selected, one after
+another, the Inspector's **Normalize…** opens a panel. **Steady** makes every
+bar the same length: one tempo across the run, given in BPM. **Smooth** fits a
+smooth tempo curve (a Whittaker smoother on the boundary times, third
+differences) with a **Smoothing** scale from light to heavy. It starts at
+**Auto**, the smoothest setting at which what's left over still looks like
+tapping scatter (the leftovers' lag-1 correlation reaches zero). The run's
+first and last boundaries never move. While the panel is open, dashed amber
+lines show where each boundary would go. The panel says how many move and how
+far, and how far the marks sit from the result ("±24 ms"), saying that timing
+within that can't be told apart from tapping. Steady warns when the tempo
+moves across the run, since it would then shift bars a long way. **Into a new
+layer** copies the bars, normalized, with their labels, counts and types, to
+"<layer> (normalized)" just below (reused where it is free), keeping the
+originals as marked. Otherwise boundaries linked to phrases carry their moves.
+One undo step.
+**Rejected.** *One smoothing over the whole track:* on the maintainer's
+nine-minute track it couldn't flatten the 126 BPM plateau without pulling the
+corners where the accelerando meets it by 300 ms or more. Normalizing a
+selected stretch at a time, Steady on the plateau and Smooth on the ramps,
+does both. *A strength blend between marks and fit as the scale:* the
+smoothing amount is the more useful scale, because a lighter setting keeps
+more of the music's detail rather than a fraction of everything. *Fitting with
+a standard selector (generalized cross-validation):* tapping error sits on
+boundaries, so bar lengths carry correlated error, and it under-smooths.
+**Why.** Marking bars by hand scatters them by 20–30 ms. Normalize removes
+that and shows how much it removed, so an analyst who wants micro-timing knows
+what the marks can and can't show. Display-only smoothing, which leaves the
+marks alone, belongs to the tempo widget.
+`lib/normalize.ts`; `normalizeBars` in the store; `NormalizePanel`; the
+preview in `uiStore.normalizePreview`, drawn by FormLayers.
+
+---
+
+## The Tempo Widget, Settled (2026-11-25)
+
+*The maintainer's answers to the open questions in `widgets/tempo.md`.*
+
+**Decision.** The tempo widget takes a row of its own in the layer stack,
+taller than a bracket row, and hides, reorders and exports like any layer.
+Its display choices (smoothing, which views, a fixed scale) are saved in the
+file. The deviation view is in milliseconds. The BPM scale comes from the data
+(lowest to highest, out to the nearest 10) unless a fixed range is set. A
+tempo layer reads a source layer of bars or beats only; a tempo map of its
+own waits until something produces one.
+**Rejected.** *A band under the diagram:* it can't be reordered or sit beside
+the bars it reads, and allows only one. *Display choices per viewer:* a reader
+might not see what the analyst meant. *Deviation as a percentage of the bar:*
+comparable across tempos, but the tapping-scatter band, the point of the view,
+is in milliseconds. *A fixed default scale:* a narrow tempo range reads flat.
+*A stored tempo map now:* nothing produces one yet, and an optional field can
+add it later without breaking files.
+**Why.** Each answer keeps the widget an ordinary layer whose numbers can't
+disagree with the bars they come from, while a reader sees the analysis as the
+analyst drew it.
+
+---
+
+## Widgets as Blocks (2026-11-25)
+
+*From the maintainer, correcting where tempo goes: "the form diagram bit is its
+own widget, a block. So the tempo should be a block that goes above or below
+it, but that it can be moved around. I don't want it like in between layers of
+the form diagram." And: "the widgets are … one type of analysis or category of
+analysis with a certain set of tools," with "the option to show/hide widgets,
+add widgets, remove them."*
+
+**Decision.** A widget is a block: one kind of analysis with its own tools,
+drawn as a framed card on the shared timeline, all blocks above the one ruler.
+A block holds every layer of its widget type: the form diagram block holds
+the form layers, the tempo block the tempo layers. The document lists its
+blocks top to bottom (`StrataDocument.widgets`: `{ type, hidden? }`, one per
+type, a new optional field, so no format version bump), so readers, embeds and
+exports see the arrangement the analyst made. A file without the list shows
+the form diagram alone, plus tempo when it has a tempo layer; the reader adds
+any block a layer needs and drops duplicates. Each block's top bar has ↑ ↓ to
+move it past its neighbour (when there is more than one block) and hide; any
+block but the form diagram also has remove, with a confirm, which removes its
+layers. Above the blocks, in the editor, hidden blocks come back from chips
+and **Add widget** adds one; the strip takes no room when there's nothing to
+show. With the form diagram hidden, its zoom controls move to the strip.
+Tempo is built as such a block (`type: "tempo"` layers, `widgets/tempo.md`).
+This corrects the first answer in "The Tempo Widget, Settled": tempo is not a
+row among the form diagram's layers.
+**Rejected.** *Dragging blocks:* blocks are tall, and with a few of them
+arrows are quicker and work from the keyboard. *A ruler per block:* it costs
+room, and one ruler at the bottom keeps every block lined up with it and the
+play bar. *Removing the form diagram:* its layers are the analysis; it hides.
+*Block order per viewer:* a reader might not see the analysis as arranged.
+**Why.** Each kind of analysis brings its own tools and settings; as its own
+block it keeps them out of the others' way and can be placed where it reads
+best against them.
+`lib/widgets.ts`; `addTempoWidget`, `removeWidget`, `setWidgetHidden`,
+`moveWidget`, `setTempoDisplay` and `setTempoSource` in the store;
+`BlockControls` and `WidgetStrip` in FormDiagram.tsx; `TempoBlock`.
+
+---
+
+## Segments, Not Form Diagram (2026-11-25)
+
+*From the maintainer: "the 'form diagram' name needs to be changed. It's not
+just form. I'm reticent to use 'time span diagram' because the texture/timbre
+layer is also that." Of the candidates: "Segmentation (Segments) and Grouping
+are the two best options but … Segments wins … especially with the
+connection to music cognition/MIR."*
+
+**Decision.** The widget once called the form diagram is **segmentation**,
+shown on screen as **Segments**. In the file its layers' `type`, and its entry
+in `widgets`, change from `"form-diagram"` to `"segmentation"`: file format 3.
+Older files are renamed when they open (migration 2 → 3); nothing else in them
+changes. The schema's `FormDiagramData` is `SegmentationData`. The code
+follows: `src/widgets/segmentation/`, `SegmentLayers`, `SegmentationFigure`,
+`segmentSpans`, `lib/segmentShape.ts`, and `WorkArea` for the component that
+lays out the blocks and the ruler. The spec is `widgets/segmentation.md` (it
+was `widgets/form-diagram.md`; older entries in this log cite that path).
+Older entries keep the name they were written with.
+**Rejected.** *Grouping:* Lerdahl and Jackendoff's grouping is nested brackets
+over time, but it is defined against meter, and the bar layer lives in this
+widget. *Brackets:* names the drawing, not the analysis, and key areas draw as
+thin bars. *Structure* and *time span diagram:* both take in texture and
+timbre too, so they don't say what sets this widget apart. *Renaming on screen
+only:* the file format is the invention, and a name in it that says something
+the widget isn't would last in every file; during the beta, with few files
+out, renaming it costs least.
+**Why.** What sets this widget apart is the rule it already keeps: within a
+layer, spans never overlap, so each layer cuts the timeline into consecutive
+segments and makes one claim about each. That holds for form, phrases, bars,
+key areas and sonic functions alike. A texture or timbre widget is the other
+kind, many things sounding at once, and belongs to the planned instrumentation
+widget. Segmentation is also the established term for this act in music
+cognition and music information retrieval.
+
+---
+
+## The Beat Grid From the Bars (2026-11-25)
+
+*The last of the first pass of tempo tools agreed with the maintainer: Fill
+with the grid's bars makes bars from a grid; this goes the other way.*
+
+**Decision.** **Beat grid from the bars** (the bar layer's menu) makes the
+beat grid from every bar of the bar layer; **Grid from these** (the
+Inspector's Bars row) makes it from selected bars, a chunk of the track. Each
+bar becomes a grid stretch starting on its downbeat at its own tempo (60 ×
+beats ÷ its length), its meter read from the grid as it was, else the
+document's. Bars one after another whose tempos differ by 0.01 BPM or less
+merge into one stretch, so a plateau evened with Normalize's Steady becomes a
+single stretch. Each run of bars that follow one another starts at its first
+bar's number when the label is a whole number, and its last stretch ends
+where the run ends, leaving a gap free. The new stretches replace the grid
+only over the bars' stretch: a stretch running into it stops at its start,
+and one running on past its end resumes on its own next downbeat, so its bar
+lines don't move. Tempos are stored exactly, not rounded: a rounded tempo
+leaves the last bar of a stretch a hair short, and the grid would draw a
+stray downbeat just before the next one. One undo step. The grid is a copy:
+moving a bar afterwards doesn't move the grid; making it again does.
+**Rejected.** *A grid that follows the bars live:* the grid is the analyst's
+statement of where beats fall, edited on its own terms (tapping, tempo
+correction, Downbeat is here); tying it to a layer would make every boundary
+drag rewrite it. *A tempo-ramp stretch* (a tempo that changes within a
+stretch): a format change for later; a stretch per bar already follows an
+accelerando bar by bar.
+**Why.** With the grid following hand-marked bars, snapping, the ruler's bar
+numbers and the metronome all follow music whose tempo moves.
+`lib/gridFromBars.ts` (`gridFromBars`, `spliceGrid`); `gridFromBars` in the
+store; BarLayerSettings and the Inspector's Bars row.
+
+---
+
+## Where Controls Live (2026-11-26)
+
+*From the maintainer, stopping a change that moved every bar tool into the
+Inspector: "the inspector is starting to try to do too much … It can't be
+everything … what is getting lost in the complexity is clear understanding of
+what does what." Agreed after a review of every control (the "Strata Interface
+Review" page): "these principles are good."*
+
+**Decision.** Every control has one kind and one home:
+
+1. **The Inspector describes the selection.** Its body holds properties
+   only: what the selected span, marker or bar is, every one editable as
+   today (typed times, boundary types, To end, Length in bars, Part of and
+   Unlink stay in Timing).
+2. **Its footer holds the span verbs everyone uses:** Split, Merge, Copy,
+   Paste and Delete, with anything rarer in an overflow.
+3. **Each block has two rows in edit mode.** The first, always shown, has
+   the block's name, its view controls and move / hide / `⋯`; the second,
+   only while editing, has that analysis's tools. Reading shows the first row
+   alone. A new widget brings its tools to its own second row.
+4. **A tool row holds about six things.** Controls pressed constantly
+   (Boundary, Marker) stay buttons; the rest group into menus named for the
+   job (Grid, Bars, Layers), each item with one line saying what it does and
+   what it will act on ("17 bars", "all 198").
+5. **Tools say what they will touch,** and an item that needs a selection
+   says so rather than doing something unexpected.
+6. **Big jobs open as a mode inside their block,** with their effect drawn
+   next to them; one at a time, entered on purpose, left with Esc.
+7. **`⋯` menus hold settings, never one-off jobs.** Fit to grid moves to the
+   Grid menu; the bar jobs move to the Bars menu.
+8. **Offer what helps, when it helps.** When a layer becomes the bar layer,
+   its tempos are smoothed (Normalize's Auto, so tapping scatter doesn't
+   count); if the smoothed tempo ranges more than **4 BPM**, Tempo is offered
+   with what was found ("Tempo moves from 30 to 126 BPM. Show Tempo"), and if
+   not, a note says so ("Steady at 120 BPM", with Show Tempo anyway). Nothing
+   is added unasked.
+9. **Nothing is lost in a move:** every control gets a named new home before
+   it moves.
+10. **Advanced is one deliberate step away:** in a menu, a disclosure or a
+    mode; later a searchable command list may index everything.
+
+The bar tools, Elide included, belong to Segments (bars, counts and elisions
+are segmentation), in a **Bars** menu shown once there is a bar layer; Tempo
+is a view of tempo, with only its display settings. Normalize opens as a mode
+under the Segments tool row.
+
+**Decision.** The ellipsis rule of "No Ellipsis on Buttons and Menu Items"
+(2026-11-13) is softened: **an ellipsis marks a menu item or tool that asks
+for something before it acts** (opens a mode, panel or dialog of choices):
+Number…, Count…, Normalize…, Split into bars…, Set from a tempo…. Items that
+act at once get none (Elide, Phrases from the count, Beat grid from the bars,
+Delete). Buttons named for a place get none (Share, Export, Settings, Help),
+nor do menu triggers with ▾. Text unfinished on purpose keeps it (Loading…).
+**Why the ellipsis came back.** The maintainer had taken it out as dated, and
+on visible buttons it is: modern web tools have dropped it there, and a
+button named for a place already says a dialog follows. In menus it still
+does a job the name can't: in a menu that mixes both, it tells an item that
+acts the moment it's clicked from one that asks first, so people can explore
+without fear; and it settles names that read as nouns ("Count", "Number").
+This is the long-standing meaning in Apple's and Microsoft's guidelines,
+where an ellipsis means "asks for more before acting", never just "opens a
+window".
+
+**Rejected.** *Every bar tool in the Inspector* (the stopped change): it made
+the panel a toolbox as well as a description, and put a whole-layer job and
+its selection version in different places. *Right-click as the home for
+actions:* fine as a shortcut, invisible as a home. *Adding Tempo
+automatically with the bar layer:* a steady track gains nothing from it.
+*Putting the bar tools in the Tempo block:* they would disappear whenever
+Tempo isn't shown.
+
+**Why.** Each feature landed in a reasonable place, and together they made
+it hard to know what does what. One kind of control per place lets people
+guess where a new feature lives, and lets whoever builds the next widget put
+its tools where they belong. The Inspector's visual weight (every field the
+same grey label over the same white box) is part of the same review: groups
+get weight, labels sit beside values.
+The build follows in this order: block rows and menus; the Bars menu and
+Normalize as a mode; offering Tempo; the Inspector restyled; the layer menu
+trimmed; then the app bar on the same budget.
+
