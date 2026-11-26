@@ -4,7 +4,7 @@
  * when there is both a stretch and a ramp, and fitting it.
  */
 import { describe, it, expect } from 'vitest'
-import { autoLogLambda, findFlats, flatAndRampsTimes, flatBpmOf, normalizePlan, rampsOffered, settleFlats, smoothFixed, smoothTimes } from '@/lib/normalize'
+import { findFlats, flatBpmOf, rampsOffered, settleFlats } from '@/lib/normalize'
 
 /** A seeded normal generator, so the tests don't flake. */
 function rng(seed: number) {
@@ -85,52 +85,11 @@ describe('findFlats', () => {
   })
 })
 
-describe('flatAndRampsTimes', () => {
-  it('puts each stretch at one tempo and keeps the run’s ends', () => {
-    const bpms = [...Array(40).fill(120), ...lin(120, 140, 15), ...Array(40).fill(140)]
-    const times = marked(bpms, 0.015)
-    const flats = findFlats(times)
-    const out = flatAndRampsTimes(times, flats, 10 ** autoLogLambda(times))
-    expect(out[0]).toBe(times[0])
-    expect(out[out.length - 1]).toBe(times[times.length - 1])
-    const len = (k: number) => out[k + 1] - out[k]
-    for (const f of flats) for (let k = f.from + 1; k < f.to - 1; k++) expect(len(k)).toBeCloseTo(len(f.from + 1), 9)
-  })
-
-  it('leaves an odd bar (a long last bar) as marked, and doesn’t smooth it into the ramp', () => {
-    const bpms = [...Array(30).fill(126), ...geom(126, 60, 20)]
-    const times = marked(bpms, 0.015)
-    times.push(times[times.length - 1] + 25) // a fade held in a 25-second last bar
-    const flats = findFlats(times)
-    const out = flatAndRampsTimes(times, flats, 10 ** autoLogLambda(times))
-    expect(out[out.length - 2]).toBe(times[times.length - 2])
-    const moves = out.map((t, k) => Math.abs(t - times[k]))
-    expect(Math.max(...moves)).toBeLessThan(0.15)
-  })
-
-  it('takes moved corners', () => {
-    const bpms = [...Array(40).fill(120), ...lin(120, 140, 15), ...Array(40).fill(140)]
-    const times = marked(bpms, 0.015)
-    const plan = normalizePlan(times, 'ramps', 1, [{ from: 0, to: 30 }, { from: 60, to: 95 }])
-    const len = (k: number) => plan.times[k + 1] - plan.times[k]
-    expect(len(5)).toBeCloseTo(len(25), 9)
-    expect(len(70)).toBeCloseTo(len(90), 9)
-  })
-})
-
 describe('settleFlats', () => {
   it('orders, clamps, and splits an overlap down the middle', () => {
     expect(settleFlats([{ from: 30, to: 50 }, { from: -2, to: 34 }], 40)).toEqual([
       { from: 0, to: 32 },
       { from: 32, to: 40 },
     ])
-  })
-})
-
-describe('smoothFixed', () => {
-  it('is smoothTimes when only the ends are held', () => {
-    const t = Array.from({ length: 30 }, (_, k) => k * 2 + 0.05 * k * k + (k % 3) * 0.02)
-    const held = t.map((_, k) => k === 0 || k === 29)
-    expect(smoothFixed(t, 50, held)).toEqual(smoothTimes(t, 50))
   })
 })

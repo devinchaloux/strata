@@ -6,10 +6,12 @@
  * Steady makes the bars equal; Smooth fits a curve, with a smoothing scale
  * from light to heavy that starts at the automatic setting. Steady between
  * ramps, for a tempo made in a DAW, is offered only when the bars have a
- * steady stretch and a ramp (rampsOffered), and then opens selected: each
- * stretch at one tempo, its corners proposed (findFlats) and moved a bar at a
- * time with − and +, the ramps smoothed between (docs/decisions.md, "Steady
- * Between Ramps"). While it is open,
+ * steady stretch and a ramp (rampsOffered), and then opens selected: it fits
+ * the bars to their tempo map (lib/tempoMap.ts), steady stretches and ramps
+ * each at an even rate, proposed by detectTempoMap. Each corner moves a bar
+ * at a time with − and +, a corner between two ramps can go (×), and a
+ * ramp's rate switches its shape, percent or BPM a bar (docs/decisions.md,
+ * "Steady Between Ramps" and "The Tempo Map"). While it is open,
  * dashed lines on the diagram show where each boundary would go, and the
  * panel says how far they move and how far the marks sit from the result: the
  * scatter, timing inside which can't be told from tapping. Apply moves the
@@ -18,19 +20,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
-import {
-  autoLogLambda,
-  findFlats,
-  flatBpmOf,
-  normalizePlan,
-  rampsOffered,
-  runTimes,
-  settleFlats,
-  LOG_LAMBDA_MAX,
-  LOG_LAMBDA_MIN,
-  type Flat,
-  type NormalizeMode,
-} from '@/lib/normalize'
+import { autoLogLambda, findFlats, normalizePlan, planFrom, rampsOffered, runTimes, LOG_LAMBDA_MAX, LOG_LAMBDA_MIN, type NormalizeMode } from '@/lib/normalize'
+import { detectTempoMap, fitTempoMap, rateText, type MapPiece } from '@/lib/tempoMap'
 import { beatsPerBarAt, TEMPO_MOVES_BPM } from '@/lib/tempoLane'
 import { segmentSpans } from '@/lib/layers'
 import type { Span } from '@/types/strata'
@@ -49,19 +40,21 @@ export function NormalizePanel({ spans, onClose }: { spans: Span[]; onClose: () 
   const times = useMemo(() => JSON.parse(timesKey) as number[] | null, [timesKey])
   const auto = useMemo(() => (times ? autoLogLambda(times) : 0), [times])
   const beats = useMemo(() => (doc && times ? beatsPerBarAt(doc)(times[0]) : 4), [doc, times])
-  // Steady between ramps: proposed corners, and whether to offer it at all.
-  const proposed = useMemo(() => (times ? findFlats(times) : []), [times])
-  const offered = useMemo(() => !!times && rampsOffered(times, proposed, beats, TEMPO_MOVES_BPM), [times, proposed, beats])
+  // Steady between ramps: whether to offer it, and the proposed tempo map.
+  const flats = useMemo(() => (times ? findFlats(times) : []), [times])
+  const offered = useMemo(() => !!times && rampsOffered(times, flats, beats, TEMPO_MOVES_BPM), [times, flats, beats])
+  const proposed = useMemo(() => (times && offered ? detectTempoMap(times) : []), [times, offered])
   const [chosen, setMode] = useState<NormalizeMode | null>(null)
   const mode: NormalizeMode = chosen === 'ramps' && !offered ? 'smooth' : (chosen ?? (offered ? 'ramps' : 'smooth'))
-  const [movedFlats, setMovedFlats] = useState<Flat[] | null>(null)
-  const flats = movedFlats ?? proposed
+  const [movedPieces, setMovedPieces] = useState<MapPiece[] | null>(null)
+  const pieces = movedPieces ?? proposed
   const [logLambda, setLogLambda] = useState<number | null>(null)
   const [intoNew, setIntoNew] = useState(false)
   const g = logLambda ?? auto
+  const map = useMemo(() => (times && mode === 'ramps' && pieces.length ? fitTempoMap(times, pieces, beats) : null), [times, mode, pieces, beats])
   const plan = useMemo(
-    () => (times ? normalizePlan(times, mode, g, mode === 'ramps' ? flats : undefined) : null),
-    [times, mode, g, flats],
+    () => (!times ? null : mode === 'ramps' ? (map ? planFrom(times, map.times) : null) : normalizePlan(times, mode, g)),
+    [times, mode, g, map],
   )
   const firstId = spans[0]?.id
   const layerId = useMemo(
@@ -72,10 +65,9 @@ export function NormalizePanel({ spans, onClose }: { spans: Span[]; onClose: () 
   useEffect(() => {
     if (!plan || !layerId) return setPreview(null)
     const n = plan.times.length - 1
-    const corners =
-      mode === 'ramps' ? flats.flatMap((f) => [f.from > 0 ? plan.times[f.from] : null, f.to < n ? plan.times[f.to] : null]).filter((t): t is number => t != null) : undefined
+    const corners = mode === 'ramps' ? pieces.slice(0, -1).map((p) => plan.times[p.to]).filter((_, i) => i < n) : undefined
     setPreview({ layerId, times: plan.times, corners })
-  }, [plan, layerId, setPreview, mode, flats])
+  }, [plan, layerId, setPreview, mode, pieces])
   useEffect(() => () => setPreview(null), [setPreview])
   // A mode is left with Esc, as well as with Apply or Cancel.
   useEffect(() => {
@@ -104,13 +96,18 @@ export function NormalizePanel({ spans, onClose }: { spans: Span[]; onClose: () 
   // A bar's name: its label (the bar number, on a bar layer), else its place in the run.
   const ordered = [...spans].sort((a, b) => a.startTime - b.startTime)
   const barName = (k: number) => ordered[k]?.label?.trim() || String(k + 1)
-  /** Move one corner of stretch `i` by a bar, keeping each stretch at least four bars. */
-  const nudge = (i: number, end: 'from' | 'to', by: number) => {
-    const next = flats.map((f, j) => (j === i ? { ...f, [end]: f[end] + by } : f))
-    const f = next[i]
-    if (f.to - f.from < 4 || f.from < 0 || f.to > n) return
-    setMovedFlats(settleFlats(next, n))
+  /** Move the corner after piece `i` by a bar, each side keeping two bars. */
+  const nudge = (i: number, by: number) => {
+    const c = pieces[i].to + by
+    if (c - pieces[i].from < 2 || pieces[i + 1].to - c < 2) return
+    setMovedPieces(pieces.map((p, j) => (j === i ? { ...p, to: c } : j === i + 1 ? { ...p, from: c } : p)))
   }
+  /** Take away the corner between two ramps: one ramp from the first's start to the second's end. */
+  const join = (i: number) =>
+    setMovedPieces([...pieces.slice(0, i), { from: pieces[i].from, to: pieces[i + 1].to, kind: 'ramp' }, ...pieces.slice(i + 2)])
+  /** Switch a ramp's shape: the same percent each bar, or the same BPM. */
+  const reshape = (i: number, shape: 'percent' | 'bpm') =>
+    setMovedPieces(pieces.map((p, j) => (j === i ? { ...p, shape: shape === 'percent' ? 'bpm' : 'percent' } : p)))
   const tooFar = mode === 'steady' && plan.maxMove > meanBar / 4
   const short = mode === 'smooth' && n < 3
 
@@ -130,7 +127,7 @@ export function NormalizePanel({ spans, onClose }: { spans: Span[]; onClose: () 
                 ? 'Make every bar the same length, at one tempo.'
                 : m === 'smooth'
                   ? 'Follow a tempo that changes, without the scatter of tapping.'
-                  : 'Put each steady stretch at one tempo, with smooth ramps between, as a DAW tempo track has.'
+                  : 'Fit the bars to their tempo map: steady stretches, and ramps each at an even rate, as a DAW tempo track has.'
             }
           >
             {m === 'steady' ? 'Steady' : m === 'smooth' ? 'Smooth' : 'Steady between ramps'}
@@ -138,7 +135,7 @@ export function NormalizePanel({ spans, onClose }: { spans: Span[]; onClose: () 
         ))}
       </div>
 
-      {mode !== 'steady' && (
+      {mode === 'smooth' && (
         <label className="flex items-center gap-1.5 text-muted-foreground">
           Light
           <input
@@ -182,19 +179,41 @@ export function NormalizePanel({ spans, onClose }: { spans: Span[]; onClose: () 
         {tooFar && <span style={{ color: 'hsl(var(--destructive))' }}> · Steady moves some bars far. Try Smooth.</span>}
       </span>
 
-      {mode === 'ramps' && (
-        <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] tabular-nums text-muted-foreground" aria-label="Steady stretches">
-          {flats.map((f, i) => (
-            <span key={i} className="flex items-center gap-1">
-              <span className="font-medium text-foreground">{flatBpmOf(times, f, beats).toFixed(2)} BPM</span>
-              <span>from bar</span>
-              <Corner name={barName(f.from)} label={`Steady from bar ${barName(f.from)}`} onStep={(by) => nudge(i, 'from', by)} />
-              <span>to bar</span>
-              <Corner name={barName(f.to - 1)} label={`Steady to bar ${barName(f.to - 1)}`} onStep={(by) => nudge(i, 'to', by)} />
+      {mode === 'ramps' && map && (
+        <div className="flex w-full flex-wrap items-center gap-x-1.5 gap-y-1 text-[11.5px] tabular-nums text-muted-foreground" aria-label="Tempo map">
+          {map.segments.map((seg, i) => (
+            <span key={`${seg.from}-${seg.kind}`} className="flex items-center gap-1.5">
+              {seg.kind === 'steady' ? (
+                <span className="rounded bg-card px-1.5 py-0.5 font-medium text-foreground ring-1 ring-border">{seg.startBpm.toFixed(2)} BPM</span>
+              ) : seg.kind === 'ramp' ? (
+                <button
+                  type="button"
+                  onClick={() => reshape(i, seg.shape ?? 'percent')}
+                  className="rounded bg-card px-1.5 py-0.5 text-foreground ring-1 ring-border hover:bg-accent"
+                  title={`${Math.round(seg.startBpm)} to ${Math.round(seg.endBpm)} BPM. Click to change by the same ${seg.shape === 'percent' ? 'BPM' : 'percentage'} each bar.`}
+                >
+                  {rateText(seg)}
+                </button>
+              ) : (
+                <span title="A bar far off its neighbours, kept as marked">as marked</span>
+              )}
+              {i < map.segments.length - 1 && seg.kind !== 'asMarked' && map.segments[i + 1].kind !== 'asMarked' ? (
+                <span className="flex items-center gap-1">
+                  <span>to</span>
+                  <Corner name={barName(seg.to - 1)} label={`Corner after bar ${barName(seg.to - 1)}`} onStep={(by) => nudge(i, by)} />
+                  {seg.kind === 'ramp' && map.segments[i + 1].kind === 'ramp' && (
+                    <button type="button" onClick={() => join(i)} className="px-0.5 text-muted-foreground hover:text-foreground" aria-label={`Join the ramps at bar ${barName(seg.to - 1)}`} title="Join these two ramps into one">
+                      ×
+                    </button>
+                  )}
+                </span>
+              ) : i < map.segments.length - 1 ? (
+                <span>·</span>
+              ) : null}
             </span>
           ))}
-          {movedFlats && (
-            <button type="button" onClick={() => setMovedFlats(null)} className="text-[11px] font-medium text-foreground underline">
+          {movedPieces && (
+            <button type="button" onClick={() => setMovedPieces(null)} className="ml-2 text-[11px] font-medium text-foreground underline">
               Back to proposed
             </button>
           )}
@@ -213,7 +232,7 @@ export function NormalizePanel({ spans, onClose }: { spans: Span[]; onClose: () 
           className={`${box} border-foreground bg-foreground text-background hover:opacity-90 disabled:opacity-50`}
           disabled={short || !plan.moved}
           onClick={() => {
-            normalizeBars(spans.map((s) => s.id), mode, g, intoNew, mode === 'ramps' ? flats : undefined)
+            normalizeBars(spans.map((s) => s.id), mode, g, intoNew, mode === 'ramps' ? pieces : undefined)
             showToast(`Normalized ${n} bars${intoNew ? ' into a new layer' : ''}`)
             onClose()
           }}

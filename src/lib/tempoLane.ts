@@ -9,6 +9,7 @@ import type { Layer, StrataDocument, TempoLayer } from '@/types/strata'
 import { autoLogLambda, smoothAnchored, smoothTimes } from '@/lib/normalize'
 import { segmentSpans } from '@/lib/layers'
 import { segmentAt, sortedSegments } from '@/lib/beatGrid'
+import { detectTempoMap, fitTempoMap, rateText } from '@/lib/tempoMap'
 
 /** Height of the lane, in px, from the top of its band to the ruler. */
 export const TEMPO_LANE_HEIGHT = 52
@@ -137,7 +138,23 @@ export interface TempoView {
    * holding a fade, can't swamp it. 0 without deviations.
    */
   scatterMs: number
+  /** The tempo map: each bar on it, and each piece's extent and label ("126.00 BPM", "+3.9%/bar"); empty unless asked for. */
+  map: TempoStep[]
+  mapLabels: Array<{ start: number; end: number; text: string }>
+  /** Times where the map's pieces meet. */
+  mapCorners: number[]
   scale: TempoScale
+}
+
+/** The last map worked out, by its run: detection takes a moment, and the view redraws on every zoom and scroll. */
+let lastMap: { key: string; value: ReturnType<typeof fitTempoMap>; pieces: ReturnType<typeof detectTempoMap> } | null = null
+function mapOf(run: number[], beats: number) {
+  const key = `${beats}|${run.join(',')}`
+  if (lastMap?.key !== key) {
+    const pieces = detectTempoMap(run)
+    lastMap = { key, pieces, value: fitTempoMap(run, pieces, beats) }
+  }
+  return lastMap
 }
 
 /**
@@ -180,12 +197,35 @@ export function tempoView(doc: StrataDocument, layer: TempoLayer): TempoView {
       for (let j = 1; j < run.length - 1; j++) deviations.push({ time: run[j], ms: (run[j] - fit[j]) * 1000 })
     }
   }
+  const map: TempoStep[] = []
+  const mapLabels: TempoView['mapLabels'] = []
+  const mapCorners: number[] = []
+  if (show.includes('map') && marked.length) {
+    let k = 0
+    for (const run of boundaryRuns(marked)) {
+      const beats = beatsAt(run[0])
+      if (run.length < 3) {
+        k += run.length - 1
+        continue
+      }
+      const { value } = mapOf(run, beats)
+      const fit = value.times
+      for (let j = 0; j < run.length - 1; j++, k++) {
+        const len = fit[j + 1] - fit[j]
+        map.push({ ...marked[k], start: fit[j], end: fit[j + 1], bpm: len > 0 ? (60 * beats) / len : marked[k].bpm })
+      }
+      value.segments.forEach((s, i) => {
+        if (s.kind !== 'asMarked') mapLabels.push({ start: fit[s.from], end: fit[s.to], text: s.kind === 'steady' ? `${s.startBpm.toFixed(2)} BPM` : rateText(s) })
+        if (i > 0) mapCorners.push(fit[s.from])
+      })
+    }
+  }
   const scatterMs = robustSpread(deviations.map((d) => d.ms))
   const fixed = display.scale
   const scale = fixed && fixed.max > fixed.min
     ? { min: fixed.min, max: fixed.max, ticks: tempoScale([{ start: 0, end: 1, bpm: fixed.min, bar: null }, { start: 1, end: 2, bpm: fixed.max, bar: null }]).ticks.filter((t) => t >= fixed.min && t <= fixed.max) }
     : marked.length
-      ? tempoScale(show.includes('marked') || !smoothed.length ? marked : smoothed)
+      ? tempoScale(show.includes('marked') ? marked : smoothed.length ? smoothed : map.length ? map : marked)
       : { min: 0, max: 0, ticks: [] }
   return {
     source,
@@ -193,6 +233,9 @@ export function tempoView(doc: StrataDocument, layer: TempoLayer): TempoView {
     smoothed: show.includes('smoothed') ? smoothed : [],
     deviations: show.includes('deviation') ? deviations : [],
     scatterMs,
+    map,
+    mapLabels,
+    mapCorners,
     scale,
   }
 }

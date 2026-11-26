@@ -6,14 +6,16 @@
  * A row is a header cell, as wide as the Segments block's layer names so the
  * timelines line up, and a canvas that scrolls with the diagram: the tempo as
  * marked (a step line), as smoothed (a line through each bar, for the drawing
- * only), and each boundary's deviation from the smoothed curve in ms, with
- * the tapping scatter shaded. Hovering a bar shows its tempo; clicking it
+ * only), each boundary's deviation from the smoothed curve in ms, with
+ * the tapping scatter shaded, and the tempo map (lib/tempoMap.ts): steady
+ * stretches and even ramps, each labelled with its tempo or rate, corners
+ * marked. Hovering a bar shows its tempo; clicking it
  * selects that bar. The block's top bar carries the controls WorkArea
  * hands it (move, hide, remove); while editing, a tool row under it holds
  * View ▾ and Scale ▾ (./TempoMenus.tsx); each row's ⋯ holds its settings, its
  * name and the layer it reads.
  */
-import { useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { MoreHorizontal } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
@@ -29,6 +31,7 @@ const TOP_BAR_HEIGHT = 24
 /** Height of the deviation band, under the tempo, when it is shown. */
 const DEVIATION_HEIGHT = 40
 const SMOOTH_COLOR = '#2563eb'
+const MAP_COLOR = '#b45309'
 const ROW_GAP = 3
 
 /** Whether a row draws the tempo band: unless deviation is all it shows. */
@@ -82,7 +85,8 @@ function TempoRow({ doc, layer, headerWidth, reading }: { doc: StrataDocument; l
   const zoom = useUIStore((s) => s.zoom)
   const scrollOffset = useUIStore((s) => s.scrollOffset)
   const viewportWidth = useUIStore((s) => s.viewportWidth)
-  const view = tempoView(doc, layer)
+  // Worked out again only when the analysis changes, not on every zoom and scroll.
+  const view = useMemo(() => tempoView(doc, layer), [doc, layer])
   const pps = computePps(zoom)
   const height = tempoRowHeight(layer)
   const width = Math.max(scrollableWidth(doc.duration, zoom), viewportWidth)
@@ -103,7 +107,7 @@ function TempoRow({ doc, layer, headerWidth, reading }: { doc: StrataDocument; l
           <p className="px-2 pt-2 text-[11px]" style={{ color: 'var(--ink-muted)' }}>
             The layer this tempo reads is gone. Choose another in its settings (⋯).
           </p>
-        ) : view.marked.length + view.smoothed.length + view.deviations.length === 0 ? (
+        ) : view.marked.length + view.smoothed.length + view.deviations.length + view.map.length === 0 ? (
           <p className="px-2 pt-2 text-[11px]" style={{ color: 'var(--ink-muted)' }}>
             {segmentSpans(view.source).length < 2 ? `Mark two bars or more on ${view.source.label} to see their tempo.` : reading ? 'Nothing is chosen to show.' : 'Choose what to show in View.'}
           </p>
@@ -144,7 +148,9 @@ function TempoLines({ view, top, pps, width }: { view: TempoView; top: number; p
     })
     return d.trim()
   }
-  const hits = view.marked.length ? view.marked : view.smoothed
+  const hits = view.marked.length ? view.marked : view.smoothed.length ? view.smoothed : view.map
+  // The map piece a bar is in, for its hover title.
+  const pieceAt = (t: number) => view.mapLabels.find((l) => t >= l.start - 1e-6 && t < l.end - 1e-6)?.text
   return (
     <g>
       {view.scale.ticks.map((t) => (
@@ -155,12 +161,30 @@ function TempoLines({ view, top, pps, width }: { view: TempoView; top: number; p
           d={step(view.marked)}
           fill="none"
           stroke="var(--ink-primary)"
-          strokeOpacity={view.smoothed.length ? 0.45 : 1}
+          strokeOpacity={view.smoothed.length || view.map.length ? 0.45 : 1}
           strokeWidth={1.5}
           strokeLinejoin="round"
         />
       )}
       {view.smoothed.length > 0 && <path d={through(view.smoothed)} fill="none" stroke={SMOOTH_COLOR} strokeWidth={1.75} strokeLinejoin="round" />}
+      {view.map.length > 0 && (
+        <g>
+          <path d={through(view.map)} fill="none" stroke={MAP_COLOR} strokeWidth={2} strokeLinejoin="round" />
+          {view.mapCorners.map((t, k) => (
+            <line key={k} x1={t * pps} x2={t * pps} y1={top + 2} y2={top + TEMPO_LANE_HEIGHT} stroke={MAP_COLOR} strokeOpacity={0.6} strokeWidth={1} strokeDasharray="2 2" />
+          ))}
+          {view.mapLabels.map((l, k) => {
+            const w = (l.end - l.start) * pps
+            // A label only where it fits; the rest show on hover.
+            if (w < l.text.length * 6 + 8) return null
+            return (
+              <text key={k} x={((l.start + l.end) / 2) * pps} y={top + 10} textAnchor="middle" fontSize={10} fill={MAP_COLOR} style={{ fontVariantNumeric: 'tabular-nums' }}>
+                {l.text}
+              </text>
+            )
+          })}
+        </g>
+      )}
       {hits.map((s, k) => (
         <rect
           key={k}
@@ -172,7 +196,7 @@ function TempoLines({ view, top, pps, width }: { view: TempoView; top: number; p
           style={{ cursor: s.id ? 'pointer' : undefined }}
           onClick={() => s.id && useUIStore.getState().selectSpan(s.id)}
         >
-          <title>{`${s.bar ? `Bar ${s.bar}: ` : ''}${Math.round(s.bpm * 10) / 10} BPM`}</title>
+          <title>{`${s.bar ? `Bar ${s.bar}: ` : ''}${Math.round(s.bpm * 10) / 10} BPM${view.mapLabels.length && pieceAt((s.start + s.end) / 2) ? ` · map: ${pieceAt((s.start + s.end) / 2)}` : ''}`}</title>
         </rect>
       ))}
     </g>

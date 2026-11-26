@@ -48,7 +48,7 @@ interface TempoData {
     /** Display-only smoothing (log10 of lambda, lib/normalize.ts); null or absent = as marked. Moves no boundary. */
     smoothing?: number | null
     /** Which views to draw. Absent = ['marked']. */
-    show?: Array<'marked' | 'smoothed' | 'deviation'>
+    show?: Array<'marked' | 'smoothed' | 'deviation' | 'map'>
     /** A fixed scale in BPM, for comparing recordings; absent = from the data (lowest to highest, out to the nearest 10). */
     scale?: { min: number; max: number } | null
   }
@@ -72,7 +72,15 @@ beat source, each span is one beat.
   those outside it are probably the music, such as rubato, agogic accents, or
   a push into a cadence.
 
-Hovering a step shows "Bar 37: 103 BPM". Clicking it selects that bar on the
+- **Tempo map:** steady stretches and ramps at an even rate (the same percent
+  or the same number of BPM each bar), the way a DAW's tempo track is built,
+  fitted as one continuous line and drawn over the others. Each piece is labelled where it
+  fits ("126.00 BPM", "+3.8%/bar", "−3.0 BPM/bar"), with its corners dashed.
+  Worked out from the bars (lib/tempoMap.ts); no bar moves. Normalize's Steady
+  between ramps fits the bars to the same map. docs/decisions.md, "The Tempo
+  Map".
+
+Hovering a step shows "Bar 37: 103 BPM", and with the map, the piece it's in. Clicking it selects that bar on the
 source layer. The tempo isn't edited here; the bars are.
 
 The scatter is read robustly, as 1.4826 × the median absolute deviation, so
@@ -93,7 +101,7 @@ deviation beyond it is drawn clipped, with a cap.
 - **Hidden blocks** come back from chips beside Add widget. With the form
   diagram hidden, its zoom controls move there too.
 - **The tool row,** while editing, under the top bar (docs/decisions.md,
-  "Tempo Gets a Tool Row"): **View ▾** (As marked, Smoothed, Deviation, each
+  "Tempo Gets a Tool Row"): **View ▾** (As marked, Smoothed, Deviation, Tempo map, each
   a check; Smoothing, from Auto, active when Smoothed or Deviation is shown)
   and **Scale ▾** (From the data, or Fixed, a range in BPM). Each names the
   tempo layer it acts on in its header, and with several, chooses which;
@@ -118,7 +126,7 @@ Two different acts, sharing one smoother:
 | Use | Cleaning up hand-marked bars | Showing the shape of a tempo without losing the marks |
 | Undo | One step | A display setting |
 
-For a tempo made in a DAW, Normalize's **Steady between ramps** puts each steady stretch at one tempo and smooths the ramps between them. It is offered only when the bars have that shape.
+For a tempo made in a DAW, Normalize's **Steady between ramps** fits the bars to their tempo map (§3, Tempo map). It is offered only when the bars have that shape.
 
 An analyst who wants to show micro-timing keeps the bars as marked and turns
 on the smoothed and deviation views.

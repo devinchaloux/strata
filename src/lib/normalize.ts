@@ -3,11 +3,10 @@
  * its two ends where they are. docs/decisions.md, "Normalize".
  *
  * Steady puts every bar at the same length: one tempo across the run.
- * Steady between ramps (findFlats, flatAndRampsTimes) is for a tempo made in
- * a DAW: steady stretches joined by ramps. Each steady stretch is a straight
- * line fitted to all its marks; the ramps are smoothed between them, held at
- * the corners. It is offered only when the bars have such a shape
- * (rampsOffered), and its corners are proposals the analyst can move.
+ * Steady between ramps is for a tempo made in a DAW: steady stretches joined
+ * by ramps. It fits the bars to a tempo map (lib/tempoMap.ts); the steady
+ * stretches are found here (findFlats), and it is offered only when the bars
+ * have such a shape (rampsOffered).
  *
  * Smooth (on the runs between odd bars, which it keeps; oddBars) fits a curve
  * that follows a tempo that moves (an accelerando, a
@@ -88,31 +87,6 @@ export function smoothTimes(times: number[], lambda: number): number[] {
   const b = Array.from({ length: n }, (_, i) => times[i + 1] - lambda * (P(i + 1, 0) * times[0] + P(i + 1, last) * times[last]))
   const inner = solveBand(n, 3, A, b)
   return [times[0], ...inner, times[last]]
-}
-
-/**
- * smoothTimes with any boundaries held: `fixed[i]` keeps times[i] as it is, and
- * the rest are fitted around them. Holding a few boundaries on either side of a
- * free stretch carries their tempo into it, so a ramp leaves a steady stretch
- * at that stretch's tempo.
- */
-export function smoothFixed(times: number[], lambda: number, fixed: boolean[]): number[] {
-  const m = times.length
-  const free = times.map((_, i) => i).filter((i) => !fixed[i])
-  if (m < 4 || !free.length || !(lambda > 0)) return [...times]
-  const P = penalty(m)
-  // Dropping the held rows and columns keeps the matrix banded: two free
-  // boundaries within 3 of each other are within 3 of each other in `free`.
-  const A = (i: number, j: number) => (i === j ? 1 : 0) + lambda * P(free[i], free[j])
-  const b = free.map((i) => {
-    let sum = times[i]
-    for (let j = Math.max(0, i - 3); j <= Math.min(m - 1, i + 3); j++) if (fixed[j]) sum -= lambda * P(i, j) * times[j]
-    return sum
-  })
-  const x = solveBand(free.length, 3, A, b)
-  const out = [...times]
-  free.forEach((i, k) => (out[i] = x[k]))
-  return out
 }
 
 /** Lag-1 correlation of what smoothing left over at the inner boundaries. */
@@ -224,7 +198,7 @@ export const FLAT_MIN_BARS = 16
 const SEED_MIN = 8
 
 /** The least-squares line through times[a..b] against the boundary index: [intercept, seconds per bar]. */
-function lineFit(times: number[], a: number, b: number): [number, number] {
+export function lineFit(times: number[], a: number, b: number): [number, number] {
   const n = b - a + 1
   let sk = 0
   let st = 0
@@ -278,6 +252,24 @@ function solve3(M: number[][], v: number[]): number[] | null {
   return [0, 1, 2].map((c) => det(M.map((row, i) => row.map((x, j) => (j === c ? v[i] : x)))) / d)
 }
 
+const median = (xs: number[]) => {
+  const o = [...xs].sort((a, b) => a - b)
+  return o[o.length >> 1] ?? 0
+}
+
+/**
+ * The tapping scatter of a run, in seconds: how far the marks sit from the
+ * smoothed curve (Auto), read robustly (1.4826 × the median absolute
+ * deviation), and at least 15 ms, a typical tapping scatter: bars already
+ * smoothed, or laid from a grid, have lost their scatter, but a hand-marked
+ * drift of a few tens of ms is still there.
+ */
+export function tappingScatter(times: number[], fitted = smoothAnchored(times, 10 ** autoLogLambda(times))): number {
+  const left = times.map((t, k) => t - fitted[k]).slice(1, -1)
+  const m0 = median(left)
+  return Math.max(0.015, 1.4826 * median(left.map((r) => Math.abs(r - m0))))
+}
+
 /**
  * The steady stretches in a run of hand-marked bars, as proposals.
  *
@@ -300,16 +292,8 @@ export function findFlats(times: number[]): Flat[] {
   if (n < FLAT_MIN_BARS) return []
   const odd = oddBars(times)
   const fitted = smoothAnchored(times, 10 ** autoLogLambda(times))
-  const left = times.map((t, k) => t - fitted[k]).slice(1, -1)
-  const med = (xs: number[]) => {
-    const o = [...xs].sort((a, b) => a - b)
-    return o[o.length >> 1] ?? 0
-  }
-  const m0 = med(left)
-  // At least 15 ms, a typical tapping scatter: bars already smoothed, or laid
-  // from a grid, have lost their scatter, but a hand-marked drift of a few tens
-  // of ms is still there.
-  const sigma = Math.max(0.015, 1.4826 * med(left.map((r) => Math.abs(r - m0))))
+  const sigma = tappingScatter(times, fitted)
+  const med = median
 
   const logLen = fitted.slice(1).map((t, k) => Math.log(t - fitted[k]))
   const rate = logLen.map((_, k) => {
@@ -460,35 +444,6 @@ export function flatBpmOf(times: number[], f: Flat, beatsPerBar: number): number
   return perBar > 0 ? (60 * beatsPerBar) / perBar : 0
 }
 
-/**
- * Steady between ramps: each stretch on the line through its marks, and the
- * rest smoothed with `lambda` around them, the run's two ends, odd bars, and
- * the stretches held. A stretch that touches the run's end keeps that end.
- * Odd bars stay as marked.
- */
-export function flatAndRampsTimes(times: number[], flats: Flat[], lambda: number): number[] {
-  const n = times.length - 1
-  const out = [...times]
-  const fixed = times.map(() => false)
-  for (const f of settleFlats(flats, n)) {
-    const [c, s] = lineFit(times, f.from, f.to)
-    for (let k = f.from; k <= f.to; k++) {
-      if (k === 0 || k === n) continue
-      out[k] = c + s * k
-      fixed[k] = true
-    }
-  }
-  // As Smooth does, each run between odd bars on its own (its ends held), so
-  // an odd bar's jump in length isn't smoothed into the bars beside it.
-  const result = [...out]
-  for (const [a, b] of cleanRuns(times)) {
-    const held = fixed.slice(a, b + 1).map((h, j) => h || j === 0 || j === b - a)
-    const fit = smoothFixed(out.slice(a, b + 1), lambda, held)
-    for (let k = a; k <= b; k++) result[k] = fit[k - a]
-  }
-  return result
-}
-
 export interface NormalizePlan {
   /** The new boundary times, the first and last unchanged. */
   times: number[]
@@ -502,17 +457,8 @@ export interface NormalizePlan {
 
 export type NormalizeMode = 'steady' | 'smooth' | 'ramps'
 
-/**
- * What normalizing a run's boundary times would do. For 'ramps', `flats` are
- * the steady stretches (as proposed by findFlats, or moved by the analyst).
- */
-export function normalizePlan(times: number[], mode: NormalizeMode, logLambda: number, flats?: Flat[]): NormalizePlan {
-  const next =
-    mode === 'steady'
-      ? steadyTimes(times)
-      : mode === 'ramps'
-        ? flatAndRampsTimes(times, flats ?? findFlats(times), 10 ** logLambda)
-        : smoothAnchored(times, 10 ** logLambda)
+/** What moving a run's boundary times to `next` would do. */
+export function planFrom(times: number[], next: number[]): NormalizePlan {
   const moves = next.map((t, k) => Math.abs(t - times[k]))
   return {
     times: next,
@@ -520,6 +466,14 @@ export function normalizePlan(times: number[], mode: NormalizeMode, logLambda: n
     maxMove: Math.max(0, ...moves),
     scatter: scatter(times, next),
   }
+}
+
+/**
+ * What normalizing a run's boundary times would do, Steady or Smooth. Steady
+ * between ramps fits a tempo map instead (rampsPlan in lib/tempoMap.ts).
+ */
+export function normalizePlan(times: number[], mode: 'steady' | 'smooth', logLambda: number): NormalizePlan {
+  return planFrom(times, mode === 'steady' ? steadyTimes(times) : smoothAnchored(times, 10 ** logLambda))
 }
 
 /**

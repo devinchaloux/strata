@@ -482,8 +482,8 @@
             "smoothing": { "type": ["number", "null"], "description": "Display-only smoothing for the smoothed and deviation views, as log10 of the smoother's lambda (the same smoother as Normalize). Null or absent = automatic: the smoothest at which what is left looks like tapping scatter. It moves no boundary." },
             "show": {
               "type": "array",
-              "items": { "type": "string", "enum": ["marked", "smoothed", "deviation"] },
-              "description": "Which views to draw: the tempo as marked, as smoothed, and each boundary's deviation from the smoothed curve in milliseconds. Absent = marked only."
+              "items": { "type": "string", "enum": ["marked", "smoothed", "deviation", "map"] },
+              "description": "Which views to draw: the tempo as marked, as smoothed, each boundary's deviation from the smoothed curve in milliseconds, and the tempo map (steady stretches and ramps at an even rate, each labelled, as a DAW's tempo track is built; worked out from the bars, never stored). Absent = marked only."
             },
             "scale": {
               "type": ["object", "null"],
