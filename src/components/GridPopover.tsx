@@ -147,13 +147,14 @@ function FitLayerToGrid() {
   const snapLayerToGrid = useDocumentStore((s) => s.snapLayerToGrid)
   const activeLayerId = useUIStore((s) => s.activeLayerId)
   const [layerId, setLayerId] = useState<string | null>(null)
-  const [result, setResult] = useState<string | null>(null)
+  const showToast = useUIStore((s) => s.showToast)
   const layers = (doc?.layers ?? []).filter((l) => l.type === 'segmentation').sort((a, b) => b.displayOrder - a.displayOrder)
   const chosen = layers.find((l) => l.id === (layerId ?? activeLayerId)) ?? layers[0]
   if (!chosen) return null
   const fit = (unit: 'bar' | 'beat') => {
     const moved = snapLayerToGrid(chosen.id, unit)
-    setResult(moved ? `Moved ${moved} boundar${moved === 1 ? 'y' : 'ies'}.` : 'Every boundary is already on the grid, or has no room to move.')
+    if (moved) showToast(`Moved ${moved} boundar${moved === 1 ? 'y' : 'ies'} to the grid`)
+    else showToast('Every boundary is on the grid already', { undo: false })
   }
   const btn = 'rounded border border-border px-2 py-0.5 text-foreground hover:bg-accent'
   return (
@@ -181,11 +182,6 @@ function FitLayerToGrid() {
           </button>
         </span>
       </div>
-      {result && (
-        <span className="text-[11px] text-muted-foreground" role="status">
-          {result}
-        </span>
-      )}
     </div>
   )
 }

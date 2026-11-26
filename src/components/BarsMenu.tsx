@@ -1,16 +1,13 @@
 /**
  * BarsMenu — Segments' Bars ▾ menu: every bar tool in one place (docs/decisions.md,
- * "Where Controls Live"). Bars, counts and elisions are segmentation, so they
- * live with Segments, not in the Inspector or a layer's ⋯ menu.
+ * "Where Controls Live" and "Menus Are Names").
  *
- * Each item says what it does in a line and what it will act on: the selected
- * bars of the bar layer, or every bar when none are selected. An item that asks
- * for something first ends in "…" and opens a small form in the menu, with Back;
- * one that acts at once does so, says what it did, and stays open for the next.
- * Normalize… closes the menu and opens its mode under the tool row.
- *
- * Without a bar layer the menu offers only the ways to make bars, and says how
- * to make a layer the bar layer.
+ * A row is a name. The header says once what the tools act on: the selected
+ * bars of the bar layer, or all of them. One hint line at the foot follows the
+ * row under the pointer or the keyboard focus, and says what it does, or, for
+ * a row that can't act yet, what to do first. A row that asks first ends in
+ * "…" and opens a short form whose button names the outcome ("Count 198
+ * bars"). What a row changes shows on the diagram, with a toast and Undo.
  */
 import { useState, type ReactNode } from 'react'
 import { ChevronDown, ChevronLeft } from 'lucide-react'
@@ -26,55 +23,17 @@ type View = 'list' | 'number' | 'count' | 'split'
 
 const GROUPS = 'groups'
 const box =
-  'rounded border border-border bg-card px-1 py-0.5 text-center text-xs tabular-nums text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring'
-const primary = 'rounded bg-foreground px-2.5 py-1 text-xs font-medium text-background hover:opacity-90 disabled:opacity-40'
+  'rounded border border-border bg-(--guide-faint) px-1.5 py-0.5 text-center text-xs tabular-nums text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring'
+const primary = 'rounded bg-foreground px-2.5 py-1 text-xs font-medium text-background hover:opacity-90'
 
 const plural = (k: number, word: string) => `${k} ${word}${k === 1 ? '' : 's'}`
 
-/** One item: what it does in a line, and what it will act on. */
-function Item({
-  name,
-  scope,
-  line,
-  disabled,
-  why,
-  onClick,
-}: {
-  name: string
-  scope: string
-  line: string
-  disabled?: boolean
-  why?: string
-  onClick: () => void
-}) {
+/** The line at the foot of the menu or form: one sentence, about one thing. */
+function Hint({ children }: { children: ReactNode }) {
   return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      title={disabled ? why : undefined}
-      className="grid w-full grid-cols-[1fr_auto] gap-x-3 rounded px-2.5 py-1.5 text-left hover:bg-accent disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent"
-    >
-      <span className="text-[13px] font-medium text-foreground">{name}</span>
-      <span className="text-[11px] text-muted-foreground">{disabled && why ? why : scope}</span>
-      <span className="col-span-2 text-[11px] leading-snug text-muted-foreground">{line}</span>
-    </button>
-  )
-}
-
-function Heading({ children }: { children: ReactNode }) {
-  return <p className="px-2.5 pb-0.5 pt-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{children}</p>
-}
-
-function Form({ title, onBack, children }: { title: string; onBack: () => void; children: ReactNode }) {
-  return (
-    <div className="flex flex-col gap-3 p-2.5">
-      <button type="button" onClick={onBack} className="flex items-center gap-1 self-start text-[11px] text-muted-foreground hover:text-foreground">
-        <ChevronLeft size={12} aria-hidden /> Bars
-      </button>
-      <p className="text-[13px] font-semibold text-foreground">{title}</p>
+    <p className="-mx-1.5 -mb-1.5 mt-1 min-h-[2rem] rounded-b-md border-t border-border bg-(--guide-faint) px-3 py-2 text-[12px] leading-snug text-muted-foreground" aria-live="polite">
       {children}
-    </div>
+    </p>
   )
 }
 
@@ -94,9 +53,10 @@ export function BarsMenu() {
   const setBarGroup = useUIStore((s) => s.setBarGroup)
   const setNormalizing = useUIStore((s) => s.setNormalizing)
   const setTempoOffer = useUIStore((s) => s.setTempoOffer)
+  const showToast = useUIStore((s) => s.showToast)
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<View>('list')
-  const [result, setResult] = useState<string | null>(null)
+  const [hint, setHint] = useState<string | null>(null)
   const [first, setFirst] = useState<number | null>(null)
   const [by, setBy] = useState<string | null>(null)
   if (!doc) return null
@@ -104,10 +64,10 @@ export function BarsMenu() {
   const barLayer = doc.layers.find((l): l is Layer => l.role === 'bars' && l.type === 'segmentation')
   const allBars = barLayer ? [...segmentSpans(barLayer)].sort((a, b) => a.startTime - b.startTime) : []
   const selectedBars = allBars.filter((s) => selectedIds.includes(s.id))
-  // The bars a tool acts on: the selected ones, or every bar when none are selected.
+  // What a tool acts on: the selected bars, or every bar when none are selected.
   const bars: Span[] = selectedBars.length ? selectedBars : allBars
   const ids = bars.map((s) => s.id)
-  const scope = selectedBars.length ? plural(selectedBars.length, 'bar') : `all ${allBars.length}`
+  const n = bars.length
   const one = selectedBars.length === 1 ? selectedBars[0] : null
   // Spans selected on another layer: phrases to split into bars.
   const otherSelected = doc.layers
@@ -127,10 +87,38 @@ export function BarsMenu() {
   const elided = one && (one.annotation ?? '').includes('=') && barLayer ? groupBoundaryOnBar(doc, barLayer.id, one.id) : null
   const offer = elided && elided.boundary.before.endBoundaryType !== 'elided' ? elided : null
 
-  const done = (text: string | null) => {
-    setResult(text)
+  // Closing from code skips onOpenChange, so it resets the view itself: the
+  // menu always opens on its list.
+  const close = () => {
+    setOpen(false)
     setView('list')
+    setHint(null)
   }
+  // A form starts with its own hint, not the last row's.
+  const go = (v: View) => {
+    setHint(null)
+    setView(v)
+  }
+  const back = () => go('list')
+
+  /** One row: a name, its hint on hover or focus, and its reason instead when it can't act. */
+  const row = (name: string, what: string, act: () => void, reason?: string | false) => (
+    <button
+      key={name}
+      type="button"
+      aria-disabled={!!reason || undefined}
+      onMouseEnter={() => setHint(reason || what)}
+      onFocus={() => setHint(reason || what)}
+      onClick={() => {
+        if (reason) return setHint(reason)
+        act()
+      }}
+      className={`w-full rounded px-2.5 py-1.5 text-left text-[13px] ${reason ? 'cursor-default text-muted-foreground/60' : 'text-foreground hover:bg-accent focus-visible:bg-accent'} focus-visible:outline-hidden`}
+    >
+      {name}
+    </button>
+  )
+
   const groupSize = (
     <input
       type="number"
@@ -142,6 +130,11 @@ export function BarsMenu() {
       className={`w-12 ${box}`}
     />
   )
+  const formHead = (
+    <button type="button" onClick={back} className="flex items-center gap-1 self-start text-[11px] text-muted-foreground hover:text-foreground">
+      <ChevronLeft size={12} aria-hidden /> Bars
+    </button>
+  )
 
   return (
     <Popover
@@ -150,7 +143,7 @@ export function BarsMenu() {
         setOpen(o)
         if (!o) {
           setView('list')
-          setResult(null)
+          setHint(null)
         }
       }}
     >
@@ -163,9 +156,10 @@ export function BarsMenu() {
           <ChevronDown size={11} aria-hidden />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-80 p-1.5">
+      <PopoverContent align="start" className="w-64 p-1.5" onMouseLeave={() => setHint(null)}>
         {view === 'number' && barLayer && (
-          <Form title={`Number ${scope === `all ${allBars.length}` ? `all ${allBars.length} bars` : scope}`} onBack={() => setView('list')}>
+          <div className="flex flex-col gap-2.5 p-1.5">
+            {formHead}
             <label className="flex items-center gap-2 text-xs text-muted-foreground">
               From bar
               <input
@@ -176,175 +170,160 @@ export function BarsMenu() {
                 aria-label="First bar number"
                 className={`w-16 ${box}`}
               />
-              <span>Use 0 for a pickup.</span>
             </label>
             <button
               type="button"
               className={`${primary} self-start`}
               onClick={() => {
                 numberBarLayer(barLayer.id, firstNumber, ids)
-                done(`Numbered ${plural(bars.length, 'bar')} from bar ${firstNumber}.`)
+                showToast(`Numbered ${plural(n, 'bar')}`)
+                close()
               }}
             >
-              Number
+              Number {plural(n, 'bar')}
             </button>
-          </Form>
+            <Hint>Use 0 for a pickup.</Hint>
+          </div>
         )}
 
         {view === 'count' && barLayer && (
-          <Form title={`Count ${scope === `all ${allBars.length}` ? `all ${allBars.length} bars` : scope}`} onBack={() => setView('list')}>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <div className="flex flex-col gap-2.5 p-1.5">
+            {formHead}
+            <label className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              Group by
               <select
                 value={byLayer ? byLayer.id : GROUPS}
                 onChange={(e) => setBy(e.target.value)}
-                aria-label="Count the bars by"
-                className="rounded border border-border bg-card px-1 py-0.5 text-xs text-foreground"
+                className="rounded border border-border bg-(--guide-faint) px-1 py-0.5 text-xs text-foreground"
               >
                 {above.map((l) => (
                   <option key={l.id} value={l.id}>
-                    By {l.label}
+                    {l.label}
                   </option>
                 ))}
-                <option value={GROUPS}>In groups of</option>
+                <option value={GROUPS}>A set size</option>
               </select>
               {!byLayer && groupSize}
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              {byLayer ? `Each span of ${byLayer.label} counts its bars from 1.` : 'The count starts again at 1 after each group.'} You'll see each count inside its bar. A bar with a note in its annotation keeps the note.
-            </p>
+            </label>
             <button
               type="button"
               className={`${primary} self-start`}
               onClick={() => {
                 const r = countBars(barLayer.id, byLayer?.id ?? null, barGroup, ids)
-                done(`Counted ${plural(r.counted, 'bar')}${byLayer ? ` by ${byLayer.label}` : ` in groups of ${barGroup}`}.` + (r.skipped ? ` ${r.skipped} kept their notes.` : ''))
+                showToast(r.skipped ? `Counted ${plural(r.counted, 'bar')}, ${r.skipped} notes kept` : `Counted ${plural(r.counted, 'bar')}`)
+                close()
               }}
             >
-              Count
+              Count {plural(n, 'bar')}
             </button>
-          </Form>
+            <Hint>{byLayer ? `Counts start at 1 in each span of ${byLayer.label}.` : 'Counts start again after each group.'} Notes are kept.</Hint>
+          </div>
         )}
 
         {view === 'split' && (
-          <Form title={`Split ${plural(otherSelected.length, 'span')} into bars`} onBack={() => setView('list')}>
+          <div className="flex flex-col gap-2.5 p-1.5">
+            {formHead}
             <label className="flex items-center gap-2 text-xs text-muted-foreground">
               {groupSize}
-              equal bars in each span
+              bars each
             </label>
-            <p className="text-[11px] text-muted-foreground">The new bars go on the bar layer, numbered and counted. If there isn't one, a new layer below holds them.</p>
             <button
               type="button"
               className={`${primary} self-start`}
               onClick={() => {
                 const r = splitIntoBars(otherSelected.map((s) => s.id), barGroup)
-                if (r && r !== 'occupied' && !barLayer) setTempoOffer(r.layerId)
-                done(r === 'occupied' ? 'The bar layer already has bars in that stretch. Delete them first to split again.' : r ? `Made ${plural(r.made, 'bar')}.` : null)
+                if (r === 'occupied') return setHint('The bar layer has bars there already.')
+                if (r) {
+                  if (!barLayer) setTempoOffer(r.layerId)
+                  showToast(`Made ${plural(r.made, 'bar')}`)
+                }
+                close()
               }}
             >
-              Split
+              Split {plural(otherSelected.length, 'span')}
             </button>
-          </Form>
+            <Hint>{hint ?? 'New bars go on the bar layer.'}</Hint>
+          </div>
         )}
 
         {view === 'list' && (
           <div className="flex flex-col">
-            {barLayer ? (
+            <div className="flex items-baseline justify-between px-2.5 pb-1 pt-1.5 text-[11.5px] text-muted-foreground">
+              <span className="font-semibold text-foreground">Bars</span>
+              {barLayer && <span>{selectedBars.length ? `${selectedBars.length} selected` : `all ${allBars.length}`}</span>}
+            </div>
+            {barLayer && (
               <>
-                <Heading>
-                  {barLayer.label} · {selectedBars.length ? `${plural(selectedBars.length, 'bar')} selected` : `all ${plural(allBars.length, 'bar')}`}
-                </Heading>
-                <Item name="Number…" scope={scope} line="Label the bars with their numbers, starting from any bar." onClick={() => setView('number')} />
-                <Item name="Count…" scope={scope} line="Mark each bar's place in its group. Group them by a layer above, such as Phrases, or by a set size." onClick={() => setView('count')} />
-                <Item
-                  name="Elide"
-                  scope="1 bar"
-                  line="Make this bar end one group and start the next, as 4=1. The bars after it count on from 2."
-                  disabled={!one || countOf(one.annotation) === null}
-                  why="Select one counted bar"
-                  onClick={() => {
-                    if (!one || !barLayer) return
+                {row('Number…', 'Label each bar with its number.', () => go('number'))}
+                {row('Count…', "Number each bar's place in its group.", () => go('count'))}
+                {row(
+                  'Elide',
+                  'End one group and start the next on this bar (4=1).',
+                  () => {
+                    if (!one) return
                     elideSpan(barLayer.id, one.id, barGroup)
-                    setResult(one.label ? `Elided bar ${one.label}.` : 'Elided the bar.')
-                  }}
-                />
-                {offer && (
-                  <Item
-                    name={`Elide the ${offer.layer.label} boundary too`}
-                    scope="1 boundary"
-                    line={`${offer.layer.label} has a boundary on this bar. Mark it elided, so one span ends and the next begins in this bar.`}
-                    onClick={() => {
-                      if (!one || !barLayer) return
-                      elideGroupBoundary(barLayer.id, one.id)
-                      setResult(`Elided the ${offer.layer.label} boundary.`)
-                    }}
-                  />
+                    showToast(one.label ? `Elided bar ${one.label}` : 'Elided the bar')
+                  },
+                  (!one || countOf(one.annotation) === null) && 'Select one counted bar to elide it.',
                 )}
-                <Item
-                  name="Phrases from the count"
-                  scope={scope}
-                  line="Start a phrase on the layer above at every bar counted 1."
-                  disabled={!counted}
-                  why="Count the bars first"
-                  onClick={() => {
+                {offer &&
+                  row(`Elide the ${offer.layer.label} boundary too`, `Mark the ${offer.layer.label} boundary on this bar elided.`, () => {
+                    if (!one) return
+                    elideGroupBoundary(barLayer.id, one.id)
+                    showToast(`Elided the ${offer.layer.label} boundary`)
+                    close()
+                  })}
+                {row(
+                  'Phrases from count',
+                  'Start a phrase at every bar counted 1.',
+                  () => {
                     const r = phrasesFromCount(ids)
-                    setResult(r ? `Made ${plural(r.made, 'phrase')}.` : null)
-                  }}
-                />
+                    if (r) showToast(`Made ${plural(r.made, 'phrase')}`)
+                    close()
+                  },
+                  !counted && 'Count the bars first.',
+                )}
                 <div className="my-1 border-t border-border" />
-                <Item
-                  name="Normalize…"
-                  scope={scope}
-                  line="Even out the timing of bars you marked by hand."
-                  disabled={bars.length < 2}
-                  why="Select two bars or more"
-                  onClick={() => {
+                {row(
+                  'Normalize…',
+                  'Even out hand-marked timing.',
+                  () => {
                     setNormalizing(ids)
-                    setOpen(false)
-                  }}
-                />
-                <Item
-                  name="Beat grid from the bars"
-                  scope={scope}
-                  line="Set the beat grid from these bars, so the ruler, snapping, and the metronome follow them."
-                  onClick={() => {
-                    const r = gridFromBars(ids)
-                    setResult(r ? `Set the beat grid from ${plural(r.bars, 'bar')}.` : null)
-                  }}
-                />
+                    close()
+                  },
+                  n < 2 && 'Select two bars or more.',
+                )}
+                {row('Beat grid from bars', 'Make the grid follow these bars.', () => {
+                  const r = gridFromBars(ids)
+                  if (r) showToast(`Beat grid set from ${plural(r.bars, 'bar')}`)
+                  close()
+                })}
                 <div className="my-1 border-t border-border" />
               </>
-            ) : (
-              <p className="px-2.5 py-2 text-[12px] leading-snug text-muted-foreground">
-                To number, count, and normalize bars, turn on <span className="text-foreground">Bar layer</span> in the ⋯ menu of the layer that marks them. You can also make bars here.
-              </p>
             )}
-            <Heading>Make bars</Heading>
-            <Item
-              name="Split into bars…"
-              scope={otherSelected.length ? plural(otherSelected.length, 'span') : 'selected spans'}
-              line="Divide each selected span into equal bars."
-              disabled={!otherSelected.length}
-              why="Select phrases first"
-              onClick={() => setView('split')}
-            />
-            <Item
-              name="Fill with the grid's bars"
-              scope={active ? active.label : 'a layer'}
-              line="Fill an empty layer with a span for each bar of the beat grid."
-              disabled={!hasGrid || !activeEmpty}
-              why={!hasGrid ? 'Add a beat grid first' : 'Click an empty layer first'}
-              onClick={() => {
+            {row('Split into bars…', 'Divide each selected span into equal bars.', () => go('split'), !otherSelected.length && 'Select phrases on another layer first.')}
+            {row(
+              'Fill from grid',
+              'Add a bar for each bar of the grid.',
+              () => {
                 if (!active) return
                 const made = numberBars(active.id, barGroup)
-                if (made) setTempoOffer(active.id)
-                setResult(made ? `Made ${plural(made, 'bar')} on ${active.label}.` : null)
-              }}
-            />
-            {result && (
-              <p className="mx-2.5 mb-1 mt-1.5 rounded bg-accent px-2 py-1 text-[11px] text-foreground" role="status">
-                {result}
-              </p>
+                if (made) {
+                  setTempoOffer(active.id)
+                  showToast(`Made ${plural(made, 'bar')}`)
+                }
+                close()
+              },
+              (!hasGrid && 'Add a beat grid first.') || (!activeEmpty && 'Click an empty layer first.'),
             )}
+            <Hint>
+              {hint ??
+                (!barLayer
+                  ? 'Turn on Bar layer in a layer’s ⋯ menu to number, count, and normalize bars.'
+                  : selectedBars.length
+                    ? ' '
+                    : 'Acts on all bars. Select some to narrow it.')}
+            </Hint>
           </div>
         )}
       </PopoverContent>
