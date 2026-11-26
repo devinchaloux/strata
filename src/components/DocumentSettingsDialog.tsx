@@ -299,9 +299,10 @@ export function DocumentSettingsDialog({
             />
           </Field>
 
-          <Field label="Artist" helper="Separate several artists with commas.">
+          <Field label="Artist">
             <input
               className={inputClass}
+              placeholder="e.g. Eric Prydz, Pryda"
               value={artistText}
               onChange={(e) => setArtistText(e.target.value)}
               onBlur={commitArtist}
@@ -309,7 +310,7 @@ export function DocumentSettingsDialog({
             />
           </Field>
 
-          <Field label="Source" tooltip="You can swap it any time; the analysis stays as it is.">
+          <Field label="Source" tooltip="You can change it later. The analysis stays as it is.">
             <SourceLinkForm />
           </Field>
 
