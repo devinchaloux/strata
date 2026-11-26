@@ -57,26 +57,33 @@ describe('elideLabels', () => {
 describe('in the store', () => {
   const store = () => useDocumentStore.getState()
   // 120 bpm 4/4 from 0: eight 2-second bars in 16 seconds.
+  const barsLayer = (id: string) => ({ ...makeLayer(id), role: 'bars' as const })
   const load = () => {
-    store().loadDocument({ ...makeDoc([makeLayer('L')]), duration: 16, beatGrid: [seg(0)] })
+    store().loadDocument({ ...makeDoc([barsLayer('L')]), duration: 16, beatGrid: [seg(0)] })
     return 'L'
   }
   const spansOf = (i = 0) => segmentSpans(store().document!.layers[i])
   const labels = () => spansOf().map((s) => s.label)
   const counts = (i = 0) => spansOf(i).map((s) => s.annotation)
 
-  it('fills an empty layer with the grid\'s bars and makes it the bar layer', () => {
+  it('fills the empty bar layer with the grid\'s bars', () => {
     const id = load()
     expect(store().numberBars(id, 4)).toBe(8)
-    expect(store().document!.layers[0].role).toBe('bars')
     expect(labels()).toEqual(['1', '2', '3', '4', '5', '6', '7', '8'])
     expect(counts()).toEqual(['1', '2', '3', '4', '1', '2', '3', '4'])
     // Not over spans that are already there.
     expect(store().numberBars(id, 4)).toBe(0)
   })
 
+  it('never makes a bar layer: an ordinary layer stays empty', () => {
+    store().loadDocument({ ...makeDoc([makeLayer('L')]), duration: 16, beatGrid: [seg(0)] })
+    expect(store().numberBars('L', 4)).toBe(0)
+    expect(store().document!.layers[0].role).toBeUndefined()
+    expect(spansOf()).toHaveLength(0)
+  })
+
   it('takes bar numbers from the grid, which honors a first bar', () => {
-    store().loadDocument({ ...makeDoc([makeLayer('L')]), duration: 8, beatGrid: [seg(0, { firstBar: 0 })] })
+    store().loadDocument({ ...makeDoc([barsLayer('L')]), duration: 8, beatGrid: [seg(0, { firstBar: 0 })] })
     store().numberBars('L', 4)
     expect(labels()).toEqual(['0', '1', '2', '3'])
   })
@@ -222,13 +229,14 @@ describe('bars from phrases, phrases from bars', () => {
   const byLabel = (label: string) => layers().find((l) => l.label === label)!
   const sp = (id: string, startTime: number, endTime: number, extra: Partial<Span> = {}): Span => ({ id, startTime, endTime, ...extra })
 
-  it('splits only the selected phrases into bars, on a new bar layer below them', () => {
+  const phrases = () => makeLayer('Phrases', [sp('p1', 0, 8), sp('p2', 8, 14), sp('p3', 14, 20)], 1)
+
+  it('splits only the selected phrases into bars, on the bar layer', () => {
     // Three phrases; the analyst picks the middle two, a chunk of the track.
-    store().loadDocument({ ...makeDoc([makeLayer('Phrases', [sp('p1', 0, 8), sp('p2', 8, 14), sp('p3', 14, 20)], 0)]), duration: 20 })
+    store().loadDocument({ ...makeDoc([{ ...makeLayer('Bars', [], 0), role: 'bars' as const }, phrases()]), duration: 20 })
     const r = store().splitIntoBars(['p2', 'p3'], 3)
     expect(r).toMatchObject({ made: 6 })
     const bars = byLabel('Bars')
-    expect(bars.role).toBe('bars')
     expect(layers().map((l) => l.label)).toEqual(['Bars', 'Phrases'])
     const made = segmentSpans(bars)
     expect(made.map((b) => [b.startTime, b.endTime])).toEqual([[8, 10], [10, 12], [12, 14], [14, 16], [16, 18], [18, 20]])
@@ -242,6 +250,12 @@ describe('bars from phrases, phrases from bars', () => {
     expect(store().splitIntoBars(['p2'], 3)).toBe('occupied')
     useDocumentStore.temporal.getState().undo()
     expect(segmentSpans(byLabel('Bars'))).toHaveLength(6)
+  })
+
+  it('never makes a bar layer: without one, nothing is split', () => {
+    store().loadDocument({ ...makeDoc([phrases()]), duration: 20 })
+    expect(store().splitIntoBars(['p2'], 3)).toBeNull()
+    expect(layers().map((l) => l.label)).toEqual(['Phrases'])
   })
 
   it('makes phrases from a chunk of counted bars, eliding where a bar is 4=1', () => {

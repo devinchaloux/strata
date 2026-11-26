@@ -126,10 +126,10 @@ interface DocumentState {
   fillLayerWithBars: (layerId: string, start: number, barsPer: number) => number
   // Hypermeter and the bar layer (lib/hypermeter.ts). Counts go into span
   // annotations, never over one that holds other text. Each is one undo step.
-  // Fill an empty layer with one span per bar of the grid and make it the bar
-  // layer: labels are the grid's bar numbers, annotations counted 1 to
-  // `group` and round again. Returns how many spans it made (0 when the layer
-  // has spans or there is no grid).
+  // Fill the bar layer, while it is empty, with one span per bar of the grid:
+  // labels are the grid's bar numbers, annotations counted 1 to `group` and
+  // round again. Returns how many spans it made (0 when the layer isn't the
+  // bar layer, has spans, or there is no grid).
   numberBars: (layerId: string, group: number) => number
   // Recount the given spans of a layer 1 to `group`, in time order.
   renumberSpans: (layerId: string, spanIds: string[], group: number) => void
@@ -153,8 +153,8 @@ interface DocumentState {
   elideGroupBoundary: (layerId: string, spanId: string) => string | null
   // Quick setup between phrases and bars, for any selected run (a chunk of the
   // recording or all of it). One undo step each.
-  // Split each selected span into `barsEach` equal bars on the bar layer, or a
-  // new "Bars" layer just below theirs when there is none: each bar's parent
+  // Split each selected span into `barsEach` equal bars on the bar layer (null
+  // when there is none; the analyst identifies it first): each bar's parent
   // is its phrase, its annotation its count, its label its bar number, going on
   // from the bar before. Refused ('occupied') when the bar layer already has
   // bars in that stretch.
@@ -851,12 +851,12 @@ const useDocumentStore = create<DocumentState>()(
       numberBars: (layerId, group) => {
         const doc = get().document
         const layer = doc?.layers.find((l) => l.id === layerId)
-        if (!doc || !layer || layer.type !== 'segmentation' || segmentSpans(layer).length > 0) return 0
+        if (!doc || !layer || layer.type !== 'segmentation' || layer.role !== 'bars' || segmentSpans(layer).length > 0) return 0
         const bars = numberedGridBars(sortedSegments(doc.beatGrid), doc.duration)
         if (!bars.length) return 0
         const counts = countLabels(bars.length, group)
         const fresh: Span[] = bars.map((b, k) => ({ id: crypto.randomUUID(), startTime: b.start, endTime: b.end, annotation: counts[k] }))
-        const filled = { ...doc, layers: withBarRole(doc.layers, layerId, true).map((l) => (l.id === layerId ? mapSegmentSpans(l, () => fresh) : l)) }
+        const filled = { ...doc, layers: mapLayer(doc.layers, layerId, (l) => mapSegmentSpans(l, () => fresh)) }
         const next = relabelSpans(filled, new Map(fresh.map((s, k) => [s.id, String(bars[k].bar)])), get().frozenSlugIds)
         set({ document: { ...next, updatedAt: now() } })
         return fresh.length
@@ -954,19 +954,11 @@ const useDocumentStore = create<DocumentState>()(
         if (!doc || !picked) return null
         const { layer: source, spans: phrases } = picked
         let layers = doc.layers
-        let bars = layers.find((l) => l.role === 'bars' && l.id !== source.id && l.type === 'segmentation')
-        if (bars?.locked) return null
-        if (bars) {
-          const existing = segmentSpans(bars)
-          if (phrases.some((p) => existing.some((b) => b.endTime > p.startTime + 1e-6 && b.startTime < p.endTime - 1e-6))) return 'occupied'
-        } else {
-          // A new bar layer just below the phrases; the layers from there up move up one.
-          const at = source.displayOrder
-          const made = newSegmentLayer('Bars', at)
-          layers = withBarRole([...layers.map((l) => (l.displayOrder >= at ? { ...l, displayOrder: l.displayOrder + 1 } : l)), made], made.id, true)
-          bars = layers.find((l) => l.id === made.id)!
-        }
-        const barLayer = bars
+        // The bar layer is the analyst's to identify; this never makes one.
+        const barLayer = layers.find((l) => l.role === 'bars' && l.id !== source.id && l.type === 'segmentation')
+        if (!barLayer || barLayer.locked) return null
+        const existing = segmentSpans(barLayer)
+        if (phrases.some((p) => existing.some((b) => b.endTime > p.startTime + 1e-6 && b.startTime < p.endTime - 1e-6))) return 'occupied'
         // Bar numbers go on from the numbered bar before the first phrase.
         const before = segmentSpans(barLayer)
           .filter((b) => b.endTime <= phrases[0].startTime + 1e-6 && /^\s*\d+\s*$/.test(b.label ?? ''))
