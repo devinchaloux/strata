@@ -17,6 +17,7 @@
  *   parentId               all same → keep; differ → conflict (incl. "None")
  *   notes, lyrics          concatenate non-null with `\n\n---\n\n`
  *   startBoundaryType      first span's (earliest startTime)
+ *   hypermeter, showHypermeter  first span's: the merged span begins where it did
  *   endBoundaryType        last span's (latest endTime)
  *   startCap / lineStyle / fillPattern   first span's (outer face / whole-shape style)
  *   endCap, endOnTop       last span's (outer face)
@@ -211,6 +212,8 @@ export function resolveMerge(spans: Span[], mkId: () => string): MergeResolution
     notes: concatText(sorted.map((s) => s.notes)),
     lyrics: concatText(sorted.map((s) => s.lyrics)),
     startBoundaryType: first.startBoundaryType ?? null,
+    ...(first.hypermeter ? { hypermeter: first.hypermeter } : {}),
+    ...(first.showHypermeter !== undefined ? { showHypermeter: first.showHypermeter } : {}),
     endBoundaryType: last.endBoundaryType ?? null,
     parentId,
     startCap: first.startCap,

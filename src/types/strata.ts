@@ -19,6 +19,18 @@ export type SourceType = 'youtube' | 'local'
 export type BoundaryType = 'definite' | 'gradual' | 'elided'
 
 /**
+ * A span's place in a hypermetric group: the span as one hyperbeat (a bar, or
+ * any span, after Lerdahl and Jackendoff's higher metrical levels). Drawn
+ * centered inside the span, apart from its annotation, which it never replaces
+ * (lib/hypermeter.ts; docs/decisions.md, "The Hypermeter Is Its Own Field").
+ */
+export interface Hypermeter {
+  count: number                  // Integer >= 1: the place in its group ("4")
+  becomes?: number               // Integer >= 1, for an elided hyperbeat: the place it
+                                  // starts in the next group ("4=1" is count 4, becomes 1)
+}
+
+/**
  * Visual cap (end-tail) style of a segment bracket — the analyst's drawing
  * choice, decoupled from the analytical `BoundaryType`. The top line is always
  * flat (domes/arcs are retired). See docs/decisions.md "Form Diagram Shape Model".
@@ -149,6 +161,8 @@ export interface Span {
   fillColor?: string | null      // Hex fill override, or 'none' for no fill; null = use layer fillColorDefault
   strokeColor?: string | null    // Hex stroke override, or 'none' for no outline; null = use layer strokeColorDefault
   annotation?: string | null     // Diagram-visible analytical text (on span body)
+  hypermeter?: Hypermeter | null // Its place in a hypermetric group; null or absent for none
+  showHypermeter?: boolean       // Drawing choice for this span's hypermeter; absent = the layer's
   notes?: string | null          // The analyst's working note; shown only in the Inspector
   lyrics?: string | null         // Lyric text; corpus-queryable
   keyArea?: string | null        // A Roman numeral relative to StrataDocument.homeKey
@@ -214,13 +228,19 @@ export interface PointMarker {
 /**
  * Layer-level defaults for text rendering within span shapes.
  * All spans in the layer inherit these settings; there are no per-span
- * overrides. The renderer reads them, but the app has no control to set them.
+ * overrides. The renderer reads them all; the app has a control only for
+ * underneath (the layer's ⋯ menu).
  *
  * Defaults:
  *   labelPosition:           'above'   — section names float above the arc peak
  *   labelJustification:      'center'  — centered above the bracket
  *   annotationPosition:      'inside'  — analytical detail inside the shape body
  *   annotationJustification: 'left'    — left-aligned inside the shape
+ *   underneath:              (absent)  — no strip under the layer; the
+ *                                        hypermeter, centered, shares the inside
+ *                                        annotation's line. 'hypermeter' or
+ *                                        'annotation' opens a thin strip under
+ *                                        the layer and draws that there
  *
  * Text size is a separate layer setting, LayerBase.fontScale.
  */
@@ -229,6 +249,7 @@ export interface LayerRenderingConfig {
   labelJustification?: 'left' | 'center' | 'right'
   annotationPosition?: 'above' | 'inside'
   annotationJustification?: 'left' | 'center' | 'right'
+  underneath?: 'hypermeter' | 'annotation'
 }
 
 // ---------------------------------------------------------------------------
@@ -314,12 +335,17 @@ export interface LayerBase {
   fillGaps?: boolean
   /**
    * What the layer is for, where Strata offers tools for it. 'bars' marks the
-   * bar layer: one span per bar, its label the bar number and its annotation
-   * the hypermetric count (lib/hypermeter.ts). At most one layer in a document
+   * bar layer: one span per bar, its label the bar number and its hypermeter
+   * its place in a group (lib/hypermeter.ts). At most one layer in a document
    * has it. Absent = an ordinary layer. Not to be confused with spanShape
    * 'bar', which is only a way of drawing.
    */
   role?: 'bars'
+  /**
+   * Whether this layer's spans draw their hypermeter (Span.hypermeter).
+   * Absent = true. A span's own showHypermeter overrides it.
+   */
+  showHypermeter?: boolean
   /**
    * Text size for this layer's labels and annotations: sm (9.5 / 8.5 px),
    * md (11 / 9, the default when absent) or lg (13 / 11). Uniform within a

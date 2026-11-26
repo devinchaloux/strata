@@ -78,6 +78,11 @@ export const CORNER_MAX_RATIO = 0.3
  *   LAYER_PITCH   vertical advance for a bracket-shape layer = shape + hairline gap
  *   STACK_TOP_PAD headroom above the top layer for its label
  *   LABEL_RISE    how far a label baseline sits above its shape's top edge
+ *   STRIP_HEIGHT  a layer's strip, right under its shapes, when it draws
+ *                 its hypermeter or annotation there (rendering.underneath)
+ *   STRIP_LABEL_ROOM  under a strip, room for the layer below's labels, which
+ *                 then sit just above their own spans rather than rising into
+ *                 this layer's brackets: bracket, strip, labels, spans
  *
  * Bar-shape (key-area) layers are thinner, so the stack is no longer uniform
  * per-layer height — layerBodyHeight/layerPitch resolve each layer's own
@@ -87,15 +92,26 @@ export const LAYER_GAP = 3
 export const LAYER_PITCH = SHAPE_HEIGHT + LAYER_GAP
 export const STACK_TOP_PAD = 18
 export const LABEL_RISE = 4
+export const STRIP_HEIGHT = 13
+export const STRIP_LABEL_ROOM = 15
 
 /** A layer's shape body height, resolved from its spanShape (bracket = default). */
 export function layerBodyHeight(layer: Layer): number {
   return layer.spanShape === 'bar' ? BAR_HEIGHT : SHAPE_HEIGHT
 }
 
-/** A layer's vertical advance in the stack = its body height + the hairline gap. */
+/** The height of a layer's strip under its shapes: STRIP_HEIGHT when it draws something there, else 0. */
+export function stripHeight(layer: Layer): number {
+  return layer.rendering?.underneath ? STRIP_HEIGHT : 0
+}
+
+/**
+ * A layer's vertical advance in the stack = its body height + the hairline gap,
+ * and with a strip, the strip and room under it for the next layer's labels.
+ */
 export function layerPitch(layer: Layer): number {
-  return layerBodyHeight(layer) + LAYER_GAP
+  const strip = stripHeight(layer)
+  return layerBodyHeight(layer) + (strip ? strip + STRIP_LABEL_ROOM : 0) + LAYER_GAP
 }
 
 /** Total pixel height of a flush stack of the given (visible) layers. */

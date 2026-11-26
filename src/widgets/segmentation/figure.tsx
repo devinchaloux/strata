@@ -20,6 +20,7 @@ import {
   lineStyleDash,
   textOnFill,
   truncateToWidth,
+  estimateTextWidth,
   layerLabelLayout,
   spanDrawOrder,
   textX,
@@ -28,6 +29,7 @@ import {
   ANCHOR,
   layerFonts,
   LABEL_RISE,
+  STRIP_HEIGHT,
   STROKE_WIDTH,
   ISLAND_INSET,
   shapeTopY,
@@ -47,6 +49,7 @@ import {
 import type { Layer, Span, SegmentationData, CapStyle } from '@/types/strata'
 import type { FigureTheme } from './theme'
 import { PATTERN_TILE, patternInk, patternMarks } from '@/lib/patterns'
+import { hypermeterShown, hypermeterText } from '@/lib/hypermeter'
 import { TEMPO_LANE_HEIGHT, tempoY, type TempoLane } from '@/lib/tempoLane'
 
 /** A white halo behind text that overhangs the ink of the layer above. */
@@ -58,6 +61,11 @@ function halo(theme: FigureTheme) {
     paintOrder: 'stroke' as const,
   }
 }
+
+/** Space between a hypermeter and an annotation sharing its line, in px. */
+const HYPER_GAP = 4
+/** The smallest a hypermeter is drawn to fit a narrow span, as a share of the annotation size. */
+const HYPER_MIN_SCALE = 0.7
 
 /** Drawn inside a span, after its shape and before its text (the editor's highlight). */
 export type SpanDecoration = ComponentType<{ span: Span; width: number; height: number }>
@@ -113,7 +121,12 @@ function SpanFigure({
   const insideLabelY = bodyHeight / 2 + fonts.label * 0.36
   const insideAnnotY = fonts.annotation + 6
   const aboveLabelY = -LABEL_RISE
-  const aboveAnnotY = -LABEL_RISE - fonts.label
+  const aboveAnnotY = aboveLabelY - fonts.label
+  // The layer's strip under its shapes (rendering.underneath), when it has one.
+  const underneath = layer.rendering?.underneath
+  const stripY = bodyHeight + STRIP_HEIGHT - 3
+  // The strip has no caps to keep clear of: only the gap between spans.
+  const stripBox = { left: ISLAND_INSET + 1, right: width - ISLAND_INSET - 1 }
 
   // Inside text must fit the body (ellipsis), clear of rounded or angled ends,
   // measured at the text's top; above text may overhang (haloed).
@@ -127,15 +140,48 @@ function SpanFigure({
     : displayLabel
       ? truncateToWidth(displayLabel, fonts.label, labelBox.right - labelBox.left)
       : ''
+
+  // The hypermeter (lib/hypermeter.ts) is centered, inside on the annotation's
+  // line or in the strip under the layer, and never replaces the annotation.
+  // Sharing a line, the annotation stops short of it (a centered one takes the
+  // left side); with either in the strip, the other has its line to itself. A
+  // count short of room is drawn smaller, down to HYPER_MIN_SCALE, so the
+  // widest ("4=1", the elided one) survives narrow bars; only then is it left
+  // out, whole.
+  const hyperUnder = underneath === 'hypermeter'
+  const annotUnder = underneath === 'annotation'
+  const hyperBox = hyperUnder ? stripBox : annotBox
+  const hyperRaw = span.hypermeter && hypermeterShown(span, layer) ? hypermeterText(span.hypermeter) : ''
+  const hyperRoom = hyperBox.right - hyperBox.left
+  const hyperFull = estimateTextWidth(hyperRaw, fonts.annotation)
+  const hyperSize = hyperFull > hyperRoom ? Math.max(fonts.annotation * HYPER_MIN_SCALE, (fonts.annotation * hyperRoom) / hyperFull) : fonts.annotation
+  const hyperWidth = estimateTextWidth(hyperRaw, hyperSize)
+  // Shrunk to fit exactly, it can come out a hair over in floating point.
+  const hyperText = hyperRaw && hyperWidth <= hyperRoom + 0.01 ? hyperRaw : ''
+  const hyperX = (hyperBox.left + hyperBox.right) / 2
+  const hyperY = hyperUnder ? stripY : insideAnnotY
+  const besideHyper = !!hyperText && !hyperUnder && !annotUnder && !annotationAbove
+  const annotY = annotUnder ? stripY : annotationAbove ? aboveAnnotY : insideAnnotY
+  const annotRoom = annotUnder
+    ? stripBox
+    : besideHyper
+      ? annotationJust === 'right'
+        ? { left: hyperX + hyperWidth / 2 + HYPER_GAP, right: annotBox.right }
+        : { left: annotBox.left, right: hyperX - hyperWidth / 2 - HYPER_GAP }
+      : annotBox
+  // Sharing a line with the count, a centered annotation keeps to the left.
+  const annotJust: Justification = besideHyper && annotationJust === 'center' ? 'left' : annotationJust
   const annotationText = span.annotation
-    ? annotationAbove
+    ? annotationAbove && !annotUnder
       ? span.annotation
-      : truncateToWidth(span.annotation, fonts.annotation, annotBox.right - annotBox.left)
+      : truncateToWidth(span.annotation, fonts.annotation, Math.max(0, annotRoom.right - annotRoom.left))
     : ''
 
   const effLabelJust = labelAbove ? (labelLayout?.justification ?? labelJust) : labelJust
   const labelLocalX = labelAbove ? textX(0, width, effLabelJust) : insideTextX(labelBox, effLabelJust)
-  const annotationLocalX = annotationAbove ? textX(0, width, annotationJust) : insideTextX(annotBox, annotationJust)
+  const annotOutside = annotationAbove && !annotUnder
+  const annotationLocalX = annotOutside ? textX(0, width, annotJust) : insideTextX(annotRoom, annotJust)
+  const annotInk = annotOutside || annotUnder ? theme.inkSecondary : textOnFill(fill, theme.inkSecondary)
   const textHalo = halo(theme)
 
   // Shape and fill outlines, and the span's fill pattern (lib/patterns.ts):
@@ -228,14 +274,28 @@ function SpanFigure({
       {annotationText && (
         <text
           x={annotationLocalX}
-          y={annotationAbove ? aboveAnnotY : insideAnnotY}
-          textAnchor={ANCHOR[annotationJust]}
+          y={annotY}
+          textAnchor={ANCHOR[annotJust]}
           fontSize={fonts.annotation}
           fontWeight={400}
-          fill={annotationAbove ? theme.inkSecondary : textOnFill(fill, theme.inkSecondary)}
-          {...(annotationAbove ? textHalo : {})}
+          fill={annotInk}
+          {...(annotOutside ? textHalo : {})}
         >
           {annotationText}
+        </text>
+      )}
+
+      {hyperText && (
+        <text
+          x={hyperX}
+          y={hyperY}
+          textAnchor="middle"
+          fontSize={hyperSize}
+          fontWeight={500}
+          fill={hyperUnder ? theme.ink : textOnFill(fill, theme.ink)}
+          style={{ fontVariantNumeric: 'tabular-nums' }}
+        >
+          {hyperText}
         </text>
       )}
     </g>

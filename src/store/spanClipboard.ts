@@ -14,12 +14,13 @@ import { blockForSpan } from '@/widgets/written-analysis/commentary'
 import { segmentSpans } from '@/lib/layers'
 import type { Span } from '@/types/strata'
 
-export type PasteField = 'label' | 'type' | 'annotation' | 'commentary' | 'lyrics' | 'fill' | 'pattern' | 'shape'
+export type PasteField = 'label' | 'type' | 'annotation' | 'hypermeter' | 'commentary' | 'lyrics' | 'fill' | 'pattern' | 'shape'
 
 export const PASTE_FIELDS: { id: PasteField; name: string }[] = [
   { id: 'label', name: 'Label' },
   { id: 'type', name: 'Type' },
   { id: 'annotation', name: 'Annotation' },
+  { id: 'hypermeter', name: 'Hypermeter' },
   { id: 'commentary', name: 'Commentary' },
   { id: 'lyrics', name: 'Lyrics' },
   { id: 'fill', name: 'Fill color' },
@@ -110,6 +111,10 @@ export function pastePatch(from: Span, fields: PasteField[]): Partial<Omit<Span,
   const patch: Partial<Omit<Span, 'id'>> = {}
   if (fields.includes('type')) patch.type = from.type ?? null
   if (fields.includes('annotation')) patch.annotation = from.annotation ?? null
+  if (fields.includes('hypermeter')) {
+    patch.hypermeter = from.hypermeter ?? null
+    patch.showHypermeter = from.showHypermeter
+  }
   if (fields.includes('lyrics')) patch.lyrics = from.lyrics ?? null
   if (fields.includes('fill')) patch.fillColor = from.fillColor ?? null
   if (fields.includes('pattern')) patch.fillPattern = from.fillPattern

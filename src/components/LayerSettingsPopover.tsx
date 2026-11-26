@@ -1,9 +1,11 @@
 /**
  * LayerSettingsPopover — the `⋯` layer settings menu in the expanded track header.
  *
- * Controls: rename, description, library, fill/stroke default colors, size,
- * key-area shape (thin bars), whether B fills gaps, the bar layer
- * (BarLayerSettings), lock, and delete: settings only (docs/decisions.md,
+ * Controls: rename, description, library, whether B fills gaps, the bar layer
+ * (BarLayerSettings), then Appearance, closed until opened: fill/stroke
+ * default colors, size, key-area shape (thin bars), what goes under the
+ * layer, whether the hypermeter shows (once the layer has one); then lock
+ * and delete: settings only (docs/decisions.md,
  * "Where Controls Live"). Fit to grid is in the Grid menu.
  *
  * Hierarchical enforcement is deliberately NOT here: it was redefined as a
@@ -18,9 +20,10 @@
  * throw.
  */
 
-import { Lock, Trash2 } from 'lucide-react'
+import { ChevronRight, Lock, Trash2 } from 'lucide-react'
 import { MoreHorizontal } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
+import { useUIStore } from '@/store/uiStore'
 import {
   Popover,
   PopoverContent,
@@ -31,6 +34,7 @@ import { BarLayerSettings } from '@/components/BarLayerSettings'
 import { ColorPicker } from '@/components/ui/color-picker'
 import { cn } from '@/lib/utils'
 import { LIBRARIES } from '@/lib/vocabulary'
+import { segmentSpans } from '@/lib/layers'
 import type { Layer } from '@/types/strata'
 
 // Factory defaults — used as the fallback preview in the reset button.
@@ -45,6 +49,8 @@ export function LayerSettingsPopover({
   onRequestDelete: () => void
 }) {
   const updateLayer = useDocumentStore((s) => s.updateLayer)
+  const appearanceOpen = useUIStore((s) => s.layerAppearanceOpen)
+  const setAppearanceOpen = useUIStore((s) => s.setLayerAppearanceOpen)
 
 
 
@@ -126,82 +132,6 @@ export function LayerSettingsPopover({
 
           <div className="h-px" style={{ background: 'var(--hairline)' }} />
 
-          {/* Default colors */}
-          <div className="space-y-2">
-            <p className="text-xs font-medium" style={labelStyle}>Default colors</p>
-            <div className="flex items-center gap-2">
-              <span className="w-12 shrink-0 text-xs" style={labelStyle}>Fill</span>
-              <ColorPicker
-                value={layer.fillColorDefault}
-                fallback={FILL_DEFAULT}
-                nullLabel="Reset to default"
-                onChange={(c) =>
-                  updateLayer(layer.id, { fillColorDefault: c ?? FILL_DEFAULT })
-                }
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-12 shrink-0 text-xs" style={labelStyle}>Stroke</span>
-              <ColorPicker
-                value={layer.strokeColorDefault}
-                fallback={STROKE_DEFAULT}
-                nullLabel="Reset to default"
-                onChange={(c) =>
-                  updateLayer(layer.id, { strokeColorDefault: c ?? STROKE_DEFAULT })
-                }
-              />
-            </div>
-          </div>
-
-          <div className="h-px" style={{ background: 'var(--hairline)' }} />
-
-          {/* Text size — the layer-level fontScale; uniform within a layer. */}
-          <div className="flex items-center justify-between">
-            <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
-              Text size
-            </span>
-            <div className="flex overflow-hidden rounded border" style={{ borderColor: 'var(--hairline)' }} role="radiogroup" aria-label="Text size">
-              {(['sm', 'md', 'lg'] as const).map((size) => {
-                const on = (layer.fontScale ?? 'md') === size
-                return (
-                  <button
-                    key={size}
-                    role="radio"
-                    aria-checked={on}
-                    aria-label={{ sm: 'Small', md: 'Medium', lg: 'Large' }[size]}
-                    onClick={() => updateLayer(layer.id, { fontScale: size })}
-                    className={cn('px-2 py-0.5 text-xs', on ? 'bg-accent font-medium' : 'hover:bg-accent/60')}
-                    style={{ color: on ? 'var(--ink-primary)' : 'var(--ink-muted)' }}
-                  >
-                    {{ sm: 'S', md: 'M', lg: 'L' }[size]}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          <div className="h-px" style={{ background: 'var(--hairline)' }} />
-
-          {/* Shape — buried here rather than offered when first creating a
-              layer (per docs/decisions.md "Key-Area Bar Layers"). Purely
-              visual: same Span data model and interactions either way. */}
-          {/* Each setting is one line; what it does is on hover. */}
-          <label
-            className="flex cursor-pointer items-center justify-between gap-3"
-            title="Draw this layer's spans as thin bars instead of brackets, for key areas"
-          >
-            <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
-              Thin bars (key areas)
-            </span>
-            <Switch
-              checked={layer.spanShape === 'bar'}
-              onCheckedChange={(v) => updateLayer(layer.id, { spanShape: v ? 'bar' : 'bracket' })}
-              aria-label="Thin bars (key areas)"
-            />
-          </label>
-
-          <div className="h-px" style={{ background: 'var(--hairline)' }} />
-
           {/* B in an empty stretch: fill back to the previous boundary too, or
               only start a span (docs/decisions.md, "B in an Empty Stretch"). */}
           <label
@@ -225,6 +155,137 @@ export function LayerSettingsPopover({
               <BarLayerSettings layer={layer} />
             </>
           )}
+
+          <div className="h-px" style={{ background: 'var(--hairline)' }} />
+
+          {/* Appearance: how the layer looks, set once and rarely changed, so
+              it starts closed and the menu stays short (docs/decisions.md,
+              "UI Review: the Layer Menu Folds, Quick Pick Counts Bars"). Open or closed is remembered. */}
+          <div>
+            <button
+              type="button"
+              aria-expanded={appearanceOpen}
+              onClick={() => setAppearanceOpen(!appearanceOpen)}
+              className="flex w-full items-center gap-1 text-[13px]"
+              style={{ color: 'var(--ink-primary)' }}
+            >
+              <ChevronRight size={13} aria-hidden className={cn('transition-transform', appearanceOpen && 'rotate-90')} style={{ color: 'var(--ink-muted)' }} />
+              Appearance
+            </button>
+            {appearanceOpen && (
+              <div className="mt-3 space-y-3">
+                {/* Default colors */}
+                <div className="space-y-2">
+                  <p className="text-xs font-medium" style={labelStyle}>Default colors</p>
+                  <div className="flex items-center gap-2">
+                    <span className="w-12 shrink-0 text-xs" style={labelStyle}>Fill</span>
+                    <ColorPicker
+                      value={layer.fillColorDefault}
+                      fallback={FILL_DEFAULT}
+                      nullLabel="Reset to default"
+                      onChange={(c) =>
+                        updateLayer(layer.id, { fillColorDefault: c ?? FILL_DEFAULT })
+                      }
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-12 shrink-0 text-xs" style={labelStyle}>Stroke</span>
+                    <ColorPicker
+                      value={layer.strokeColorDefault}
+                      fallback={STROKE_DEFAULT}
+                      nullLabel="Reset to default"
+                      onChange={(c) =>
+                        updateLayer(layer.id, { strokeColorDefault: c ?? STROKE_DEFAULT })
+                      }
+                    />
+                  </div>
+                </div>
+                {/* Text size — the layer-level fontScale; uniform within a layer. */}
+                <div className="flex items-center justify-between">
+                  <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
+                    Text size
+                  </span>
+                  <div className="flex overflow-hidden rounded border" style={{ borderColor: 'var(--hairline)' }} role="radiogroup" aria-label="Text size">
+                    {(['sm', 'md', 'lg'] as const).map((size) => {
+                      const on = (layer.fontScale ?? 'md') === size
+                      return (
+                        <button
+                          key={size}
+                          role="radio"
+                          aria-checked={on}
+                          aria-label={{ sm: 'Small', md: 'Medium', lg: 'Large' }[size]}
+                          onClick={() => updateLayer(layer.id, { fontScale: size })}
+                          className={cn('px-2 py-0.5 text-xs', on ? 'bg-accent font-medium' : 'hover:bg-accent/60')}
+                          style={{ color: on ? 'var(--ink-primary)' : 'var(--ink-muted)' }}
+                        >
+                          {{ sm: 'S', md: 'M', lg: 'L' }[size]}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+                {/* Shape — buried here rather than offered when first creating a
+                    layer (per docs/decisions.md "Key-Area Bar Layers"). Purely
+                    visual: same Span data model and interactions either way. */}
+                {/* Each setting is one line; what it does is on hover. */}
+                <label
+                  className="flex cursor-pointer items-center justify-between gap-3"
+                  title="Draw this layer's spans as thin bars instead of brackets, for key areas"
+                >
+                  <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
+                    Thin bars (key areas)
+                  </span>
+                  <Switch
+                    checked={layer.spanShape === 'bar'}
+                    onCheckedChange={(v) => updateLayer(layer.id, { spanShape: v ? 'bar' : 'bracket' })}
+                    aria-label="Thin bars (key areas)"
+                  />
+                </label>
+                {/* What goes in a thin strip under the layer, if anything (docs/decisions.md,
+                    "A Strip Under the Layer"); then, once its spans carry a
+                    hypermeter, whether it shows ("The Hypermeter Is Its Own
+                    Field"). A span can override the showing. */}
+                {layer.type === 'segmentation' && (
+                  <label
+                      className="flex items-center justify-between gap-3"
+                      title="A thin strip under the layer for each span's hypermeter or annotation, so it doesn't share a line inside the shape."
+                    >
+                      <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
+                        Under the layer
+                      </span>
+                      <select
+                        value={layer.rendering?.underneath ?? ''}
+                        onChange={(e) => {
+                          const underneath = (e.target.value || undefined) as 'hypermeter' | 'annotation' | undefined
+                          updateLayer(layer.id, { rendering: { ...layer.rendering, underneath } })
+                        }}
+                        className="rounded border px-1 py-0.5 text-xs"
+                        style={{ borderColor: 'var(--hairline)', color: 'var(--ink-primary)', background: 'transparent' }}
+                      >
+                        <option value="">Nothing</option>
+                        <option value="hypermeter">Hypermeter</option>
+                        <option value="annotation">Annotation</option>
+                      </select>
+                  </label>
+                )}
+                {layer.type === 'segmentation' && segmentSpans(layer).some((s) => s.hypermeter) && (
+                  <label
+                    className="flex cursor-pointer items-center justify-between gap-3"
+                    title="Draw each span's hypermeter. A span's own Show, in the Inspector, wins."
+                  >
+                    <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
+                      Show hypermeter
+                    </span>
+                    <Switch
+                      checked={layer.showHypermeter !== false}
+                      onCheckedChange={(v) => updateLayer(layer.id, { showHypermeter: v ? undefined : false })}
+                      aria-label="Show hypermeter"
+                    />
+                  </label>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="h-px" style={{ background: 'var(--hairline)' }} />
 

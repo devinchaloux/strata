@@ -1,6 +1,8 @@
 /**
  * BarsMenu — Segments' Bars ▾ menu: every bar tool in one place (docs/decisions.md,
- * "Where Controls Live" and "Menus Are Names").
+ * "Where Controls Live", "Menus Are Names" and "The Bars Menu Waits for the Bar
+ * Layer"). It shows only once a layer is the bar layer, switched on in that
+ * layer's ⋯ menu; nothing in it makes one.
  *
  * A row is a name. The header says once what the tools act on: the selected
  * bars of the bar layer, or all of them. One hint line at the foot follows the
@@ -14,7 +16,7 @@ import { ChevronDown, ChevronLeft } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useDocumentStore, groupBoundaryOnBar } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
-import { countOf } from '@/lib/hypermeter'
+import { placeOf } from '@/lib/hypermeter'
 import { segmentSpans } from '@/lib/layers'
 import { MENU_TRIGGER } from '@/lib/toolRow'
 import type { Layer, Span } from '@/types/strata'
@@ -48,7 +50,6 @@ export function BarsMenu() {
   const splitIntoBars = useDocumentStore((s) => s.splitIntoBars)
   const numberBars = useDocumentStore((s) => s.numberBars)
   const selectedIds = useUIStore((s) => s.selectedSpanIds)
-  const activeLayerId = useUIStore((s) => s.activeLayerId)
   const barGroup = useUIStore((s) => s.barGroup)
   const setBarGroup = useUIStore((s) => s.setBarGroup)
   const setNormalizing = useUIStore((s) => s.setNormalizing)
@@ -59,10 +60,10 @@ export function BarsMenu() {
   const [hint, setHint] = useState<string | null>(null)
   const [first, setFirst] = useState<number | null>(null)
   const [by, setBy] = useState<string | null>(null)
-  if (!doc) return null
+  const barLayer = doc?.layers.find((l): l is Layer => l.role === 'bars' && l.type === 'segmentation')
+  if (!doc || !barLayer) return null
 
-  const barLayer = doc.layers.find((l): l is Layer => l.role === 'bars' && l.type === 'segmentation')
-  const allBars = barLayer ? [...segmentSpans(barLayer)].sort((a, b) => a.startTime - b.startTime) : []
+  const allBars = [...segmentSpans(barLayer)].sort((a, b) => a.startTime - b.startTime)
   const selectedBars = allBars.filter((s) => selectedIds.includes(s.id))
   // What a tool acts on: the selected bars, or every bar when none are selected.
   const bars: Span[] = selectedBars.length ? selectedBars : allBars
@@ -71,20 +72,18 @@ export function BarsMenu() {
   const one = selectedBars.length === 1 ? selectedBars[0] : null
   // Spans selected on another layer: phrases to split into bars.
   const otherSelected = doc.layers
-    .filter((l) => l.type === 'segmentation' && l.id !== barLayer?.id)
+    .filter((l) => l.type === 'segmentation' && l.id !== barLayer.id)
     .flatMap((l) => segmentSpans(l).filter((s) => selectedIds.includes(s.id)))
-  const active = doc.layers.find((l) => l.id === activeLayerId && l.type === 'segmentation')
-  const activeEmpty = !!active && segmentSpans(active).length === 0
   const hasGrid = (doc.beatGrid?.length ?? 0) > 0
-  const above = barLayer
-    ? doc.layers
-        .filter((l) => l.type === 'segmentation' && l.displayOrder > barLayer.displayOrder && segmentSpans(l).length > 0)
-        .sort((a, b) => a.displayOrder - b.displayOrder)
-    : []
+  const above = doc.layers
+    .filter((l) => l.type === 'segmentation' && l.displayOrder > barLayer.displayOrder && segmentSpans(l).length > 0)
+    .sort((a, b) => a.displayOrder - b.displayOrder)
   const byLayer = by === GROUPS ? null : (above.find((l) => l.id === by) ?? (by === null ? above[0] : undefined) ?? null)
   const firstNumber = first ?? (Number.isInteger(Number(bars[0]?.label)) ? Number(bars[0]?.label) : 1)
-  const counted = bars.some((s) => countOf(s.annotation) !== null)
-  const elided = one && (one.annotation ?? '').includes('=') && barLayer ? groupBoundaryOnBar(doc, barLayer.id, one.id) : null
+  // An empty bar layer: the rows that act on bars wait for some.
+  const none = !allBars.length && 'Fill from grid or split phrases first.'
+  const counted = bars.some((s) => placeOf(s.hypermeter) !== null)
+  const elided = one?.hypermeter?.becomes != null ? groupBoundaryOnBar(doc, barLayer.id, one.id) : null
   const offer = elided && elided.boundary.before.endBoundaryType !== 'elided' ? elided : null
 
   // Closing from code skips onOpenChange, so it resets the view itself: the
@@ -150,14 +149,14 @@ export function BarsMenu() {
       <PopoverTrigger asChild>
         <button type="button" className={MENU_TRIGGER} title="Number, count, elide, and normalize bars.">
           Bars
-          {barLayer && selectedBars.length > 0 && (
+          {selectedBars.length > 0 && (
             <span className="rounded bg-accent px-1 text-[11px] text-foreground">{selectedBars.length}</span>
           )}
           <ChevronDown size={11} aria-hidden />
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-64 p-1.5" onMouseLeave={() => setHint(null)}>
-        {view === 'number' && barLayer && (
+        {view === 'number' && (
           <div className="flex flex-col gap-2.5 p-1.5">
             {formHead}
             <label className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -186,7 +185,7 @@ export function BarsMenu() {
           </div>
         )}
 
-        {view === 'count' && barLayer && (
+        {view === 'count' && (
           <div className="flex flex-col gap-2.5 p-1.5">
             {formHead}
             <label className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -209,14 +208,13 @@ export function BarsMenu() {
               type="button"
               className={`${primary} self-start`}
               onClick={() => {
-                const r = countBars(barLayer.id, byLayer?.id ?? null, barGroup, ids)
-                showToast(r.skipped ? `Counted ${plural(r.counted, 'bar')}, ${r.skipped} notes kept` : `Counted ${plural(r.counted, 'bar')}`)
+                showToast(`Counted ${plural(countBars(barLayer.id, byLayer?.id ?? null, barGroup, ids), 'bar')}`)
                 close()
               }}
             >
               Count {plural(n, 'bar')}
             </button>
-            <Hint>{byLayer ? `Counts start at 1 in each span of ${byLayer.label}.` : 'Counts start again after each group.'} Notes are kept.</Hint>
+            <Hint>{byLayer ? `Counts start at 1 in each span of ${byLayer.label}.` : 'Counts start again after each group.'}</Hint>
           </div>
         )}
 
@@ -234,7 +232,8 @@ export function BarsMenu() {
                 const r = splitIntoBars(otherSelected.map((s) => s.id), barGroup)
                 if (r === 'occupied') return setHint('The bar layer has bars there already.')
                 if (r) {
-                  if (!barLayer) setTempoOffer(r.layerId)
+                  // The bar layer's first bars: what their tempo does is worth saying.
+                  if (!allBars.length) setTempoOffer(r.layerId)
                   showToast(`Made ${plural(r.made, 'bar')}`)
                 }
                 close()
@@ -250,80 +249,73 @@ export function BarsMenu() {
           <div className="flex flex-col">
             <div className="flex items-baseline justify-between px-2.5 pb-1 pt-1.5 text-[11.5px] text-muted-foreground">
               <span className="font-semibold text-foreground">Bars</span>
-              {barLayer && <span>{selectedBars.length ? `${selectedBars.length} selected` : `all ${allBars.length}`}</span>}
+              <span>{selectedBars.length ? `${selectedBars.length} selected` : `all ${allBars.length}`}</span>
             </div>
-            {barLayer && (
-              <>
-                {row('Number…', 'Label each bar with its number.', () => go('number'))}
-                {row('Count…', "Number each bar's place in its group.", () => go('count'))}
-                {row(
-                  'Elide',
-                  'End one group and start the next on this bar (4=1).',
-                  () => {
-                    if (!one) return
-                    elideSpan(barLayer.id, one.id, barGroup)
-                    showToast(one.label ? `Elided bar ${one.label}` : 'Elided the bar')
-                  },
-                  (!one || countOf(one.annotation) === null) && 'Select one counted bar to elide it.',
-                )}
-                {offer &&
-                  row(`Elide the ${offer.layer.label} boundary too`, `Mark the ${offer.layer.label} boundary on this bar elided.`, () => {
-                    if (!one) return
-                    elideGroupBoundary(barLayer.id, one.id)
-                    showToast(`Elided the ${offer.layer.label} boundary`)
-                    close()
-                  })}
-                {row(
-                  'Phrases from count',
-                  'Start a phrase at every bar counted 1.',
-                  () => {
-                    const r = phrasesFromCount(ids)
-                    if (r) showToast(`Made ${plural(r.made, 'phrase')}`)
-                    close()
-                  },
-                  !counted && 'Count the bars first.',
-                )}
-                <div className="my-1 border-t border-border" />
-                {row(
-                  'Normalize…',
-                  'Even out hand-marked timing.',
-                  () => {
-                    setNormalizing(ids)
-                    close()
-                  },
-                  n < 2 && 'Select two bars or more.',
-                )}
-                {row('Beat grid from bars', 'Make the grid follow these bars.', () => {
-                  const r = gridFromBars(ids)
-                  if (r) showToast(`Beat grid set from ${plural(r.bars, 'bar')}`)
-                  close()
-                })}
-                <div className="my-1 border-t border-border" />
-              </>
+            {row('Number…', 'Label each bar with its number.', () => go('number'), none)}
+            {row('Count…', "Number each bar's place in its group.", () => go('count'), none)}
+            {row(
+              'Elide',
+              'End one group and start the next on this bar (4=1).',
+              () => {
+                if (!one) return
+                elideSpan(barLayer.id, one.id, barGroup)
+                showToast(one.label ? `Elided bar ${one.label}` : 'Elided the bar')
+              },
+              (!one || !one.hypermeter) && 'Select one counted bar to elide it.',
             )}
+            {offer &&
+              row(`Elide the ${offer.layer.label} boundary too`, `Mark the ${offer.layer.label} boundary on this bar elided.`, () => {
+                if (!one) return
+                elideGroupBoundary(barLayer.id, one.id)
+                showToast(`Elided the ${offer.layer.label} boundary`)
+                close()
+              })}
+            {row(
+              'Phrases from count',
+              'Start a phrase at every bar counted 1.',
+              () => {
+                const r = phrasesFromCount(ids)
+                if (r) showToast(`Made ${plural(r.made, 'phrase')}`)
+                close()
+              },
+              !counted && 'Count the bars first.',
+            )}
+            <div className="my-1 border-t border-border" />
+            {row(
+              'Normalize…',
+              'Even out hand-marked timing.',
+              () => {
+                setNormalizing(ids)
+                close()
+              },
+              none || (n < 2 && 'Select two bars or more.'),
+            )}
+            {row(
+              'Beat grid from bars',
+              'Make the grid follow these bars.',
+              () => {
+                const r = gridFromBars(ids)
+                if (r) showToast(`Beat grid set from ${plural(r.bars, 'bar')}`)
+                close()
+              },
+              none,
+            )}
+            <div className="my-1 border-t border-border" />
             {row('Split into bars…', 'Divide each selected span into equal bars.', () => go('split'), !otherSelected.length && 'Select phrases on another layer first.')}
             {row(
               'Fill from grid',
               'Add a bar for each bar of the grid.',
               () => {
-                if (!active) return
-                const made = numberBars(active.id, barGroup)
+                const made = numberBars(barLayer.id, barGroup)
                 if (made) {
-                  setTempoOffer(active.id)
+                  setTempoOffer(barLayer.id)
                   showToast(`Made ${plural(made, 'bar')}`)
                 }
                 close()
               },
-              (!hasGrid && 'Add a beat grid first.') || (!activeEmpty && 'Click an empty layer first.'),
+              (!hasGrid && 'Add a beat grid first.') || (allBars.length > 0 && 'The bar layer has bars already.'),
             )}
-            <Hint>
-              {hint ??
-                (!barLayer
-                  ? 'Turn on Bar layer in a layer’s ⋯ menu to number, count, and normalize bars.'
-                  : selectedBars.length
-                    ? ' '
-                    : 'Acts on all bars. Select some to narrow it.')}
-            </Hint>
+            <Hint>{hint ?? (selectedBars.length ? ' ' : 'Acts on all bars. Select some to narrow it.')}</Hint>
           </div>
         )}
       </PopoverContent>

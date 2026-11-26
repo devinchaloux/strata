@@ -22,7 +22,7 @@ If the music is regular, you can lay out the sections from the tempo instead. Wi
 1. Click a span to open the **Inspector** on the right.
 2. Give it a **label** in your own words, such as "Verse 1" or "THE DROP".
 3. Choose a **type** from the vocabulary, such as `verse` or `drop`. You compare analyses by type, so pick the closest one even if your label says more.
-4. To work faster, use **Quick pick**: select some spans and press a number key to give them a type, a shape, or a color.
+4. To work faster, use **Quick pick**: select some spans and press a number key to give them a type, a shape, or a color. On the bar layer, the number keys give bars their hypermetric count instead.
 
 ## 4. Add another level
 

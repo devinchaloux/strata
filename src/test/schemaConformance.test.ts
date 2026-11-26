@@ -98,6 +98,20 @@ describe('documents the app writes', () => {
     expectValid(doc())
   })
 
+  it('stay valid after counting, eliding and hiding hypermeter', () => {
+    store().startGridAt(0)
+    const bars = newSegmentLayer('Bars', 99)
+    store().addLayer(bars)
+    store().setBarLayer(bars.id, true)
+    expect(store().numberBars(bars.id, 4)).toBeGreaterThan(4)
+    const spans = segmentSpans(store().document!.layers.find((l) => l.id === bars.id)!)
+    store().elideSpan(bars.id, spans[3].id, 4)
+    store().updateSpan(bars.id, spans[1].id, { showHypermeter: false, annotation: 'Hook' })
+    store().updateSpan(bars.id, spans[2].id, { hypermeter: null })
+    store().updateLayer(bars.id, { showHypermeter: false, rendering: { underneath: 'hypermeter' } })
+    expectValid(doc())
+  })
+
   it('stay valid after a merge', () => {
     const layer = store().document!.layers[0]
     const sources = segmentSpans(layer).slice(0, 2)

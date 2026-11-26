@@ -86,6 +86,7 @@ aren't part of this repository.
 - [Ctrl/⌘+C and V copy parts of spans onto others, one onto many or run onto run.](#copy-and-paste-several-spans-2026-10-24)
 - [Picking a type replaces a label only when the label came from a type.](#a-spans-label-follows-its-type-2026-10-01)
 - [Quick pick offers types, shapes and fills on number keys above the selection.](#quick-pick-types-on-typed-spans-timing-with-boundaries-commentary-links-2026-11-05)
+- [On the bar layer, Quick pick's types are counts instead: 1–8, "=1" to elide one counted bar, None.](#ui-review-the-layer-menu-folds-quick-pick-counts-bars-2026-11-26)
 - [One fill can reach every span with the same label, or a whole letter family.](#the-tracks-end-shows-quick-pick-closes-filling-a-letter-family-2026-11-05)
 - [To end runs a span to the track's end.](#to-end-2026-10-24)
 - [Inline label editing and Duplicate are dropped.](#improvement-backlog-batch-2-2026-07-03)
@@ -115,11 +116,14 @@ aren't part of this repository.
 - [The metronome clicks the grid and tunes it to a thousandth of a BPM.](#click-track-and-beat-matching-2026-10-24)
 - [Quick setup by tempo fills a layer with a span every N bars.](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24)
 - [A span's length in bars can be stepped or typed, and later boundaries move with it.](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24)
-- [One layer can be the bar layer (`role: "bars"`): each span a bar, its label the bar number, its annotation the hypermetric count.](#the-bar-layer-2026-11-25)
-- [Hypermetric counts go into annotations, inside the shape, and never over an annotation holding other text.](#the-bar-layer-2026-11-25)
+- [One layer can be the bar layer (`role: "bars"`): each span a bar, its label the bar number, its hypermeter its place in a group.](#the-hypermeter-is-its-own-field-2026-11-26)
+- [Any span can carry a hypermeter (`hypermeter: { count, becomes? }`, written "4" or "4=1"), its own field beside the annotation, which it never replaces.](#the-hypermeter-is-its-own-field-2026-11-26)
+- [The hypermeter is drawn centered inside the span, sharing the annotation's line (the annotation gives way); it shows or hides per layer, and a span's own choice wins.](#the-hypermeter-is-its-own-field-2026-11-26)
+- [A layer can open a thin, unfilled strip under its spans for their hypermeter or their annotation; under the strip, the layer below's labels sit just above their own spans.](#a-strip-under-the-layer-2026-11-26)
 - [The bar layer counts its bars by a layer above (each span from 1) or in groups; selected bars recount from 1; Elide makes a bar "4=1" and offers to elide the boundary above it.](#the-bar-layer-2026-11-25)
-- [Fill with the grid's bars makes an empty layer the bar layer, numbered and counted.](#the-bar-layer-2026-11-25)
+- [Fill from grid fills the bar layer, while it is empty, with the grid's bars, numbered and counted.](#the-bars-menu-waits-for-the-bar-layer-2026-11-26)
 - [Selected spans split into equal bars on the bar layer; selected counted bars make phrases on the layer above. Either works on a chunk or the whole track.](#bars-from-phrases-phrases-from-bars-2026-11-25)
+- [Only the analyst makes a layer the bar layer, with its switch; no tool makes one.](#the-bars-menu-waits-for-the-bar-layer-2026-11-26)
 - [Tempo is its own widget (`type: "tempo"`), reading the bar layer (or a beat layer); tempo is derived, never stored.](#tempo-becomes-its-own-widget-2026-11-25)
 - [A widget is a block: one kind of analysis with its own tools, drawn as a card on the shared timeline. The file lists the blocks top to bottom (`widgets`); the analyst moves them with ↑ ↓, hides and shows them, adds them, and removes any but Segments.](#widgets-as-blocks-2026-11-25)
 - [Tempo is a block of its own; its display choices are saved in the file; deviation is in milliseconds; the scale comes from the data unless fixed; it reads a source layer only.](#the-tempo-widget-settled-2026-11-25)
@@ -177,7 +181,9 @@ aren't part of this repository.
 - [The Inspector describes the selection; its footer keeps the span verbs everyone uses (Split, Merge, Copy, Paste, Delete).](#where-controls-live-2026-11-26)
 - [Each block has two rows in edit mode, its name and view, then its tools; a tool row holds about six things, and more become named menus whose items say what they do and what they act on.](#where-controls-live-2026-11-26)
 - [Big jobs open as a mode inside their block; `⋯` menus hold settings, never one-off jobs; nothing moves without a named new home.](#where-controls-live-2026-11-26)
-- [The bar tools, Elide included, live in Segments' Bars menu; Tempo is offered, not added, when the bar layer's smoothed tempo ranges more than 4 BPM.](#where-controls-live-2026-11-26)
+- [The layer menu keeps what a layer is and does in view; how it looks (default colors, text size, thin bars, under the layer, show hypermeter) folds into Appearance, closed until opened and remembered.](#ui-review-the-layer-menu-folds-quick-pick-counts-bars-2026-11-26)
+- [The Tempo block has a tool row while editing: View ▾ (as marked, smoothed, deviation, smoothing) and Scale ▾; a tempo row's `⋯` keeps its name and the layer it reads.](#tempo-gets-a-tool-row-2026-11-26)
+- [The bar tools, Elide included, live in Segments' Bars menu, shown only once there is a bar layer; Tempo is offered, not added, when the bar layer's smoothed tempo ranges more than 4 BPM.](#the-bars-menu-waits-for-the-bar-layer-2026-11-26)
 - [An ellipsis marks a menu item or tool that asks for something before it acts; buttons named for a place (Share, Export) and ▾ menus get none.](#where-controls-live-2026-11-26)
 - [A menu row is a name; its header says once what it acts on; one hint line at the foot explains the highlighted row, or what to do first; a form's button names the outcome.](#menus-are-names-2026-11-26)
 - [A change made from a menu shows on the diagram with a toast naming it, with Undo; menus don't report results in their own text.](#menus-are-names-2026-11-26)
@@ -245,13 +251,13 @@ aren't part of this repository.
 
 By area, in the order the entries were made:
 
-**File format and schema:** [File Format](#file-format) · [Span Data Model](#span-data-model) · [File-Level Metadata](#file-level-metadata) · [Schema](#schema) · [Shared Time Point Pool](#shared-time-point-pool) · [Source References](#source-references) · [Schema Finalization (Phase 0.1)](#schema-finalization-phase-01) · [Schema Revision (Phase 0.1 — Session 2)](#schema-revision-phase-01--session-2) · [Schema Changes (Phase 2 prep, 2026-06-20)](#schema-changes-phase-2-prep-2026-06-20) · [Trust and Format Integrity, Round 1 (2026-09-27)](#trust-and-format-integrity-round-1-2026-09-27) · [File Format Integrity, Round 2 (2026-09-27)](#file-format-integrity-round-2-2026-09-27) · [Fill Patterns (2026-10-24)](#fill-patterns-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05) · [Strata's Version in Help (2026-11-23)](#stratas-version-in-help-2026-11-23)
+**File format and schema:** [File Format](#file-format) · [Span Data Model](#span-data-model) · [File-Level Metadata](#file-level-metadata) · [Schema](#schema) · [Shared Time Point Pool](#shared-time-point-pool) · [Source References](#source-references) · [Schema Finalization (Phase 0.1)](#schema-finalization-phase-01) · [Schema Revision (Phase 0.1 — Session 2)](#schema-revision-phase-01--session-2) · [Schema Changes (Phase 2 prep, 2026-06-20)](#schema-changes-phase-2-prep-2026-06-20) · [Trust and Format Integrity, Round 1 (2026-09-27)](#trust-and-format-integrity-round-1-2026-09-27) · [File Format Integrity, Round 2 (2026-09-27)](#file-format-integrity-round-2-2026-09-27) · [Fill Patterns (2026-10-24)](#fill-patterns-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05) · [Strata's Version in Help (2026-11-23)](#stratas-version-in-help-2026-11-23) · [The Hypermeter Is Its Own Field (2026-11-26)](#the-hypermeter-is-its-own-field-2026-11-26)
 
 **Drawing and editing segments:** [Merge UX (Phase 0.5)](#merge-ux-phase-05) · [Hierarchical Enforcement](#hierarchical-enforcement) · [Form Diagram Editor — Interaction Model](#form-diagram-editor--interaction-model) · [Merge](#merge) · [Form Diagram Editor (Phase 0.4)](#form-diagram-editor-phase-04) · [Phase 2 Implementation (Form Diagram — Milestone A)](#phase-2-implementation-form-diagram--milestone-a) · [Merge Implementation (Phase 2.5)](#merge-implementation-phase-25) · [Form Diagram Shape Model — Adjoin Rework (2026-06-27)](#form-diagram-shape-model--adjoin-rework-2026-06-27) · [Label Collision Strategy (2026-06-27)](#label-collision-strategy-2026-06-27) · [Phase 2.5 Merge — Interaction Completion (2026-06-30)](#phase-25-merge--interaction-completion-2026-06-30) · [Elision Rendering & Boundary-First Shape Control (2026-07-25)](#elision-rendering--boundary-first-shape-control-2026-07-25) · [Keyboard Navigation of Spans (2026-09-27)](#keyboard-navigation-of-spans-2026-09-27) · [Space Plays, B Marks a Boundary (2026-10-01)](#space-plays-b-marks-a-boundary-2026-10-01) · [Paused Clicks Stay Paused; Open Caps Fill and Join; Issue Links (2026-10-01)](#paused-clicks-stay-paused-open-caps-fill-and-join-issue-links-2026-10-01) · [Quick Type (2026-10-01)](#quick-type-2026-10-01) · [Quick Entry (2026-10-02)](#quick-entry-2026-10-02) · [B in an Empty Stretch; Shift+B; Fit to the Grid (2026-10-02)](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02) · [Hidden Labels Show on Hover and Selection (2026-10-02)](#hidden-labels-show-on-hover-and-selection-2026-10-02) · [Inside Text Keeps Clear of Rounded and Angled Ends (2026-10-02)](#inside-text-keeps-clear-of-rounded-and-angled-ends-2026-10-02) · [Quick Setup From the Tempo; a Plainer Grid Menu and Quick Pick (2026-10-24)](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24) · [Typed Phrase Lengths; Quick Pick Fixes and Drawn Shapes (2026-10-24)](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24) · [Muted Fills; Same Label, Same Fill; Legible Text on Any Fill (2026-10-24)](#muted-fills-same-label-same-fill-legible-text-on-any-fill-2026-10-24) · [To End (2026-10-24)](#to-end-2026-10-24) · [Quick Pick Colours, and a Colour-Blind Safe Switch (2026-10-24)](#quick-pick-colours-and-a-colour-blind-safe-switch-2026-10-24) · [Fill Patterns (2026-10-24)](#fill-patterns-2026-10-24) · [Backspace No Longer Deletes Spans (2026-10-24)](#backspace-no-longer-deletes-spans-2026-10-24) · [Copy and Paste Between Spans (2026-10-24)](#copy-and-paste-between-spans-2026-10-24) · [Copy and Paste Several Spans (2026-10-24)](#copy-and-paste-several-spans-2026-10-24) · [Splitting a Parent (2026-10-31)](#splitting-a-parent-2026-10-31) · [The Track's End Shows; Quick Pick Closes; Filling a Letter Family (2026-11-05)](#the-tracks-end-shows-quick-pick-closes-filling-a-letter-family-2026-11-05) · [The Timeline Stops at the Track's End (2026-11-25)](#the-timeline-stops-at-the-tracks-end-2026-11-25)
 
 **Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01) · [Group Spans Into Another Layer (2026-10-24)](#group-spans-into-another-layer-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Choosing What Copy to Layer Takes (2026-10-31)](#choosing-what-copy-to-layer-takes-2026-10-31)
 
-**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25) · [Bars From Phrases, Phrases From Bars (2026-11-25)](#bars-from-phrases-phrases-from-bars-2026-11-25) · [The Tempo Lane (2026-11-25)](#the-tempo-lane-2026-11-25) · [Tempo Becomes Its Own Widget (2026-11-25)](#tempo-becomes-its-own-widget-2026-11-25) · [Normalize (2026-11-25)](#normalize-2026-11-25) · [The Tempo Widget, Settled (2026-11-25)](#the-tempo-widget-settled-2026-11-25) · [Widgets as Blocks (2026-11-25)](#widgets-as-blocks-2026-11-25) · [Segments, Not Form Diagram (2026-11-25)](#segments-not-form-diagram-2026-11-25) · [The Beat Grid From the Bars (2026-11-25)](#the-beat-grid-from-the-bars-2026-11-25)
+**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25) · [Bars From Phrases, Phrases From Bars (2026-11-25)](#bars-from-phrases-phrases-from-bars-2026-11-25) · [The Tempo Lane (2026-11-25)](#the-tempo-lane-2026-11-25) · [Tempo Becomes Its Own Widget (2026-11-25)](#tempo-becomes-its-own-widget-2026-11-25) · [Normalize (2026-11-25)](#normalize-2026-11-25) · [The Tempo Widget, Settled (2026-11-25)](#the-tempo-widget-settled-2026-11-25) · [Widgets as Blocks (2026-11-25)](#widgets-as-blocks-2026-11-25) · [Segments, Not Form Diagram (2026-11-25)](#segments-not-form-diagram-2026-11-25) · [The Beat Grid From the Bars (2026-11-25)](#the-beat-grid-from-the-bars-2026-11-25) · [The Bars Menu Waits for the Bar Layer (2026-11-26)](#the-bars-menu-waits-for-the-bar-layer-2026-11-26) · [The Hypermeter Is Its Own Field (2026-11-26)](#the-hypermeter-is-its-own-field-2026-11-26) · [Tempo Gets a Tool Row (2026-11-26)](#tempo-gets-a-tool-row-2026-11-26) · [A Strip Under the Layer (2026-11-26)](#a-strip-under-the-layer-2026-11-26)
 
 **Point markers:** [Point Markers](#point-markers) · [Point Markers — Implementation (2026-07-03)](#point-markers--implementation-2026-07-03) · [Point Markers — Redesign (2026-07-04)](#point-markers--redesign-2026-07-04) · [Marker Band, Absent Events, and the Diagram Control Bar (2026-07-24, cont.)](#marker-band-absent-events-and-the-diagram-control-bar-2026-07-24-cont)
 
@@ -263,7 +269,7 @@ By area, in the order the entries were made:
 
 **Reading, sharing, embedding and export:** [Sharing](#sharing) · [Embeddable Viewer](#embeddable-viewer) · [Export (2026-09-27)](#export-2026-09-27) · [The Reading View (2026-10-01)](#the-reading-view-2026-10-01) · [Sharing by Link (2026-10-01)](#sharing-by-link-2026-10-01) · [Export: Choose Layers, Cut Spans at the Range (2026-10-02)](#export-choose-layers-cut-spans-at-the-range-2026-10-02) · [Share From the Toolbar; Dropbox and OneDrive Links (2026-10-02)](#share-from-the-toolbar-dropbox-and-onedrive-links-2026-10-02) · [Example Analyses (2026-10-02)](#example-analyses-2026-10-02) · [Embedding an Analysis (2026-10-03)](#embedding-an-analysis-2026-10-03) · [Starting an Analysis from a Link (2026-10-03)](#starting-an-analysis-from-a-link-2026-10-03) · [Embed Zoom (2026-11-06)](#embed-zoom-2026-11-06) · [Embed Layout on Wide Screens (2026-11-06)](#embed-layout-on-wide-screens-2026-11-06) · [Layer Names Sized to Fit (2026-11-06)](#layer-names-sized-to-fit-2026-11-06) · [Save as PDF Through the Print Dialog (2026-11-23)](#save-as-pdf-through-the-print-dialog-2026-11-23) · [Commentary in the PDF (2026-11-23)](#commentary-in-the-pdf-2026-11-23) · [Read and Play on a Phone (2026-11-23)](#read-and-play-on-a-phone-2026-11-23) · [Following the Playhead (2026-11-23)](#following-the-playhead-2026-11-23) · [Hiding Layers in the Reading View (2026-11-23)](#hiding-layers-in-the-reading-view-2026-11-23) · [The Toolbar Folds When Narrow (2026-11-23)](#the-toolbar-folds-when-narrow-2026-11-23) · [Link-Only Through the Beta (2026-11-23)](#link-only-through-the-beta-2026-11-23)
 
-**The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03) · [A Shorter New Analysis Dialog; Darker Interface Greys (2026-10-24)](#a-shorter-new-analysis-dialog-darker-interface-greys-2026-10-24) · [People Do Things in Strata's Text (2026-11-05)](#people-do-things-in-stratas-text-2026-11-05) · [The Inspector as Sections; Zoom in the Reading View (2026-11-05)](#the-inspector-as-sections-zoom-in-the-reading-view-2026-11-05) · [Quick Pick Types on Typed Spans; Timing With Boundaries; Commentary Links (2026-11-05)](#quick-pick-types-on-typed-spans-timing-with-boundaries-commentary-links-2026-11-05) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05) · [Where Controls Live (2026-11-26)](#where-controls-live-2026-11-26) · [The Controls Rebuilt (2026-11-26)](#the-controls-rebuilt-2026-11-26) · [Menus Are Names (2026-11-26)](#menus-are-names-2026-11-26)
+**The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03) · [A Shorter New Analysis Dialog; Darker Interface Greys (2026-10-24)](#a-shorter-new-analysis-dialog-darker-interface-greys-2026-10-24) · [People Do Things in Strata's Text (2026-11-05)](#people-do-things-in-stratas-text-2026-11-05) · [The Inspector as Sections; Zoom in the Reading View (2026-11-05)](#the-inspector-as-sections-zoom-in-the-reading-view-2026-11-05) · [Quick Pick Types on Typed Spans; Timing With Boundaries; Commentary Links (2026-11-05)](#quick-pick-types-on-typed-spans-timing-with-boundaries-commentary-links-2026-11-05) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05) · [Where Controls Live (2026-11-26)](#where-controls-live-2026-11-26) · [The Controls Rebuilt (2026-11-26)](#the-controls-rebuilt-2026-11-26) · [Menus Are Names (2026-11-26)](#menus-are-names-2026-11-26) · [The Bars Menu Waits for the Bar Layer (2026-11-26)](#the-bars-menu-waits-for-the-bar-layer-2026-11-26) · [Tempo Gets a Tool Row (2026-11-26)](#tempo-gets-a-tool-row-2026-11-26) · [UI Review: the Layer Menu Folds, Quick Pick Counts Bars (2026-11-26)](#ui-review-the-layer-menu-folds-quick-pick-counts-bars-2026-11-26)
 
 **Architecture, scope and process:** [Architecture](#architecture) · [Widgets](#widgets) · [Architecture](#architecture-1) · [Launch](#launch) · [Corpus Builder](#corpus-builder) · [v1 Feature Scope (Phase 0.6)](#v1-feature-scope-phase-06) · [Energy Contour Widget](#energy-contour-widget) · [EDM as Origin — Product Claim Reframe](#edm-as-origin--product-claim-reframe) · [Tech Stack](#tech-stack) · [v1 Scope](#v1-scope) · [Widget Contract (Phase 0.2)](#widget-contract-phase-02) · [Correctness Pass (post-Phase 2 polish)](#correctness-pass-post-phase-2-polish) · [Improvement Backlog Batch 1 (2026-07-03)](#improvement-backlog-batch-1-2026-07-03) · [Improvement Backlog Batch 2 (2026-07-03)](#improvement-backlog-batch-2-2026-07-03) · [Render / Edit Split (2026-09-27)](#render--edit-split-2026-09-27) · [Large-Analysis Performance (2026-09-27)](#large-analysis-performance-2026-09-27) · [Safari and Firefox Read-Through (2026-09-27)](#safari-and-firefox-read-through-2026-09-27) · [Beta Launch Pass (2026-10-01)](#beta-launch-pass-2026-10-01) · [Releases and Open Tabs (2026-10-02)](#releases-and-open-tabs-2026-10-02) · [Faster Checks: Tests in Node, a Weekly Audit (2026-10-05)](#faster-checks-tests-in-node-a-weekly-audit-2026-10-05) · [Development Tools Upgraded (2026-10-07)](#development-tools-upgraded-2026-10-07) · [No Corpus Builder: Strata Stays a One-File Tool (2026-10-16)](#no-corpus-builder-strata-stays-a-one-file-tool-2026-10-16) · [React's Newer Checks On (2026-10-16)](#reacts-newer-checks-on-2026-10-16) · [The Corpus Builder Is Planned for Version 2 (2026-10-31)](#the-corpus-builder-is-planned-for-version-2-2026-10-31) · [Lint Tools Use a Patched minimatch (2026-11-07)](#lint-tools-use-a-patched-minimatch-2026-11-07)
 
@@ -5794,3 +5800,206 @@ confirmation next to the undo that makes trying things safe.
 `NormalizePanel`, `TempoOffer`, `FitLayerToGrid` and `BarLayerSettings`
 follow it.
 
+---
+
+## The Bars Menu Waits for the Bar Layer (2026-11-26)
+
+*From the maintainer: "Bars existed in the menu before a bars layer was
+identified." "Where Controls Live" had ruled a Bars menu "shown once there
+is a bar layer"; the build showed it always, because two of its rows made
+one.*
+
+**Decision.** **Bars ▾** shows only once a layer is the bar layer, turned on
+with **Bar layer** in that layer's `⋯` menu. Nothing in the menu makes a bar
+layer any more: **Fill from grid** fills the bar layer with the grid's bars
+while it is empty (greyed, "The bar layer has bars already.", once it has
+some), and **Split into bars…** puts its bars on the bar layer, never on a
+new "Bars" layer. While the bar layer is empty, the rows that act on bars
+(Number…, Count…, Normalize…, Beat grid from bars) are greyed with "Fill
+from grid or split phrases first." The store holds the same line:
+`numberBars` fills only the bar layer and `splitIntoBars` refuses without
+one. The Tempo offer follows the bar layer's first bars, from Fill or Split,
+as well as its switch.
+
+**Rejected.** *Keeping the menu always shown* and correcting the ruling to
+match: a Bars menu with no bars in the document offered tools for a thing
+the analyst hadn't named, and called its own outcome a bar layer. *Moving
+Fill and Split elsewhere* (Grid ▾, the Inspector) so they could still make
+one: two more homes for bar tools, against "one kind of control per place".
+
+**Why.** Which layer holds the bars is an analytical claim, and the analyst
+makes it; the tools then work on that layer. One switch is the only way in,
+so the menu's presence says something true: there is a bar layer.
+`BarsMenu`; `numberBars` and `splitIntoBars` in the store.
+
+---
+
+## The Hypermeter Is Its Own Field (2026-11-26)
+
+*From the maintainer, on counts in annotations: "I'm wondering if it
+shouldn't be written as an annotation, but is supplemental to an annotation.
+It shows up where an annotation exists (I'd argue it should be centered) but
+it doesn't overwrite an annotation." Then: it should be "toggleable as
+visible or not in the graph (including in spans - not as a whole)", and it
+"can go in any span because Lerdahl and Jackendoff had the concept of
+hyperbeats." The structured form, the name and the visibility were chosen
+from options; where the annotation goes was left to the analyst: "Can we
+choose?"*
+
+**Decision.** A span's place in a hypermetric group is its own optional
+field, **`hypermeter: { count, becomes? }`**: `count` the place (whole, from
+1), `becomes` only on an elided hyperbeat, the place it starts in the next
+group. It is written as analysts write it, "4" and "4=1", in the Inspector,
+on the diagram and in the reference; the file holds the numbers. Any span can
+carry one, not only a bar: a span is one hyperbeat at its level (after
+Lerdahl and Jackendoff's metrical levels above the bar). The bar layer's
+tools (Count, Elide, Fill from grid, Split into bars, Phrases from count,
+turning the bar layer on) read and write this field and never touch an
+annotation, so a bar can hold a count and a note at once, and Count no
+longer skips bars with notes. This replaces "Hypermetric counts go into
+annotations" ("The Bar Layer", 2026-11-25).
+
+**Decision.** It is drawn **centered inside the span**, on the inside
+annotation's line, in the label's ink. Where both sit on one line the
+annotation stops short of the count (a centered annotation has no side to
+keep to, so it drops to the line below); with the layer's **Hypermeter
+line** set to **Own** (`rendering.hypermeterLine: "own"`), the annotation
+goes on a line below it. A count short of room is drawn smaller, down to
+70% of the annotation size, so "4=1", the widest and the one that matters
+most, survives narrow bars; only then is it left out, whole rather than cut. A layer's **Show hypermeter** (`showHypermeter`, on unless turned off)
+shows or hides its spans' counts; a span's own **Show**, in the Inspector
+(`Span.showHypermeter`), wins over its layer. Both settings appear in the
+layer menu once the layer has a count. Hiding is a drawing choice: the count
+stays in the file. Copy to layer and Paste can take the hypermeter
+(Copy to layer by default, as it took counts when they were annotations);
+a merge keeps the first span's, as it keeps the first span's start.
+
+**Not yet.** Files whose counts are annotations are left as they are, at the
+maintainer's word ("Don't worry about existing files right now"); turning
+the bar layer on still moves counts written as labels. How a hypermetric
+reinterpretation beyond elision is written stays open; it would be another
+field of `hypermeter`.
+
+**Rejected.** *A string* (`hypermeter: "4=1"`): flexible for notation not
+yet settled, but every query would parse text, and the reason for the field
+was to make "every elision in the corpus" a query. *An annotation style* for
+counts: the count would still be the annotation's text, so the two would
+still compete for one field. *Showing or hiding per layer only:* the
+maintainer wanted it per span as well. *One placement for everyone:* the
+maintainer asked to choose.
+
+**Why.** The label names a span, the annotation observes something about it,
+and the count says where it falls in a larger meter: three claims, three
+fields. Sharing one field made a note and a count exclude each other, which
+is why Count had to skip bars with notes.
+`Span.hypermeter`, `Span.showHypermeter`, `Layer.showHypermeter` and
+`rendering.hypermeterLine` in the schema; lib/hypermeter.ts (`countRun`,
+`elideCounts`, `placeOf`, `parseHypermeter`, `hypermeterText`,
+`hypermeterShown`); `SpanFigure` in widgets/segmentation/figure.tsx;
+`HypermeterField`; `LayerSettingsPopover`; the store's bar tools.
+
+---
+
+## Tempo Gets a Tool Row (2026-11-26)
+
+*From the maintainer: "I can't find any of the menu buttons on tempo." What
+the Tempo block shows (as marked, smoothed, deviation), its smoothing and its
+scale were all inside a small `⋯` beside the tempo row's name, which shows
+only while editing and only with the layer names expanded.*
+
+**Decision.** While editing, the Tempo block has a **tool row** under its
+name, as Segments has: **View ▾** (As marked, Smoothed, Deviation, each a
+check, and Smoothing, from Auto, active when Smoothed or Deviation is shown)
+and **Scale ▾** (From the data, or Fixed with a range in BPM). Each menu
+names the tempo layer it acts on in its header, and with several tempo
+layers the header chooses which. They follow "Menus Are Names": rows are
+names, with one hint line at the foot. A tempo row's `⋯` keeps its settings:
+its name and the layer it reads. Reading view has no tool row and shows what
+the author saved.
+
+**Rejected.** *View in the top row, shown in Reading view too,* so readers
+could switch views: the maintainer chose the tool row, keeping what a reader
+sees to what the author saved.
+
+**Why.** "Where Controls Live" put view controls on a block's rows and kept
+`⋯` for settings, and said a new widget brings its tools to its own second
+row; Tempo, built just before that ruling, had never been moved. A chip in
+a row is found; a `⋯` that can disappear is not.
+`TempoViewMenu` and `TempoScaleMenu` in widgets/tempo/TempoMenus.tsx;
+`TempoBlock`.
+
+---
+
+## A Strip Under the Layer (2026-11-26)
+
+*"The Hypermeter Is Its Own Field" let a layer put the annotation on a second
+line inside the shape ("Own"). Drawn, it collided: a bracket's lower interior
+is where the layer below raises its labels, so a phrase's note sat on the bar
+numbers. The maintainer: "if there needs to be an own layer shown with
+annotations, there should be a thin space between layers that expands that
+sits underneath that layer … someone may want the annotation to sit
+underneath." Then: "I think the strip idea works. We can tweak it later if
+we need to." And, seeing the first build, which lifted the bar numbers over
+the strip into the phrase brackets: "it should be flipped where those numbers
+are above their relative span and the thin bar is above that."*
+
+**Decision.** A layer's **Under the layer** setting (the layer menu;
+`rendering.underneath`) opens a thin **strip** under its spans, 13 px and
+unfilled, and draws each span's **hypermeter** (centered) or its
+**annotation** (at its justification) there. The other stays inside the
+span with its line to itself. With nothing chosen there is no strip. Under
+the strip comes room for the layer below's labels (`STRIP_LABEL_ROOM`), so
+the order down the page is bracket, strip, the next layer's labels, its
+spans: the labels sit just above their own spans instead of rising into the
+bracket above. It is per layer, the author's choice saved in the file, as a reader
+sees it. This replaces the Own line (`rendering.hypermeterLine`), which never
+left its branch. Sharing a line, a centered annotation now keeps to the left
+of the count instead of dropping a line, for the same collision.
+
+**Open, to tweak once used:** whether a span can send its own text under,
+and whether a reader may open a strip the author didn't.
+
+**Rejected.** *A taller layer* for a second inside line: the maintainer
+didn't like how it would look, "especially with a fill." *The count below the
+bracket with no strip:* the layer below's labels are already there. *The
+next layer's labels lifted over the strip,* into the bracket above as without
+one (the first build): it split the labels from their spans, with the strip
+between them.
+
+**Why.** Showing a count and a note together is sometimes wanted and often
+not; a strip that appears only when chosen keeps the default diagram as it
+was and gives the second line real room, outside the fill.
+`stripHeight`, `STRIP_HEIGHT` and `STRIP_LABEL_ROOM` in lib/segmentShape.ts;
+`SpanFigure` and `SegmentationFigure`; `LayerSettingsPopover`.
+
+---
+
+## UI Review: the Layer Menu Folds, Quick Pick Counts Bars (2026-11-26)
+
+*The review CLAUDE.md asks for after controls land, held after the Bars menu,
+the hypermeter, the strip and Tempo's tool row. Four candidates were listed;
+the maintainer chose two: "Do 1 and 2." The other two (an empty bar layer's
+Bars menu showing only the ways to make bars, and a bar's Type and Lyrics
+behind More in the Inspector) wait.*
+
+**Decision.** The layer `⋯` menu keeps in view what a layer is and does:
+label, description, library, B fills gaps, the bar layer, lock and delete.
+How it looks (default colors, text size, thin bars, under the layer, show
+hypermeter) folds into **Appearance ▸**, closed for a first visit, its open
+or closed remembered in the browser. The menu had grown to 13 controls and
+720 px, taller than the Segments block it opens from.
+
+**Decision.** On the bar layer, Quick pick's Type mode offers **counts**
+instead of section types, which never apply to a bar: **1–8** on the number
+keys set the hypermeter of every selected bar, **=1** on "=" elides one
+counted bar as the Bars menu's Elide does (the bars after it count on), and
+**None** clears it. There is no library chooser there, and More… opens the
+Inspector's Describe section, where the Hypermeter field is. The Quick pick
+chip in the tool row reads "counts" instead of "types" while the selection
+is on the bar layer. Other layers keep their types.
+
+**Why.** Settings you make once shouldn't crowd the ones you reach for, and
+a menu taller than the block it belongs to reads as a page. Quick pick is
+for the job you're doing on the selection; on bars that job is counting,
+and a count is one key, as a type is elsewhere.
+`LayerSettingsPopover`, `uiStore.layerAppearanceOpen`; `QuickEntryBar`.

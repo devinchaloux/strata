@@ -151,6 +151,9 @@ export interface UIState {
   copyFields: CopyField[]
   /** Which of the span Inspector's sections are open, remembered in the browser. */
   inspectorOpen: Record<InspectorSection, boolean>
+  /** Whether the layer menu's Appearance section is open, remembered in the browser; closed for a first visit. */
+  layerAppearanceOpen: boolean
+  setLayerAppearanceOpen: (open: boolean) => void
   /** Set to scroll an opened section into view (More… from Quick pick); the count makes a repeat request new. */
   inspectorReveal: { section: InspectorSection; n: number } | null
   /** The quick-entry bar's mode, remembered in the browser. */
@@ -340,6 +343,8 @@ function writeInspectorOpen(open: Record<InspectorSection, boolean>) {
   writePreference(INSPECTOR_KEY, INSPECTOR_SECTIONS.filter((id) => open[id]).join(','))
 }
 
+const LAYER_APPEARANCE_KEY = 'strata:layerAppearanceOpen'
+
 const COPY_FIELDS_KEY = 'strata:copyFields'
 /** The remembered Copy to layer choice; the defaults (lyrics, notes and commentary off) for a first visit. */
 function readCopyFields(): CopyField[] {
@@ -395,6 +400,11 @@ const useUIStore = create<UIState>()((set) => ({
   copyPickerPending: false,
   copyFields: readCopyFields(),
   inspectorOpen: readInspectorOpen(),
+  layerAppearanceOpen: readPreference(LAYER_APPEARANCE_KEY) === '1',
+  setLayerAppearanceOpen: (open) => {
+    writePreference(LAYER_APPEARANCE_KEY, open ? '1' : '0')
+    set({ layerAppearanceOpen: open })
+  },
   inspectorReveal: null,
   quickEntry: (['off', 'type', 'shape', 'fill'] as const).find((m) => m === readPreference(QUICK_KEY)) ?? 'type',
   setQuickEntry: (mode) => {

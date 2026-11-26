@@ -1,21 +1,21 @@
 /**
- * Hypermeter: bars counted 1, 2, 3, 4, 1 … in groups.
+ * Hypermeter: hyperbeats counted 1, 2, 3, 4, 1 … in groups.
  *
- * The analyst counts bars to show hypermeter. Fill with bars makes an empty
- * layer the bar layer, one span per bar of the beat grid; Count these bars
- * recounts a run of selected bars from 1, so a phrase of 3 or 6 in the middle
- * of fours is one press; Elide turns one bar into "4=1", the bar that ends one
- * group and begins the next, and counts on from 2 after it. Counts are written
- * into span annotations, inside the shape (a span's label is its name, on the
- * bar layer its bar number), and never over an annotation that holds other
- * text. The analyst can edit any of them by hand.
- * docs/decisions.md, "Numbering Hypermeter" and "The Bar Layer".
+ * The analyst counts bars (or spans at any level) to show hypermeter. Fill
+ * from grid fills the empty bar layer, one span per bar of the beat grid;
+ * Count recounts a run of selected bars from 1, so a phrase of 3 or 6 in the
+ * middle of fours is one press; Elide turns one bar into "4=1", the bar that
+ * ends one group and begins the next, and counts on from 2 after it. Counts
+ * are each span's own field (Span.hypermeter), drawn centered inside the
+ * shape, apart from its annotation, which a count never touches. The analyst
+ * can edit any of them by hand. docs/decisions.md, "Numbering Hypermeter",
+ * "The Bar Layer" and "The Hypermeter Is Its Own Field".
  *
  * Pure functions; the store (documentStore numberBars, renumberSpans,
  * elideSpan, setBarLayer, numberBarLayer, countBars, elideGroupBoundary)
  * applies them.
  */
-import type { GridSegment } from '@/types/strata'
+import type { GridSegment, Hypermeter, Layer, Span } from '@/types/strata'
 import { barLength, gridLines, segmentAt, segmentEnd } from '@/lib/beatGrid'
 
 /** The group size a count starts with: four-bar hypermeter. */
@@ -45,43 +45,65 @@ export function numberedGridBars(segs: GridSegment[], duration: number): Array<{
   return out
 }
 
-/** Counts for `n` bars in groups of `group`, starting at `from`: "1", "2", "3", "4", "1" … */
-export function countLabels(n: number, group: number, from = 1): string[] {
+/** Counts for `n` hyperbeats in groups of `group`, starting at `from`: 1, 2, 3, 4, 1 … */
+export function countRun(n: number, group: number, from = 1): Hypermeter[] {
   const size = Math.max(1, Math.round(group))
-  return Array.from({ length: Math.max(0, n) }, (_, k) => String(((from - 1 + k) % size) + 1))
+  return Array.from({ length: Math.max(0, n) }, (_, k) => ({ count: ((from - 1 + k) % size) + 1 }))
 }
 
 /**
- * The count a bar's text carries, or null for text that isn't one. An
- * elided bar counts as what it becomes: "4=1" is 1.
+ * The place a hyperbeat starts its group at, or null for none. An elided one
+ * counts as what it becomes: 4=1 is 1.
  */
-export function countOf(label: string | null | undefined): number | null {
-  const m = /^\s*(?:\d+\s*=\s*)?(\d+)\s*$/.exec(label ?? '')
-  return m ? Number(m[1]) : null
+export function placeOf(h: Hypermeter | null | undefined): number | null {
+  return h ? (h.becomes ?? h.count) : null
+}
+
+/** How a hypermeter is written: "4", or "4=1" for an elided hyperbeat. */
+export function hypermeterText(h: Hypermeter | null | undefined): string {
+  return h ? (h.becomes != null ? `${h.count}=${h.becomes}` : String(h.count)) : ''
 }
 
 /**
- * The counts of a run of bars after eliding bar `at`: it takes the count it
- * would have had after the bar before it, "=1", and the bars after it count on
- * from 2 until a bar whose text isn't a count (an empty one, or a word), where
- * the analyst's own text resumes. Bars before `at` are unchanged.
+ * A hypermeter typed or found as text: "4", or "4=1" (spaces allowed); null
+ * for text that isn't one, or a count below 1.
  */
-export function elideLabels(labels: Array<string | null | undefined>, at: number, group: number): Array<string | null | undefined> {
+export function parseHypermeter(text: string | null | undefined): Hypermeter | null {
+  const m = /^\s*(\d+)\s*(?:=\s*(\d+)\s*)?$/.exec(text ?? '')
+  if (!m) return null
+  const count = Number(m[1])
+  const becomes = m[2] === undefined ? undefined : Number(m[2])
+  if (count < 1 || (becomes !== undefined && becomes < 1)) return null
+  return becomes === undefined ? { count } : { count, becomes }
+}
+
+/** Whether a span's hypermeter is drawn: its own choice, else its layer's (on by default). */
+export function hypermeterShown(span: Pick<Span, 'showHypermeter'>, layer: Pick<Layer, 'showHypermeter'>): boolean {
+  return span.showHypermeter ?? layer.showHypermeter ?? true
+}
+
+/**
+ * The hypermeter of a run of hyperbeats after eliding the one at `at`: it
+ * takes the count it would have had after the one before it, becoming 1, and
+ * those after it count on from 2 until one with no hypermeter. Those before
+ * `at` are unchanged.
+ */
+export function elideCounts(hs: Array<Hypermeter | null | undefined>, at: number, group: number): Array<Hypermeter | null | undefined> {
   const size = Math.max(1, Math.round(group))
-  const prev = at > 0 ? countOf(labels[at - 1]) : null
+  const prev = at > 0 ? placeOf(hs[at - 1]) : null
   const wouldBe = prev === null ? size : (prev % size) + 1
-  const out = [...labels]
-  out[at] = `${wouldBe}=1`
-  for (let k = at + 1, count = 2; k < out.length && countOf(out[k]) !== null; k++, count++) {
-    out[k] = String(((count - 1) % size) + 1)
+  const out = [...hs]
+  out[at] = { count: wouldBe, becomes: 1 }
+  for (let k = at + 1, count = 2; k < out.length && out[k] != null; k++, count++) {
+    out[k] = { count: ((count - 1) % size) + 1 }
   }
   return out
 }
 
 // ---------------------------------------------------------------------------
 // The bar layer (Layer.role 'bars'): a layer that marks every bar. Its labels
-// are bar numbers and its annotations the hypermetric counts, so the count
-// sits inside each bar's shape and the label says which bar it is.
+// are bar numbers and its spans' hypermeter their counts, so the count sits
+// inside each bar's shape and the label says which bar it is.
 // docs/decisions.md, "The Bar Layer".
 // ---------------------------------------------------------------------------
 
@@ -89,14 +111,6 @@ export function elideLabels(labels: Array<string | null | undefined>, at: number
 export function barNumberLabels(n: number, first = 1): string[] {
   const start = Math.round(first)
   return Array.from({ length: Math.max(0, n) }, (_, k) => String(start + k))
-}
-
-/**
- * Whether a count may be written over this text: it is empty, or already a
- * count. Anything else is the analyst's own note and is left alone.
- */
-export function holdsCount(text: string | null | undefined): boolean {
-  return !text?.trim() || countOf(text) !== null
 }
 
 /**
@@ -110,7 +124,7 @@ export function countsByGroups(
   bars: Array<[number, number]>,
   groups: Array<[number, number]>,
   group: number,
-): string[] {
+): Hypermeter[] {
   const size = Math.max(1, Math.round(group))
   const sorted = [...groups].sort((a, b) => a[0] - b[0])
   let current = -2 // the group of the bar before: -1 is "none", -2 "no bar yet"
@@ -121,19 +135,8 @@ export function countsByGroups(
     if (g !== current) count = 0
     current = g
     count = g < 0 ? (count % size) + 1 : count + 1
-    return String(count)
+    return { count }
   })
-}
-
-/**
- * The texts after writing `counts` over `existing`, one to one: a count goes
- * where the text holds a count or nothing (holdsCount); a note stays.
- */
-export function writeCounts(
-  existing: Array<string | null | undefined>,
-  counts: Array<string | null | undefined>,
-): Array<string | null | undefined> {
-  return existing.map((t, k) => (holdsCount(t) ? counts[k] : t))
 }
 
 /**
@@ -174,17 +177,17 @@ export function splitEvenly(start: number, end: number, n: number): Array<[numbe
  * The phrases a run of counted bars (sorted by time) makes: one starts at the
  * first bar and at every bar counted 1 ("1", or "4=1" for an elided bar), and
  * runs to the bar before the next. `elided` marks a phrase whose first bar is
- * elided, so the phrase before it ends in that bar. Bars whose annotation isn't
- * a count stay in the phrase they fall in.
+ * elided, so the phrase before it ends in that bar. Bars with no hypermeter
+ * stay in the phrase they fall in.
  */
-export function phraseRuns<B extends { id: string; startTime: number; endTime: number; annotation?: string | null }>(
+export function phraseRuns<B extends { id: string; startTime: number; endTime: number; hypermeter?: Hypermeter | null }>(
   bars: B[],
 ): Array<{ start: number; end: number; ids: string[]; elided: boolean }> {
   const runs: Array<{ start: number; end: number; ids: string[]; elided: boolean }> = []
   for (const b of bars) {
     const last = runs[runs.length - 1]
-    if (!last || countOf(b.annotation) === 1) {
-      runs.push({ start: b.startTime, end: b.endTime, ids: [b.id], elided: !!last && (b.annotation ?? '').includes('=') })
+    if (!last || placeOf(b.hypermeter) === 1) {
+      runs.push({ start: b.startTime, end: b.endTime, ids: [b.id], elided: !!last && b.hypermeter?.becomes != null })
     } else {
       last.end = b.endTime
       last.ids.push(b.id)

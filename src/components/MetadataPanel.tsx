@@ -32,6 +32,8 @@ import { toAccidentals } from '@/lib/musicSymbols'
 import { barAt, barLength, segmentAt, sortedSegments } from '@/lib/beatGrid'
 import { CAP_ICONS } from '@/lib/capIcons'
 import { segmentSpans, analysisLayers } from '@/lib/layers'
+import { hypermeterShown, hypermeterText, parseHypermeter } from '@/lib/hypermeter'
+import { HypermeterField, MIXED_VALUE } from '@/components/HypermeterField'
 import type {
   Span,
   Layer,
@@ -788,6 +790,13 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
               />
             </Field>
 
+            <HypermeterField
+              value={span.hypermeter ?? null}
+              shown={hypermeterShown(span, layer)}
+              onChange={update}
+              inputClass={inputClass}
+            />
+
             {/* Written analysis: prose about this span, shown above the diagram
                 while it plays. Stored in the document's commentary layer, not on
                 the span, so it can outlive the span (see widgets/written-analysis). */}
@@ -1029,6 +1038,9 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
   const label = commonValue(spans, (s) => s.label ?? '')
   const type = commonValue(spans, (s) => s.type ?? '')
   const annotation = commonValue(spans, (s) => s.annotation ?? '')
+  const hyper = commonValue(spans, (s) => hypermeterText(s.hypermeter))
+  const shownEach = entries.map(({ span, layer }) => hypermeterShown(span, layer))
+  const hyperShown = shownEach.every((v) => v === shownEach[0]) ? shownEach[0] : MIXED
   const lyrics = commonValue(spans, (s) => s.lyrics ?? '')
   const keyArea = commonValue(spans, (s) => s.keyArea ?? '')
   const startB = commonValue(spans, (s) => s.startBoundaryType ?? 'definite')
@@ -1125,6 +1137,13 @@ function MultiSpanPanel({ entries }: { entries: SpanEntry[] }) {
             onChange={(e) => setAll({ annotation: e.target.value || null })}
           />
         </Field>
+
+        <HypermeterField
+          value={hyper === MIXED ? MIXED_VALUE : hyper ? parseHypermeter(hyper) : null}
+          shown={hyperShown === MIXED ? MIXED_VALUE : hyperShown}
+          onChange={setAll}
+          inputClass={inputClass}
+        />
 
         {/* Ends */}
         <EndsGrid

@@ -2,7 +2,7 @@
 *Widget type: `"tempo"` | v1.0 | November 2026*
 
 > **Built** 2026-11-25. Code: `src/widgets/tempo/TempoBlock.tsx` (the block,
-> its rows and settings), `lib/tempoLane.ts` (`tempoView`: the tempo of each
+> its rows and settings), `TempoMenus.tsx` (the tool row's View and Scale), `lib/tempoLane.ts` (`tempoView`: the tempo of each
 > bar, the smoothed curve, the deviations, the scatter), `lib/normalize.ts`
 > (the smoother), `lib/widgets.ts` (blocks). `docs/decisions.md`, "Tempo
 > Becomes Its Own Widget", "The Tempo Widget, Settled" and "Widgets as
@@ -92,16 +92,21 @@ deviation beyond it is drawn clipped, with a cap.
   hide, but no remove: its layers are the analysis.
 - **Hidden blocks** come back from chips beside Add widget. With the form
   diagram hidden, its zoom controls move there too.
+- **The tool row,** while editing, under the top bar (docs/decisions.md,
+  "Tempo Gets a Tool Row"): **View ▾** (As marked, Smoothed, Deviation, each
+  a check; Smoothing, from Auto, active when Smoothed or Deviation is shown)
+  and **Scale ▾** (From the data, or Fixed, a range in BPM). Each names the
+  tempo layer it acts on in its header, and with several, chooses which;
+  rows are names, with one hint line at the foot. Reading view has no tool
+  row. `TempoViewMenu`, `TempoScaleMenu`.
 - **A row** per tempo layer: a header cell as wide as the layer names, with
-  the name and ⋯ settings (name; the layer it reads; Show: as marked,
-  smoothed, deviation; the smoothing, from Auto; the scale, from the data or
-  fixed), and the drawing, which scrolls and zooms with the Segments block and
+  the name and ⋯ settings (name; the layer it reads), and the drawing, which scrolls and zooms with the Segments block and
   carries the playhead. The tempo band is 52 px and the deviation band 40 px.
 - The marked line fades when the smoothed one is shown, so both read.
 
 ## 3b. Offering Tempo
 
-Turning on Bar layer (or making a bar layer with Split into bars or Fill with the grid's bars) doesn't add Tempo. A note above the blocks says what the bars' tempo does, in a few words: "Tempo varies, 40–127 BPM" with **Show Tempo** and ×, or "Steady tempo, 120 BPM" with **Show** and ×. "Moves" means the smoothed tempo ranges more than 4 BPM (`TEMPO_MOVES_BPM`): each run of bars goes through Normalize's smoother at Auto so tapping scatter doesn't count, bars more than 25% off the running median of their neighbours are set aside first, and the range is the 5th to 95th percentile with 20 bars or more (`tempoSummary`). Add widget offers Tempo at any time.
+Turning on Bar layer, or giving an empty bar layer its first bars with Split into bars or Fill from grid, doesn't add Tempo. A note above the blocks says what the bars' tempo does, in a few words: "Tempo varies, 40–127 BPM" with **Show Tempo** and ×, or "Steady tempo, 120 BPM" with **Show** and ×. "Moves" means the smoothed tempo ranges more than 4 BPM (`TEMPO_MOVES_BPM`): each run of bars goes through Normalize's smoother at Auto so tapping scatter doesn't count, bars more than 25% off the running median of their neighbours are set aside first, and the range is the 5th to 95th percentile with 20 bars or more (`tempoSummary`). Add widget offers Tempo at any time.
 
 ## 4. Normalize and display smoothing
 

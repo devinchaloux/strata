@@ -309,7 +309,7 @@
     "LayerRenderingConfig": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Where this layer's span text sits. All spans in the layer share these settings; there are no per-span overrides. The app draws them when a file sets them, but has no control to set them yet. Defaults: label above/center, annotation inside/left.",
+      "description": "Where this layer's span text sits. All spans in the layer share these settings; there are no per-span overrides. The app draws them all when a file sets them; it has a control only for underneath. Defaults: label above/center, annotation inside/left, hypermeter on the annotation's line, nothing under the layer.",
       "properties": {
         "labelPosition": {
           "type": "string",
@@ -330,6 +330,11 @@
           "type": "string",
           "enum": ["left", "center", "right"],
           "description": "Horizontal alignment of annotation text. Default: 'left'."
+        },
+        "underneath": {
+          "type": "string",
+          "enum": ["hypermeter", "annotation"],
+          "description": "What this layer draws in a thin strip under its spans, unfilled, between it and the layer below: each span's hypermeter (centered) or its annotation (at its justification). The other stays inside the span, with its line to itself. Under the strip comes room for the layer below's labels, which sit just above their own spans: bracket, strip, labels, spans. Absent: no strip; the hypermeter shares the inside annotation's line, the annotation shortened where they would meet (a centered annotation drops to the line below). Visual only."
         }
       }
     },
@@ -398,7 +403,11 @@
         "role": {
           "type": "string",
           "enum": ["bars"],
-          "description": "What the layer is for. 'bars' marks the bar layer: one span per bar, each span's label its bar number and its annotation the hypermetric count ('1', '2' …, '4=1' for an elided bar). At most one layer in a document has it; a reader that finds more keeps the first. Absent = an ordinary layer. Unrelated to spanShape 'bar', which is only a way of drawing."
+          "description": "What the layer is for. 'bars' marks the bar layer: one span per bar, each span's label its bar number and its hypermeter its place in a group. At most one layer in a document has it; a reader that finds more keeps the first. Absent = an ordinary layer. Unrelated to spanShape 'bar', which is only a way of drawing."
+        },
+        "showHypermeter": {
+          "type": "boolean",
+          "description": "Whether this layer's spans draw their hypermeter (Span.hypermeter). Absent = true. A span's own showHypermeter overrides it. Visual only."
         },
         "fillGaps": {
           "type": "boolean",
@@ -598,7 +607,29 @@
         },
         "annotation": {
           "type": ["string", "null"],
-          "description": "Text drawn on the span alongside the label, for observations that belong on the diagram — e.g. 'filter sweep → snare roll', '+Kick'. Also shown with the span in the commentary panel. Distinct from notes (never shown on the diagram) and from label (the section name)."
+          "description": "Text drawn on the span alongside the label, for observations that belong on the diagram — e.g. 'filter sweep → snare roll', '+Kick'. Also shown with the span in the commentary panel. Distinct from notes (never shown on the diagram), from label (the section name) and from hypermeter (its place in a group)."
+        },
+        "hypermeter": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["count"],
+          "description": "This span's place in a hypermetric group, the span taken as one hyperbeat: a bar, or a span at any higher level (after Lerdahl and Jackendoff's metrical levels above the bar). Written '4', or '4=1' for an elided hyperbeat that ends one group and starts the next. Drawn centered inside the span, apart from the annotation, which it never replaces. Queryable: every elision in a corpus is a span with becomes. Null or omit for none.",
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The place in its group: 1 for the first hyperbeat."
+            },
+            "becomes": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "For an elided hyperbeat only: the place it starts in the next group (usually 1). '4=1' is count 4, becomes 1. Omit when not elided."
+            }
+          }
+        },
+        "showHypermeter": {
+          "type": "boolean",
+          "description": "Whether this span draws its hypermeter, overriding the layer's showHypermeter. Absent = the layer's choice. Visual only."
         },
         "notes": {
           "type": ["string", "null"],
