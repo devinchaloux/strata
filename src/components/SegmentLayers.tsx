@@ -13,7 +13,7 @@
  */
 
 import { isDoubleTap, tappedWithFinger } from '@/lib/doubleTap'
-import { memo, useCallback, useRef, useState, useLayoutEffect } from 'react'
+import { memo, useCallback, useMemo, useRef, useState, useLayoutEffect } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { formatClock } from '@/lib/youtube'
@@ -28,6 +28,9 @@ import { newGestureKey, withHistoryGroup } from '@/store/history'
 import { gridLines, sortedSegments, barLength, beatLength } from '@/lib/beatGrid'
 import { spanTypeName } from '@/lib/vocabulary'
 import { QuickEntryBar } from './QuickEntryBar'
+import { moveAlone } from '@/lib/linkedBoundaries'
+import { nearMisses } from '@/lib/nearMisses'
+import { NamedMenu } from '@/components/NamedMenu'
 import { snapToActiveGrid } from '@/store/snap'
 import { Playhead } from './Playhead'
 import { SegmentationFigure, type SpanDecoration } from '@/widgets/segmentation/figure'
@@ -576,6 +579,72 @@ interface BoxDragState {
 // rather than a click. Keeps accidental micro-drags from overriding clicks.
 const BOX_DRAG_THRESHOLD = 4
 
+/**
+ * A small amber mark over each boundary that is near another layer's line but
+ * not on it, so it won't move with it (docs/decisions.md, "Shared Moments Move
+ * Together"). Its menu moves it onto the line, or lines up the whole layer.
+ */
+function NearMissMarks({ layers, pps, scrollOffset }: { layers: Layer[]; pps: number; scrollOffset: number }) {
+  const doc = useDocumentStore((s) => s.document)
+  const moveBoundaryTo = useDocumentStore((s) => s.moveBoundaryTo)
+  const lineUpWith = useDocumentStore((s) => s.lineUpWith)
+  const showToast = useUIStore((s) => s.showToast)
+  const misses = useMemo(() => (doc ? nearMisses(doc) : []), [doc])
+  if (!doc || !misses.length) return null
+  const name = (id: string) => doc.layers.find((l) => l.id === id)?.label || 'Untitled'
+  const count = new Map<string, number>()
+  for (const m of misses) count.set(`${m.layerId}|${m.ontoLayerId}`, (count.get(`${m.layerId}|${m.ontoLayerId}`) ?? 0) + 1)
+  return (
+    <>
+      {misses.map((m) => {
+        const i = layers.findIndex((l) => l.id === m.layerId)
+        if (i < 0) return null
+        const x = m.time * pps - scrollOffset
+        const ms = Math.round(Math.abs(m.time - m.ontoTime) * 1000)
+        const side = m.time > m.ontoTime ? 'after' : 'before'
+        const here = name(m.layerId)
+        const onto = name(m.ontoLayerId)
+        const all = count.get(`${m.layerId}|${m.ontoLayerId}`) ?? 1
+        return (
+          <NamedMenu
+            key={`${m.layerId}-${m.time}`}
+            trigger={
+              <button
+                type="button"
+                className="absolute z-10 h-2.5 w-2.5 -translate-x-1/2 rotate-45 rounded-[1px] border border-white"
+                style={{ left: x, top: shapeTopY(layers, i) - 9, background: PREVIEW_AMBER }}
+                aria-label={`${here} boundary ${ms} ms ${side} the ${onto} line`}
+                title={`${ms} ms ${side} the ${onto} line. It won't move with it.`}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              />
+            }
+            rest={`${ms} ms ${side} the ${onto} line. It won't move with that line.`}
+            items={[
+              {
+                name: `Move onto the ${onto} line`,
+                hint: `It moves ${ms} ms ${side === 'after' ? 'earlier' : 'later'}. Boundaries that share it move too.`,
+                onSelect: () => {
+                  if (moveBoundaryTo(m.layerId, m.time, m.ontoTime)) showToast(`Moved onto the ${onto} line`)
+                  else showToast('It would squeeze a span too small. Nothing moved.', { undo: false })
+                },
+              },
+              {
+                name: `Line up ${here} with ${onto} (${all})`,
+                hint: `Every ${here} boundary within half a second of a ${onto} line moves onto it.`,
+                onSelect: () => {
+                  const n = lineUpWith(m.layerId, m.ontoLayerId)
+                  showToast(n ? `Lined up ${n} ${n === 1 ? 'boundary' : 'boundaries'} with ${onto}` : 'Nothing could move without squeezing a span.', { undo: n > 0 })
+                },
+              },
+            ]}
+          />
+        )
+      })}
+    </>
+  )
+}
+
 export function SegmentLayers({ layers }: { layers: Layer[] }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const zoom = useUIStore((s) => s.zoom)
@@ -652,10 +721,14 @@ export function SegmentLayers({ layers }: { layers: Layer[] }) {
       const minWidth = pps > 0 ? MIN_BOUNDARY_DRAG_PX / pps : MIN_SPAN_WIDTH
       // Every move of one drag joins a single undo step.
       const gesture = newGestureKey('boundary-drag')
+      // A boundary moves with every layer's edge at the same moment; with Alt
+      // held it moves alone (docs/decisions.md, "Shared Moments Move Together").
       const onMove = (ev: PointerEvent) =>
-        withHistoryGroup(gesture, () =>
-          setAdjacentBoundary(layerId, leftId, rightId, snapToActiveGrid(clientXToTime(ev.clientX)), minWidth),
-        )
+        withHistoryGroup(gesture, () => {
+          const move = () => setAdjacentBoundary(layerId, leftId, rightId, snapToActiveGrid(clientXToTime(ev.clientX)), minWidth)
+          if (ev.altKey) moveAlone(move)
+          else move()
+        })
       const onUp = () => {
         window.removeEventListener('pointermove', onMove)
         window.removeEventListener('pointerup', onUp)
@@ -925,6 +998,9 @@ export function SegmentLayers({ layers }: { layers: Layer[] }) {
 
       {/* Playback cursor — mirrors the ruler cursor so the two read as one line */}
       <Playhead height={svgHeight} opacity={0.5} />
+
+      {/* Near misses: boundaries just off another layer's line (lib/nearMisses.ts); not while reading. */}
+      {!reading && pps > 0 && <NearMissMarks layers={layers} pps={pps} scrollOffset={scrollOffset} />}
 
       {/* Quick entry for the selection, on number keys (QuickEntryBar.tsx); not while reading. */}
       {!reading && <QuickEntryBar containerRef={containerRef} layers={layers} pps={pps} scrollOffset={scrollOffset} />}

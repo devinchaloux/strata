@@ -1,16 +1,20 @@
 /**
- * Linked boundaries between a parent span and its children (Span.parentId),
- * which Group and Copy to layer set. When a boundary moves in one layer (a drag, a
- * typed time, Fit to the grid, a change of length in bars) and it is where a
- * parent and its child meet, the boundary at the same moment in the other
- * layer moves with it, neighbours included, and on through any further
- * levels (phrases → sections → rotations). A child's inner boundaries aren't
- * its parent's edges, so they move alone. Splitting or merging moves no
- * boundary, so it moves nothing here; a split parent's children go to the
+ * Shared boundaries, and the parent links between spans.
+ *
+ * A boundary is shared by every layer with an edge at that same moment. When
+ * one moves in one layer (a drag, a typed time, a re-tap, Fit to the grid, a
+ * change of length in bars, Normalize), the edges at the same moment in every
+ * other form layer move with it, neighbours included, and on from there
+ * (followLinks). A locked layer stays put, and an edit made inside moveAlone
+ * (an Alt-drag) moves only its own layer. docs/decisions.md, "Shared Moments
+ * Move Together"; it replaces moving only along parent links ("Group Spans
+ * Into Another Layer").
+ *
+ * Parent links (Span.parentId, set by Group and Copy to layer) record the
+ * hierarchy: which phrase a bar is in. They no longer decide what moves.
+ * Splitting or merging moves no boundary; a split parent's children go to the
  * half that holds most of them (relinkToPieces), and a merged or deleted
- * parent's are re-pointed or unlinked by repairParentLinks. Unlinking clears
- * parentId.
- * docs/decisions.md, "Group Spans Into Another Layer".
+ * parent's are re-pointed or unlinked by repairParentLinks.
  */
 import type { StrataDocument, Span } from '@/types/strata'
 import { segmentSpans } from '@/lib/layers'
@@ -57,14 +61,24 @@ export function applyMoves(spans: Span[], moves: Move[]): Span[] | null {
 
 const hasEdgeAt = (s: Span, t: number) => at(s.startTime, t) || at(s.endTime, t)
 
+let alone = false
+/** Run an edit whose boundary moves stay in their own layer (an Alt-drag). */
+export function moveAlone<T>(edit: () => T): T {
+  alone = true
+  try {
+    return edit()
+  } finally {
+    alone = false
+  }
+}
+
 /**
- * Carry boundary moves made in `layerId` through every link, layer by layer.
- * A move crosses to another layer when a parent and child, one in each,
- * share it: the one here has an edge where the boundary now is, and the one
- * there an edge where it was.
+ * Carry boundary moves made in `layerId` to every other form layer with an
+ * edge at the same moment, and on from each layer that moved. Locked layers
+ * stay put; inside moveAlone nothing is carried.
  */
 export function followLinks(doc: StrataDocument, layerId: string, moves: Move[]): StrataDocument {
-  if (!moves.length) return doc
+  if (!moves.length || alone) return doc
   let layers = doc.layers
   const done = new Set([layerId])
   const queue: [string, Move[]][] = [[layerId, moves]]
@@ -73,13 +87,9 @@ export function followLinks(doc: StrataDocument, layerId: string, moves: Move[])
     const from = layers.find((l) => l.id === fromId)
     if (!from) continue
     for (const other of layers) {
-      if (done.has(other.id) || other.type !== 'segmentation') continue
+      if (done.has(other.id) || other.type !== 'segmentation' || other.locked) continue
       const there = segmentSpans(other)
-      const pairs = segmentSpans(from).flatMap((x) =>
-        there.filter((y) => x.parentId === y.id || y.parentId === x.id).map((y) => [x, y] as const),
-      )
-      if (!pairs.length) continue
-      const crossing = fromMoves.filter(([old, now]) => pairs.some(([x, y]) => hasEdgeAt(x, now) && hasEdgeAt(y, old)))
+      const crossing = fromMoves.filter(([old]) => there.some((y) => hasEdgeAt(y, old)))
       if (!crossing.length) continue
       const next = applyMoves(segmentSpans(other), crossing)
       if (!next) continue

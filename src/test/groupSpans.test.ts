@@ -150,9 +150,26 @@ describe('linked boundaries', () => {
     expect(spansOf('sections')).toEqual([[0, 18], [18, 32]])
   })
 
-  it('stops once unlinked', () => {
+  // Since "Shared Moments Move Together": a boundary at the same moment moves,
+  // linked or not; an Alt-drag (moveAlone) or a locked layer keeps it apart.
+  it('moves a boundary shared at the same moment even without a parent link', () => {
     load()
     store().updateSpans(['p2', 'p3'], { parentId: null })
+    store().setAdjacentBoundary('phrases', 'p2', 'p3', 18)
+    expect(spansOf('sections')).toEqual([[0, 18], [18, 32]])
+  })
+
+  it('moves alone inside moveAlone (an Alt-drag)', async () => {
+    const { moveAlone } = await import('@/lib/linkedBoundaries')
+    load()
+    moveAlone(() => store().setAdjacentBoundary('phrases', 'p2', 'p3', 18))
+    expect(spansOf('sections')).toEqual([[0, 16], [16, 32]])
+    expect(spansOf('phrases')).toEqual([[0, 8], [8, 18], [18, 24], [24, 32]])
+  })
+
+  it('leaves a locked layer where it is', () => {
+    load()
+    store().updateLayer('sections', { locked: true })
     store().setAdjacentBoundary('phrases', 'p2', 'p3', 18)
     expect(spansOf('sections')).toEqual([[0, 16], [16, 32]])
   })
