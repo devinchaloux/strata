@@ -2,8 +2,8 @@
  * LayerSettingsPopover — the `⋯` layer settings menu in the expanded track header.
  *
  * Controls: rename, description, library, fill/stroke default colors, size,
- * key-area shape (thin bars), whether B fills gaps, the hypermeter's
- * showing and line (once the layer has one), the bar layer
+ * key-area shape (thin bars), whether B fills gaps, what goes under the
+ * layer, whether the hypermeter shows (once the layer has one), the bar layer
  * (BarLayerSettings), lock, and delete: settings only (docs/decisions.md,
  * "Where Controls Live"). Fit to grid is in the Grid menu.
  *
@@ -220,48 +220,50 @@ export function LayerSettingsPopover({
             />
           </label>
 
-          {/* The hypermeter, once this layer's spans carry one (docs/decisions.md,
-              "The Hypermeter Is Its Own Field"): shown or not, and whether it
-              shares the annotation's line. A span can override the showing. */}
-          {layer.type === 'segmentation' && segmentSpans(layer).some((s) => s.hypermeter) && (
+          {/* What goes in a thin strip under the layer, if anything (docs/decisions.md,
+              "A Strip Under the Layer"); then, once its spans carry a
+              hypermeter, whether it shows ("The Hypermeter Is Its Own
+              Field"). A span can override the showing. */}
+          {layer.type === 'segmentation' && (
             <>
               <div className="h-px" style={{ background: 'var(--hairline)' }} />
               <label
-                className="flex cursor-pointer items-center justify-between gap-3"
-                title="Draw each span's hypermeter, centered in its shape. A span's own Show, in the Inspector, wins."
+                className="flex items-center justify-between gap-3"
+                title="A thin strip under the layer for each span's hypermeter or annotation, so it doesn't share a line inside the shape."
               >
                 <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
-                  Show hypermeter
+                  Under the layer
                 </span>
-                <Switch
-                  checked={layer.showHypermeter !== false}
-                  onCheckedChange={(v) => updateLayer(layer.id, { showHypermeter: v ? undefined : false })}
-                  aria-label="Show hypermeter"
-                />
+                <select
+                  value={layer.rendering?.underneath ?? ''}
+                  onChange={(e) => {
+                    const underneath = (e.target.value || undefined) as 'hypermeter' | 'annotation' | undefined
+                    updateLayer(layer.id, { rendering: { ...layer.rendering, underneath } })
+                  }}
+                  className="rounded border px-1 py-0.5 text-xs"
+                  style={{ borderColor: 'var(--hairline)', color: 'var(--ink-primary)', background: 'transparent' }}
+                >
+                  <option value="">Nothing</option>
+                  <option value="hypermeter">Hypermeter</option>
+                  <option value="annotation">Annotation</option>
+                </select>
               </label>
-              <div className="flex items-center justify-between" title="Shared: the annotation gives way to the hypermeter on its line. Own line: the annotation goes below it.">
-                <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
-                  Hypermeter line
-                </span>
-                <div className="flex overflow-hidden rounded border" style={{ borderColor: 'var(--hairline)' }} role="radiogroup" aria-label="Hypermeter line">
-                  {(['shared', 'own'] as const).map((line) => {
-                    const on = (layer.rendering?.hypermeterLine ?? 'shared') === line
-                    return (
-                      <button
-                        key={line}
-                        role="radio"
-                        aria-checked={on}
-                        onClick={() => updateLayer(layer.id, { rendering: { ...layer.rendering, hypermeterLine: line === 'shared' ? undefined : line } })}
-                        className={cn('px-2 py-0.5 text-xs', on ? 'bg-accent font-medium' : 'hover:bg-accent/60')}
-                        style={{ color: on ? 'var(--ink-primary)' : 'var(--ink-muted)' }}
-                      >
-                        {line === 'shared' ? 'Shared' : 'Own'}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
             </>
+          )}
+          {layer.type === 'segmentation' && segmentSpans(layer).some((s) => s.hypermeter) && (
+            <label
+              className="flex cursor-pointer items-center justify-between gap-3"
+              title="Draw each span's hypermeter. A span's own Show, in the Inspector, wins."
+            >
+              <span className="text-[13px]" style={{ color: 'var(--ink-primary)' }}>
+                Show hypermeter
+              </span>
+              <Switch
+                checked={layer.showHypermeter !== false}
+                onCheckedChange={(v) => updateLayer(layer.id, { showHypermeter: v ? undefined : false })}
+                aria-label="Show hypermeter"
+              />
+            </label>
           )}
 
           {/* The bar layer switch (BarLayerSettings); its tools are in Bars. */}

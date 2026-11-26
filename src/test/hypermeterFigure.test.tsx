@@ -6,7 +6,8 @@
  */
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { LayerFigure } from '@/widgets/segmentation/figure'
+import { LayerFigure, SegmentationFigure } from '@/widgets/segmentation/figure'
+import { SHAPE_HEIGHT, STRIP_HEIGHT, stackHeight, layerPitch } from '@/lib/segmentShape'
 import { PRINT_THEME } from '@/widgets/segmentation/theme'
 import type { Layer, Span } from '@/types/strata'
 import { makeLayer } from './fixtures'
@@ -41,10 +42,45 @@ describe('the hypermeter on the diagram', () => {
     expect(note.x).toBeLessThan(count.x)
   })
 
-  it('puts the annotation on its own line below when the layer asks', () => {
-    const layer = { ...makeLayer('L', [span({ hypermeter: { count: 2 }, annotation: 'Hook' })]), rendering: { hypermeterLine: 'own' as const } }
-    const texts = drawn(layer)
-    expect(texts.find((t) => t.text === 'Hook')!.y).toBeGreaterThan(texts.find((t) => t.text === '2')!.y)
+  it('draws the hypermeter, or the annotation, in a strip under the layer, and the other keeps its place inside', () => {
+    const with_ = (underneath: 'hypermeter' | 'annotation') => ({
+      ...makeLayer('L', [span({ hypermeter: { count: 2 }, annotation: 'Hook' })]),
+      rendering: { underneath },
+    })
+    const inside = drawn(makeLayer('L', [span({ hypermeter: { count: 2 }, annotation: 'Hook' })]))
+    const below = drawn(with_('hypermeter'))
+    expect(below.find((t) => t.text === '2')!.y).toBeGreaterThan(SHAPE_HEIGHT)
+    expect(below.find((t) => t.text === 'Hook')!.y).toBe(inside.find((t) => t.text === 'Hook')!.y)
+    const noteBelow = drawn(with_('annotation'))
+    expect(noteBelow.find((t) => t.text === 'Hook')!.y).toBeGreaterThan(SHAPE_HEIGHT)
+    expect(noteBelow.find((t) => t.text === '2')!.y).toBe(inside.find((t) => t.text === '2')!.y)
+  })
+
+  it('makes room for the strip, and the layer below lifts its labels clear of it', () => {
+    const above = { ...makeLayer('A', [span({ hypermeter: { count: 1 } })], 1), rendering: { underneath: 'hypermeter' as const } }
+    const below = makeLayer('B', [span({ id: 'b', label: 'Verse' })], 0)
+    expect(layerPitch(above)).toBe(layerPitch(below) + STRIP_HEIGHT)
+    const label = (layers: Layer[]) => {
+      const svg = renderToStaticMarkup(
+        <svg>
+          <SegmentationFigure layers={layers} placements={[]} pps={10} totalWidth={200} showCaptions={false} theme={PRINT_THEME} />
+        </svg>,
+      )
+      const doc = new DOMParser().parseFromString(svg, 'image/svg+xml')
+      const text = [...doc.querySelectorAll('text')].find((t) => t.textContent === 'Verse')!
+      // Its height on the page: its own y plus every enclosing translate's.
+      let y = Number(text.getAttribute('y'))
+      for (let el = text.parentElement; el; el = el.parentElement) {
+        const m = /translate\([^,]+,\s*([-\d.]+)\)/.exec(el.getAttribute('transform') ?? '')
+        if (m) y += Number(m[1])
+      }
+      return y
+    }
+    const plain = { ...above, rendering: {} }
+    // The layer below sits a strip lower, and its label exactly where it was:
+    // inside the bracket above, clear of the strip.
+    expect(stackHeight([above, below])).toBe(stackHeight([plain, below]) + STRIP_HEIGHT)
+    expect(label([above, below])).toBe(label([plain, below]))
   })
 
   it('hides for the layer, and a span can still show its own', () => {

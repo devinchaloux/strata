@@ -103,7 +103,7 @@ Each layer also carries its own settings:
 | Library | The vocabulary you usually draw this layer's types from. It's a preference only: you can use any type | `library` |
 | Bar layer | Marks the one layer that has a span for every bar: its labels are bar numbers, its hypermeter each bar's place in its group | `role: "bars"` |
 | Show hypermeter | Whether the layer's spans draw their hypermeter. On unless you turn it off; a span can override it | `showHypermeter` |
-| Hypermeter line | Whether the hypermeter shares the annotation's line (the default) or the annotation moves to a line below it | `rendering.hypermeterLine` |
+| Under the layer | A thin strip under the layer's spans holding each span's hypermeter or annotation, so it doesn't share a line inside the shape. Off unless you choose one | `rendering.underneath` |
 | Filling gaps | Whether a boundary in an empty stretch fills the stretch on both sides or starts a span there, for a layer that begins partway through | `fillGaps` |
 | Text size | Small, medium, or large labels | `fontScale` |
 
@@ -163,7 +163,7 @@ A span's **hypermeter** is its place in a hypermetric group, the span taken as o
 
 In the file it's a small record, `{ "count": 4 }`, or `{ "count": 4, "becomes": 1 }` for the elided one. It's kept apart from the annotation, so a bar can carry both a count and an observation, and a query can find every elision without reading text.
 
-Strata draws the hypermeter centered inside the span. By default it shares the annotation's line, and the annotation gives way where they would meet. A layer can put the annotation on a line below it instead (`rendering.hypermeterLine: "own"`). You can hide the hypermeter for a whole layer (`showHypermeter` on the layer) or for single spans (`showHypermeter` on the span, which wins). Hiding it is a drawing choice: the count stays in the file.
+Strata draws the hypermeter centered inside the span. By default it shares the annotation's line, and the annotation gives way where they would meet. A layer can instead open a thin strip under its spans and draw the hypermeter, or the annotation, there (`rendering.underneath`), leaving the other a line to itself inside. You can hide the hypermeter for a whole layer (`showHypermeter` on the layer) or for single spans (`showHypermeter` on the span, which wins). Hiding it is a drawing choice: the count stays in the file.
 
 ### Linking the levels
 

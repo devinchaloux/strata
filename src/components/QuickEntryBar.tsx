@@ -32,7 +32,7 @@ import { useUIStore } from '@/store/uiStore'
 import { newGestureKey, withHistoryGroup } from '@/store/history'
 import { applySpanType } from '@/store/typeActions'
 import { segmentSpans } from '@/lib/layers'
-import { capFromBoundaryType, shapeTopY, layerBodyHeight } from '@/lib/segmentShape'
+import { capFromBoundaryType, shapeTopY, layerBodyHeight, stripHeight } from '@/lib/segmentShape'
 import { quickTypes } from '@/lib/typeSuggestions'
 import { LIBRARIES, letterFamily, familyLabels } from '@/lib/vocabulary'
 import { isInputFocused } from '@/lib/youtube'
@@ -273,7 +273,7 @@ export function QuickEntryBar({
   const right = Math.min(window.innerWidth, box.right) - EDGE
   const left = Math.max(EDGE + half, Math.min(mid, right - half))
   const above = box.top - BAR_H - 34
-  const top = above > EDGE ? above : box.top + shapeTopY(layers, target.idx) + layerBodyHeight(target.layer) + 6
+  const top = above > EDGE ? above : box.top + shapeTopY(layers, target.idx) + layerBodyHeight(target.layer) + stripHeight(target.layer) + 6
   const stop = (e: React.SyntheticEvent) => e.stopPropagation()
 
   return createPortal(

@@ -108,7 +108,7 @@ describe('documents the app writes', () => {
     store().elideSpan(bars.id, spans[3].id, 4)
     store().updateSpan(bars.id, spans[1].id, { showHypermeter: false, annotation: 'Hook' })
     store().updateSpan(bars.id, spans[2].id, { hypermeter: null })
-    store().updateLayer(bars.id, { showHypermeter: false, rendering: { hypermeterLine: 'own' } })
+    store().updateLayer(bars.id, { showHypermeter: false, rendering: { underneath: 'hypermeter' } })
     expectValid(doc())
   })
 

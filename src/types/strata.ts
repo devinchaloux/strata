@@ -229,16 +229,18 @@ export interface PointMarker {
  * Layer-level defaults for text rendering within span shapes.
  * All spans in the layer inherit these settings; there are no per-span
  * overrides. The renderer reads them all; the app has a control only for
- * hypermeterLine (the layer's ⋯ menu).
+ * underneath (the layer's ⋯ menu).
  *
  * Defaults:
  *   labelPosition:           'above'   — section names float above the arc peak
  *   labelJustification:      'center'  — centered above the bracket
  *   annotationPosition:      'inside'  — analytical detail inside the shape body
  *   annotationJustification: 'left'    — left-aligned inside the shape
- *   hypermeterLine:          'shared'  — the hypermeter, centered, shares the
- *                                        inside annotation's line; 'own' puts
- *                                        the annotation on a line below it
+ *   underneath:              (absent)  — no strip under the layer; the
+ *                                        hypermeter, centered, shares the inside
+ *                                        annotation's line. 'hypermeter' or
+ *                                        'annotation' opens a thin strip under
+ *                                        the layer and draws that there
  *
  * Text size is a separate layer setting, LayerBase.fontScale.
  */
@@ -247,7 +249,7 @@ export interface LayerRenderingConfig {
   labelJustification?: 'left' | 'center' | 'right'
   annotationPosition?: 'above' | 'inside'
   annotationJustification?: 'left' | 'center' | 'right'
-  hypermeterLine?: 'shared' | 'own'
+  underneath?: 'hypermeter' | 'annotation'
 }
 
 // ---------------------------------------------------------------------------

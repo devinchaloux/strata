@@ -117,7 +117,8 @@ aren't part of this repository.
 - [A span's length in bars can be stepped or typed, and later boundaries move with it.](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24)
 - [One layer can be the bar layer (`role: "bars"`): each span a bar, its label the bar number, its hypermeter its place in a group.](#the-hypermeter-is-its-own-field-2026-11-26)
 - [Any span can carry a hypermeter (`hypermeter: { count, becomes? }`, written "4" or "4=1"), its own field beside the annotation, which it never replaces.](#the-hypermeter-is-its-own-field-2026-11-26)
-- [The hypermeter is drawn centered inside the span, on the annotation's line or with the annotation on a line below, chosen per layer; it shows or hides per layer, and a span's own choice wins.](#the-hypermeter-is-its-own-field-2026-11-26)
+- [The hypermeter is drawn centered inside the span, sharing the annotation's line (the annotation gives way); it shows or hides per layer, and a span's own choice wins.](#the-hypermeter-is-its-own-field-2026-11-26)
+- [A layer can open a thin, unfilled strip under its spans for their hypermeter or their annotation; the layer below lifts its labels clear of it.](#a-strip-under-the-layer-2026-11-26)
 - [The bar layer counts its bars by a layer above (each span from 1) or in groups; selected bars recount from 1; Elide makes a bar "4=1" and offers to elide the boundary above it.](#the-bar-layer-2026-11-25)
 - [Fill from grid fills the bar layer, while it is empty, with the grid's bars, numbered and counted.](#the-bars-menu-waits-for-the-bar-layer-2026-11-26)
 - [Selected spans split into equal bars on the bar layer; selected counted bars make phrases on the layer above. Either works on a chunk or the whole track.](#bars-from-phrases-phrases-from-bars-2026-11-25)
@@ -254,7 +255,7 @@ By area, in the order the entries were made:
 
 **Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01) · [Group Spans Into Another Layer (2026-10-24)](#group-spans-into-another-layer-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Choosing What Copy to Layer Takes (2026-10-31)](#choosing-what-copy-to-layer-takes-2026-10-31)
 
-**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25) · [Bars From Phrases, Phrases From Bars (2026-11-25)](#bars-from-phrases-phrases-from-bars-2026-11-25) · [The Tempo Lane (2026-11-25)](#the-tempo-lane-2026-11-25) · [Tempo Becomes Its Own Widget (2026-11-25)](#tempo-becomes-its-own-widget-2026-11-25) · [Normalize (2026-11-25)](#normalize-2026-11-25) · [The Tempo Widget, Settled (2026-11-25)](#the-tempo-widget-settled-2026-11-25) · [Widgets as Blocks (2026-11-25)](#widgets-as-blocks-2026-11-25) · [Segments, Not Form Diagram (2026-11-25)](#segments-not-form-diagram-2026-11-25) · [The Beat Grid From the Bars (2026-11-25)](#the-beat-grid-from-the-bars-2026-11-25) · [The Bars Menu Waits for the Bar Layer (2026-11-26)](#the-bars-menu-waits-for-the-bar-layer-2026-11-26) · [The Hypermeter Is Its Own Field (2026-11-26)](#the-hypermeter-is-its-own-field-2026-11-26) · [Tempo Gets a Tool Row (2026-11-26)](#tempo-gets-a-tool-row-2026-11-26)
+**Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25) · [Bars From Phrases, Phrases From Bars (2026-11-25)](#bars-from-phrases-phrases-from-bars-2026-11-25) · [The Tempo Lane (2026-11-25)](#the-tempo-lane-2026-11-25) · [Tempo Becomes Its Own Widget (2026-11-25)](#tempo-becomes-its-own-widget-2026-11-25) · [Normalize (2026-11-25)](#normalize-2026-11-25) · [The Tempo Widget, Settled (2026-11-25)](#the-tempo-widget-settled-2026-11-25) · [Widgets as Blocks (2026-11-25)](#widgets-as-blocks-2026-11-25) · [Segments, Not Form Diagram (2026-11-25)](#segments-not-form-diagram-2026-11-25) · [The Beat Grid From the Bars (2026-11-25)](#the-beat-grid-from-the-bars-2026-11-25) · [The Bars Menu Waits for the Bar Layer (2026-11-26)](#the-bars-menu-waits-for-the-bar-layer-2026-11-26) · [The Hypermeter Is Its Own Field (2026-11-26)](#the-hypermeter-is-its-own-field-2026-11-26) · [Tempo Gets a Tool Row (2026-11-26)](#tempo-gets-a-tool-row-2026-11-26) · [A Strip Under the Layer (2026-11-26)](#a-strip-under-the-layer-2026-11-26)
 
 **Point markers:** [Point Markers](#point-markers) · [Point Markers — Implementation (2026-07-03)](#point-markers--implementation-2026-07-03) · [Point Markers — Redesign (2026-07-04)](#point-markers--redesign-2026-07-04) · [Marker Band, Absent Events, and the Diagram Control Bar (2026-07-24, cont.)](#marker-band-absent-events-and-the-diagram-control-bar-2026-07-24-cont)
 
@@ -5924,3 +5925,41 @@ row; Tempo, built just before that ruling, had never been moved. A chip in
 a row is found; a `⋯` that can disappear is not.
 `TempoViewMenu` and `TempoScaleMenu` in widgets/tempo/TempoMenus.tsx;
 `TempoBlock`.
+
+---
+
+## A Strip Under the Layer (2026-11-26)
+
+*"The Hypermeter Is Its Own Field" let a layer put the annotation on a second
+line inside the shape ("Own"). Drawn, it collided: a bracket's lower interior
+is where the layer below raises its labels, so a phrase's note sat on the bar
+numbers. The maintainer: "if there needs to be an own layer shown with
+annotations, there should be a thin space between layers that expands that
+sits underneath that layer … someone may want the annotation to sit
+underneath." Then: "I think the strip idea works. We can tweak it later if
+we need to."*
+
+**Decision.** A layer's **Under the layer** setting (the layer menu;
+`rendering.underneath`) opens a thin **strip** under its spans, 13 px and
+unfilled, and draws each span's **hypermeter** (centered) or its
+**annotation** (at its justification) there. The other stays inside the
+span with its line to itself. With nothing chosen there is no strip. The
+layer below sits the strip's height lower and raises its labels by as much
+(`labelLift`), so they still rise into this layer's brackets, clear of the
+strip. It is per layer, the author's choice saved in the file, as a reader
+sees it. This replaces the Own line (`rendering.hypermeterLine`), which never
+left its branch. Sharing a line, a centered annotation now keeps to the left
+of the count instead of dropping a line, for the same collision.
+
+**Open, to tweak once used:** whether a span can send its own text under,
+and whether a reader may open a strip the author didn't.
+
+**Rejected.** *A taller layer* for a second inside line: the maintainer
+didn't like how it would look, "especially with a fill." *The count below the
+bracket with no strip:* the layer below's labels are already there.
+
+**Why.** Showing a count and a note together is sometimes wanted and often
+not; a strip that appears only when chosen keeps the default diagram as it
+was and gives the second line real room, outside the fill.
+`stripHeight`, `labelLift` and `STRIP_HEIGHT` in lib/segmentShape.ts;
+`SpanFigure` and `SegmentationFigure`; `LayerSettingsPopover`.

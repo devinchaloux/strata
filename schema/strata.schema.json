@@ -309,7 +309,7 @@
     "LayerRenderingConfig": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Where this layer's span text sits. All spans in the layer share these settings; there are no per-span overrides. The app draws them all when a file sets them; it has a control only for hypermeterLine. Defaults: label above/center, annotation inside/left, hypermeter on the annotation's line.",
+      "description": "Where this layer's span text sits. All spans in the layer share these settings; there are no per-span overrides. The app draws them all when a file sets them; it has a control only for underneath. Defaults: label above/center, annotation inside/left, hypermeter on the annotation's line, nothing under the layer.",
       "properties": {
         "labelPosition": {
           "type": "string",
@@ -331,10 +331,10 @@
           "enum": ["left", "center", "right"],
           "description": "Horizontal alignment of annotation text. Default: 'left'."
         },
-        "hypermeterLine": {
+        "underneath": {
           "type": "string",
-          "enum": ["shared", "own"],
-          "description": "Where a span's hypermeter sits against its inside annotation. The hypermeter is always centered inside the span. 'shared' (default): on the annotation's line, the annotation shortened where they would meet (a centered annotation moves to the line below). 'own': the annotation on a line below it. Visual only."
+          "enum": ["hypermeter", "annotation"],
+          "description": "What this layer draws in a thin strip under its spans, unfilled, between it and the layer below: each span's hypermeter (centered) or its annotation (at its justification). The other stays inside the span, with its line to itself. The layer below raises its labels by the strip's height, so they still sit inside these brackets. Absent: no strip; the hypermeter shares the inside annotation's line, the annotation shortened where they would meet (a centered annotation drops to the line below). Visual only."
         }
       }
     },
