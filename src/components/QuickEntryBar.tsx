@@ -9,6 +9,11 @@
  *     one, the current type marked, so a typed span can change type in one
  *     click. "/" or More… opens the full Type list. With nothing to offer yet (a new
  *     file, no library), it shows the library chooser and More… alone.
+ *     On the bar layer, whose spans are bars and have no use for section
+ *     types, it offers counts instead: 1–8 set the hypermeter, "=" elides one
+ *     counted bar (4=1, counting on after it), None clears it; More… opens
+ *     the Inspector's Hypermeter field (docs/decisions.md, "UI Review: the
+ *     Layer Menu Folds, Quick Pick Counts Bars").
  *   - Shape: drawn, in groups: the whole shape (1–3) and the line, solid or
  *     dashed (4–5), on number keys; then each end on its own, by click.
  *   - Fill: the layer default and eight muted colors (lib/palette.ts). A
@@ -34,6 +39,7 @@ import { applySpanType } from '@/store/typeActions'
 import { segmentSpans } from '@/lib/layers'
 import { capFromBoundaryType, shapeTopY, layerBodyHeight, stripHeight } from '@/lib/segmentShape'
 import { quickTypes } from '@/lib/typeSuggestions'
+import { hypermeterText } from '@/lib/hypermeter'
 import { LIBRARIES, letterFamily, familyLabels } from '@/lib/vocabulary'
 import { isInputFocused } from '@/lib/youtube'
 import type { Layer, Span } from '@/types/strata'
@@ -44,6 +50,8 @@ import { PatternSwatch } from '@/components/PatternPicker'
 
 const BAR_H = 36
 const MAX_TYPES = 8
+/** Counts Quick pick offers on the bar layer: 1 to this, on number keys. */
+const MAX_COUNT = 8
 const EDGE = 8 // keep this far inside the window
 
 type Option = {
@@ -55,8 +63,8 @@ type Option = {
   icon?: React.ReactNode
   /** Shapes are shown in groups (Whole, Line, Start, End). */
   group?: string
-  /** The number key that picks it; types and fills number every option in order. */
-  hotkey?: number
+  /** The key that picks it: a number (types and fills number every option in order), or "=" (Elide). */
+  hotkey?: number | '='
   isNew?: boolean
   on?: boolean
   apply: () => void
@@ -109,12 +117,6 @@ export function QuickEntryBar({
   const requestTypePicker = useUIStore((s) => s.requestTypePicker)
   const requestFillPicker = useUIStore((s) => s.requestFillPicker)
   const openInspectorSection = useUIStore((s) => s.openInspectorSection)
-  // More… (or "/"): the full list in the Inspector for whatever this offers.
-  const more = useCallback(() => {
-    if (mode === 'type') requestTypePicker()
-    else if (mode === 'fill') requestFillPicker()
-    else openInspectorSection('shape')
-  }, [mode, requestTypePicker, requestFillPicker, openInspectorSection])
   const barRef = useRef<HTMLDivElement>(null)
 
   // The selection, if it all sits in one visible layer.
@@ -134,10 +136,48 @@ export function QuickEntryBar({
     }
   }, [selected, layers])
 
+  // On the bar layer, Type offers counts (see the header).
+  const counting = mode === 'type' && target?.layer.role === 'bars'
+  // More… (or "/"): the full list in the Inspector for whatever this offers;
+  // for counts, its Hypermeter field.
+  const more = useCallback(() => {
+    if (counting) openInspectorSection('describe')
+    else if (mode === 'type') requestTypePicker()
+    else if (mode === 'fill') requestFillPicker()
+    else openInspectorSection('shape')
+  }, [counting, mode, requestTypePicker, requestFillPicker, openInspectorSection])
+
   const options: Option[] = useMemo(() => {
     if (!doc || !target || mode === 'off') return []
     const ids = target.spans.map((s) => s.id)
     const updateSpans = useDocumentStore.getState().updateSpans
+    if (counting) {
+      // The bar layer: counts, not section types.
+      const current = shared(target.spans, (s) => hypermeterText(s.hypermeter))
+      const one = target.spans.length === 1 ? target.spans[0] : null
+      const counts: Option[] = Array.from({ length: MAX_COUNT }, (_, k) => ({
+        key: `count-${k + 1}`,
+        hotkey: k + 1,
+        label: String(k + 1),
+        title: `Count ${k + 1}`,
+        on: current === String(k + 1),
+        apply: () => updateSpans(ids, { hypermeter: { count: k + 1 } }),
+      }))
+      const elide: Option[] = one?.hypermeter
+        ? [
+            {
+              key: 'elide',
+              hotkey: '=',
+              label: '=1',
+              title: 'Elide: this bar ends one group and starts the next (4=1); the bars after it count on',
+              on: one.hypermeter.becomes != null,
+              apply: () => useDocumentStore.getState().elideSpan(target.layer.id, one.id, useUIStore.getState().barGroup),
+            },
+          ]
+        : []
+      const clear: Option = { key: 'clear', label: 'None', title: 'No hypermeter', on: current === '', apply: () => updateSpans(ids, { hypermeter: null }) }
+      return [...counts, ...elide, clear]
+    }
     if (mode === 'type') {
       return quickTypes(doc, target.layer.id, MAX_TYPES).map((o, i) => ({
         key: o.term.id,
@@ -217,7 +257,7 @@ export function QuickEntryBar({
         apply: () => updateSpans(ids, { fillPattern: pt.id }),
       })),
     ]
-  }, [doc, target, mode, shown])
+  }, [doc, target, mode, shown, counting])
 
   // Types show even with nothing to offer yet (a new file, no library chosen):
   // the bar is where the library is chosen, and More… opens every type.
@@ -229,7 +269,7 @@ export function QuickEntryBar({
     if (!showing) return
     function onKeyDown(e: KeyboardEvent) {
       if (e.metaKey || e.ctrlKey || e.altKey || isInputFocused() || document.activeElement instanceof HTMLSelectElement) return
-      const picked = /^[1-9]$/.test(e.key) ? options.find((o) => o.hotkey === Number(e.key)) : undefined
+      const picked = /^[1-9]$/.test(e.key) ? options.find((o) => o.hotkey === Number(e.key)) : e.key === '=' ? options.find((o) => o.hotkey === '=') : undefined
       if (picked) {
         e.preventDefault()
         picked.apply()
@@ -288,7 +328,7 @@ export function QuickEntryBar({
       style={{ position: 'fixed', top, left, transform: 'translateX(-50%)', height: BAR_H, zIndex: 40 }}
       className="flex items-center gap-1 whitespace-nowrap rounded-lg border border-border bg-card px-1.5 shadow-md"
     >
-      {mode === 'type' && (
+      {mode === 'type' && !counting && (
         <select
           aria-label="Library for this layer"
           title="Where this layer's quick types come from"
@@ -307,7 +347,7 @@ export function QuickEntryBar({
           ))}
         </select>
       )}
-      {mode === 'type' && !options.length && (
+      {mode === 'type' && !counting && !options.length && (
         <span className="px-1 text-xs text-muted-foreground">for one-click types, or</span>
       )}
       {options.map((o, i) => (
@@ -326,7 +366,8 @@ export function QuickEntryBar({
               o.isNew ? 'border-dashed border-muted-foreground text-muted-foreground' : o.on ? 'border-foreground font-medium text-foreground' : 'border-border text-foreground'
             }`}
           >
-            {o.hotkey != null && <kbd className="font-sans text-[11px] text-muted-foreground">{o.hotkey}</kbd>}
+            {/* A count is its own key ("3", "=1"), so it needs no key beside it. */}
+            {o.hotkey != null && !counting && <kbd className="font-sans text-[11px] text-muted-foreground">{o.hotkey}</kbd>}
             {o.swatch && <span className="h-4 w-4 rounded border border-border" style={{ background: shown(o.swatch) }} aria-hidden />}
             {o.icon ?? o.label}
           </button>
@@ -336,7 +377,7 @@ export function QuickEntryBar({
         <button
           type="button"
           onClick={more}
-          title={mode === 'type' ? 'Every type, with search' : mode === 'fill' ? 'Every color' : 'Every shape setting, in the Inspector'}
+          title={mode === 'type' ? (counting ? 'The hypermeter field, in the Inspector' : 'Every type, with search') : mode === 'fill' ? 'Every color' : 'Every shape setting, in the Inspector'}
           className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           More… <kbd className="font-sans text-[11px]">/</kbd>
