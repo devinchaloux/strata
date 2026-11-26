@@ -285,11 +285,12 @@ function solve3(M: number[][], v: number[]): number[] | null {
  *    changing less than FLAT_RATE a bar are steady, and runs of at least eight
  *    are seeds.
  * 2. Grow or shrink each seed while a straight line still fits its marks as
- *    well as tapping allows: the leftovers' spread within 1.5 times the
- *    tapping scatter, and none beyond 4 times it.
- * 3. Place each corner where a hinge (steady, then a steady change) fits the
- *    twelve bars either side best: the growing in step 2 runs a bar or two into
- *    a ramp, since a ramp's first bars are hard to tell from steady.
+ *    well as tapping allows (`fits`), both ends a bar at a time in turn.
+ * 3. Bring each corner in, by up to four bars, to where a hinge (steady, then
+ *    a steady change) fits the twelve bars either side best: growing runs a
+ *    bar or two into a ramp, since a ramp's first bars are hard to tell from
+ *    steady. With the first corner placed, the far end grows again against
+ *    the line that leaves, and is placed in turn.
  *
  * Stretches shorter than FLAT_MIN_BARS are dropped. Odd bars (oddBars) are
  * never inside a stretch.
@@ -305,9 +306,10 @@ export function findFlats(times: number[]): Flat[] {
     return o[o.length >> 1] ?? 0
   }
   const m0 = med(left)
-  // At least 10 ms: bars already smoothed, or laid from a grid, have lost
-  // their scatter, but a hand-marked drift of a few tens of ms is still there.
-  const sigma = Math.max(0.01, 1.4826 * med(left.map((r) => Math.abs(r - m0))))
+  // At least 15 ms, a typical tapping scatter: bars already smoothed, or laid
+  // from a grid, have lost their scatter, but a hand-marked drift of a few tens
+  // of ms is still there.
+  const sigma = Math.max(0.015, 1.4826 * med(left.map((r) => Math.abs(r - m0))))
 
   const logLen = fitted.slice(1).map((t, k) => Math.log(t - fitted[k]))
   const rate = logLen.map((_, k) => {
@@ -317,12 +319,35 @@ export function findFlats(times: number[]): Flat[] {
   })
   const steady = rate.map((r, k) => r < FLAT_RATE && !odd[k])
 
+  // A line fits a stretch as well as tapping allows when its leftovers' spread
+  // (read robustly, so one bad tap can't inflate it) is within 1.5 times the
+  // scatter, and no three leftovers in a row sit beyond 4 times it on the same
+  // side. A ramp leaving the line makes such a run; a mistimed tap or two that
+  // comes back to the line doesn't, and doesn't end a stretch.
   const fits = (a: number, b: number) => {
     if (b - a < 2) return true
     for (let k = a; k < b; k++) if (odd[k]) return false
     const r = lineLeftovers(times, a, b)
-    const spread = Math.sqrt(r.reduce((s, v) => s + v * v, 0) / r.length)
-    return spread <= 1.5 * sigma && Math.max(...r.map(Math.abs)) <= 4 * sigma
+    const mr = med(r)
+    if (1.4826 * med(r.map((v) => Math.abs(v - mr))) > 1.5 * sigma) return false
+    let run = 0
+    for (let k = 0; k < r.length; k++) {
+      const far = Math.abs(r[k]) > 4 * sigma
+      run = far && k > 0 && Math.sign(r[k]) === Math.sign(r[k - 1]) && Math.abs(r[k - 1]) > 4 * sigma ? run + 1 : far ? 1 : 0
+      if (run >= 3) return false
+    }
+    return true
+  }
+
+  // Grow both ends a bar at a time in turn, so neither end runs into a ramp
+  // first and tilts the line against the other.
+  const grow = (a: number, b: number, ends: 'both' | 'from' | 'to' = 'both'): Flat => {
+    for (let more = true; more; ) {
+      more = false
+      if (ends !== 'to' && a > 0 && fits(a - 1, b)) [a, more] = [a - 1, true]
+      if (ends !== 'from' && b < n && fits(a, b + 1)) [b, more] = [b + 1, true]
+    }
+    return { from: a, to: b }
   }
 
   const flats: Flat[] = []
@@ -334,43 +359,56 @@ export function findFlats(times: number[]): Flat[] {
     let j = k
     while (j + 1 < n && steady[j + 1]) j++
     if (j - k + 1 >= SEED_MIN) {
-      let a = k
-      let b = j + 1
-      while (b - a > SEED_MIN && !fits(a, b)) {
-        const r = lineLeftovers(times, a, b)
-        if (Math.abs(r[0]) > Math.abs(r[r.length - 1])) a++
-        else b--
+      // A seed that doesn't fit as a whole is trimmed: from its start, from its
+      // end, or from whichever end misses more, keeping the longest that fits.
+      const trims: Flat[] = []
+      for (const how of ['from', 'to', 'worse'] as const) {
+        let a = k
+        let b = j + 1
+        while (b - a > SEED_MIN && !fits(a, b)) {
+          const r = lineLeftovers(times, a, b)
+          if (how === 'from' || (how === 'worse' && Math.abs(r[0]) > Math.abs(r[r.length - 1]))) a++
+          else b--
+        }
+        if (fits(a, b)) trims.push({ from: a, to: b })
       }
-      if (fits(a, b)) {
-        while (a > 0 && fits(a - 1, b)) a--
-        while (b < n && fits(a, b + 1)) b++
-        flats.push({ from: a, to: b })
-      }
+      const best = trims.sort((x, y) => y.to - y.from - (x.to - x.from))[0]
+      if (best) flats.push(grow(best.from, best.to))
     }
     k = j + 1
   }
 
-  // Corners: a hinge fitted over the 12 bars either side, within 8 of where growing stopped.
+  // Corners: growing runs a bar or so into a ramp, so each corner may come in
+  // by up to 4 bars, to where a hinge fitted over the 12 bars either side fits
+  // best. Never further: the hinge is a least-squares fit, and a mistimed tap
+  // or two near a corner would pull it a long way.
   const W = 12
-  const S = 8
-  const placed = flats.map(({ from, to }) => {
+  const S = 4
+  const placeFrom = (from: number, to: number) => {
+    if (from === 0) return from
     let a = from
+    let best = Infinity
+    for (let c = from; c <= Math.min(to - SEED_MIN, from + S); c++) {
+      const miss = hingeMiss(times, c, Math.max(0, c - W), Math.min(n, c + W), false)
+      if (miss < best) [best, a] = [miss, c]
+    }
+    return a
+  }
+  const placeTo = (from: number, to: number) => {
+    if (to === n) return to
     let b = to
-    if (a > 0) {
-      let best = Infinity
-      for (let c = Math.max(1, from - S); c <= Math.min(to - SEED_MIN, from + S); c++) {
-        const miss = hingeMiss(times, c, Math.max(0, c - W), Math.min(n, c + W), false)
-        if (miss < best) [best, a] = [miss, c]
-      }
+    let best = Infinity
+    for (let c = Math.max(from + SEED_MIN, to - S); c <= to; c++) {
+      const miss = hingeMiss(times, c, Math.max(0, c - W), Math.min(n, c + W), true)
+      if (miss < best) [best, b] = [miss, c]
     }
-    if (b < n) {
-      let best = Infinity
-      for (let c = Math.max(a + SEED_MIN, to - S); c <= Math.min(n - 1, to + S); c++) {
-        const miss = hingeMiss(times, c, Math.max(0, c - W), Math.min(n, c + W), true)
-        if (miss < best) [best, b] = [miss, c]
-      }
-    }
-    return { from: a, to: b }
+    return b
+  }
+  // Place one corner, grow the other end against the line that leaves, then place it.
+  const placed = flats.map(({ from, to }) => {
+    const a = placeFrom(from, to)
+    const grown = grow(a, to, 'to')
+    return { from: a, to: placeTo(a, grown.to) }
   })
   return settleFlats(placed, n).filter((f) => f.to - f.from >= FLAT_MIN_BARS)
 }

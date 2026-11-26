@@ -68,6 +68,17 @@ describe('findFlats', () => {
     expect(rampsOffered(rubato, findFlats(rubato), 4, 4)).toBe(false)
   })
 
+  it('isn’t ended by a mistimed tap or two that comes back to the line', () => {
+    // Steady 126 for 110 bars, then a slowdown; two taps late by 100 and 170 ms at bars 96–97.
+    const bpms = [...Array(110).fill(126), ...geom(126, 60, 30)]
+    const times = marked(bpms, 0.018)
+    times[96] += 0.1
+    times[97] += 0.17
+    const flats = findFlats(times)
+    expect(flats).toHaveLength(1)
+    expect(Math.abs(flats[0].to - 110)).toBeLessThanOrEqual(2)
+  })
+
   it('needs sixteen bars or more', () => {
     const times = marked([...Array(10).fill(120), ...lin(120, 140, 10)], 0.01)
     expect(findFlats(times)).toEqual([])

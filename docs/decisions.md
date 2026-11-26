@@ -6193,7 +6193,10 @@ bit more during the flat part. What would be the instructions to follow to
 bring this into something that actually more accurately reflects the DAW",
 then: "I would want some suggestions based on the rate of change, so that it
 isn't offered all of the time but only when it makes sense", and "Does it make
-sense to propose points that the user can then tweak if needed?"*
+sense to propose points that the user can then tweak if needed?" On the first
+version's proposal for Opus, which ended the steady stretch at bar 150: "I
+think the deconstruct is wrong … that dip and bump should still be close to
+126 BPM."*
 
 **Decision.** Normalize gains a third way, **Steady between ramps**, for a
 tempo made in a DAW: steady stretches joined by ramps. Each steady stretch is
@@ -6209,26 +6212,38 @@ strip opens on it. Detection (`findFlats`):
 1. The run is smoothed at Auto. A bar is steady when its tempo changes less
    than 0.5% a bar (`FLAT_RATE`), and runs of eight such bars are seeds.
 2. Each seed grows or shrinks while a straight line fits its marks as well as
-   tapping allows. The leftovers' spread must be within 1.5 times the tapping
-   scatter, and no leftover beyond 4 times it. The scatter is read robustly,
-   and never below 10 ms, so bars already smoothed still find their stretches.
-3. Each corner is placed where a hinge fits the 12 bars either side best: steady
-   on one side, and on the other a tempo changing at a steady rate. Growing
-   alone runs a bar or two into a ramp, because a ramp's first bars are hard to
-   tell from steady.
+   tapping allows. The leftovers' spread, read robustly, must be within 1.5
+   times the tapping scatter, and no three leftovers in a row may sit beyond 4
+   times it on the same side. A ramp leaving the line makes such a run. A
+   mistimed tap or two that comes back to the line doesn't, so it doesn't end
+   a stretch. The scatter is read robustly too, and never below 15 ms (a
+   typical tapping scatter), so bars already smoothed still find their
+   stretches. A seed that doesn't fit as a whole is trimmed from its start,
+   from its end, or from whichever end misses more, and the longest result
+   that fits is kept. Both ends then grow a bar at a time in turn, so neither
+   runs into a ramp first and tilts the line against the other.
+3. Each corner comes in by up to four bars, to where a hinge fits the 12 bars
+   either side best: steady on one side, and on the other a tempo changing at
+   a steady rate. Growing runs a bar or two into a ramp, because a ramp's first
+   bars are hard to tell from steady. The hinge may not move a corner further:
+   as a least-squares fit, it was pulled 8 bars by two mistimed taps. Once the
+   first corner is placed, the far end grows again and is placed in turn.
 **The corners are proposals.** The strip names each stretch: "126.02 BPM from
 bar 53 to bar 149". Each corner has − and + to move it a bar, and **Back to
 proposed** undoes that. The diagram marks each corner with a solid amber line
 while the preview is up. The fit can only estimate where the automation
 points were; the analyst may know.
 **Tested on** steady–ramp–steady and ramp–steady–ramp shapes with 10 to 25 ms
-of scatter, where corners land within a bar. It is not offered for a steady
-tempo, an accelerando, a 2 BPM drift, or rubato. On Opus it finds bars 53 to
-149 or 150 at 126.02 BPM, from the original marks or from the bars already
-smoothed.
+of scatter, where corners land within a bar or two, and with two taps late by
+100 and 170 ms inside the stretch. It is not offered for a steady tempo, an
+accelerando, a 2 BPM drift, or rubato. On Opus it finds bars 53 to 165 at
+126.00 BPM from the original marks, and 52 to 165 from the bars already
+smoothed. The late taps at bars 160 and 161 (92 and 169 ms), around
+Deconstruct, stay inside the stretch, as the maintainer heard it.
 **Open (the maintainer's call):** *the ramps' shape.* Here they're smoothed,
-so a ramp keeps whatever shape the marks give it, wobbles included (Opus's
-bars 155–164). A DAW ramp is usually one even curve: straight in BPM over
+so a ramp keeps whatever shape the marks give it, wobbles included, and a
+ramp that Smooth has already rounded can step at its corner (on the smoothed
+Opus, from 123.8 to 126.0 at bar 52). A DAW ramp is usually one even curve: straight in BPM over
 time, or bending. Fitting that shape would remove the wobble, but it means
 choosing a shape. Heavy smoothing isn't a substitute: on Opus it bends a
 48-bar ramp out of shape and moves boundaries by up to 2.6 s.
