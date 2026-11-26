@@ -94,7 +94,8 @@ aren't part of this repository.
 **Grouping and linked layers**
 
 - [Group into… makes one span over the selection on another layer; Copy to layer… copies a span up or down.](#schema-review-three-fields-cut-2026-10-31)
-- [The span on the higher layer is the parent (`parentId`), and a parent and child move their shared boundaries together.](#group-spans-into-another-layer-2026-10-24)
+- [The span on the higher layer is the parent (`parentId`); parent links record the hierarchy.](#group-spans-into-another-layer-2026-10-24)
+- [Boundaries at the same moment in different layers move together, linked or not; Alt-drag moves one alone, and a locked layer stays put. An amber mark shows a boundary within half a second of a finer layer's line but not on it, and offers to move it there or line up the layer.](#shared-moments-move-together-2026-11-26)
 - [The one-click actions never cut or replace a span.](#group-spans-into-another-layer-2026-10-24)
 - [When a parent goes, its children follow or unlink.](#schema-review-three-fields-cut-2026-10-31)
 - [Splitting a parent snaps to a child boundary within half a second, and each child joins the half holding most of it.](#splitting-a-parent-2026-10-31)
@@ -262,7 +263,7 @@ By area, in the order the entries were made:
 
 **Drawing and editing segments:** [Merge UX (Phase 0.5)](#merge-ux-phase-05) · [Hierarchical Enforcement](#hierarchical-enforcement) · [Form Diagram Editor — Interaction Model](#form-diagram-editor--interaction-model) · [Merge](#merge) · [Form Diagram Editor (Phase 0.4)](#form-diagram-editor-phase-04) · [Phase 2 Implementation (Form Diagram — Milestone A)](#phase-2-implementation-form-diagram--milestone-a) · [Merge Implementation (Phase 2.5)](#merge-implementation-phase-25) · [Form Diagram Shape Model — Adjoin Rework (2026-06-27)](#form-diagram-shape-model--adjoin-rework-2026-06-27) · [Label Collision Strategy (2026-06-27)](#label-collision-strategy-2026-06-27) · [Phase 2.5 Merge — Interaction Completion (2026-06-30)](#phase-25-merge--interaction-completion-2026-06-30) · [Elision Rendering & Boundary-First Shape Control (2026-07-25)](#elision-rendering--boundary-first-shape-control-2026-07-25) · [Keyboard Navigation of Spans (2026-09-27)](#keyboard-navigation-of-spans-2026-09-27) · [Space Plays, B Marks a Boundary (2026-10-01)](#space-plays-b-marks-a-boundary-2026-10-01) · [Paused Clicks Stay Paused; Open Caps Fill and Join; Issue Links (2026-10-01)](#paused-clicks-stay-paused-open-caps-fill-and-join-issue-links-2026-10-01) · [Quick Type (2026-10-01)](#quick-type-2026-10-01) · [Quick Entry (2026-10-02)](#quick-entry-2026-10-02) · [B in an Empty Stretch; Shift+B; Fit to the Grid (2026-10-02)](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02) · [Hidden Labels Show on Hover and Selection (2026-10-02)](#hidden-labels-show-on-hover-and-selection-2026-10-02) · [Inside Text Keeps Clear of Rounded and Angled Ends (2026-10-02)](#inside-text-keeps-clear-of-rounded-and-angled-ends-2026-10-02) · [Quick Setup From the Tempo; a Plainer Grid Menu and Quick Pick (2026-10-24)](#quick-setup-from-the-tempo-a-plainer-grid-menu-and-quick-pick-2026-10-24) · [Typed Phrase Lengths; Quick Pick Fixes and Drawn Shapes (2026-10-24)](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24) · [Muted Fills; Same Label, Same Fill; Legible Text on Any Fill (2026-10-24)](#muted-fills-same-label-same-fill-legible-text-on-any-fill-2026-10-24) · [To End (2026-10-24)](#to-end-2026-10-24) · [Quick Pick Colours, and a Colour-Blind Safe Switch (2026-10-24)](#quick-pick-colours-and-a-colour-blind-safe-switch-2026-10-24) · [Fill Patterns (2026-10-24)](#fill-patterns-2026-10-24) · [Backspace No Longer Deletes Spans (2026-10-24)](#backspace-no-longer-deletes-spans-2026-10-24) · [Copy and Paste Between Spans (2026-10-24)](#copy-and-paste-between-spans-2026-10-24) · [Copy and Paste Several Spans (2026-10-24)](#copy-and-paste-several-spans-2026-10-24) · [Splitting a Parent (2026-10-31)](#splitting-a-parent-2026-10-31) · [The Track's End Shows; Quick Pick Closes; Filling a Letter Family (2026-11-05)](#the-tracks-end-shows-quick-pick-closes-filling-a-letter-family-2026-11-05) · [The Timeline Stops at the Track's End (2026-11-25)](#the-timeline-stops-at-the-tracks-end-2026-11-25)
 
-**Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01) · [Group Spans Into Another Layer (2026-10-24)](#group-spans-into-another-layer-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Choosing What Copy to Layer Takes (2026-10-31)](#choosing-what-copy-to-layer-takes-2026-10-31)
+**Layers:** [Phase 2 Implementation (Layer Management — 2.4 part 1)](#phase-2-implementation-layer-management--24-part-1) · [Phase 2 Implementation (Layer Management — 2.4 part 2)](#phase-2-implementation-layer-management--24-part-2) · [Color Picker & Layer Defaults (Phase 2.x, 2026-06-30)](#color-picker--layer-defaults-phase-2x-2026-06-30) · [Layer Text Size (2026-09-27)](#layer-text-size-2026-09-27) · [Levels, Not Layers, in the Interface (2026-10-01)](#levels-not-layers-in-the-interface-2026-10-01) · [Group Spans Into Another Layer (2026-10-24)](#group-spans-into-another-layer-2026-10-24) · [Schema Review: Three Fields Cut (2026-10-31)](#schema-review-three-fields-cut-2026-10-31) · [Choosing What Copy to Layer Takes (2026-10-31)](#choosing-what-copy-to-layer-takes-2026-10-31) · [Shared Moments Move Together (2026-11-26)](#shared-moments-move-together-2026-11-26)
 
 **Timeline and beat grid:** [Timeline](#timeline) · [Shared Timeline Axis (Phase 1.6)](#shared-timeline-axis-phase-16) · [Timeline Zoom & Scroll (Phase 2 polish)](#timeline-zoom--scroll-phase-2-polish) · [Beat Grid (2026-09-29)](#beat-grid-2026-09-29) · [Snapping Remembered as a Preference (2026-09-29)](#snapping-remembered-as-a-preference-2026-09-29) · [Getting Around the Timeline (2026-10-01)](#getting-around-the-timeline-2026-10-01) · [Beat Grid Input: Tap Along (2026-10-01)](#beat-grid-input-tap-along-2026-10-01) · [Tap-Along Refinements, Click to Seek, a Visible Pause (2026-10-01)](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24) · [Numbering Hypermeter (2026-11-20)](#numbering-hypermeter-2026-11-20) · [The Bar Layer (2026-11-25)](#the-bar-layer-2026-11-25) · [Bars From Phrases, Phrases From Bars (2026-11-25)](#bars-from-phrases-phrases-from-bars-2026-11-25) · [The Tempo Lane (2026-11-25)](#the-tempo-lane-2026-11-25) · [Tempo Becomes Its Own Widget (2026-11-25)](#tempo-becomes-its-own-widget-2026-11-25) · [Normalize (2026-11-25)](#normalize-2026-11-25) · [The Tempo Widget, Settled (2026-11-25)](#the-tempo-widget-settled-2026-11-25) · [Widgets as Blocks (2026-11-25)](#widgets-as-blocks-2026-11-25) · [Segments, Not Form Diagram (2026-11-25)](#segments-not-form-diagram-2026-11-25) · [The Beat Grid From the Bars (2026-11-25)](#the-beat-grid-from-the-bars-2026-11-25) · [The Bars Menu Waits for the Bar Layer (2026-11-26)](#the-bars-menu-waits-for-the-bar-layer-2026-11-26) · [The Hypermeter Is Its Own Field (2026-11-26)](#the-hypermeter-is-its-own-field-2026-11-26) · [Tempo Gets a Tool Row (2026-11-26)](#tempo-gets-a-tool-row-2026-11-26) · [A Strip Under the Layer (2026-11-26)](#a-strip-under-the-layer-2026-11-26) · [Steady Between Ramps (2026-11-26)](#steady-between-ramps-2026-11-26) · [The Tempo Map (2026-11-26)](#the-tempo-map-2026-11-26) · [Re-Tapping Boundaries (2026-11-26)](#re-tapping-boundaries-2026-11-26)
 
@@ -6394,3 +6395,62 @@ splitting, for a whole pass of corrections with the key already under the
 finger. And whether to show each boundary's tap count on the diagram.
 `lib/retap.ts`; PlayerDock (the R key); `uiStore.retaps`; HelpDialog;
 `src/test/retap.test.ts`.
+
+---
+
+## Shared Moments Move Together (2026-11-26)
+
+*From the maintainer, after re-tapping Opus: "some of the spans aren't connected
+to the other spans, and it isn't immediately clear what those are or how to
+attach them". Asked whether a boundary should move with the others at its
+moment, linked or not: "Yes - that sounds exactly right".*
+
+**Decision (amends "Group Spans Into Another Layer").** A boundary is shared
+by every layer with an edge at that same moment, and moves with them. Linking
+no longer decides it. A drag, a typed time, a re-tap, Fit to the grid, a change
+of length in bars or Normalize carries a boundary's move to every other form
+layer with an edge where it was, neighbours included, and on from there.
+- **Alt-drag** moves a boundary alone.
+- **A locked layer** stays put.
+- **Parent links** (`parentId`, set by Group and Copy to layer) still record
+  the hierarchy, "this bar is in that phrase", for the Inspector, splitting a
+  parent and queries. **Unlink** clears that record. It no longer keeps a
+  boundary from moving.
+
+**Near misses.** While editing, a small amber mark sits over each boundary
+that is within half a second of a finer layer's line (one with more spans) but
+not on it, so it won't move with that line (`nearMisses`, `NEAR_MISS_SEC`).
+The mark is on the coarser layer: bars are usually marked more carefully than
+the phrases over them. Its menu offers **Move onto the Bars line**, and
+**Line up Phrases with Bars (31)**, which moves every such boundary of that
+layer at once. Both take one undo step, end in a toast with Undo, and carry
+what shares the moved boundary. A move that would squeeze a span below its
+minimum, or make two overlap, does nothing and says so.
+**Why.**
+- **The links weren't visible,** and they didn't match what the layers
+  showed. On Opus every phrase edge sat on a bar line, but 192 bars were
+  linked to Sonic Functions, and only 6 to Phrases. A re-tap moved the bars
+  and Sonic Functions, and left 31 phrase boundaries off the bar lines: 11 of
+  them by the 285 ms tapping delay, 20 by a few to 63 ms that Normalize had
+  already opened.
+- **A span has one parent,** so with Phrases, Sonic Functions and Alt Phrase
+  Grouping all over the bars, whichever Group ran last decided what moved.
+  Overlapping frameworks are one of Strata's bets ("Overlapping frameworks are
+  valid").
+- **Snapping already lines up most boundaries meant to be shared,** and two
+  layers touching by accident is rare. Alt-drag covers it.
+- **Near misses are exactly the boundaries the new rule can't reach:** marked
+  apart, or left behind. The mark shows them where they are and fixes them in
+  place, so no new menu is needed. A ⋯ menu holds settings only ("Where
+  Controls Live").
+
+**Rejected.**
+- *Several parents per span* (one per layer): a format change, still invisible
+  on the diagram, and still silent about boundaries never linked.
+- *A Link to layer… tool in the layer's ⋯ menu:* it's a tool, not a setting.
+- *Marking near misses on both layers:* twice the marks for one problem.
+
+**Not built yet.** Highlighting, on hover, the layers that share a boundary.
+lib/linkedBoundaries.ts (`followLinks`, `moveAlone`); lib/nearMisses.ts;
+`moveBoundaryTo` and `lineUpWith` in the store; SegmentLayers
+(`NearMissMarks`); `src/test/nearMisses.test.ts`, `src/test/groupSpans.test.ts`.

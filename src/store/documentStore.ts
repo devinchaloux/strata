@@ -4,7 +4,8 @@ import type { StrataDocument, Layer, LayerBase, Span, PointMarker, GridSegment, 
 import { moveBlock, setBlockHidden, widgetBlocks } from '@/lib/widgets'
 import { segmentSpans, newSegmentLayer } from '@/lib/layers'
 import { groupUpTarget, placeSpan, copyOfSpan, layerAbove, DEFAULT_COPY_FIELDS, type CopyField } from '@/lib/groupSpans'
-import { boundaryMoves, followLinks, repairParentLinks, splitTimeNearChildren, relinkToPieces } from '@/lib/linkedBoundaries'
+import { applyMoves, boundaryMoves, followLinks, repairParentLinks, splitTimeNearChildren, relinkToPieces, type Move } from '@/lib/linkedBoundaries'
+import { nearMissesBetween } from '@/lib/nearMisses'
 import { sortedSegments, segmentAt, segmentEnd, extendBack, snapToGrid, barTiling, barLength } from '@/lib/beatGrid'
 import { barNumberLabels, boundaryOnBar, countRun, countsByGroups, elideCounts, numberedGridBars, parseHypermeter, phraseRuns, placeOf, splitEvenly } from '@/lib/hypermeter'
 import { roundTempo, segmentForAdjusting, tempoThroughDownbeat } from '@/lib/metronome'
@@ -227,6 +228,13 @@ interface DocumentState {
   // clamped so neither span shrinks below `minWidth` seconds (hard-stop). The
   // caller passes a zoom-aware minWidth; the store still floors it at the data
   // minimum (MIN_SPAN_WIDTH).
+  // Near misses (lib/nearMisses.ts): move the boundary at `from` in a layer to
+  // `to` (onto another layer's line), or every near miss of a layer onto
+  // another's lines. Edges sharing the moved boundaries move too. One undo
+  // step; returns how many boundaries moved (0 when one would collapse a span
+  // or overlap, and nothing changes).
+  moveBoundaryTo: (layerId: string, from: number, to: number) => number
+  lineUpWith: (layerId: string, ontoLayerId: string) => number
   setAdjacentBoundary: (
     layerId: string,
     leftSpanId: string,
@@ -488,6 +496,20 @@ function rippleByBars(
  * kept (re-anchored to a merged span or to their old times), and their
  * children are handed to the merged span or unlinked (lib/linkedBoundaries.ts).
  */
+/**
+ * The document with boundaries in one layer moved ([from, to] each, all at
+ * once), and every edge sharing them in other layers with them; null when a
+ * move would collapse a span or make two overlap, or moves nothing.
+ */
+function withBoundaryMoves(doc: StrataDocument, layerId: string, moves: Move[]): StrataDocument | null {
+  const layer = doc.layers.find((l) => l.id === layerId)
+  if (!layer || layer.type !== 'segmentation' || !moves.length) return null
+  const spans = applyMoves(segmentSpans(layer), moves)
+  if (!spans) return null
+  const next = { ...doc, layers: mapLayer(doc.layers, layerId, (l) => mapSegmentSpans(l, () => spans)), updatedAt: now() }
+  return withLinks(doc, next, layerId)
+}
+
 function afterRemoval(prev: StrataDocument, next: StrataDocument): StrataDocument {
   return repairParentLinks(reanchorOrphans(prev, next))
 }
@@ -1250,6 +1272,24 @@ const useDocumentStore = create<DocumentState>()(
           updatedAt: now(),
         }
         set({ document: withLinks(doc, next, layerId) })
+      },
+
+      moveBoundaryTo: (layerId, from, to) => {
+        const doc = get().document
+        const next = doc && withBoundaryMoves(doc, layerId, [[from, to]])
+        if (!next) return 0
+        set({ document: next })
+        return 1
+      },
+
+      lineUpWith: (layerId, ontoLayerId) => {
+        const doc = get().document
+        if (!doc) return 0
+        const moves = nearMissesBetween(doc, layerId, ontoLayerId).map((m): Move => [m.time, m.ontoTime])
+        const next = withBoundaryMoves(doc, layerId, moves)
+        if (!next) return 0
+        set({ document: next })
+        return moves.length
       },
 
       setAdjacentBoundary: (layerId, leftSpanId, rightSpanId, time, minWidth) => {
