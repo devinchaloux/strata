@@ -6283,23 +6283,29 @@ go (×), and clicking a ramp's rate switches its shape.
 so the file format version stays 3.
 **Finding it** (`detectTempoMap`):
 1. Steady stretches come from `findFlats`, and odd bars from `oddBars`.
-2. Each stretch between them is fitted as one ramp in the better shape. When
-   that misses the marks by more than twice the tapping scatter, the stretch is
-   split where the split leaves the least miss (no ramp shorter than 4 bars),
-   and each half is tried in turn.
-3. Two ramps in a row are then merged unless the corner between them earns its
-   place: removing it would add more than 40 squared tapping scatters of miss
-   inside them (`CORNER_COST`). Hand-marked drift runs over several bars, so
-   this is well above the 2 to 6 a model-selection rule for independent
-   scatter would ask.
+2. The stretch between each pair is one ramp to begin with. The whole map is
+   fitted, and any ramp that moves its marks further than tapping explains is
+   split where two ramps fit it best, the worst first. "Further than tapping
+   explains" means one boundary more than 3 times the tapping scatter, or
+   three in a row more than twice it on the same side (`rampMisfits`). This
+   repeats until every ramp fits or is too short to split (3 bars each side,
+   `RAMP_MIN_BARS`).
+3. Two ramps in a row are merged where the map still fits: the merged ramp
+   doesn't misfit, and no more ramps misfit than before. The line is
+   continuous, so one merge can make a neighbouring ramp misfit. The corner
+   must also save no more than 40 squared tapping scatters of miss
+   (`CORNER_COST`). Hand-marked drift runs over several bars, so this is well
+   above the 2 to 6 that a model-selection rule for independent scatter would
+   ask.
 **Fitting it** (`fitTempoMap`). The map is fitted as one continuous tempo line,
 because a DAW's tempo track doesn't jump at a corner:
 - Each corner has a tempo, and each ramp runs between its corners' tempos in
   its shape, each bar at the tempo at its middle.
 - The tempos and the line's start time are found by least squares
-  (Levenberg–Marquardt) on all the marks. Each miss is measured against its
-  bar's length, since a 6-second bar can't be tapped as tightly as a 2-second
-  one.
+  (Levenberg–Marquardt) on all the marks. Each miss is in plain seconds,
+  because a downbeat is tapped about as tightly in a slow bar as in a fast one.
+  Opus's marks scatter about 25 ms around a smooth curve in its 6–8 s bars, and
+  about 18 ms in its 1.9 s ones.
 - A steady stretch keeps the tempo of the line through its own marks. Fitted
   freely, the ramps' misfit pulled Opus's 126.00 to 125.96.
 - The run's ends don't pin the line: they're single taps like any other.
@@ -6314,11 +6320,28 @@ Fitted as one ramp, it misses by 1.2 s rms against 78 ms for BPM per bar,
 since its rate grows from about 2% a bar at 126 BPM to 8% at 33. From the
 original marks the intro and outro split more finely (the outro into two
 percent ramps). Their corners can be joined in the strip.
+**Revised the same day.** *From the maintainer, on the raw file: "it shifted the
+original bars way too much in the ramp up."* The first version moved the
+intro's boundaries by up to 91 ms, in runs of six to eight on the same side,
+while Smooth moved none there by more than 41 ms. Two causes:
+- Each ramp was judged on its own fit, not on the whole map's fit, where the
+  steady tempo is held and the ramps must join.
+- Misses were weighed by bar length, which made a 90 ms miss in a 6 s bar
+  count like 30 ms.
+
+Now no ramp may move its marks further than tapping explains, misses are in
+plain seconds, and a merge may not make any ramp misfit. On the raw marks the
+intro's largest move is now 53 ms (3 times the scatter), and the map is finer:
+six ramps in the intro, four in the outro. Within tapping precision those
+marks don't follow one or two even ramps. That was the maintainer's own
+reading on replay ("a lot of my initial presses are off"), and it led to
+re-tapping.
 **Rejected.** *A constant percentage for every ramp,* as first asked: it would
 move the outro's boundaries by up to 2 s. *Fitting each ramp on its own between
-held corners:* the tempo jumped at corners, by 5 BPM at Opus's bar 35. *A
-threshold in milliseconds for splitting:* slow bars split into near-identical
-ramps (−2.8 then −3.0 BPM a bar).
+held corners:* the tempo jumped at corners, by 5 BPM at Opus's bar 35. *Weighing
+misses by bar length,* tried so that slow bars wouldn't split into
+near-identical ramps (−2.8 then −3.0 BPM a bar): it let the ramp-up move bars
+too far.
 **Open (the maintainer's call):** *the names* "tempo map", "steady",
 "ramp", "%/bar" and "BPM/bar"; and whether the map belongs in the reading view
 and in exports. It is a view of the tempo layer, so it shows wherever the

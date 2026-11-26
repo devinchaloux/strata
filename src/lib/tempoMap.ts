@@ -18,7 +18,7 @@
  * to a steady piece sits on that piece's line; a corner between two ramps, and
  * the run's two ends, stay where they were marked. Nothing here is stored.
  */
-import { findFlats, lineFit, oddBars, planFrom, tappingScatter, type Flat, type NormalizePlan } from '@/lib/normalize'
+import { findFlats, lineFit, oddBars, planFrom, tappingScatter, type NormalizePlan } from '@/lib/normalize'
 
 export type RampShape = 'percent' | 'bpm'
 
@@ -40,7 +40,7 @@ export interface MapSegment extends MapPiece {
 }
 
 /** A ramp is at least this many bars; a stretch is split no finer. */
-export const RAMP_MIN_BARS = 4
+export const RAMP_MIN_BARS = 3
 /**
  * What a corner between two ramps must save, in squared tapping scatters, to
  * stay: without it, the map would miss the marks by more than that much more.
@@ -60,9 +60,8 @@ const square = (xs: number[]) => xs.reduce((s, v) => s + v * v, 0)
 // corner's tempo to its last in its shape, each bar at the tempo at its middle.
 // The line can't jump at a corner, as a DAW's tempo track doesn't. The bars'
 // times follow from the tempos and a start time; both are found by least
-// squares (Levenberg–Marquardt) on all the marks, each miss measured against
-// the bar's own length, since a long bar can't be tapped as tightly as a short
-// one. The run's two ends are single taps like any other, so they don't pin
+// squares (Levenberg–Marquardt) on all the marks, each miss in plain seconds:
+// a downbeat is tapped about as tightly in a slow bar as in a fast one. The run's two ends are single taps like any other, so they don't pin
 // the line: holding them would push their error into every tempo. Where the
 // ends must stay (Normalize), only the first and last bar take up the
 // difference.
@@ -85,9 +84,9 @@ function barLengths(pieces: MapPiece[], shapes: RampShape[], T: number[]): numbe
 
 interface ContinuousFit {
   times: number[]
-  /** Each inner boundary's miss (index k − 1 for boundary k), as a share of its bars' length times the run's median bar length, in seconds. */
+  /** Each inner boundary's miss (index k − 1 for boundary k), in seconds. */
   misses: number[]
-  /** Root mean square of the misses, each as a share of its bar's length, times the run's median bar length: in seconds, comparable to the tapping scatter. */
+  /** Root mean square of the misses, in seconds, comparable to the tapping scatter. */
   spread: number
   shapes: RampShape[]
 }
@@ -100,10 +99,6 @@ interface ContinuousFit {
 function fitContinuous(times: number[], pieces: MapPiece[], shapes?: Array<RampShape | undefined>): ContinuousFit {
   const n = times.length - 1
   const marked = times.slice(1).map((t, k) => t - times[k])
-  const sortedLens = [...marked].sort((a, b) => a - b)
-  const ref = sortedLens[sortedLens.length >> 1]
-  // Each boundary's miss is weighed by the length of the bars around it.
-  const weight = times.map((_, k) => ref / ((marked[Math.max(0, k - 1)] + marked[Math.min(n - 1, k)]) / 2))
   // Knot tempos: one per corner, a steady piece's two corners shared.
   const knotOf: number[] = []
   let params = 0
@@ -135,11 +130,11 @@ function fitContinuous(times: number[], pieces: MapPiece[], shapes?: Array<RampS
     const T = knotOf.map((q) => Math.exp(x[q]))
     const lens = barLengths(pieces, sh, T)
     let t = times[0] + x[params]
-    const r: number[] = [(t - times[0]) * weight[0]]
+    const r: number[] = [t - times[0]]
     held.forEach((v, q) => r.push((x[q] - v) * 1e4))
     for (let k = 1; k <= n; k++) {
       t += lens[k - 1]
-      r.push((t - times[k]) * weight[k])
+      r.push(t - times[k])
     }
     return r
   }
@@ -266,69 +261,107 @@ export function fitTempoMap(times: number[], pieces: MapPiece[], beatsPerBar = 4
 }
 
 /**
- * Split a stretch between corners into ramps that each fit as well as tapping
- * allows (the continuous fit's spread within twice the tapping scatter). Where
- * one ramp doesn't, it splits at the boundary that leaves the least miss, no
- * ramp shorter than RAMP_MIN_BARS, and tries each half.
+ * Whether a ramp's fit moves its marks further than tapping explains: one
+ * boundary more than 3 times the tapping scatter, or three in a row more than
+ * twice it on the same side (a shape that doesn't match, rather than a bad tap).
+ * `misses` are the fitted times minus the marks, for the ramp's boundaries.
  */
-function splitRamps(times: number[], a: number, b: number, sigma: number): MapPiece[] {
+function rampMisfits(misses: number[], sigma: number): boolean {
+  let run = 0
+  for (let k = 0; k < misses.length; k++) {
+    if (Math.abs(misses[k]) > 3 * sigma) return true
+    const far = Math.abs(misses[k]) > 2 * sigma
+    run = far && k > 0 && Math.sign(misses[k]) === Math.sign(misses[k - 1]) && Math.abs(misses[k - 1]) > 2 * sigma ? run + 1 : far ? 1 : 0
+    if (run >= 3) return true
+  }
+  return false
+}
+
+/** Where to split ramp [a, b]: the boundary at which two ramps fit its marks best, fitted on their own. */
+function bestSplit(times: number[], a: number, b: number): number {
   const seg = times.slice(a, b + 1)
-  const one: MapPiece[] = [{ from: 0, to: b - a, kind: 'ramp' }]
-  const whole = fitContinuous(seg, one)
-  if (whole.spread <= 2 * sigma || b - a < 2 * RAMP_MIN_BARS) return [{ from: a, to: b, kind: 'ramp' }]
   let best = -1
-  let bestSpread = whole.spread
+  let bestSpread = Infinity
   for (let c = RAMP_MIN_BARS; c <= b - a - RAMP_MIN_BARS; c++) {
-    const two: MapPiece[] = [
+    const fit = fitContinuous(seg, [
       { from: 0, to: c, kind: 'ramp' },
       { from: c, to: b - a, kind: 'ramp' },
-    ]
-    const fit = fitContinuous(seg, two)
+    ])
     if (fit.spread < bestSpread) [bestSpread, best] = [fit.spread, c]
   }
-  // Split only for a clear gain, so scatter alone doesn't split a ramp.
-  if (best < 0 || bestSpread > 0.8 * whole.spread) return [{ from: a, to: b, kind: 'ramp' }]
-  return [...splitRamps(times, a, a + best, sigma), ...splitRamps(times, a + best, b, sigma)]
+  return best < 0 ? -1 : a + best
 }
 
 /**
- * The tempo map of a run of marked bars, as proposed pieces: the steady
- * stretches findFlats finds, odd bars as marked, and the rest split into ramps,
- * then two ramps merged wherever one fits as well as tapping allows.
+ * The tempo map of a run of marked bars, as proposed pieces.
+ *
+ * 1. Steady stretches come from findFlats and odd bars from oddBars; the
+ *    stretch between each pair is one ramp to begin with.
+ * 2. The whole map is fitted (fitTempoMap). Any ramp whose fit moves the marks
+ *    further than tapping explains (rampMisfits) is split where two ramps fit
+ *    it best, the worst first, and the map fitted again, until every ramp
+ *    fits or is too short to split (RAMP_MIN_BARS on each side).
+ * 3. Two ramps in a row are merged where the map still fits as well as
+ *    tapping allows (the merged ramp doesn't misfit, and no more ramps misfit
+ *    than before) and the corner between them saves no more than CORNER_COST
+ *    squared tapping scatters of miss.
  */
 export function detectTempoMap(times: number[]): MapPiece[] {
   const n = times.length - 1
   if (n < 1) return []
   const odd = oddBars(times)
-  const flats: Flat[] = findFlats(times)
   const sigma = tappingScatter(times)
   const fixed: MapPiece[] = [
-    ...flats.map((f) => ({ from: f.from, to: f.to, kind: 'steady' as const })),
+    ...findFlats(times).map((f) => ({ from: f.from, to: f.to, kind: 'steady' as const })),
     ...odd.flatMap((o, k) => (o ? [{ from: k, to: k + 1, kind: 'asMarked' as const }] : [])),
   ].sort((x, y) => x.from - y.from)
   let pieces: MapPiece[] = []
   let k = 0
   for (const p of fixed) {
-    if (p.from > k) pieces.push(...splitRamps(times, k, p.from, sigma))
+    if (p.from > k) pieces.push({ from: k, to: p.from, kind: 'ramp' })
     pieces.push(p)
     k = p.to
   }
-  if (k < n) pieces.push(...splitRamps(times, k, n, sigma))
-  // Merge two ramps in a row wherever, inside them, the map fits as well as
-  // tapping allows without the corner between them, or nearly as well as with it.
+  if (k < n) pieces.push({ from: k, to: n, kind: 'ramp' })
+
+  /** Each ramp's misses on the whole map's fit (the line's times, not the held ends). */
+  const rampMisses = (ps: MapPiece[]) => {
+    const { line } = fitTempoMap(times, ps)
+    return ps.map((p) => (p.kind === 'ramp' ? line.slice(p.from, p.to + 1).map((t, j) => t - times[p.from + j]) : []))
+  }
+
+  for (let round = 0; round < 24; round++) {
+    const misses = rampMisses(pieces)
+    // The worst misfitting ramp that can still be split.
+    let worst = -1
+    let worstMiss = 0
+    pieces.forEach((p, i) => {
+      if (p.kind !== 'ramp' || p.to - p.from < 2 * RAMP_MIN_BARS || !rampMisfits(misses[i], sigma)) return
+      const m = Math.max(...misses[i].map(Math.abs))
+      if (m > worstMiss) [worstMiss, worst] = [m, i]
+    })
+    if (worst < 0) break
+    const p = pieces[worst]
+    const c = bestSplit(times, p.from, p.to)
+    if (c < 0) break
+    pieces = [...pieces.slice(0, worst), { from: p.from, to: c, kind: 'ramp' }, { from: c, to: p.to, kind: 'ramp' }, ...pieces.slice(worst + 1)]
+  }
+
+  // Merge two ramps in a row wherever the map still fits as well as tapping
+  // allows (the line is continuous, so a merge can make a neighbouring ramp
+  // misfit: no more ramps may misfit than before) and the corner between them
+  // doesn't save more than CORNER_COST scatters².
+  const misfitCount = (ps: MapPiece[]) => rampMisses(ps).filter((m, i) => ps[i].kind === 'ramp' && rampMisfits(m, sigma)).length
   const missIn = (ps: MapPiece[], from: number, to: number) => {
-    const part = cleanParts(ps).find((q) => q.from <= from && q.to >= to)
-    if (!part) return Infinity
-    const fit = fitContinuous(times.slice(part.from, part.to + 1), part.pieces)
-    return square(fit.misses.slice(from - part.from, to - part.from - 1))
+    const { line } = fitTempoMap(times, ps)
+    return square(line.slice(from + 1, to).map((t, j) => t - times[from + 1 + j]))
   }
   for (let i = 0; i + 1 < pieces.length; ) {
     if (pieces[i].kind === 'ramp' && pieces[i + 1].kind === 'ramp') {
-      const merged = [...pieces.slice(0, i), { from: pieces[i].from, to: pieces[i + 1].to, kind: 'ramp' as const }, ...pieces.slice(i + 2)]
       const [from, to] = [pieces[i].from, pieces[i + 1].to]
-      // A corner earns its place when taking it away adds more miss than
-      // CORNER_COST times the tapping scatter, squared.
-      if (missIn(merged, from, to) - missIn(pieces, from, to) <= CORNER_COST * sigma * sigma) {
+      const merged = [...pieces.slice(0, i), { from, to, kind: 'ramp' as const }, ...pieces.slice(i + 2)]
+      const fits = !rampMisfits(rampMisses(merged)[i], sigma) && misfitCount(merged) <= misfitCount(pieces)
+      if (fits && missIn(merged, from, to) - missIn(pieces, from, to) <= CORNER_COST * sigma * sigma) {
         pieces = merged
         continue
       }
