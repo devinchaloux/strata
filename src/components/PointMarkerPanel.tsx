@@ -173,6 +173,7 @@ export function PointMarkerPanel() {
 
   function handleDelete() {
     removePointMarker(marker!.id)
+    useUIStore.getState().showToast('Deleted the marker')
     selectPointMarker(null)
   }
 

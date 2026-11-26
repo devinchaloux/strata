@@ -1,8 +1,8 @@
 import { Toast } from '@/components/Toast'
+import { NamedMenu } from '@/components/NamedMenu'
 import { useCallback, useEffect, useRef, useState, useLayoutEffect } from 'react'
 import { useStore } from 'zustand'
-import { Undo2, Redo2, Settings, CircleHelp, Ellipsis } from 'lucide-react'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Undo2, Redo2, CircleHelp, ChevronDown } from 'lucide-react'
 import { useFileIO } from '@/hooks/useFileIO'
 import { useMerge } from '@/hooks/useMerge'
 import { usePhone } from '@/hooks/usePhone'
@@ -52,20 +52,17 @@ import { computePps, scrollableWidth, clampScrollOffset } from '@/lib/timeline'
 const HEADER_H = 40
 const TRANSPORT_H = 48
 
-// ── Toolbar folding ──
-// The editing toolbar needs about 1,070px with every label showing. Narrower
-// than each width here, that item folds into the ⋯ More menu, least used
-// first, so labels never wrap and the bar never scrolls sideways
-// (decisions.md, "The Toolbar Folds When Narrow"). Measured from the items'
-// own widths, with "Unsaved changes" showing.
-const FOLD_BELOW = {
-  report: 1080,
-  demo: 1000,
-  saveAs: 930,
-  export: 870,
-  settingsHelp: 810,
-  unsavedLabel: 760,
-} as const
+// ── The app bar (docs/decisions.md, "The App Bar") ──
+// File and Help are menus; their shortcuts show as the platform writes them.
+const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent)
+const KEY = IS_MAC ? '⌘' : 'Ctrl+'
+const SHIFT_KEY = IS_MAC ? '⇧⌘' : 'Ctrl+Shift+'
+/** A menu trigger in the app bar: a name and a ▾. */
+const APP_MENU =
+  'flex items-center gap-0.5 rounded-md px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent data-[state=open]:bg-accent ' +
+  'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring'
+/** Narrower than this, "Unsaved" shrinks to its dot. */
+const NARROW_BAR = 760
 
 /** An element's width, kept current as it resizes (0 until measured). */
 function useWidth(ref: React.RefObject<HTMLElement | null>): number {
@@ -78,53 +75,6 @@ function useWidth(ref: React.RefObject<HTMLElement | null>): number {
     return () => ro.disconnect()
   }, [ref])
   return width
-}
-
-/** One row in the ⋯ More menu. */
-function MoreItem({ onClick, disabled, children }: { onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-accent disabled:pointer-events-none disabled:opacity-40"
-    >
-      {children}
-    </button>
-  )
-}
-
-function ToolbarButton({
-  onClick,
-  disabled,
-  title,
-  muted,
-  children,
-}: {
-  onClick: () => void
-  disabled?: boolean
-  title?: string
-  // Secondary affordance (e.g. Demo) — rendered lighter so it reads as
-  // non-primary chrome.
-  muted?: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      className={cn(
-        `whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-medium transition-colors
-        hover:bg-accent hover:text-accent-foreground
-        focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background
-        disabled:opacity-40 disabled:pointer-events-none`,
-        muted ? 'text-muted-foreground' : 'text-foreground',
-      )}
-    >
-      {children}
-    </button>
-  )
 }
 
 /** Icon-only toolbar button — square, for compact chrome actions (undo, redo, settings). */
@@ -444,17 +394,10 @@ export default function App() {
     ui.requestView(0, null)
   }, [phoneReading, loadId])
 
-  // The toolbar's width decides what folds into ⋯ More (FOLD_BELOW).
+  // Narrow, "Unsaved" shrinks to its dot (NARROW_BAR).
   const headerRef = useRef<HTMLElement>(null)
   const headerWidth = useWidth(headerRef)
-  const folds = (item: keyof typeof FOLD_BELOW) => headerWidth > 0 && headerWidth < FOLD_BELOW[item]
-  const [moreOpen, setMoreOpen] = useState(false)
-  // Runs a menu item, then closes the menu.
-  const fromMore = (run: () => void) => () => {
-    setMoreOpen(false)
-    run()
-  }
-
+  const narrow = headerWidth > 0 && headerWidth < NARROW_BAR
   // Inspector collapse is pure view-state; local to the shell.
   const [inspectorCollapsed, setInspectorCollapsed] = useState(true)
   // Held in uiStore rather than local state; App is its only user today.
@@ -691,10 +634,12 @@ export default function App() {
               for (const s of segmentSpans(l)) if (ids.has(s.id)) useDocumentStore.getState().removeSpan(l.id, s.id)
           })
           clearSelection()
+          ui.showToast(ids.size === 1 ? 'Deleted 1 span' : `Deleted ${ids.size} spans`)
         } else if (ui.selectedPointMarkerId) {
           e.preventDefault()
           store.removePointMarker(ui.selectedPointMarkerId)
           selectPointMarker(null)
+          ui.showToast('Deleted the marker')
         }
         return
       }
@@ -782,156 +727,115 @@ export default function App() {
 
         <div className="mx-1.5 h-4 w-px bg-border" />
 
-        <ToolbarButton onClick={guardedNew}>New</ToolbarButton>
-        <ToolbarButton onClick={guardedOpen}>Open</ToolbarButton>
-        {!folds('demo') && (
-          <ToolbarButton onClick={guardedDemo} muted title={`Open the ${EXAMPLES[0].title} example for editing`}>
-            Demo
-          </ToolbarButton>
-        )}
-
-        <div className="mx-1.5 h-4 w-px bg-border" />
-
-        <ToolbarButton onClick={saveFile} disabled={!doc}>
-          {hasHandle ? 'Save' : 'Download'}
-        </ToolbarButton>
-        {!folds('saveAs') && (
-          <ToolbarButton onClick={saveFileAs} disabled={!doc}>
-            Save As
-          </ToolbarButton>
-        )}
-        {!folds('export') && (
-          <ToolbarButton onClick={() => setExportOpen(true)} disabled={!doc} title="Save the segments as an SVG, PNG, or PDF figure">
-            Export
-          </ToolbarButton>
-        )}
-
-        <div className="mx-1.5 h-4 w-px bg-border" />
+        {/* The app bar (docs/decisions.md, "The App Bar"): File and Help as
+            menus whose rows are names, Undo and Redo, the analysis's title,
+            then Reading view and Share. */}
+        <NamedMenu
+          trigger={
+            <button type="button" className={APP_MENU}>
+              File
+              <ChevronDown size={12} aria-hidden />
+            </button>
+          }
+          items={[
+            { name: 'New…', hint: 'Start an analysis from a video or audio file.', shortcut: `${KEY}N`, onSelect: guardedNew },
+            { name: 'Open…', hint: 'Open a .strata file.', shortcut: `${KEY}O`, onSelect: guardedOpen },
+            { name: 'Open the demo', hint: `Open ${EXAMPLES[0].title} to explore.`, onSelect: guardedDemo },
+            {
+              name: hasHandle ? 'Save' : 'Download',
+              hint: hasHandle ? 'Save your changes to this file.' : 'Download this analysis as a .strata file.',
+              shortcut: `${KEY}S`,
+              reason: !doc && 'Open or start an analysis first.',
+              separator: true,
+              onSelect: saveFile,
+            },
+            { name: 'Save as…', hint: 'Save a copy under a new name.', shortcut: `${SHIFT_KEY}S`, reason: !doc && 'Open or start an analysis first.', onSelect: saveFileAs },
+            {
+              name: 'Export…',
+              hint: 'Save the segments as a figure, or the commentary as a page.',
+              reason: !doc && 'Open or start an analysis first.',
+              onSelect: () => setExportOpen(true),
+            },
+          ]}
+        />
 
         <IconToolbarButton
           onClick={() => useDocumentStore.temporal.getState().undo()}
           disabled={!canUndo}
-          title="Undo (Ctrl+Z)"
+          title={`Undo (${KEY}Z)`}
         >
           <Undo2 size={14} />
         </IconToolbarButton>
         <IconToolbarButton
           onClick={() => useDocumentStore.temporal.getState().redo()}
           disabled={!canRedo}
-          title="Redo (Ctrl+Shift+Z)"
+          title={`Redo (${SHIFT_KEY}Z)`}
         >
           <Redo2 size={14} />
         </IconToolbarButton>
 
-        {!folds('settingsHelp') && (
+        {/* The analysis's name, as in a document editor; it opens Document settings. */}
+        {doc && (
           <>
-            <IconToolbarButton
+            <div className="mx-1.5 h-4 w-px bg-border" />
+            <button
+              type="button"
               onClick={() => {
                 setSettingsIsNew(false)
                 setSettingsOpen(true)
               }}
-              disabled={!doc}
               title="Document settings"
+              className="flex min-w-0 items-baseline gap-1.5 rounded-md px-2 py-1 text-left hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <Settings size={14} />
-            </IconToolbarButton>
-            <IconToolbarButton onClick={() => setHelpOpen(true)} title="How Strata works (?)">
-              <CircleHelp size={14} />
-            </IconToolbarButton>
+              <span className="truncate text-[13px] font-medium text-foreground">{doc.title || 'Untitled analysis'}</span>
+              {doc.artist.length > 0 && <span className="hidden truncate text-xs text-muted-foreground md:inline">{doc.artist.join(', ')}</span>}
+            </button>
+            {isDirty && (
+              <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground" title="You have unsaved changes">
+                <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--ink-faint)' }} aria-hidden />
+                {/* Narrow, just the dot; its title still says what it means. */}
+                {narrow ? <span className="sr-only">Unsaved changes</span> : 'Unsaved'}
+              </span>
+            )}
           </>
         )}
-        <button
-          onClick={() => setReadingView(true)}
-          disabled={!doc}
-          className="whitespace-nowrap rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-40
-            focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
-        >
-          Reading view
-        </button>
-        <button
-          onClick={() => useUIStore.getState().setShareOpen(true)}
-          disabled={!doc}
-          title="Get a link to this analysis"
-          className="rounded-md px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-40
-            focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
-        >
-          Share
-        </button>
-        {/* A link, not a button: it opens GitHub's issue form in a new tab,
-            prefilled with the version and browser (lib/issues.ts). */}
-        {!folds('report') && (
-        <a
-          href={reportIssueUrl()}
-          target="_blank"
-          rel="noreferrer"
-          title="Report a bug or suggest an improvement on GitHub"
-          className="whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground
-            focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
-        >
-          Report an issue
-        </a>
-        )}
 
-        {/* What no longer fits, least used first (FOLD_BELOW). */}
-        {folds('report') && (
-          <Popover open={moreOpen} onOpenChange={setMoreOpen}>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                title="More"
-                aria-label="More"
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-              >
-                <Ellipsis size={15} />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="end" sideOffset={6} className="w-52 p-1">
-              {folds('demo') && <MoreItem onClick={fromMore(guardedDemo)}>Demo</MoreItem>}
-              {folds('saveAs') && (
-                <MoreItem onClick={fromMore(saveFileAs)} disabled={!doc}>
-                  Save As
-                </MoreItem>
-              )}
-              {folds('export') && (
-                <MoreItem onClick={fromMore(() => setExportOpen(true))} disabled={!doc}>
-                  Export
-                </MoreItem>
-              )}
-              {folds('settingsHelp') && (
-                <>
-                  <MoreItem
-                    onClick={fromMore(() => {
-                      setSettingsIsNew(false)
-                      setSettingsOpen(true)
-                    })}
-                    disabled={!doc}
-                  >
-                    <Settings size={13} aria-hidden /> Document settings
-                  </MoreItem>
-                  <MoreItem onClick={fromMore(() => setHelpOpen(true))}>
-                    <CircleHelp size={13} aria-hidden /> How Strata works
-                  </MoreItem>
-                </>
-              )}
-              <MoreItem onClick={fromMore(() => window.open(reportIssueUrl(), '_blank', 'noreferrer'))}>Report an issue</MoreItem>
-            </PopoverContent>
-          </Popover>
-        )}
-
-        {isDirty && (
-          <span
-            className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground"
-            title="You have unsaved changes"
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          <button
+            onClick={() => setReadingView(true)}
+            disabled={!doc}
+            className="whitespace-nowrap rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-40
+              focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
           >
-            <span
-              className="inline-block h-1.5 w-1.5 rounded-full"
-              style={{ backgroundColor: 'var(--ink-faint)' }}
-              aria-hidden
-            />
-            {/* Narrow, just the dot; its title still says what it means. */}
-            {folds('unsavedLabel') ? <span className="sr-only">Unsaved changes</span> : 'Unsaved changes'}
-          </span>
-        )}
+            Reading view
+          </button>
+          <button
+            onClick={() => useUIStore.getState().setShareOpen(true)}
+            disabled={!doc}
+            title="Get a link to this analysis"
+            className="rounded-md bg-foreground px-2.5 py-1 text-xs font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-40
+              focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+          >
+            Share
+          </button>
+          <NamedMenu
+            align="end"
+            trigger={
+              <button type="button" className={APP_MENU} aria-label="Help" title="Help">
+                <CircleHelp size={14} aria-hidden />
+                <ChevronDown size={12} aria-hidden />
+              </button>
+            }
+            items={[
+              { name: 'How Strata works', hint: 'The guide and every shortcut.', shortcut: '?', onSelect: () => setHelpOpen(true) },
+              {
+                name: 'Report an issue',
+                hint: 'Report a bug or suggest an idea, on GitHub.',
+                onSelect: () => window.open(reportIssueUrl(), '_blank', 'noreferrer'),
+              },
+            ]}
+          />
+        </div>
           </>
         )}
       </header>

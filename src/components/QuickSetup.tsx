@@ -86,7 +86,7 @@ function QuickSetupCard({ doc, layer, onClose }: { doc: StrataDocument; layer: L
         <X size={14} aria-hidden />
       </button>
       <h2 className="text-[13px] font-semibold">Quick setup by tempo</h2>
-      <p className="mt-0.5 text-muted-foreground">Know the phrase length? Fill a layer with a span every few bars.</p>
+      <p className="mt-0.5 text-muted-foreground">Fill a layer with a span every few bars.</p>
       <div className="mt-2.5 grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2">
         <span className="text-muted-foreground">Tempo</span>
         <span className="flex items-center gap-1.5">
@@ -138,11 +138,11 @@ function QuickSetupCard({ doc, layer, onClose }: { doc: StrataDocument; layer: L
       <div className="mt-3 flex items-center justify-between gap-3">
         <p className="text-muted-foreground" role="status">
           {!loaded
-            ? 'Waiting for the track’s length from the player…'
+            ? 'Waiting for the track…'
             : message ?? 'Pause on the first downbeat, then press Use playhead.'}
         </p>
         <Button size="sm" className="h-7 shrink-0 text-xs" disabled={!canFill} onClick={run}>
-          Fill
+          Fill {layer.label}
         </Button>
       </div>
     </section>

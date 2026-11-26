@@ -253,16 +253,33 @@ function Hint({ children }: { children: React.ReactNode }) {
   return <p className="max-w-md select-none text-center text-xs leading-relaxed text-muted-foreground">{children}</p>
 }
 
-/** What a new analysis needs next, in the order the work goes. */
-function nextStep(doc: StrataDocument): string | null {
+/** A key, as the first-run hints show it. */
+function Key({ k, children }: { k: string; children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <kbd className="rounded border border-border border-b-2 bg-card px-1.5 font-sans text-[11px] text-foreground">{k}</kbd>
+      {children}
+    </span>
+  )
+}
+
+/**
+ * What a new analysis needs next, in the order the work goes, in as few words
+ * as it takes: keys rather than sentences about keys (docs/decisions.md,
+ * "First-Run Text").
+ */
+function nextStep(doc: StrataDocument): React.ReactNode | null {
   const linked = !!doc.source.url || (doc.source.type === 'local' && !!doc.source.filename)
-  if (!linked) return 'Start by linking a video or audio file in the play bar.'
+  if (!linked) return 'Link a video or audio file in the play bar to start.'
   if (!doc.layers.some((l) => segmentSpans(l).length > 0))
-    return 'Press Space to play and B at each boundary you hear. Press M to place a point marker.'
-  if (!allBlocks(doc).length)
-    return doc.beatGrid?.length
-      ? 'Click a span to describe it, or to make it a bar longer or shorter. Its commentary shows here while that passage plays.'
-      : 'Click a span to describe it. Its commentary shows here while that passage plays.'
+    return (
+      <span className="inline-flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+        <Key k="Space">play</Key>
+        <Key k="B">boundary</Key>
+        <Key k="M">marker</Key>
+      </span>
+    )
+  if (!allBlocks(doc).length) return 'Commentary for the playing passage shows here.'
   return null
 }
 

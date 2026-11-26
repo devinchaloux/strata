@@ -169,7 +169,7 @@ export function QuickEntryBar({
               key: 'elide',
               hotkey: '=',
               label: '=1',
-              title: 'Elide: this bar ends one group and starts the next (4=1); the bars after it count on',
+              title: 'End one group and start the next on this bar (4=1).',
               on: one.hypermeter.becomes != null,
               apply: () => useDocumentStore.getState().elideSpan(target.layer.id, one.id, useUIStore.getState().barGroup),
             },
@@ -328,6 +328,7 @@ export function QuickEntryBar({
       style={{ position: 'fixed', top, left, transform: 'translateX(-50%)', height: BAR_H, zIndex: 40 }}
       className="flex items-center gap-1 whitespace-nowrap rounded-lg border border-border bg-card px-1.5 shadow-md"
     >
+      {mode === 'type' && !counting && <span className="pl-1 text-[11px] text-muted-foreground">Types</span>}
       {mode === 'type' && !counting && (
         <select
           aria-label="Library for this layer"
@@ -339,16 +340,13 @@ export function QuickEntryBar({
             e.currentTarget.blur()
           }}
         >
-          <option value="">{options.length ? 'Library: guess' : 'Choose a library'}</option>
+          <option value="">{options.length ? 'Guessed' : 'Library'}</option>
           {LIBRARIES.map((l) => (
             <option key={l.id} value={l.id}>
               {l.label}
             </option>
           ))}
         </select>
-      )}
-      {mode === 'type' && !counting && !options.length && (
-        <span className="px-1 text-xs text-muted-foreground">for one-click types, or</span>
       )}
       {options.map((o, i) => (
         <span key={o.key} className="flex items-center gap-1">

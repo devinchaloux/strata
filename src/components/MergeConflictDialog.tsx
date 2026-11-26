@@ -90,6 +90,7 @@ export function MergeConflictDialog() {
     mergeSpansAction(layerId, sourceIds, final)
     selectSpan(final.id)
     closeMergeDialog()
+    useUIStore.getState().showToast(`Merged ${sourceIds.length} spans`)
   }
 
   // Auto-resolved read-only summary -----------------------------------------
