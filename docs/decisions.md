@@ -174,6 +174,11 @@ aren't part of this repository.
 
 **The interface**
 
+- [The Inspector describes the selection; its footer keeps the span verbs everyone uses (Split, Merge, Copy, Paste, Delete).](#where-controls-live-2026-11-26)
+- [Each block has two rows in edit mode, its name and view, then its tools; a tool row holds about six things, and more become named menus whose items say what they do and what they act on.](#where-controls-live-2026-11-26)
+- [Big jobs open as a mode inside their block; `⋯` menus hold settings, never one-off jobs; nothing moves without a named new home.](#where-controls-live-2026-11-26)
+- [The bar tools, Elide included, live in Segments' Bars menu; Tempo is offered, not added, when the bar layer's smoothed tempo ranges more than 4 BPM.](#where-controls-live-2026-11-26)
+- [An ellipsis marks a menu item or tool that asks for something before it acts; buttons named for a place (Share, Export) and ▾ menus get none.](#where-controls-live-2026-11-26)
 - [The Inspector is a collapsible right-hand column that hosts the selected thing's editor; it starts collapsed and opens on a selection.](#app-shell--inspector-2026-06-27)
 - [The span Inspector is one column of sections (Timing, Describe, Shape & color, More), each folding on its own.](#the-inspector-as-sections-zoom-in-the-reading-view-2026-11-05)
 - [Timing lays out each end with its boundary type.](#quick-pick-types-on-typed-spans-timing-with-boundaries-commentary-links-2026-11-05)
@@ -254,7 +259,7 @@ By area, in the order the entries were made:
 
 **Reading, sharing, embedding and export:** [Sharing](#sharing) · [Embeddable Viewer](#embeddable-viewer) · [Export (2026-09-27)](#export-2026-09-27) · [The Reading View (2026-10-01)](#the-reading-view-2026-10-01) · [Sharing by Link (2026-10-01)](#sharing-by-link-2026-10-01) · [Export: Choose Layers, Cut Spans at the Range (2026-10-02)](#export-choose-layers-cut-spans-at-the-range-2026-10-02) · [Share From the Toolbar; Dropbox and OneDrive Links (2026-10-02)](#share-from-the-toolbar-dropbox-and-onedrive-links-2026-10-02) · [Example Analyses (2026-10-02)](#example-analyses-2026-10-02) · [Embedding an Analysis (2026-10-03)](#embedding-an-analysis-2026-10-03) · [Starting an Analysis from a Link (2026-10-03)](#starting-an-analysis-from-a-link-2026-10-03) · [Embed Zoom (2026-11-06)](#embed-zoom-2026-11-06) · [Embed Layout on Wide Screens (2026-11-06)](#embed-layout-on-wide-screens-2026-11-06) · [Layer Names Sized to Fit (2026-11-06)](#layer-names-sized-to-fit-2026-11-06) · [Save as PDF Through the Print Dialog (2026-11-23)](#save-as-pdf-through-the-print-dialog-2026-11-23) · [Commentary in the PDF (2026-11-23)](#commentary-in-the-pdf-2026-11-23) · [Read and Play on a Phone (2026-11-23)](#read-and-play-on-a-phone-2026-11-23) · [Following the Playhead (2026-11-23)](#following-the-playhead-2026-11-23) · [Hiding Layers in the Reading View (2026-11-23)](#hiding-layers-in-the-reading-view-2026-11-23) · [The Toolbar Folds When Narrow (2026-11-23)](#the-toolbar-folds-when-narrow-2026-11-23) · [Link-Only Through the Beta (2026-11-23)](#link-only-through-the-beta-2026-11-23)
 
-**The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03) · [A Shorter New Analysis Dialog; Darker Interface Greys (2026-10-24)](#a-shorter-new-analysis-dialog-darker-interface-greys-2026-10-24) · [People Do Things in Strata's Text (2026-11-05)](#people-do-things-in-stratas-text-2026-11-05) · [The Inspector as Sections; Zoom in the Reading View (2026-11-05)](#the-inspector-as-sections-zoom-in-the-reading-view-2026-11-05) · [Quick Pick Types on Typed Spans; Timing With Boundaries; Commentary Links (2026-11-05)](#quick-pick-types-on-typed-spans-timing-with-boundaries-commentary-links-2026-11-05) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05)
+**The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03) · [A Shorter New Analysis Dialog; Darker Interface Greys (2026-10-24)](#a-shorter-new-analysis-dialog-darker-interface-greys-2026-10-24) · [People Do Things in Strata's Text (2026-11-05)](#people-do-things-in-stratas-text-2026-11-05) · [The Inspector as Sections; Zoom in the Reading View (2026-11-05)](#the-inspector-as-sections-zoom-in-the-reading-view-2026-11-05) · [Quick Pick Types on Typed Spans; Timing With Boundaries; Commentary Links (2026-11-05)](#quick-pick-types-on-typed-spans-timing-with-boundaries-commentary-links-2026-11-05) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05) · [Where Controls Live (2026-11-26)](#where-controls-live-2026-11-26)
 
 **Architecture, scope and process:** [Architecture](#architecture) · [Widgets](#widgets) · [Architecture](#architecture-1) · [Launch](#launch) · [Corpus Builder](#corpus-builder) · [v1 Feature Scope (Phase 0.6)](#v1-feature-scope-phase-06) · [Energy Contour Widget](#energy-contour-widget) · [EDM as Origin — Product Claim Reframe](#edm-as-origin--product-claim-reframe) · [Tech Stack](#tech-stack) · [v1 Scope](#v1-scope) · [Widget Contract (Phase 0.2)](#widget-contract-phase-02) · [Correctness Pass (post-Phase 2 polish)](#correctness-pass-post-phase-2-polish) · [Improvement Backlog Batch 1 (2026-07-03)](#improvement-backlog-batch-1-2026-07-03) · [Improvement Backlog Batch 2 (2026-07-03)](#improvement-backlog-batch-2-2026-07-03) · [Render / Edit Split (2026-09-27)](#render--edit-split-2026-09-27) · [Large-Analysis Performance (2026-09-27)](#large-analysis-performance-2026-09-27) · [Safari and Firefox Read-Through (2026-09-27)](#safari-and-firefox-read-through-2026-09-27) · [Beta Launch Pass (2026-10-01)](#beta-launch-pass-2026-10-01) · [Releases and Open Tabs (2026-10-02)](#releases-and-open-tabs-2026-10-02) · [Faster Checks: Tests in Node, a Weekly Audit (2026-10-05)](#faster-checks-tests-in-node-a-weekly-audit-2026-10-05) · [Development Tools Upgraded (2026-10-07)](#development-tools-upgraded-2026-10-07) · [No Corpus Builder: Strata Stays a One-File Tool (2026-10-16)](#no-corpus-builder-strata-stays-a-one-file-tool-2026-10-16) · [React's Newer Checks On (2026-10-16)](#reacts-newer-checks-on-2026-10-16) · [The Corpus Builder Is Planned for Version 2 (2026-10-31)](#the-corpus-builder-is-planned-for-version-2-2026-10-31) · [Lint Tools Use a Patched minimatch (2026-11-07)](#lint-tools-use-a-patched-minimatch-2026-11-07)
 
@@ -5609,4 +5614,87 @@ accelerando bar by bar.
 numbers and the metronome all follow music whose tempo moves.
 `lib/gridFromBars.ts` (`gridFromBars`, `spliceGrid`); `gridFromBars` in the
 store; BarLayerSettings and the Inspector's Bars row.
+
+---
+
+## Where Controls Live (2026-11-26)
+
+*From the maintainer, stopping a change that moved every bar tool into the
+Inspector: "the inspector is starting to try to do too much … It can't be
+everything … what is getting lost in the complexity is clear understanding of
+what does what." Agreed after a review of every control (the "Strata Interface
+Review" page): "these principles are good."*
+
+**Decision.** Every control has one kind and one home:
+
+1. **The Inspector describes the selection.** Its body holds properties
+   only: what the selected span, marker or bar is, every one editable as
+   today (typed times, boundary types, To end, Length in bars, Part of and
+   Unlink stay in Timing).
+2. **Its footer holds the span verbs everyone uses:** Split, Merge, Copy,
+   Paste and Delete, with anything rarer in an overflow.
+3. **Each block has two rows in edit mode.** The first, always shown, has
+   the block's name, its view controls and move / hide / `⋯`; the second,
+   only while editing, has that analysis's tools. Reading shows the first row
+   alone. A new widget brings its tools to its own second row.
+4. **A tool row holds about six things.** Controls pressed constantly
+   (Boundary, Marker) stay buttons; the rest group into menus named for the
+   job (Grid, Bars, Layers), each item with one line saying what it does and
+   what it will act on ("17 bars", "all 198").
+5. **Tools say what they will touch,** and an item that needs a selection
+   says so rather than doing something unexpected.
+6. **Big jobs open as a mode inside their block,** with their effect drawn
+   next to them; one at a time, entered on purpose, left with Esc.
+7. **`⋯` menus hold settings, never one-off jobs.** Fit to grid moves to the
+   Grid menu; the bar jobs move to the Bars menu.
+8. **Offer what helps, when it helps.** When a layer becomes the bar layer,
+   its tempos are smoothed (Normalize's Auto, so tapping scatter doesn't
+   count); if the smoothed tempo ranges more than **4 BPM**, Tempo is offered
+   with what was found ("Tempo moves from 30 to 126 BPM. Show Tempo"), and if
+   not, a note says so ("Steady at 120 BPM", with Show Tempo anyway). Nothing
+   is added unasked.
+9. **Nothing is lost in a move:** every control gets a named new home before
+   it moves.
+10. **Advanced is one deliberate step away:** in a menu, a disclosure or a
+    mode; later a searchable command list may index everything.
+
+The bar tools, Elide included, belong to Segments (bars, counts and elisions
+are segmentation), in a **Bars** menu shown once there is a bar layer; Tempo
+is a view of tempo, with only its display settings. Normalize opens as a mode
+under the Segments tool row.
+
+**Decision.** The ellipsis rule of "No Ellipsis on Buttons and Menu Items"
+(2026-11-13) is softened: **an ellipsis marks a menu item or tool that asks
+for something before it acts** (opens a mode, panel or dialog of choices):
+Number…, Count…, Normalize…, Split into bars…, Set from a tempo…. Items that
+act at once get none (Elide, Phrases from the count, Beat grid from the bars,
+Delete). Buttons named for a place get none (Share, Export, Settings, Help),
+nor do menu triggers with ▾. Text unfinished on purpose keeps it (Loading…).
+**Why the ellipsis came back.** The maintainer had taken it out as dated, and
+on visible buttons it is: modern web tools have dropped it there, and a
+button named for a place already says a dialog follows. In menus it still
+does a job the name can't: in a menu that mixes both, it tells an item that
+acts the moment it's clicked from one that asks first, so people can explore
+without fear; and it settles names that read as nouns ("Count", "Number").
+This is the long-standing meaning in Apple's and Microsoft's guidelines,
+where an ellipsis means "asks for more before acting", never just "opens a
+window".
+
+**Rejected.** *Every bar tool in the Inspector* (the stopped change): it made
+the panel a toolbox as well as a description, and put a whole-layer job and
+its selection version in different places. *Right-click as the home for
+actions:* fine as a shortcut, invisible as a home. *Adding Tempo
+automatically with the bar layer:* a steady track gains nothing from it.
+*Putting the bar tools in the Tempo block:* they would disappear whenever
+Tempo isn't shown.
+
+**Why.** Each feature landed in a reasonable place, and together they made
+it hard to know what does what. One kind of control per place lets people
+guess where a new feature lives, and lets whoever builds the next widget put
+its tools where they belong. The Inspector's visual weight (every field the
+same grey label over the same white box) is part of the same review: groups
+get weight, labels sit beside values.
+The build follows in this order: block rows and menus; the Bars menu and
+Normalize as a mode; offering Tempo; the Inspector restyled; the layer menu
+trimmed; then the app bar on the same budget.
 
