@@ -270,3 +270,17 @@ describe('bars from phrases, phrases from bars', () => {
     ])
   })
 })
+
+describe('numbering and counting a selection', () => {
+  const store = () => useDocumentStore.getState()
+  const bars = Array.from({ length: 6 }, (_, k): Span => ({ id: `b${k}`, startTime: k * 2, endTime: k * 2 + 2 }))
+  const layer = () => store().document!.layers[0]
+
+  it('numbers and counts only the selected bars', () => {
+    store().loadDocument({ ...makeDoc([{ ...makeLayer('Bars', bars), role: 'bars' as const }]), duration: 12 })
+    store().numberBarLayer('Bars', 10, ['b2', 'b3', 'b4'])
+    expect(segmentSpans(layer()).map((s) => s.label ?? null)).toEqual([null, null, '10', '11', '12', null])
+    expect(store().countBars('Bars', null, 2, ['b2', 'b3', 'b4'])).toEqual({ counted: 3, skipped: 0 })
+    expect(segmentSpans(layer()).map((s) => s.annotation ?? null)).toEqual([null, null, '1', '2', '1', null])
+  })
+})

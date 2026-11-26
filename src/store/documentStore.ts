@@ -140,12 +140,13 @@ interface DocumentState {
   // the role from any other layer; where every label is empty or a count, the
   // counts move into empty annotations and the labels become bar numbers from 1.
   setBarLayer: (layerId: string, on: boolean) => void
-  // Label the bar layer's spans with bar numbers from `first`, in time order.
-  numberBarLayer: (layerId: string, first: number) => void
-  // Count every bar of a layer: by the spans of layer `byLayerId` (each group
-  // counts from 1 to its end), or in groups of `group` when it is null.
-  // Returns how many bars it counted and how many it skipped for holding a note.
-  countBars: (layerId: string, byLayerId: string | null, group: number) => { counted: number; skipped: number }
+  // Label a layer's spans (or only `spanIds`) with bar numbers from `first`, in time order.
+  numberBarLayer: (layerId: string, first: number, spanIds?: string[]) => void
+  // Count the bars of a layer (or only `spanIds`): by the spans of layer
+  // `byLayerId` (each group counts from 1 to its end), or in groups of `group`
+  // from the first when it is null. Returns how many bars it counted and how
+  // many it skipped for holding a note.
+  countBars: (layerId: string, byLayerId: string | null, group: number, spanIds?: string[]) => { counted: number; skipped: number }
   // Mark elided the boundary another layer has on this bar (lib/hypermeter.ts
   // boundaryOnBar): the end of the span that ends there. The nearest layer
   // above with one there is used. Returns that layer's id, or null if none has one.
@@ -902,23 +903,27 @@ const useDocumentStore = create<DocumentState>()(
         set({ document: { ...next, updatedAt: now() } })
       },
 
-      numberBarLayer: (layerId, first) => {
+      numberBarLayer: (layerId, first, spanIds) => {
         const doc = get().document
         const layer = doc?.layers.find((l) => l.id === layerId)
         if (!doc || !layer || layer.type !== 'segmentation') return
-        const spans = [...segmentSpans(layer)].sort((a, b) => a.startTime - b.startTime)
+        const spans = [...segmentSpans(layer)]
+          .filter((s) => !spanIds || spanIds.includes(s.id))
+          .sort((a, b) => a.startTime - b.startTime)
         if (!spans.length) return
         const numbers = barNumberLabels(spans.length, first)
         const next = relabelSpans(doc, new Map(spans.map((s, k) => [s.id, numbers[k]])), get().frozenSlugIds)
         set({ document: { ...next, updatedAt: now() } })
       },
 
-      countBars: (layerId, byLayerId, group) => {
+      countBars: (layerId, byLayerId, group, spanIds) => {
         const doc = get().document
         const layer = doc?.layers.find((l) => l.id === layerId)
         const none = { counted: 0, skipped: 0 }
         if (!doc || !layer || layer.type !== 'segmentation') return none
-        const spans = [...segmentSpans(layer)].sort((a, b) => a.startTime - b.startTime)
+        const spans = [...segmentSpans(layer)]
+          .filter((s) => !spanIds || spanIds.includes(s.id))
+          .sort((a, b) => a.startTime - b.startTime)
         if (!spans.length) return none
         const by = byLayerId ? doc.layers.find((l) => l.id === byLayerId) : null
         const bars = spans.map((s): [number, number] => [s.startTime, s.endTime])
