@@ -5,19 +5,18 @@
  *
  * Opened from Help ▾, the empty state, or the ? key. Opening it pauses
  * playback, and while it's open the app's keys do nothing but Esc, which
- * closes it, so reading the shortcuts can't start the track. The YouTube player
- * still stacks above it, as above every dialog, so nothing covers the video
- * ("Dialogs Stay Clear of the Player"); the page's text sits in the largest
- * area beside the player, so the player hides none of it.
+ * closes it, so reading the shortcuts can't start the track. While it's open
+ * the YouTube player is off the page altogether, not covered: PlayerDock
+ * destroys it on uiStore.helpOpen and builds it again, paused at the same
+ * time, on close (useYouTubePlayer's `away`).
  *
  * The shortcut list is written out by hand: when a shortcut changes in App or
  * PlayerDock, change it here too.
  */
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
 import { useUIStore } from '@/store/uiStore'
-import { freeRegion, getPlayerElement, type Rect } from '@/lib/playerClearance'
 import { versionLabel } from '@/lib/version'
 
 const MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘' : 'Ctrl'
@@ -118,47 +117,13 @@ function useAppKeysOff(open: boolean, onOpenChange: (open: boolean) => void) {
   }, [open, onOpenChange])
 }
 
-/** The largest area of the window clear of the YouTube player while open, or null when none is on screen. */
-function useClearOfPlayer(open: boolean): Rect | null {
-  const [area, setArea] = useState<Rect | null>(null)
-  useEffect(() => {
-    if (!open) return
-    function place() {
-      const r = getPlayerElement()?.getBoundingClientRect()
-      const viewport = { w: window.innerWidth, h: window.innerHeight }
-      const x0 = Math.max(0, r?.left ?? 0)
-      const y0 = Math.max(0, r?.top ?? 0)
-      const x1 = Math.min(viewport.w, r?.right ?? 0)
-      const y1 = Math.min(viewport.h, r?.bottom ?? 0)
-      if (!r || x1 <= x0 || y1 <= y0) return setArea(null)
-      setArea(freeRegion(viewport, { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }, { w: 720, h: viewport.h }))
-    }
-    // The player can still be easing into place, so measure for a few frames.
-    let frames = 20
-    let raf = requestAnimationFrame(function again() {
-      place()
-      if (--frames > 0) raf = requestAnimationFrame(again)
-    })
-    window.addEventListener('resize', place)
-    return () => {
-      cancelAnimationFrame(raf)
-      window.removeEventListener('resize', place)
-    }
-  }, [open])
-  return open ? area : null
-}
-
 export function HelpDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   useAppKeysOff(open, onOpenChange)
-  const area = useClearOfPlayer(open)
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Content className="fixed inset-0 z-50 bg-background focus:outline-hidden" aria-describedby={undefined}>
-          <div
-            className="absolute inset-0 overflow-y-auto"
-            style={area ? { left: area.x, top: area.y, width: area.w, height: area.h, right: 'auto', bottom: 'auto' } : undefined}
-          >
+          <div className="absolute inset-0 overflow-y-auto">
             <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background/95 px-4 py-2.5 backdrop-blur sm:px-8">
               <DialogPrimitive.Title className="text-sm font-semibold text-foreground">How Strata works</DialogPrimitive.Title>
               <span className="hidden text-xs text-muted-foreground sm:inline">Strata is in beta. Save often.</span>

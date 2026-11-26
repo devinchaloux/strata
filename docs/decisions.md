@@ -204,7 +204,7 @@ aren't part of this repository.
 - [The interface says "layers".](#levels-not-layers-in-the-interface-2026-10-01)
 - [Every popover closes on a press outside it.](#typed-phrase-lengths-quick-pick-fixes-and-drawn-shapes-2026-10-24)
 - [Text is at least 11px, muted text is #475569, and every field is named for screen readers.](#space-plays-b-marks-a-boundary-2026-10-01)
-- [Help is a page over the whole window, beside the video and never over it: the guide and every shortcut. Opening it pauses playback, and only Esc acts while it's open. Report an issue (in Help ▾) opens a prefilled form.](#help-is-a-page-2026-11-26)
+- [Help is a page over the whole window: the guide and every shortcut. The YouTube player leaves the page while it's open and comes back paused where it was; only Esc acts. Report an issue (in Help ▾) opens a prefilled form.](#help-is-a-page-2026-11-26)
 - [The app's text: a person does things, in plain American English, with tooltips that are never the only route.](#people-do-things-in-stratas-text-2026-11-05)
 
 **Reading, sharing, embedding and export**
@@ -6151,24 +6151,34 @@ ReadingHeader (`ViewMenu`); `src/test/phone.test.tsx`.
 *From the maintainer: "The help menu should pull a full open modal. It
 shouldn't allow playing so we don't need to worry about hiding the YouTube
 video … almost like it's its own page. It also doesn't fully work with the
-shortcuts as they're cut off."*
+shortcuts as they're cut off." And, on a first version that kept the video
+on top: "There's not any way I can hide it if we have a full on different
+page? That seems wrong."*
 
 **Decision.** How Strata works opens as a page over the whole window, with a
 bar along its top (the title, and Close with Esc), the steps in two columns,
 and the shortcuts in two columns. Each shortcut's key column is as wide as its
-longest key, so no key is cut off. Opening Help pauses playback. While it's
-open, the app's keys (Space, K, B, the arrows and the rest) do nothing; Esc
-closes it and does nothing else, so it doesn't also leave the reading view.
-The YouTube player still stacks above it, as above every dialog. The page's
-text sits in the largest area beside the player (to its left on a wide
-screen, below it on a phone), so the player hides none of it.
+longest key, so no key is cut off. While it's open, the YouTube player is off
+the page: it is destroyed when Help opens, and built again when Help closes,
+at the same time and playback speed, paused. A local audio file just pauses.
+While Help is open, the app's keys (Space, K, B, the arrows and the rest) do
+nothing; Esc closes it and does nothing else, so it doesn't also leave the
+reading view.
 **Amends** "Video Below the Fold", which rejected turning dialogs into pages
 because the rule against covering the player holds whether it plays or not.
-That still holds: this page covers the window, not the player. The pause is
-for the reader's sake, not YouTube's.
+That rule is about a player on the page. A player that isn't on the page
+can't be covered, and a Help page doesn't need one.
+**Rejected.** *Keeping the player on top of the page,* as for every dialog,
+with the text laid out beside it: it was the first version, and it left a
+video in the corner of a page about something else. *Help in a new browser
+tab:* it needs no player change, but it leaves the app for a page the analyst
+reads for a minute.
+**Cost.** Coming back reloads the video, which takes a moment. The playhead,
+the speed and the analysis are where they were.
 **Why.** The dialog was a narrow box kept clear of the player, and its fixed
 key column cut off keys such as "Right-click a span" and "Ctrl+Shift+S". Help is
-something to read at length, not a quick choice, so it gets the room of a page.
-A track playing on behind it, started by a key pressed while reading about
-keys, was a distraction.
-HelpDialog (`useAppKeysOff`, `useClearOfPlayer`); `src/test/helpPage.test.tsx`.
+something to read at length, not a quick choice, so it gets the room of a page,
+with nothing else on it.
+HelpDialog (`useAppKeysOff`); `uiStore.helpOpen`; PlayerDock and
+useYouTubePlayer (`away`); `src/test/helpPage.test.tsx`,
+`src/test/youtubeAway.test.tsx`.

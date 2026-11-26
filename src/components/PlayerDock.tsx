@@ -213,7 +213,12 @@ export function PlayerDock() {
     if (videoInView) window.scrollTo({ top: 0, behavior: 'smooth' })
     else videoEl?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }
-  const ytEngine = useYouTubePlayer(containerRef, videoId, sourceOffset)
+  // While Help is open the YouTube player is off the page, not hidden behind
+  // it: the player is destroyed, and built again at the same time and rate,
+  // paused, when Help closes (docs/decisions.md, "Help Is a Page").
+  const helpOpen = useUIStore((s) => s.helpOpen)
+  const shownVideoId = helpOpen ? null : videoId
+  const ytEngine = useYouTubePlayer(containerRef, shownVideoId, sourceOffset, helpOpen)
   const audioEngine = useAudioPlayer(isLocal ? audioFile : null, sourceOffset)
   const sourceEngine = source?.type === 'local' ? audioEngine : ytEngine
   // Every seek (the seek bar, the keys, a seek request) also asks the timeline
@@ -648,7 +653,7 @@ export function PlayerDock() {
           sits above every menu, popover and dialog (z-50), it registers itself
           so dialogs and their dimming keep clear (lib/playerClearance), and
           pointer-events stays on so it works while a dialog is open. */}
-      {videoId && (
+      {shownVideoId && (
         <div
           className={
             embed

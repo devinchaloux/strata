@@ -410,7 +410,8 @@ export default function App() {
   // plain settings.
   const [settingsIsNew, setSettingsIsNew] = useState(linkPrefill != null)
 
-  const [helpOpen, setHelpOpen] = useState(false)
+  const helpOpen = useUIStore((s) => s.helpOpen)
+  const setHelpOpen = useUIStore((s) => s.setHelpOpen)
 
   // Unsaved-changes guard: New / Open / Demo all discard the current document.
   // When dirty, the action is held here and only run if the analyst confirms.
@@ -687,7 +688,7 @@ export default function App() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [clearSelection, selectPointMarker, guardedNew, guardedOpen, saveFile, saveFileAs])
+  }, [clearSelection, selectPointMarker, guardedNew, guardedOpen, saveFile, saveFileAs, setHelpOpen])
 
   return (
     // App shell: a pinned header, then a main row of [left work area | right

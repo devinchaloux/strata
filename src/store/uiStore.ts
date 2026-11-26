@@ -289,6 +289,9 @@ export interface UIState {
   /** A request to play or pause, from outside the transport (an embed's page). PlayerDock carries it out. */
   playRequest: { play: boolean; n: number } | null
   requestPlay: (play: boolean) => void
+  /** How Strata works is open. It takes the YouTube player off the page until it closes (docs/decisions.md, "Help Is a Page"). */
+  helpOpen: boolean
+  setHelpOpen: (open: boolean) => void
   shareOpen: boolean
   setShareOpen: (open: boolean) => void
   requestSeek: (time: number, play?: boolean) => void
@@ -501,6 +504,8 @@ const useUIStore = create<UIState>()((set) => ({
   holdFollow: (ms) => set({ followHoldUntil: Date.now() + ms }),
   playRequest: null,
   requestPlay: (play) => set((s) => ({ playRequest: { play, n: (s.playRequest?.n ?? 0) + 1 } })),
+  helpOpen: false,
+  setHelpOpen: (open) => set({ helpOpen: open }),
   shareOpen: false,
   setShareOpen: (open) => set({ shareOpen: open }),
   setGridShown: (gridShown) => {
