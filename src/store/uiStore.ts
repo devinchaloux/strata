@@ -222,6 +222,9 @@ export interface UIState {
   dismissAppMessage: () => void
   setExportOpen: (open: boolean) => void
   setSnapMode: (mode: SnapMode) => void
+  /** Whether the beat grid's lines and the ruler's bar numbers show. Hiding keeps the grid and its snapping. Remembered in the browser. */
+  gridShown: boolean
+  setGridShown: (shown: boolean) => void
   setClickOn: (on: boolean) => void
   setClickVolume: (volume: number) => void
   setColorblindSafe: (on: boolean) => void
@@ -297,6 +300,7 @@ export interface UIState {
 // ---------------------------------------------------------------------------
 
 const SNAP_KEY = 'strata:snapMode'
+const GRID_SHOWN_KEY = 'strata:gridShown'
 const CLICK_VOLUME_KEY = 'strata:clickVolume'
 const COLORBLIND_KEY = 'strata:colorblindSafe'
 const LYRICS_KEY = 'strata:showLyrics'
@@ -387,6 +391,7 @@ const useUIStore = create<UIState>()((set) => ({
   appMessage: null,
   exportOpen: false,
   snapMode: readSnapPreference(),
+  gridShown: readPreference(GRID_SHOWN_KEY) !== 'false',
   clickOn: false,
   clickVolume: readClickVolume(),
   colorblindSafe: readPreference(COLORBLIND_KEY) === 'on',
@@ -498,6 +503,10 @@ const useUIStore = create<UIState>()((set) => ({
   requestPlay: (play) => set((s) => ({ playRequest: { play, n: (s.playRequest?.n ?? 0) + 1 } })),
   shareOpen: false,
   setShareOpen: (open) => set({ shareOpen: open }),
+  setGridShown: (gridShown) => {
+    writePreference(GRID_SHOWN_KEY, String(gridShown))
+    set({ gridShown })
+  },
   setSnapMode: (mode) => {
     writePreference(SNAP_KEY, mode)
     set({ snapMode: mode })

@@ -19,6 +19,7 @@ import { TimeInput } from '@/components/TimeInput'
 import { useState } from 'react'
 import { ChevronDown, ChevronRight, X } from 'lucide-react'
 import { MENU_TRIGGER } from '@/lib/toolRow'
+import { Switch } from '@/components/ui/switch'
 import type { GridSegment } from '@/types/strata'
 
 const SNAP_OPTIONS: [SnapMode, string][] = [
@@ -194,6 +195,8 @@ export function GridPopover() {
   const removeGridSegment = useDocumentStore((s) => s.removeGridSegment)
   const snapMode = useUIStore((s) => s.snapMode)
   const setSnapMode = useUIStore((s) => s.setSnapMode)
+  const gridShown = useUIStore((s) => s.gridShown)
+  const setGridShown = useUIStore((s) => s.setGridShown)
   const [changesOpen, setChangesOpen] = useState(false)
   if (!doc) return null
 
@@ -211,6 +214,7 @@ export function GridPopover() {
           className={MENU_TRIGGER}
         >
           Grid
+          {segs.length > 0 && !gridShown && <span className="rounded bg-accent px-1 text-[11px] text-foreground">hidden</span>}
           {segs.length > 0 && snapMode !== 'off' && (
             <span className="rounded bg-accent px-1 text-[11px] text-foreground">snap {snapMode === 'bar' ? 'bars' : 'beats'}</span>
           )}
@@ -218,7 +222,16 @@ export function GridPopover() {
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-104 p-3 text-xs">
-        <p className="text-[13px] font-semibold text-foreground">Beat grid</p>
+        <div className="flex items-center justify-between">
+          <p className="text-[13px] font-semibold text-foreground">Beat grid</p>
+          {/* Hide, not delete: snapping keeps working ("Showing and Hiding the Grid"). */}
+          {segs.length > 0 && (
+            <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground" title="Hide the grid's lines and bar numbers. Snapping still works.">
+              Show
+              <Switch checked={gridShown} onCheckedChange={setGridShown} aria-label="Show the grid" />
+            </label>
+          )}
+        </div>
 
         {segs.length === 0 ? (
           <GridSetup />

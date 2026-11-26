@@ -591,6 +591,7 @@ export function SegmentLayers({ layers }: { layers: Layer[] }) {
   // `?? []` selectors, which would return a fresh array on every render.
   const doc = useDocumentStore((s) => s.document)
   const normalizePreview = useUIStore((s) => s.normalizePreview)
+  const gridShown = useUIStore((s) => s.gridShown)
   const updatePointMarker = useDocumentStore((s) => s.updatePointMarker)
   const selectedMarkerId = useUIStore((s) => s.selectedPointMarkerId)
   const colorblindSafe = useUIStore((s) => s.colorblindSafe)
@@ -829,7 +830,7 @@ export function SegmentLayers({ layers }: { layers: Layer[] }) {
       >
 
         {/* The beat grid, behind everything (editor only for now). */}
-        <BeatGridLines grid={doc?.beatGrid} duration={duration} pps={pps} height={svgHeight} />
+        <BeatGridLines grid={gridShown ? doc?.beatGrid : undefined} duration={duration} pps={pps} height={svgHeight} />
 
         {/* The drawing itself: the same pure figure that export uses. */}
         {pps > 0 && (

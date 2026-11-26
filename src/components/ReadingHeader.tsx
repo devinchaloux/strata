@@ -36,6 +36,8 @@ export function ReadingHeader({ phone = false }: { phone?: boolean }) {
   const showLyrics = useUIStore((s) => s.showLyrics)
   const setShowLyrics = useUIStore((s) => s.setShowLyrics)
   const colorblindSafe = useUIStore((s) => s.colorblindSafe)
+  const gridShown = useUIStore((s) => s.gridShown)
+  const setGridShown = useUIStore((s) => s.setGridShown)
   const setColorblindSafe = useUIStore((s) => s.setColorblindSafe)
   const setReadingView = useUIStore((s) => s.setReadingView)
   const setShareOpen = useUIStore((s) => s.setShareOpen)
@@ -58,6 +60,7 @@ export function ReadingHeader({ phone = false }: { phone?: boolean }) {
         {hasCommentary && <Chip on={show.commentary} label="Commentary" onClick={() => setShow('commentary', !show.commentary)} />}
         <Chip on={show.diagram} label="Segments" onClick={() => setShow('diagram', !show.diagram)} />
         {hasLyrics && <Chip on={showLyrics} label="Lyrics" onClick={() => setShowLyrics(!showLyrics)} />}
+        {(doc.beatGrid?.length ?? 0) > 0 && <Chip on={gridShown} label="Grid" onClick={() => setGridShown(!gridShown)} />}
         <Chip on={colorblindSafe} label="Color-blind safe" onClick={() => setColorblindSafe(!colorblindSafe)} />
       </div>
       <button

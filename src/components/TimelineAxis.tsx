@@ -44,7 +44,9 @@ export function TimelineAxis({
   // Bar numbers ride in their own strip above the time labels. Segments show as
   // a light band, so a free stretch reads as a gap; numbers thin out (every
   // 2nd, 4th… bar) when bars are narrow.
-  const segs = sortedSegments(grid)
+  // Hidden from the Grid menu, the bar numbers go too; the grid itself stays.
+  const gridShown = useUIStore((s) => s.gridShown)
+  const segs = gridShown ? sortedSegments(grid) : []
   const strip = segs.length > 0 && pps > 0 ? BAR_STRIP : 0
   const height = RULER_HEIGHT + strip
   let barEvery = 1

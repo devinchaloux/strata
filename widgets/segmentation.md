@@ -60,6 +60,8 @@ Until the widget registry exists, point markers snap to these boundaries directl
 
 ## 2. Timeline Presence
 
+**Showing the grid.** The Grid menu's **Show** switch hides the beat grid's lines on the canvas and the ruler's bar-number strip without changing the grid, so snapping, Fit to grid, the metronome and the bar tools still use it; the Grid button then reads "Grid · hidden". The reading view's Show chips include **Grid** when the analysis has one. A view preference (`uiStore.gridShown`, remembered in the browser), not part of the file. Exports never draw the grid.
+
 **As a block.** Segments is one block of the work area, holding every segmentation layer (`docs/decisions.md`, "Widgets as Blocks" and "Where Controls Live"). Its first row has the layer names' collapse, its name, any hidden layers, zoom, and ↑ ↓ to move it past another block (when there is one) and a button to hide it; it can't be removed. While editing, a second row holds its tools: **Boundary** and **Marker** as buttons, then **Add layer…**, **Grid ▾**, **Bars ▾** and **Quick pick ▾** as menus. **Normalize** opens as a strip under that row. Hidden, it comes back from a chip above the blocks, which also takes its zoom controls meanwhile. The shared ruler stays at the bottom of all blocks.
 
 
