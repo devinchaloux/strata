@@ -63,6 +63,8 @@ function halo(theme: FigureTheme) {
 
 /** Space between a hypermeter and an annotation sharing its line, in px. */
 const HYPER_GAP = 4
+/** The smallest a hypermeter is drawn to fit a narrow span, as a share of the annotation size. */
+const HYPER_MIN_SCALE = 0.7
 
 /** Drawn inside a span, after its shape and before its text (the editor's highlight). */
 export type SpanDecoration = ComponentType<{ span: Span; width: number; height: number }>
@@ -136,10 +138,15 @@ function SpanFigure({
   // The hypermeter (lib/hypermeter.ts) sits centered on the inside annotation's
   // line and never replaces it. On a shared line the annotation stops short of
   // it (a centered one has no side to keep to, so it drops a line); on its own
-  // line the annotation goes below. A count with no room is left out whole.
+  // line the annotation goes below. A count short of room is drawn smaller,
+  // down to HYPER_MIN_SCALE, so the widest ("4=1", the elided one) survives
+  // narrow bars; only then is it left out, whole.
   const hyperRaw = span.hypermeter && hypermeterShown(span, layer) ? hypermeterText(span.hypermeter) : ''
-  const hyperWidth = estimateTextWidth(hyperRaw, fonts.annotation)
-  const hyperText = hyperRaw && hyperWidth <= annotBox.right - annotBox.left ? hyperRaw : ''
+  const hyperRoom = annotBox.right - annotBox.left
+  const hyperFull = estimateTextWidth(hyperRaw, fonts.annotation)
+  const hyperSize = hyperFull > hyperRoom ? Math.max(fonts.annotation * HYPER_MIN_SCALE, (fonts.annotation * hyperRoom) / hyperFull) : fonts.annotation
+  const hyperWidth = estimateTextWidth(hyperRaw, hyperSize)
+  const hyperText = hyperRaw && hyperWidth <= hyperRoom ? hyperRaw : ''
   const hyperX = (annotBox.left + annotBox.right) / 2
   const besideHyper = !!hyperText && !annotationAbove
   const annotBelow = besideHyper && ((layer.rendering?.hypermeterLine ?? 'shared') === 'own' || annotationJust === 'center')
@@ -268,7 +275,7 @@ function SpanFigure({
           x={hyperX}
           y={insideAnnotY}
           textAnchor="middle"
-          fontSize={fonts.annotation}
+          fontSize={hyperSize}
           fontWeight={500}
           fill={textOnFill(fill, theme.ink)}
           style={{ fontVariantNumeric: 'tabular-nums' }}

@@ -2,7 +2,7 @@
 *Widget type: `"tempo"` | v1.0 | November 2026*
 
 > **Built** 2026-11-25. Code: `src/widgets/tempo/TempoBlock.tsx` (the block,
-> its rows and settings), `lib/tempoLane.ts` (`tempoView`: the tempo of each
+> its rows and settings), `TempoMenus.tsx` (the tool row's View and Scale), `lib/tempoLane.ts` (`tempoView`: the tempo of each
 > bar, the smoothed curve, the deviations, the scatter), `lib/normalize.ts`
 > (the smoother), `lib/widgets.ts` (blocks). `docs/decisions.md`, "Tempo
 > Becomes Its Own Widget", "The Tempo Widget, Settled" and "Widgets as
@@ -92,10 +92,15 @@ deviation beyond it is drawn clipped, with a cap.
   hide, but no remove: its layers are the analysis.
 - **Hidden blocks** come back from chips beside Add widget. With the form
   diagram hidden, its zoom controls move there too.
+- **The tool row,** while editing, under the top bar (docs/decisions.md,
+  "Tempo Gets a Tool Row"): **View ▾** (As marked, Smoothed, Deviation, each
+  a check; Smoothing, from Auto, active when Smoothed or Deviation is shown)
+  and **Scale ▾** (From the data, or Fixed, a range in BPM). Each names the
+  tempo layer it acts on in its header, and with several, chooses which;
+  rows are names, with one hint line at the foot. Reading view has no tool
+  row. `TempoViewMenu`, `TempoScaleMenu`.
 - **A row** per tempo layer: a header cell as wide as the layer names, with
-  the name and ⋯ settings (name; the layer it reads; Show: as marked,
-  smoothed, deviation; the smoothing, from Auto; the scale, from the data or
-  fixed), and the drawing, which scrolls and zooms with the Segments block and
+  the name and ⋯ settings (name; the layer it reads), and the drawing, which scrolls and zooms with the Segments block and
   carries the playhead. The tempo band is 52 px and the deviation band 40 px.
 - The marked line fades when the smoothed one is shown, so both read.
 

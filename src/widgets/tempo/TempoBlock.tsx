@@ -9,7 +9,9 @@
  * only), and each boundary's deviation from the smoothed curve in ms, with
  * the tapping scatter shaded. Hovering a bar shows its tempo; clicking it
  * selects that bar. The block's top bar carries the controls WorkArea
- * hands it (move, hide, remove); each row's ⋯ opens its settings.
+ * hands it (move, hide, remove); while editing, a tool row under it holds
+ * View ▾ and Scale ▾ (./TempoMenus.tsx); each row's ⋯ holds its settings, its
+ * name and the layer it reads.
  */
 import { useState, type ReactNode } from 'react'
 import { MoreHorizontal } from 'lucide-react'
@@ -17,10 +19,10 @@ import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
 import { computePps, scrollableWidth } from '@/lib/timeline'
 import { TEMPO_LANE_HEIGHT, deviationRange, tempoView, tempoY, type TempoView } from '@/lib/tempoLane'
-import { LOG_LAMBDA_MAX, LOG_LAMBDA_MIN } from '@/lib/normalize'
 import { segmentSpans } from '@/lib/layers'
 import { Playhead } from '@/components/Playhead'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { TempoScaleMenu, TempoViewMenu } from './TempoMenus'
 import type { StrataDocument, TempoLayer } from '@/types/strata'
 
 const TOP_BAR_HEIGHT = 24
@@ -61,6 +63,13 @@ export function TempoBlock({
         </span>
         <div className="ml-auto flex items-center gap-0.5">{controls}</div>
       </div>
+      {/* The tool row, while editing (docs/decisions.md, "Tempo Gets a Tool Row"). */}
+      {!reading && (
+        <div className="flex flex-wrap items-center gap-1.5 border-b px-2 py-1" style={{ borderColor: 'var(--hairline)', background: 'var(--guide-faint)' }}>
+          <TempoViewMenu layers={layers} />
+          <TempoScaleMenu layers={layers} />
+        </div>
+      )}
       {layers.map((layer) => (
         <TempoRow key={layer.id} doc={doc} layer={layer} headerWidth={headerWidth} reading={reading} />
       ))}
@@ -96,7 +105,7 @@ function TempoRow({ doc, layer, headerWidth, reading }: { doc: StrataDocument; l
           </p>
         ) : view.marked.length + view.smoothed.length + view.deviations.length === 0 ? (
           <p className="px-2 pt-2 text-[11px]" style={{ color: 'var(--ink-muted)' }}>
-            {segmentSpans(view.source).length < 2 ? `Mark two bars or more on ${view.source.label} to see their tempo.` : 'Choose what to show in its settings (⋯).'}
+            {segmentSpans(view.source).length < 2 ? `Mark two bars or more on ${view.source.label} to see their tempo.` : reading ? 'Nothing is chosen to show.' : 'Choose what to show in View.'}
           </p>
         ) : (
           <>
@@ -220,22 +229,14 @@ function ScaleLabels({ view, tempoTop, devTop }: { view: TempoView; tempoTop: nu
   )
 }
 
-/** A tempo row's settings: its name, the layer it reads, what it shows, the smoothing and the scale. */
+/** A tempo row's settings: its name and the layer it reads. What it shows is in the tool row's menus. */
 function TempoSettings({ doc, layer }: { doc: StrataDocument; layer: TempoLayer }) {
   const updateLayer = useDocumentStore((s) => s.updateLayer)
-  const setDisplay = useDocumentStore((s) => s.setTempoDisplay)
   const setSource = useDocumentStore((s) => s.setTempoSource)
   const [open, setOpen] = useState(false)
-  const display = layer.data.display ?? {}
-  const show = display.show ?? ['marked']
   const forms = doc.layers.filter((l) => l.type === 'segmentation')
-  const smoothingOn = show.includes('smoothed') || show.includes('deviation')
   const box = 'rounded border px-1.5 py-0.5 text-xs'
   const boxStyle = { borderColor: 'var(--hairline)', color: 'var(--ink-primary)', background: 'transparent' }
-  const toggle = (v: 'marked' | 'smoothed' | 'deviation', on: boolean) => {
-    const next = on ? [...new Set([...show, v])] : show.filter((x) => x !== v)
-    setDisplay(layer.id, { show: next.length ? (['marked', 'smoothed', 'deviation'] as const).filter((x) => next.includes(x)) : ['marked'] })
-  }
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -260,76 +261,6 @@ function TempoSettings({ doc, layer }: { doc: StrataDocument; layer: TempoLayer 
             ))}
           </select>
         </label>
-        <fieldset className="flex flex-col gap-1">
-          <legend className="mb-1 text-[11px]" style={{ color: 'var(--ink-muted)' }}>Show</legend>
-          {([
-            ['marked', 'As marked', 'Show each bar’s tempo as you marked it.'],
-            ['smoothed', 'Smoothed', 'Draw a smooth curve through the tempo. No bar moves.'],
-            ['deviation', 'Deviation', 'Show how far each boundary sits from the smooth curve, in milliseconds. The shaded band is your tapping scatter.'],
-          ] as const).map(([v, name, hint]) => (
-            <label key={v} className="flex cursor-pointer items-center gap-1.5" title={hint}>
-              <input type="checkbox" checked={show.includes(v)} onChange={(e) => toggle(v, e.target.checked)} />
-              {name}
-            </label>
-          ))}
-        </fieldset>
-        {smoothingOn && (
-          <label className="flex flex-col gap-0.5">
-            <span className="flex items-center justify-between text-[11px]" style={{ color: 'var(--ink-muted)' }}>
-              <span title="This changes the drawing only. No bar moves.">Smoothing</span>
-              <button
-                type="button"
-                className="underline disabled:no-underline disabled:opacity-60"
-                disabled={display.smoothing == null}
-                onClick={() => setDisplay(layer.id, { smoothing: undefined })}
-              >
-                {display.smoothing == null ? 'Auto' : 'Back to auto'}
-              </button>
-            </span>
-            <input
-              type="range"
-              min={LOG_LAMBDA_MIN}
-              max={LOG_LAMBDA_MAX}
-              step={0.05}
-              value={display.smoothing ?? 1}
-              onChange={(e) => setDisplay(layer.id, { smoothing: Number(e.target.value) })}
-              aria-label="Smoothing, light to heavy"
-            />
-          </label>
-        )}
-        <fieldset className="flex flex-col gap-1">
-          <legend className="mb-1 text-[11px]" style={{ color: 'var(--ink-muted)' }}>Scale</legend>
-          <label className="flex cursor-pointer items-center gap-1.5">
-            <input type="radio" checked={!display.scale} onChange={() => setDisplay(layer.id, { scale: undefined })} />
-            From the data
-          </label>
-          <label className="flex cursor-pointer items-center gap-1.5" title="Set a fixed range to compare recordings on one scale.">
-            <input type="radio" checked={!!display.scale} onChange={() => setDisplay(layer.id, { scale: display.scale ?? { min: 40, max: 200 } })} />
-            Fixed
-            {display.scale && (
-              <span className="flex items-center gap-1 text-xs">
-                <input
-                  type="number"
-                  className={`${box} w-14`}
-                  style={boxStyle}
-                  value={display.scale.min}
-                  aria-label="Lowest tempo"
-                  onChange={(e) => setDisplay(layer.id, { scale: { min: Number(e.target.value) || 0, max: display.scale!.max } })}
-                />
-                –
-                <input
-                  type="number"
-                  className={`${box} w-14`}
-                  style={boxStyle}
-                  value={display.scale.max}
-                  aria-label="Highest tempo"
-                  onChange={(e) => setDisplay(layer.id, { scale: { min: display.scale!.min, max: Number(e.target.value) || 0 } })}
-                />
-                BPM
-              </span>
-            )}
-          </label>
-        </fieldset>
       </PopoverContent>
     </Popover>
   )

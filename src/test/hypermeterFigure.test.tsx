@@ -26,6 +26,7 @@ function drawn(layer: Layer) {
     x: Number(t.getAttribute('x')),
     y: Number(t.getAttribute('y')),
     anchor: t.getAttribute('text-anchor'),
+    size: Number(t.getAttribute('font-size')),
   }))
 }
 
@@ -54,5 +55,14 @@ describe('the hypermeter on the diagram', () => {
   it('hides on one span while its layer shows the rest', () => {
     const layer = makeLayer('L', [span({ hypermeter: { count: 1 }, showHypermeter: false }), span({ id: 'b', startTime: 20, endTime: 40, hypermeter: { count: 2 } })])
     expect(drawn(layer).map((t) => t.text)).toEqual(['2'])
+  })
+
+  it('draws a count smaller rather than leave it out on a narrow span, and leaves it out when even that won\'t fit', () => {
+    const narrow = (end: number) => makeLayer('L', [span({ endTime: end, startCap: 'square', endCap: 'square', hypermeter: { count: 4, becomes: 1 } })])
+    const [shrunk] = drawn(narrow(2.4))
+    expect(shrunk.text).toBe('4=1')
+    expect(shrunk.size).toBeLessThan(9)
+    expect(shrunk.size).toBeGreaterThanOrEqual(9 * 0.7)
+    expect(drawn(narrow(1.2))).toEqual([])
   })
 })
