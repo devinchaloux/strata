@@ -16,6 +16,7 @@ import { isDoubleTap, tappedWithFinger } from '@/lib/doubleTap'
 import { memo, useCallback, useRef, useState, useLayoutEffect } from 'react'
 import { useDocumentStore } from '@/store/documentStore'
 import { useUIStore } from '@/store/uiStore'
+import { formatClock } from '@/lib/youtube'
 import { useMerge } from '@/hooks/useMerge'
 import { computePps, totalContentWidth, scrollableWidth, snapTime } from '@/lib/timeline'
 import { groupUpTarget } from '@/lib/groupSpans'
@@ -162,7 +163,14 @@ function SpanMenuItems({ span, layer }: { span: Span; layer: Layer }) {
     <ContextMenuContent>
       <ContextMenuItem
         disabled={!canSplit}
-        onClick={canSplit ? () => placeBoundary(layer.id, currentTime) : undefined}
+        onClick={
+          canSplit
+            ? () => {
+                placeBoundary(layer.id, currentTime)
+                useUIStore.getState().showToast(`Split at ${formatClock(currentTime)}`)
+              }
+            : undefined
+        }
       >
         <span className="flex flex-col">
           Split at playhead

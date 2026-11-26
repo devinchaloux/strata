@@ -58,6 +58,8 @@ export function useMerge() {
     if (conflicts.length === 0) {
       mergeSpansAction(elig.layerId, sourceIds, draft)
       selectSpan(draft.id)
+      // What changed, with Undo (docs/decisions.md, "Menus Are Names").
+      useUIStore.getState().showToast(`Merged ${sourceIds.length} spans`)
     } else {
       openMergeDialog({ layerId: elig.layerId, sourceIds, draft, conflicts })
     }

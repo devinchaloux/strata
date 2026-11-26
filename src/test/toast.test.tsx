@@ -34,3 +34,20 @@ describe('Toast', () => {
     expect(screen.queryByRole('status')).toBeNull()
   })
 })
+
+describe('toasts for merge', () => {
+  it('a merge from any route names how many spans it merged', async () => {
+    const { renderHook } = await import('@testing-library/react')
+    const { useMerge } = await import('@/hooks/useMerge')
+    const spans = [
+      { id: 'a', startTime: 0, endTime: 2 },
+      { id: 'b', startTime: 2, endTime: 4 },
+      { id: 'c', startTime: 4, endTime: 6 },
+    ]
+    useDocumentStore.getState().loadDocument(makeDoc([makeLayer('L', spans)], { duration: 6 }))
+    const { result } = renderHook(() => useMerge())
+    act(() => result.current.performMerge(['a', 'b', 'c']))
+    expect(useUIStore.getState().toast?.text).toBe('Merged 3 spans')
+    expect(useDocumentStore.getState().document!.layers[0].data).toMatchObject({ spans: [{ startTime: 0, endTime: 6 }] })
+  })
+})

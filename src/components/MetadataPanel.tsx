@@ -592,7 +592,11 @@ function SingleSpanPanel({ layer, span }: { layer: Layer; span: Span }) {
   }
 
   function handleSplit() {
-    placeBoundary(layer.id, useUIStore.getState().currentTime)
+    const t = useUIStore.getState().currentTime
+    placeBoundary(layer.id, t)
+    // What changed, with Undo ("Menus Are Names"). The B key, pressed again and
+    // again while marking, doesn't show one.
+    useUIStore.getState().showToast(`Split at ${formatClock(t)}`)
   }
 
   function copy(text: string) {

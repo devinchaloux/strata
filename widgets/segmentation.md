@@ -266,7 +266,7 @@ When a parent goes, its children follow: merging a parent hands its children to 
 
 ### 5.3 Merge
 
-Two or more consecutive spans are selected (box-select or shift-click), then merged via an explicit action (Ctrl/Cmd+J, or the right-click menu). Non-conflicting fields are resolved automatically; conflicting fields surface in a conflict-only dialog. The rules are in `docs/decisions.md`, "Merge UX (Phase 0.5)" and "Merge".
+Two or more consecutive spans are selected (box-select or shift-click), then merged via an explicit action (Ctrl/Cmd+J, or the right-click menu). However it's made, a merge shows a toast naming it ("Merged 3 spans"), with Undo; so does a split from the Inspector or the right-click menu ("Split at 4:13"), though not a boundary placed with B. Non-conflicting fields are resolved automatically; conflicting fields surface in a conflict-only dialog. The rules are in `docs/decisions.md`, "Merge UX (Phase 0.5)" and "Merge".
 
 Merged spans receive a new UUID. The source IDs are stored in `mergedFrom: string[]` (minimum 2 entries) on the result span.
 
