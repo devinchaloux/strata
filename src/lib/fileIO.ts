@@ -49,11 +49,11 @@ export function parseStrataFile(raw: string): StrataDocument {
 
 // Every save records which build of Strata wrote the file, so a problem found
 // in a file later can be traced to the version that produced it.
-function serialize(doc: StrataDocument): string {
+export function serialize(doc: StrataDocument): string {
   return JSON.stringify({ ...doc, strataVersion: APP_VERSION }, null, 2)
 }
 
-function suggestedFilename(doc: StrataDocument): string {
+export function suggestedFilename(doc: StrataDocument): string {
   return `${fileBaseName(doc)}.strata`
 }
 

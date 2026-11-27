@@ -1,3 +1,4 @@
+import type { SaveBackTarget } from '@/lib/saveBack'
 import { create } from 'zustand'
 import type { YTPlayerState } from '@/lib/youtube'
 import type { Span } from '@/types/strata'
@@ -252,6 +253,13 @@ export interface UIState {
   /** The address a shared analysis was opened from (?src=), or null. */
   sharedFrom: string | null
   setSharedFrom: (url: string | null) => void
+  /**
+   * Where Save to … sends the file (lib/saveBack.ts), and the load it belongs
+   * to: only the analysis the host opened goes back to it, never one opened
+   * or started afterwards.
+   */
+  saveBack: (SaveBackTarget & { loadId: number }) | null
+  setSaveBack: (target: (SaveBackTarget & { loadId: number }) | null) => void
 
   // ── Embed mode (lib/embed.ts) ──
   /** Strata is running inside another page's iframe. */
@@ -489,6 +497,8 @@ const useUIStore = create<UIState>()((set, get) => ({
   },
   sharedFrom: null,
   setSharedFrom: (url) => set({ sharedFrom: url }),
+  saveBack: null,
+  setSaveBack: (target) => set({ saveBack: target }),
   embed: false,
   setEmbed: (on) => set({ embed: on }),
   viewRequest: null,

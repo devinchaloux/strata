@@ -75,6 +75,10 @@ Any place that lets other sites read the file. Save your `.strata` file there, c
 
 Google Drive doesn't work: it lets other sites read its files only through its own API. Strata stays this way through the beta, with no server of its own in between.
 
+**Can a site that keeps my analyses save my changes straight back?**
+
+Yes, if the site supports it. A site that opens Strata on one of its files can ask for the file back: Strata then shows **Save to** and the site's name in the File menu. When you choose it, Strata hands the file to the site's tab, which saves it under your sign-in there. Strata never sees that sign-in. Site builders: see "Saving Back to the Page That Opened Strata" in the [decisions](decisions.md).
+
 **Can I use it for corpus studies?**
 
 Yes. You keep every analysis as structured data with shared types. You can read a folder of `.strata` files with a short script or import them into a spreadsheet. The Corpus Builder, planned for version 2, will let you gather and query analyses inside Strata. [How the JSON is structured](json-structure.md) shows a short script that reads a folder of analyses.

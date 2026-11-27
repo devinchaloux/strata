@@ -20,6 +20,7 @@ import { reportIssueUrl } from '@/lib/issues'
 import { ReadingHeader } from '@/components/ReadingHeader'
 import { ShareDialog } from '@/components/ShareDialog'
 import { fetchSharedAnalysis, srcParam } from '@/lib/shareLink'
+import { saveBackParam, type SaveBackTarget } from '@/lib/saveBack'
 import { applyNewFromLink, parseNewParams } from '@/lib/newFromLink'
 import { createEmptyDocument } from '@/lib/fileIO'
 import { HelpDialog } from '@/components/HelpDialog'
@@ -355,6 +356,8 @@ export default function App() {
     openFile,
     saveFile,
     saveFileAs,
+    saveTarget,
+    saveToHost,
     pendingRecovery,
     restoreRecovery,
     dismissRecovery,
@@ -452,14 +455,17 @@ export default function App() {
 
   // A shared link (?src=…) opens that analysis in the reading view
   // (docs/decisions.md, "Sharing by Link"). The examples open the same way.
+  // A link from a host that keeps the file may name it as `return`, and then
+  // this load can be saved back there (lib/saveBack.ts).
   const openShared = useCallback(
-    (src: string) => {
+    (src: string, saveBack: SaveBackTarget | null = null) => {
       const ui = useUIStore.getState()
       ui.setSharedFrom(src)
       fetchSharedAnalysis(src)
         .then((result) => {
           loadDocument(result.doc)
           useDocumentStore.temporal.getState().clear()
+          ui.setSaveBack(saveBack && { ...saveBack, loadId: useDocumentStore.getState().loadId })
           ui.setReadingView(true)
           if (result.notices.length) ui.showAppMessage('Opened with warnings', result.notices)
         })
@@ -549,7 +555,9 @@ export default function App() {
   // Opening the app with a shared link.
   useEffect(() => {
     const src = srcParam(window.location.href)
-    if (src) openShared(src)
+    // Saving back needs the tab that opened this one; without it, the link's `return` is ignored.
+    const saveBack = window.opener ? saveBackParam(window.location.href) : null
+    if (src) openShared(src, saveBack)
   }, [openShared])
 
   // Opening it with a new-analysis link (?new&title=…): a new document with
@@ -683,12 +691,14 @@ export default function App() {
         saveFileAs()
       } else if (e.key === 's' || e.key === 'S') {
         e.preventDefault()
-        saveFile()
+        // An analysis a host opened saves back to it; Download stays in the menu.
+        if (saveTarget) void saveToHost()
+        else saveFile()
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [clearSelection, selectPointMarker, guardedNew, guardedOpen, saveFile, saveFileAs, setHelpOpen])
+  }, [clearSelection, selectPointMarker, guardedNew, guardedOpen, saveFile, saveFileAs, saveTarget, saveToHost, setHelpOpen])
 
   return (
     // App shell: a pinned header, then a main row of [left work area | right
@@ -742,12 +752,23 @@ export default function App() {
             { name: 'New…', hint: 'Start an analysis from a video or audio file.', shortcut: `${KEY}N`, onSelect: guardedNew },
             { name: 'Open…', hint: 'Open a .strata file.', shortcut: `${KEY}O`, onSelect: guardedOpen },
             { name: 'Open the demo', hint: `Open ${EXAMPLES[0].title} to explore.`, onSelect: guardedDemo },
+            ...(saveTarget
+              ? [
+                  {
+                    name: `Save to ${saveTarget.name}`,
+                    hint: `Send your changes back to ${saveTarget.name}, which opened this analysis.`,
+                    shortcut: `${KEY}S`,
+                    separator: true,
+                    onSelect: () => void saveToHost(),
+                  },
+                ]
+              : []),
             {
               name: hasHandle ? 'Save' : 'Download',
               hint: hasHandle ? 'Save your changes to this file.' : 'Download this analysis as a .strata file.',
-              shortcut: `${KEY}S`,
+              shortcut: saveTarget ? undefined : `${KEY}S`,
               reason: !doc && 'Open or start an analysis first.',
-              separator: true,
+              separator: !saveTarget,
               onSelect: saveFile,
             },
             { name: 'Save as…', hint: 'Save a copy under a new name.', shortcut: `${SHIFT_KEY}S`, reason: !doc && 'Open or start an analysis first.', onSelect: saveFileAs },

@@ -6,7 +6,10 @@ import {
   writeToHandle,
   downloadFile,
   createEmptyDocument,
+  serialize,
+  suggestedFilename,
 } from '@/lib/fileIO'
+import { sendToOpener } from '@/lib/saveBack'
 import { saveRecovery, loadRecovery, clearRecovery } from '@/lib/crashRecovery'
 import type { RecoveryEntry } from '@/lib/crashRecovery'
 import { readDocument, DocumentError, type LoadResult } from '@/lib/documentLoad'
@@ -133,6 +136,55 @@ export function useFileIO() {
     }
   }, [markSaved])
 
+  // Save to … : hand the file back to the tab that opened Strata, which saves
+  // it with its own sign-in (lib/saveBack.ts). Only the analysis that tab
+  // opened goes back, so the target is checked against the current load.
+  const loadId = useDocumentStore((s) => s.loadId)
+  const saveBack = useUIStore((s) => s.saveBack)
+  const saveTarget = saveBack && saveBack.loadId === loadId ? saveBack : null
+  const saveToHost = useCallback(async () => {
+    const doc = strataDocRef.current
+    if (!doc || !saveTarget) return
+    const ui = useUIStore.getState()
+    const name = saveTarget.name
+    // What was sent is what counts as saved, even if editing goes on while the host asks.
+    const text = serialize(doc)
+    ui.showToast(`Sending to ${name}…`, { undo: false })
+    const outcome = await sendToOpener(
+      saveTarget,
+      { text, filename: suggestedFilename(doc) },
+      {
+        opener: window.opener as Window | null,
+        events: window,
+        onReceived: () => useUIStore.getState().showToast(`${name} has it. Switch to its tab to finish saving.`, { undo: false }),
+      },
+    )
+    const now = useUIStore.getState()
+    switch (outcome.kind) {
+      case 'saved':
+        if (strataDocRef.current && serialize(strataDocRef.current) === text) {
+          markSaved()
+          clearRecovery()
+        }
+        now.showToast(`Saved to ${name}`, { undo: false })
+        break
+      case 'cancelled':
+        now.showToast(`Not saved: cancelled in ${name}`, { undo: false })
+        break
+      case 'refused':
+        now.clearToast()
+        now.showAppMessage(`${name} didn’t save it`, [outcome.reason, 'Your work is still open here. Download keeps a copy.'])
+        break
+      case 'no-answer':
+        now.clearToast()
+        now.showAppMessage(`${name} didn’t answer`, [
+          `Its tab may have been closed or reloaded. To save there, open the analysis from ${name} again, or Download a copy now.`,
+          'Your work is still open here.',
+        ])
+        break
+    }
+  }, [saveTarget, markSaved])
+
   const restoreRecovery = useCallback(() => {
     if (!pendingRecovery) return
     setPendingRecovery(null)
@@ -158,6 +210,9 @@ export function useFileIO() {
     openFile,
     saveFile,
     saveFileAs,
+    /** The host Save to … sends this analysis back to, or null. */
+    saveTarget,
+    saveToHost,
     pendingRecovery,
     restoreRecovery,
     dismissRecovery,
