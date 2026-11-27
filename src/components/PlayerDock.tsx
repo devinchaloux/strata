@@ -5,6 +5,7 @@ import { usePhone } from '@/hooks/usePhone'
 import { useUIStore } from '@/store/uiStore'
 import { useYouTubePlayer } from '@/hooks/useYouTubePlayer'
 import { useAudioPlayer } from '@/hooks/useAudioPlayer'
+import { HeadphonesPopover } from '@/components/HeadphonesPopover'
 import { extractVideoId, formatClock, isInputFocused } from '@/lib/youtube'
 import { pickAudioFile } from '@/lib/fileIO'
 import { setPlayerElement } from '@/lib/playerClearance'
@@ -473,7 +474,9 @@ export function PlayerDock() {
   useEffect(() => {
     if (!clickOn) return
     const scheduler = new ClickScheduler({
-      now: () => engineRef.current.now(),
+      // The player's own time: the clicks reach the headphones as late as the
+      // media does, so they take no listening delay (lib/listeningDelay.ts).
+      now: () => engineRef.current.mediaNow(),
       playing: () => useUIStore.getState().playbackState === 'playing',
       rate: () => useUIStore.getState().playbackRate,
       volume: () => useUIStore.getState().clickVolume,
@@ -592,6 +595,9 @@ export function PlayerDock() {
 
         {/* Metronome: a click on the grid's beats, and beat matching. */}
         {!readingView && !embed && <MetronomePopover disabled={!isReady} />}
+
+        {/* Headphone delay: the playhead and marks follow what is heard (lib/listeningDelay.ts). */}
+        {!readingView && !embed && <HeadphonesPopover />}
 
         {/* The point-marker button and the Spacebar context indicator both used
             to sit here. They moved into the Segments block's control bar

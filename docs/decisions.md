@@ -109,6 +109,7 @@ aren't part of this repository.
 - [The view follows the playhead only while it plays.](#shared-timeline-axis-phase-16)
 - [Clicking the ruler seeks; a paused click on a span seeks there; a double-click plays from it; a seek while paused stays paused.](#paused-clicks-stay-paused-open-caps-fill-and-join-issue-links-2026-10-01)
 - [Key presses read the player's exact time.](#getting-around-the-timeline-2026-10-01)
+- [The playhead and marks follow what is heard: a headphone delay, set per browser and never in the file, comes off while it plays, and the playhead never steps back as playback starts.](#listening-delay-is-the-listeners-2026-11-27)
 - [The beat grid is a list of segments, each with one tempo and meter; beats are computed, and a stretch between segments is free.](#beat-grid-2026-09-29)
 - [Bar numbers run on across a free stretch unless a segment sets its first bar.](#beat-grid-2026-09-29)
 - [T taps the grid in, rounded to a whole BPM and reaching back to where the music starts; Shift+T stops it.](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01)
@@ -6504,3 +6505,60 @@ because nothing in Strata names one. It is the embed's window messages
 lib/saveBack.ts (`saveBackParam`, `sendToOpener`); `saveToHost` in
 hooks/useFileIO.ts; the File menu and Ctrl/⌘S in App.tsx; `saveBack` in the
 UI store; `src/test/saveBack.test.ts`.
+
+---
+
+## Listening Delay Is the Listener's (2026-11-27)
+
+*From the maintainer: "I think I need a 'calibrate Bluetooth headphone' option
+in Strata." Their Opus (Eric Prydz) analysis was marked on Bluetooth
+headphones and sits late; analyses marked on wired headphones look early when
+played back over Bluetooth. Also: "there is a bit of a lag when clicking play
+for the YouTube video … the playhead starts but then it jumps back when the
+audio plays."*
+
+**Decision.** A **headphone delay**, in the play bar's Delay panel: how many
+milliseconds (0–500) these headphones play behind the player, and a switch
+to take it off or not. It's remembered in this browser
+(`uiStore.listeningDelayMs`, `listeningDelayOn`) and is never in the file.
+- **Display and input together.** While playing, both engines give the time
+  being *heard*: the reading less the delay, scaled by the playback rate (the
+  delay is wall-clock time). The playhead, B, M, R, T and D all read it, so the
+  playhead and new marks agree with each other and with the ear. Paused, the
+  playhead is the player's time. Seeking is unchanged: a span at 1:34 still
+  plays from 1:34.
+- **The playhead never steps back while playing** by less than a jump (the
+  delay plus half a second), and holds while buffering (`PlayheadClock`). When
+  Play is pressed it holds at the paused position until the heard time
+  catches up, instead of moving back by the delay. This also cures YouTube's
+  own start-up wobble: its reading runs on before the sound starts, then
+  snaps back.
+- **The metronome reads the player's own time** (`mediaNow`), because its
+  clicks reach the headphones as late as the media does.
+- **Calibrating** plays a click every 0.6 s and flashes a dot the set delay
+  after each click is sent; the analyst moves the slider until they land
+  together. Web Audio and the YouTube player go through the same headphones,
+  so their delay is close, though not guaranteed identical.
+- **The repair for an analysis already marked late:** *Move every mark earlier*
+  in Document settings (Advanced) moves every time in the document (spans,
+  point markers, the beat grid, commentary ranges) by the amount, as one undo
+  step. It starts from the headphone delay. Times on 0:00 or the track's end
+  stay put, as they mark the recording's edges; it refuses rather than shrink
+  a span below the shortest a span can be.
+**Rejected.** *Storing the delay in the file:* it belongs to the listener's
+headphones, not to the analysis, the way `sourceOffset` belongs to the video;
+a reader on wired headphones would be thrown off by it. *Folding the repair
+into `sourceOffset`:* it would line the analysis up with this video only, and
+the offset resets on relinking to another source; the marks themselves are
+what's late. *Calibrating by tapping along to clicks:* it measures the
+headphones plus the analyst's own habit of tapping early or late, which their
+wired marks already carry, so the habit would be taken off twice. *Reading the
+delay from the browser* (`AudioContext.outputLatency`): it reports Web Audio's
+latency at best, unreliably for Bluetooth, and nothing for the YouTube player.
+**Open (the maintainer's call):** whether the read-only embed offers the
+setting to readers; for now it applies there when this browser has it on, but
+the panel is only in the editor. Named profiles (wired, AirPods …) if
+switching one delay on and off proves too coarse.
+lib/listeningDelay.ts (`PlayheadClock`, `shiftAllTimes`);
+hooks/playheadClock.ts; the two player hooks; components/HeadphonesPopover.tsx;
+`ShiftAllTimes` in DocumentSettingsDialog; `src/test/listeningDelay.test.ts`.

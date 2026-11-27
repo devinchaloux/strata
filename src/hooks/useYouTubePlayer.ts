@@ -2,6 +2,8 @@ import { useEffect, useRef, useCallback, useLayoutEffect } from 'react'
 import { useUIStore } from '@/store/uiStore'
 import { mapYTState, loadYTApi } from '@/lib/youtube'
 import type { PlaybackRate } from '@/store/uiStore'
+import { PlayheadClock } from '@/lib/listeningDelay'
+import { heardTime } from '@/hooks/playheadClock'
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -28,6 +30,12 @@ import type { PlaybackRate } from '@/store/uiStore'
  * applied on the way into the player (seek) and removed on the way out
  * (currentTime poll, duration). Span data and the UI store never see player time.
  *
+ * Listening delay: the playhead and now() give the time being HEARD
+ * (lib/listeningDelay.ts PlayheadClock): this browser's headphone delay comes
+ * off while it plays, and the playhead holds rather than stepping back when
+ * playback starts. mediaNow() is the player's own time, for the click track,
+ * which plays through the same headphones and so is delayed with the media.
+ *
  * Keyboard shortcuts are NOT handled here — they live in PlayerDock, where
  * they can drive whichever engine is active.
  */
@@ -52,6 +60,7 @@ export function useYouTubePlayer(
   const offsetRef = useRef(sourceOffset)
   // Written once the render commits, not while it runs (react-hooks/refs).
   useLayoutEffect(() => { offsetRef.current = sourceOffset })
+  const clockRef = useRef(new PlayheadClock())
 
   const {
     setCurrentTime,
@@ -71,7 +80,7 @@ export function useYouTubePlayer(
       if (playerRef.current) {
         try {
           const t = playerRef.current.getCurrentTime()
-          if (isFinite(t)) setCurrentTime(Math.max(0, t - offsetRef.current))
+          if (isFinite(t)) setCurrentTime(heardTime(clockRef.current, Math.max(0, t - offsetRef.current)))
         } catch {
           // Player may not be fully ready on first tick; ignore
         }
@@ -257,6 +266,7 @@ export function useYouTubePlayer(
       if (player && !playing) holdPausedRef.current = true
       player?.seekTo(Math.max(0, time + offsetRef.current), true)
       if (player && !playing) player.pauseVideo()
+      clockRef.current.seek(time)
       setCurrentTime(Math.max(0, time))
     },
     [setCurrentTime],
@@ -273,7 +283,8 @@ export function useYouTubePlayer(
   // The exact recording time now, read from the player at the moment of a key
   // press. The store's currentTime is the last frame's reading (up to ~16 ms
   // old), which is too coarse for marking or tapping by ear.
-  const now = useCallback((): number => {
+  // The player's own time, before the listening delay (for the click track).
+  const mediaNow = useCallback((): number => {
     try {
       const t = playerRef.current?.getCurrentTime()
       if (typeof t === 'number' && isFinite(t)) return Math.max(0, t - offsetRef.current)
@@ -283,5 +294,8 @@ export function useYouTubePlayer(
     return useUIStore.getState().currentTime
   }, [])
 
-  return { play, pause, seek, setRate, now }
+  // The exact time being heard now: what a mark or a tap is for.
+  const now = useCallback((): number => heardTime(clockRef.current, mediaNow(), false), [mediaNow])
+
+  return { play, pause, seek, setRate, now, mediaNow }
 }

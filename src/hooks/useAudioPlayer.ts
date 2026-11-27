@@ -1,6 +1,8 @@
 import { useEffect, useRef, useCallback, useLayoutEffect } from 'react'
 import { useUIStore } from '@/store/uiStore'
 import type { PlaybackRate } from '@/store/uiStore'
+import { PlayheadClock } from '@/lib/listeningDelay'
+import { heardTime } from '@/hooks/playheadClock'
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -18,7 +20,8 @@ import type { PlaybackRate } from '@/store/uiStore'
  *
  * Source offset: player_time = recording_time + sourceOffset (schema rule) —
  * same boundary convention as useYouTubePlayer. Everything crossing this
- * hook's API is RECORDING time.
+ * hook's API is RECORDING time. The playhead and now() are the time being
+ * heard, mediaNow() the element's own (see useYouTubePlayer, "Listening delay").
  */
 export function useAudioPlayer(file: File | null, sourceOffset: number) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -28,6 +31,7 @@ export function useAudioPlayer(file: File | null, sourceOffset: number) {
   const offsetRef = useRef(sourceOffset)
   // Written once the render commits, not while it runs (react-hooks/refs).
   useLayoutEffect(() => { offsetRef.current = sourceOffset })
+  const clockRef = useRef(new PlayheadClock())
 
   const {
     setCurrentTime,
@@ -47,7 +51,7 @@ export function useAudioPlayer(file: File | null, sourceOffset: number) {
       if (!aliveRef.current) return
       const audio = audioRef.current
       if (audio) {
-        setCurrentTime(Math.max(0, audio.currentTime - offsetRef.current))
+        setCurrentTime(heardTime(clockRef.current, Math.max(0, audio.currentTime - offsetRef.current)))
       }
       rafRef.current = requestAnimationFrame(tick)
     }
@@ -161,6 +165,7 @@ export function useAudioPlayer(file: File | null, sourceOffset: number) {
     (time: number) => {
       const audio = audioRef.current
       if (audio) audio.currentTime = Math.max(0, time + offsetRef.current)
+      clockRef.current.seek(time)
       setCurrentTime(Math.max(0, time))
     },
     [setCurrentTime],
@@ -175,11 +180,14 @@ export function useAudioPlayer(file: File | null, sourceOffset: number) {
     [storeSetRate],
   )
 
-  // The exact recording time now (see useYouTubePlayer's now()).
-  const now = useCallback((): number => {
+  // The element's own time, before the listening delay (for the click track).
+  const mediaNow = useCallback((): number => {
     const audio = audioRef.current
     return audio ? Math.max(0, audio.currentTime - offsetRef.current) : useUIStore.getState().currentTime
   }, [])
 
-  return { play, pause, seek, setRate, now }
+  // The exact time being heard now (see useYouTubePlayer's now()).
+  const now = useCallback((): number => heardTime(clockRef.current, mediaNow(), false), [mediaNow])
+
+  return { play, pause, seek, setRate, now, mediaNow }
 }
