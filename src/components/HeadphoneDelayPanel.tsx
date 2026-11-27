@@ -1,6 +1,7 @@
 /**
- * HeadphonesPopover — the listening delay, in the play bar
- * (lib/listeningDelay.ts; docs/decisions.md, "Listening Delay Is the Listener's").
+ * HeadphoneDelayPanel — the listening delay, in the play bar's settings menu
+ * (PlaybackSettingsMenu; lib/listeningDelay.ts; docs/decisions.md, "Listening
+ * Delay Is the Listener's").
  *
  * Bluetooth headphones play sound some 150–300 ms after the player reaches it.
  * With the delay on, the playhead follows what is heard and marks land where
@@ -13,7 +14,6 @@
  * early or late, which their wired marks already carry.
  */
 import { useEffect, useRef, useState } from 'react'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Switch } from '@/components/ui/switch'
 import { useUIStore } from '@/store/uiStore'
 import { MAX_LISTENING_DELAY_MS } from '@/lib/listeningDelay'
@@ -21,7 +21,7 @@ import { MAX_LISTENING_DELAY_MS } from '@/lib/listeningDelay'
 const PERIOD = 0.6 // seconds between calibration clicks
 const FLASH = 0.07 // seconds the dot stays lit
 
-export function HeadphonesPopover() {
+export function HeadphoneDelayPanel() {
   const on = useUIStore((s) => s.listeningDelayOn)
   const setOn = useUIStore((s) => s.setListeningDelayOn)
   const delayMs = useUIStore((s) => s.listeningDelayMs)
@@ -70,23 +70,9 @@ export function HeadphonesPopover() {
   }, [calibrating])
 
   return (
-    <Popover onOpenChange={(open) => !open && setCalibrating(false)}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          title="Headphone delay: line the playhead and your marks up with what you hear on Bluetooth headphones"
-          aria-pressed={on}
-          className={`flex h-7 shrink-0 items-center gap-1.5 rounded border px-2 text-xs transition-colors hover:bg-accent ${
-            on ? 'border-primary text-foreground' : 'border-border text-muted-foreground'
-          }`}
-        >
-          <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${on ? 'bg-primary' : 'bg-(--ink-faint)'}`} />
-          {on ? `Delay ${delayMs} ms` : 'Delay'}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="end" side="top" className="w-80 p-3 text-xs">
+    <div className="text-xs">
         <div className="flex items-center justify-between">
-          <p className="text-[13px] font-semibold text-foreground">Headphone delay</p>
+          <p className="font-medium text-foreground">Use this delay</p>
           <Switch
             checked={on}
             onCheckedChange={setOn}
@@ -149,7 +135,6 @@ export function HeadphonesPopover() {
             </p>
           )}
         </div>
-      </PopoverContent>
-    </Popover>
+    </div>
   )
 }

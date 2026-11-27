@@ -132,7 +132,8 @@ aren't part of this repository.
 - [Normalize evens out a run of selected bars, Steady or Smooth (or Steady between ramps, when offered), with a preview; the run's ends stay, and it can copy to a new layer instead.](#normalize-2026-11-25)
 - [The beat grid can be made from the bar layer, or from selected bars: a stretch per bar at its own tempo, equal tempos merged, replacing the grid only where the bars are.](#the-beat-grid-from-the-bars-2026-11-25)
 - [Fit boundaries to the grid moves a layer's boundaries to bars or beats.](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02)
-- [Playback rates are 0.5×, 0.75×, 1× and 1.25×; rewind goes to 0:00.](#player-chrome-phase-03)
+- [Rewind goes to 0:00.](#player-chrome-phase-03)
+- [The play bar's ⚙ holds speed (0.25–1.25× and a custom speed, 0.25× at the slowest on YouTube, 0.1× on an audio file), the headphone delay, changing the source and where the video sits; a speed other than 1× and a delay that's on show beside it. In an embed it holds only speed and delay.](#speed-and-delay-in-one-settings-menu-2026-11-27)
 - [The play bar's clock reads m:ss; editable times keep milliseconds.](#ui-review-fixes-and-tighter-chrome-2026-09-27)
 
 **The player**
@@ -6562,3 +6563,41 @@ switching one delay on and off proves too coarse.
 lib/listeningDelay.ts (`PlayheadClock`, `shiftAllTimes`);
 hooks/playheadClock.ts; the two player hooks; components/HeadphonesPopover.tsx;
 `ShiftAllTimes` in DocumentSettingsDialog; `src/test/listeningDelay.test.ts`.
+
+---
+
+## Speed and Delay in One Settings Menu (2026-11-27)
+
+*From the UI review after the headphone delay landed: the play bar held up to
+eleven items. The maintainer: "I would actually advocate for putting the speed
+multiplier in a deeper settings menu like it is on YouTube with a custom
+option for someone wanting to slow it down even further to do some
+microtiming." On the embed: "a good idea … but it should be quiet."*
+
+**Decision.** A ⚙ at the end of the play bar opens **playback settings**:
+- **Speed** (a submenu): 0.25×, 0.5×, 0.75×, Normal and 1.25×, and a
+  **custom** speed by slider or typed, in steps of 0.05. On YouTube it runs
+  0.25–2×, as YouTube plays nothing slower; on an audio file, 0.1–2×. When
+  YouTube rounds a speed it doesn't offer, the menu shows the speed it
+  actually plays (`onPlaybackRateChange`).
+- **Headphone delay** (a submenu): the panel that was the Delay button.
+- **Video** (editor only): in the corner or below the play bar, the former
+  dock button.
+- **Change source…** (editor only): the former link button.
+- **Nothing changes playback out of sight:** a speed other than 1× is written
+  beside the ⚙, and a dot marks the delay while it's on.
+- **In an embed** and the reading view, the ⚙ holds speed and delay only. In
+  an embed it's quiet: no dot, only the speed when it isn't 1×.
+The play bar keeps Rewind, Play, the Space label, the seek bar and time,
+Metronome, Video ↓ and the source prompts (Link, Locate). Metronome stays out
+because it's worked by key while it plays, and its on-dot matters.
+**Reverses** "Playback rates are 0.5×, 0.75×, 1× and 1.25×" (Player Chrome,
+Phase 0.3), which left out 0.25× as rarely needed and badly distorting: for
+microtiming, a slow, distorted pass is the point.
+**Rejected.** *Speed as a fifth play-bar control beside the delay:* both are
+set now and then, not worked while playing. *Hiding the speed entirely
+inside the menu:* a slowed track with nothing showing is a trap; YouTube
+shows nothing, and that's the part not copied.
+lib/playbackRate.ts; components/PlaybackSettingsMenu.tsx,
+HeadphoneDelayPanel.tsx; PlayerDock; `src/test/playbackSettings.test.tsx`,
+`playbackRate.test.ts`.

@@ -208,6 +208,10 @@ export function useYouTubePlayer(
           onError: () => {
             setPlayerStatus('error')
           },
+          // YouTube rounds a speed it doesn't offer to one it does: show that one.
+          onPlaybackRateChange: (e) => {
+            if (isFinite(e.data) && e.data > 0) storeSetRate(e.data)
+          },
         },
       })
     })

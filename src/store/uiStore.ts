@@ -34,7 +34,8 @@ export interface MergeDialogState {
 
 export type PlayerStatus = 'uninitialized' | 'loading' | 'ready' | 'error'
 
-export type PlaybackRate = 0.5 | 0.75 | 1 | 1.25
+/** A playback speed (lib/playbackRate.ts): a preset or a custom one. */
+export type PlaybackRate = number
 
 /**
  * Current zoom/scroll state of the shared timeline viewport. This is the one
