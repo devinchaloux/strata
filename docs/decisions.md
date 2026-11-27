@@ -225,6 +225,7 @@ aren't part of this repository.
 - [A page embeds Strata in an iframe (`?embed`), with a focus, layers and window messages.](#embedding-an-analysis-2026-10-03)
 - [An embed shows zoom controls, opens a whole track at 100%, and shows layer names at 640px and wider.](#embed-layout-on-wide-screens-2026-11-06)
 - [A `?new` link starts an analysis with its setup filled in; the tonic is passed as written.](#starting-an-analysis-from-a-link-2026-10-03)
+- [A page that opens Strata on its file with `return=` gets the file back by window message when the analyst chooses Save to …; Strata holds no credential.](#saving-back-to-the-page-that-opened-strata-2026-11-27)
 - [The figure exports as SVG and PNG from the editor's own drawing, with its own layer choice and spans cut at the range.](#export-choose-layers-cut-spans-at-the-range-2026-10-02)
 - [PDF goes through the browser's print dialog, with no library.](#save-as-pdf-through-the-print-dialog-2026-11-23)
 - [The PDF can carry the range's commentary after the figure; the SVG and PNG stay figures.](#commentary-in-the-pdf-2026-11-23)
@@ -275,7 +276,7 @@ By area, in the order the entries were made:
 
 **The player and the source:** [Player Chrome (Phase 0.3)](#player-chrome-phase-03) · [Source Linking (2026-07-02)](#source-linking-2026-07-02) · [Video Curtain Covers Every Dialog (2026-09-27)](#video-curtain-covers-every-dialog-2026-09-27) · [Dialogs Stay Clear of the Player (2026-09-27)](#dialogs-stay-clear-of-the-player-2026-09-27) · [Video Below the Fold (2026-09-27)](#video-below-the-fold-2026-09-27) · [Menus Keep Clear of the Player (2026-10-02)](#menus-keep-clear-of-the-player-2026-10-02) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24)
 
-**Reading, sharing, embedding and export:** [Sharing](#sharing) · [Embeddable Viewer](#embeddable-viewer) · [Export (2026-09-27)](#export-2026-09-27) · [The Reading View (2026-10-01)](#the-reading-view-2026-10-01) · [Sharing by Link (2026-10-01)](#sharing-by-link-2026-10-01) · [Export: Choose Layers, Cut Spans at the Range (2026-10-02)](#export-choose-layers-cut-spans-at-the-range-2026-10-02) · [Share From the Toolbar; Dropbox and OneDrive Links (2026-10-02)](#share-from-the-toolbar-dropbox-and-onedrive-links-2026-10-02) · [Example Analyses (2026-10-02)](#example-analyses-2026-10-02) · [Embedding an Analysis (2026-10-03)](#embedding-an-analysis-2026-10-03) · [Starting an Analysis from a Link (2026-10-03)](#starting-an-analysis-from-a-link-2026-10-03) · [Embed Zoom (2026-11-06)](#embed-zoom-2026-11-06) · [Embed Layout on Wide Screens (2026-11-06)](#embed-layout-on-wide-screens-2026-11-06) · [Layer Names Sized to Fit (2026-11-06)](#layer-names-sized-to-fit-2026-11-06) · [Save as PDF Through the Print Dialog (2026-11-23)](#save-as-pdf-through-the-print-dialog-2026-11-23) · [Commentary in the PDF (2026-11-23)](#commentary-in-the-pdf-2026-11-23) · [Read and Play on a Phone (2026-11-23)](#read-and-play-on-a-phone-2026-11-23) · [Following the Playhead (2026-11-23)](#following-the-playhead-2026-11-23) · [Hiding Layers in the Reading View (2026-11-23)](#hiding-layers-in-the-reading-view-2026-11-23) · [The Toolbar Folds When Narrow (2026-11-23)](#the-toolbar-folds-when-narrow-2026-11-23) · [Link-Only Through the Beta (2026-11-23)](#link-only-through-the-beta-2026-11-23) · [Reading View Has a View Menu (2026-11-26)](#reading-view-has-a-view-menu-2026-11-26)
+**Reading, sharing, embedding and export:** [Sharing](#sharing) · [Embeddable Viewer](#embeddable-viewer) · [Export (2026-09-27)](#export-2026-09-27) · [The Reading View (2026-10-01)](#the-reading-view-2026-10-01) · [Sharing by Link (2026-10-01)](#sharing-by-link-2026-10-01) · [Export: Choose Layers, Cut Spans at the Range (2026-10-02)](#export-choose-layers-cut-spans-at-the-range-2026-10-02) · [Share From the Toolbar; Dropbox and OneDrive Links (2026-10-02)](#share-from-the-toolbar-dropbox-and-onedrive-links-2026-10-02) · [Example Analyses (2026-10-02)](#example-analyses-2026-10-02) · [Embedding an Analysis (2026-10-03)](#embedding-an-analysis-2026-10-03) · [Starting an Analysis from a Link (2026-10-03)](#starting-an-analysis-from-a-link-2026-10-03) · [Embed Zoom (2026-11-06)](#embed-zoom-2026-11-06) · [Embed Layout on Wide Screens (2026-11-06)](#embed-layout-on-wide-screens-2026-11-06) · [Layer Names Sized to Fit (2026-11-06)](#layer-names-sized-to-fit-2026-11-06) · [Save as PDF Through the Print Dialog (2026-11-23)](#save-as-pdf-through-the-print-dialog-2026-11-23) · [Commentary in the PDF (2026-11-23)](#commentary-in-the-pdf-2026-11-23) · [Read and Play on a Phone (2026-11-23)](#read-and-play-on-a-phone-2026-11-23) · [Following the Playhead (2026-11-23)](#following-the-playhead-2026-11-23) · [Hiding Layers in the Reading View (2026-11-23)](#hiding-layers-in-the-reading-view-2026-11-23) · [The Toolbar Folds When Narrow (2026-11-23)](#the-toolbar-folds-when-narrow-2026-11-23) · [Link-Only Through the Beta (2026-11-23)](#link-only-through-the-beta-2026-11-23) · [Reading View Has a View Menu (2026-11-26)](#reading-view-has-a-view-menu-2026-11-26) · [Saving Back to the Page That Opened Strata (2026-11-27)](#saving-back-to-the-page-that-opened-strata-2026-11-27)
 
 **The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03) · [A Shorter New Analysis Dialog; Darker Interface Greys (2026-10-24)](#a-shorter-new-analysis-dialog-darker-interface-greys-2026-10-24) · [People Do Things in Strata's Text (2026-11-05)](#people-do-things-in-stratas-text-2026-11-05) · [The Inspector as Sections; Zoom in the Reading View (2026-11-05)](#the-inspector-as-sections-zoom-in-the-reading-view-2026-11-05) · [Quick Pick Types on Typed Spans; Timing With Boundaries; Commentary Links (2026-11-05)](#quick-pick-types-on-typed-spans-timing-with-boundaries-commentary-links-2026-11-05) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05) · [Where Controls Live (2026-11-26)](#where-controls-live-2026-11-26) · [The Controls Rebuilt (2026-11-26)](#the-controls-rebuilt-2026-11-26) · [Menus Are Names (2026-11-26)](#menus-are-names-2026-11-26) · [The App Bar (2026-11-26)](#the-app-bar-2026-11-26) · [First-Run Text (2026-11-26)](#first-run-text-2026-11-26) · [Merge, Split and Delete Confirm With a Toast (2026-11-26)](#merge-split-and-delete-confirm-with-a-toast-2026-11-26) · [Showing and Hiding the Grid (2026-11-26)](#showing-and-hiding-the-grid-2026-11-26) · [The Bars Menu Waits for the Bar Layer (2026-11-26)](#the-bars-menu-waits-for-the-bar-layer-2026-11-26) · [Tempo Gets a Tool Row (2026-11-26)](#tempo-gets-a-tool-row-2026-11-26) · [UI Review: the Layer Menu Folds, Quick Pick Counts Bars (2026-11-26)](#ui-review-the-layer-menu-folds-quick-pick-counts-bars-2026-11-26) · [Help Is a Page (2026-11-26)](#help-is-a-page-2026-11-26)
 
@@ -6454,3 +6455,52 @@ minimum, or make two overlap, does nothing and says so.
 lib/linkedBoundaries.ts (`followLinks`, `moveAlone`); lib/nearMisses.ts;
 `moveBoundaryTo` and `lineUpWith` in the store; SegmentLayers
 (`NearMissMarks`); `src/test/nearMisses.test.ts`, `src/test/groupSpans.test.ts`.
+
+---
+
+## Saving Back to the Page That Opened Strata (2026-11-27)
+
+*From the maintainer, who keeps his analyses in a private research database
+that opens them in Strata: could he save his changes to the copy he opened,
+instead of downloading the file and uploading it again? He approved handing
+the file back to the opening tab, over Strata signing in to the database or a
+one-time upload link.*
+
+**Decision.** A page that keeps analyses opens Strata on a file with
+`?src=<file>&return=<its origin>[&returnName=<its name>]`, in a tab it opens
+itself. Strata then offers **Save to <name>** first in the File menu, on
+Ctrl/⌘S; Download stays below it. Saving sends the file's text to the tab
+that opened Strata by window message; that page saves it with its own
+sign-in and answers.
+- **The exchange** (`lib/saveBack.ts`): Strata sends `strata:save` with an
+  `id`, the file's `text` and a `filename`. The page answers
+  `strata:save-received` within 10 seconds, then, when it's done,
+  `strata:saved`, `strata:save-refused` with a `reason`, or
+  `strata:save-cancelled`. Only the receipt has a deadline, because the page
+  may ask the analyst something first (a draft or the published version, or
+  what to do about a newer copy).
+- **Only to the page that gave the file:** the message goes to
+  `window.opener`, addressed to the `return` origin, so the browser drops it
+  if that tab has moved elsewhere. Replies count only from that tab, at that
+  origin, for that `id`. `return` must be a whole https site (http only on
+  localhost).
+- **Only the analysis it opened:** Save to … belongs to that one load. Opening
+  or starting another analysis, or the demo, removes it. A tab opened from a
+  bookmark or a pasted link has no opener, and ignores `return`.
+- **What the analyst sees:** a toast while it sends ("Sending to …"), another
+  once the page has it ("… has it. Switch to its tab to finish saving."), and
+  "Saved to …" at the end, which also clears the unsaved mark. A refusal shows
+  the page's reason. If the page never confirms (its tab closed or reloaded),
+  or its tab closes while it asks, Strata says so and suggests Download.
+**Rejected.** *Strata signs in to the page's service:* a public, forkable app
+would hold someone's session for one private backend. *A one-time upload
+link in the address:* a write credential in browser history for its
+lifetime, and a new endpoint for every host.
+**Why.** Strata stays a one-file tool with no accounts and no server, as
+"Link-Only Through the Beta" set out. The write happens inside the page that
+already has the right to make it. Any site that keeps analyses can use it,
+because nothing in Strata names one. It is the embed's window messages
+("Embedding an Analysis"), pointed the other way.
+lib/saveBack.ts (`saveBackParam`, `sendToOpener`); `saveToHost` in
+hooks/useFileIO.ts; the File menu and Ctrl/⌘S in App.tsx; `saveBack` in the
+UI store; `src/test/saveBack.test.ts`.
