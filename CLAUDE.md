@@ -65,7 +65,7 @@ reachable through pull-request refs, forks and clones.
    the commits about to be pushed. A `PreToolUse` hook in `.claude/settings.json`
    runs it automatically before `git push`. When it flags something, stop and ask
    rather than working around it. It flags:
-   - **new files outside the source tree:** anything not under `src/`, `schema/`,
+   - **new files outside the source tree:** anything not under `src/`, `api/`, `schema/`,
      `docs/`, `widgets/`, `public/`, `.github/`, `.claude/`, `scripts/` or the
      root config files;
    - **content files:** added or changed `.strata` files, images, PDFs, audio or

@@ -39,7 +39,7 @@ If the music is regular, you can lay out the sections from the tempo instead. Wi
 
 1. Click **Save As** to choose where the `.strata` file goes. In Chrome or Edge, the first button then reads **Save**. Click it, or press Ctrl+S (⌘S on a Mac), to write back to that file. In other browsers, click **Download** to save a fresh copy each time.
 2. Click **Reading view** to see the analysis the way a reader will, with editing off.
-3. To share, put the file online (Dropbox, OneDrive, GitHub, or your own site). Then click **Share…** for a link that opens it in Strata.
+3. To share, put the file online (Dropbox, OneDrive, Google Drive, GitHub, or your own site). Then click **Share…** for a link that opens it in Strata.
 4. Click **Export** to save the diagram as a figure (SVG, PNG, or PDF) or the commentary as a web page or Markdown. A PDF can carry the commentary for its range after the figure.
 
 ## Keys worth knowing
