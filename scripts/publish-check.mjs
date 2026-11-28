@@ -33,7 +33,7 @@ const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const git = (...args) => execFileSync('git', ['-C', REPO, ...args], { encoding: 'utf8' }).trim()
 
 // ── What counts as source ────────────────────────────────────────────────────
-const SOURCE_DIRS = ['src/', 'schema/', 'docs/', 'widgets/', 'public/', '.github/', '.claude/', 'scripts/']
+const SOURCE_DIRS = ['src/', 'api/', 'schema/', 'docs/', 'widgets/', 'public/', '.github/', '.claude/', 'scripts/']
 const ROOT_FILES = new Set([
   'CLAUDE.md', 'README.md', 'LICENSE', 'CONTRIBUTING.md', 'CONTRIBUTING-VOCAB.md', '.gitignore',
   'package.json', 'package-lock.json', 'index.html', 'components.json', 'vite.config.ts',
