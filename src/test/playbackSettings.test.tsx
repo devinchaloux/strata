@@ -10,7 +10,7 @@ import { useUIStore } from '@/store/uiStore'
 
 afterEach(() => {
   cleanup()
-  useUIStore.setState({ playbackRate: 1, listeningDelayOn: false })
+  useUIStore.setState({ playbackRate: 1, listeningDelayOn: false, keepPitch: true })
 })
 
 function open(props: Partial<React.ComponentProps<typeof PlaybackSettingsMenu>> = {}) {
@@ -55,5 +55,18 @@ describe('PlaybackSettingsMenu', () => {
     open({ embed: true })
     expect(screen.queryByRole('button', { name: 'Change source…' })).toBeNull()
     expect(screen.getByRole('button', { name: /Headphone delay/ })).toBeTruthy()
+  })
+})
+
+describe('Keep pitch', () => {
+  it('shows for an audio file, not for YouTube', () => {
+    open()
+    fireEvent.click(screen.getByRole('button', { name: /^Speed/ }))
+    expect(screen.queryByLabelText('Keep pitch')).toBeNull()
+    cleanup()
+    open({ sourceKind: 'local' })
+    fireEvent.click(screen.getByRole('button', { name: /^Speed/ }))
+    fireEvent.click(screen.getByLabelText('Keep pitch'))
+    expect(useUIStore.getState().keepPitch).toBe(false)
   })
 })

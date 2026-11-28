@@ -109,6 +109,7 @@ export function useAudioPlayer(file: File | null, sourceOffset: number) {
     objectUrlRef.current = url
     const audio = new Audio(url)
     audio.preload = 'metadata'
+    audio.preservesPitch = useUIStore.getState().keepPitch
     audioRef.current = audio
 
     audio.addEventListener('loadedmetadata', () => {
@@ -140,6 +141,13 @@ export function useAudioPlayer(file: File | null, sourceOffset: number) {
     if (audioRef.current && file) reportDuration(audioRef.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceOffset])
+
+  // Keep pitch off: slowed audio plays lower, like tape, and its attacks stay
+  // sharp, which is what microtiming listens for (lib/playbackRate.ts).
+  const keepPitch = useUIStore((s) => s.keepPitch)
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.preservesPitch = keepPitch
+  }, [keepPitch])
 
   useEffect(() => {
     aliveRef.current = true

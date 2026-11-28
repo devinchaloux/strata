@@ -24,3 +24,15 @@ export function clampRate(rate: number, kind: SourceKind): number {
 export function formatRate(rate: number): string {
   return `${Math.round(rate * 100) / 100}×`
 }
+
+/**
+ * The next speed up or down for Shift+> and Shift+<, as YouTube's player
+ * steps: by 0.25× from 0.25× to 2×, and on an audio file one step further
+ * down, to its slowest. A custom speed steps to the nearest one past it.
+ */
+export function stepRate(rate: number, direction: 1 | -1, kind: SourceKind): number {
+  const { min, max } = rateRange(kind)
+  const ladder = [...(min < 0.25 ? [min] : []), 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].filter((r) => r <= max)
+  const next = direction > 0 ? ladder.find((r) => r > rate + 0.001) : [...ladder].reverse().find((r) => r < rate - 0.001)
+  return next ?? rate
+}

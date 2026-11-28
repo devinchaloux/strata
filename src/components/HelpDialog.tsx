@@ -44,6 +44,7 @@ const KEYS: [string, [string, string][]][] = [
       ['Shift+B', 'End the span under the playhead there'],
       ['R', 'Re-tap the nearest boundary on the beat: it moves to the average of your re-taps'],
       ['J / L', 'Back / forward 10 seconds'],
+      ['Shift+< / Shift+>', 'Slower / faster, a quarter-speed step (more in ⚙)'],
       ['Home', 'Back to the start'],
       ['M', 'Place a point marker at the playhead'],
       ['T', 'Tap along on the beat to lay the grid'],
@@ -54,7 +55,7 @@ const KEYS: [string, [string, string][]][] = [
     'Metronome (while it’s on)',
     [
       ['[ / ]', 'Tempo down / up 0.01 BPM (with Shift, 0.1)'],
-      [', / .', 'Beat earlier / later by 5 ms (with Shift, 25 ms)'],
+      [', / .', `Beat earlier / later by 5 ms (with ${ALT}, 25 ms)`],
       ['D', 'Downbeat is here: set the exact tempo'],
     ],
   ],

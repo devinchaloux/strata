@@ -6,6 +6,7 @@ import { useUIStore } from '@/store/uiStore'
 import { useYouTubePlayer } from '@/hooks/useYouTubePlayer'
 import { useAudioPlayer } from '@/hooks/useAudioPlayer'
 import { PlaybackSettingsMenu } from '@/components/PlaybackSettingsMenu'
+import { formatRate, stepRate } from '@/lib/playbackRate'
 import { extractVideoId, formatClock, isInputFocused } from '@/lib/youtube'
 import { pickAudioFile } from '@/lib/fileIO'
 import { setPlayerElement } from '@/lib/playerClearance'
@@ -288,7 +289,8 @@ export function PlayerDock() {
   }, [duration, updateMeta])
 
   // ── Keyboard shortcuts (engine-agnostic) ──────────────────────────────────
-  // K play/pause (as Space) · J back 10s · L forward 10s · Home rewind. Modifier check
+  // K play/pause (as Space) · J back 10s · L forward 10s · Home rewind ·
+  // Shift+< Shift+> slower, faster. Modifier check
   // matters: Ctrl+J is merge — without the guard both actions would fire.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -319,6 +321,16 @@ export function PlayerDock() {
           e.preventDefault()
           cmds.seek(Math.min(ui.duration, ui.currentTime + 10))
           break
+        // Speed, as in YouTube's player (lib/playbackRate.ts stepRate).
+        case '<':
+        case '>': {
+          e.preventDefault()
+          const kind = useDocumentStore.getState().document?.source.type === 'local' ? 'local' : 'youtube'
+          const next = stepRate(ui.playbackRate, e.key === '>' ? 1 : -1, kind)
+          if (next !== ui.playbackRate) cmds.setRate(next)
+          ui.showToast(`Speed ${next === 1 ? 'normal' : formatRate(next)}`, { undo: false })
+          break
+        }
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -492,12 +504,13 @@ export function PlayerDock() {
   }, [clickOn])
 
   // Beat matching by key while the metronome is on (store/beatMatch.ts): [ ]
-  // tempo, , . earlier or later, D "downbeat is here"; Shift for a bigger step.
+  // tempo (Shift for a bigger step), , . earlier or later (Alt/Option for a
+  // bigger step), D "downbeat is here".
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const ui = useUIStore.getState()
-      if (!ui.clickOn || ui.readingView || e.metaKey || e.ctrlKey || e.altKey || isInputFocused()) return
-      const action = beatMatchKey(e.key)
+      if (!ui.clickOn || ui.readingView || e.metaKey || e.ctrlKey || isInputFocused()) return
+      const action = beatMatchKey(e)
       if (!action || !useDocumentStore.getState().document?.beatGrid?.length) return
       e.preventDefault()
       beatMatch(action, engineRef.current.now())

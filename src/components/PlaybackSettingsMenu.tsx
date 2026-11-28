@@ -15,6 +15,7 @@ import { Check, ChevronLeft, ChevronRight, Settings } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { HeadphoneDelayPanel } from '@/components/HeadphoneDelayPanel'
 import { useUIStore } from '@/store/uiStore'
+import { Switch } from '@/components/ui/switch'
 import { PRESET_RATES, clampRate, formatRate, rateRange, type SourceKind } from '@/lib/playbackRate'
 
 type View = 'main' | 'speed' | 'delay'
@@ -43,6 +44,8 @@ export function PlaybackSettingsMenu({
   const rate = useUIStore((s) => s.playbackRate)
   const delayOn = useUIStore((s) => s.listeningDelayOn)
   const delayMs = useUIStore((s) => s.listeningDelayMs)
+  const keepPitch = useUIStore((s) => s.keepPitch)
+  const setKeepPitch = useUIStore((s) => s.setKeepPitch)
   const [view, setView] = useState<View>('main')
   const [open, setOpen] = useState(false)
   const range = rateRange(sourceKind)
@@ -166,10 +169,21 @@ export function PlaybackSettingsMenu({
               </label>
               <p className="mt-1.5 leading-relaxed text-muted-foreground">
                 {sourceKind === 'youtube'
-                  ? `YouTube plays ${formatRate(range.min)} at the slowest. For slower, link an audio file.`
-                  : `From ${formatRate(range.min)} to ${formatRate(range.max)}.`}
+                  ? `YouTube plays ${formatRate(range.min)} at the slowest, and always keeps the pitch. For slower, or tape-style slowing, link an audio file of the recording.`
+                  : `From ${formatRate(range.min)} to ${formatRate(range.max)}. Shift+< and Shift+> step it.`}
               </p>
             </div>
+            {sourceKind === 'local' && (
+              <label className="mt-1 flex cursor-pointer items-center justify-between gap-3 border-t border-border px-2 pt-2">
+                <span className="flex flex-col">
+                  <span className="text-foreground">Keep pitch</span>
+                  <span className="leading-relaxed text-muted-foreground">
+                    Off plays slowed audio lower, like tape, with sharper attacks for timing.
+                  </span>
+                </span>
+                <Switch checked={keepPitch} onCheckedChange={setKeepPitch} aria-label="Keep pitch" />
+              </label>
+            )}
           </div>
         )}
 

@@ -18,3 +18,21 @@ describe('playback speed', () => {
     expect(formatRate(1)).toBe('1×')
   })
 })
+
+import { stepRate } from '@/lib/playbackRate'
+
+describe('stepRate', () => {
+  it('steps by a quarter, as YouTube does', () => {
+    expect(stepRate(1, 1, 'youtube')).toBe(1.25)
+    expect(stepRate(1, -1, 'youtube')).toBe(0.75)
+    expect(stepRate(0.25, -1, 'youtube')).toBe(0.25)
+    expect(stepRate(2, 1, 'youtube')).toBe(2)
+  })
+  it('goes one step further down on an audio file', () => {
+    expect(stepRate(0.25, -1, 'local')).toBe(0.1)
+  })
+  it('steps a custom speed to the nearest one past it', () => {
+    expect(stepRate(0.35, 1, 'youtube')).toBe(0.5)
+    expect(stepRate(0.35, -1, 'youtube')).toBe(0.25)
+  })
+})

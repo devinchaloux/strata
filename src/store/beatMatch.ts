@@ -46,17 +46,24 @@ export function beatMatch(
   return pinned as { bpm: number; bars: number } | null
 }
 
-/** The action for a key press while the metronome is on, or null. */
-export function beatMatchKey(key: string): BeatMatchAction | null {
-  switch (key) {
+/**
+ * The action for a key press while the metronome is on, or null. The bigger
+ * nudge is Alt/Option with , or . (read by physical key, since Option changes
+ * the character on a Mac); Shift+< and Shift+> step the playback speed.
+ */
+export function beatMatchKey(e: { key: string; code?: string; altKey?: boolean }): BeatMatchAction | null {
+  if (e.altKey) {
+    if (e.code === 'Comma') return 'earlier-coarse'
+    if (e.code === 'Period') return 'later-coarse'
+    return null
+  }
+  switch (e.key) {
     case '[': return 'tempo-down'
     case ']': return 'tempo-up'
     case '{': return 'tempo-coarse-down'
     case '}': return 'tempo-coarse-up'
     case ',': return 'earlier'
     case '.': return 'later'
-    case '<': return 'earlier-coarse'
-    case '>': return 'later-coarse'
     case 'd':
     case 'D': return 'pin'
     default: return null
