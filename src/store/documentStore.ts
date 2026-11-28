@@ -13,6 +13,7 @@ import { normalizePlan, runTimes, type NormalizeMode } from '@/lib/normalize'
 import { detectTempoMap, rampsPlan, type MapPiece } from '@/lib/tempoMap'
 import { gridFromBars as makeGridFromBars, spliceGrid } from '@/lib/gridFromBars'
 import { beatsPerBarAt } from '@/lib/tempoLane'
+import { shiftAllTimes } from '@/lib/listeningDelay'
 import type { SegmentationData } from '@/types/strata'
 import { mergeVocabPack, type MergeResult, type VocabPack } from '@/lib/vocabPack'
 import { placeBoundaryInSpans, setSpanEdge, findOverlaps, endSpanAtTime, snapSpansToGrid, rippleSpanEnd, extendSpanToEnd, MIN_SPAN_WIDTH } from '@/lib/spanEdit'
@@ -272,6 +273,10 @@ interface DocumentState {
   stepGridTempo: (time: number, deltaBpm: number) => void
   nudgeGrid: (time: number, seconds: number) => void
   pinDownbeat: (time: number) => { bpm: number; bars: number } | null
+  // Every time in the document moved by `seconds`, as one undo step
+  // (lib/listeningDelay.ts shiftAllTimes): the repair for an analysis marked
+  // by ear with the headphones' delay uncorrected. Returns why it couldn't, or null.
+  shiftAllTimes: (seconds: number) => string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -1493,6 +1498,15 @@ const useDocumentStore = create<DocumentState>()(
         if (bpm == null) return null
         get().updateGridSegment(seg.id, { bpm })
         return { bpm, bars: Math.round(((time - seg.start) * bpm) / (seg.beatsPerBar * 60)) }
+      },
+
+      shiftAllTimes: (seconds) => {
+        const doc = get().document
+        if (!doc) return 'No document.'
+        const result = shiftAllTimes(doc, seconds)
+        if (!result.ok) return result.reason
+        set({ document: { ...result.document, updatedAt: now() } })
+        return null
       },
 
       removeGridSegment: (id) => {

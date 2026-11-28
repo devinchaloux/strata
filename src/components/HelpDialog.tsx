@@ -24,8 +24,8 @@ const MOD = MAC ? '⌘' : 'Ctrl'
 const ALT = MAC ? 'Option' : 'Alt'
 
 const STEPS: [string, string][] = [
-  ['Start', 'Click New analysis and link a YouTube video or audio file. The video plays in the corner; its dock button moves it below the play bar.'],
-  ['Mark', 'Play (Space) and press B at each boundary you hear. Press M to place a point marker, such as a cadence. A boundary a little off? Play it again and press R on the beat: the nearest boundary moves there, and to the average of your re-taps on each pass. If you know the tempo and phrase length, use Quick setup by tempo to fill a layer with a span every few bars.'],
+  ['Start', 'Click New analysis and link a YouTube video or audio file. The video plays in the corner; ⚙ in the play bar moves it below the play bar, and holds the speed.'],
+  ['Mark', 'Play (Space) and press B at each boundary you hear. Press M to place a point marker, such as a cadence. A boundary a little off? Play it again and press R on the beat: the nearest boundary moves there, and to the average of your re-taps on each pass. On Bluetooth headphones, set their delay under ⚙ › Headphone delay in the play bar first, so marks land where you hear them. If you know the tempo and phrase length, use Quick setup by tempo to fill a layer with a span every few bars.'],
   ['Describe', 'Click a span to set its type and details in the Inspector. Drag a boundary to move it. Click a section’s header in the Inspector to open or close it; double-click it to open that section alone. With Quick pick (above the diagram), a row of types, shapes, or fills appears over the spans you select: click one, or press its number key.'],
   ['Grid', 'Optional: tap T on the beat, or set a tempo in the Grid menu, to number bars and snap to beats. After four taps the grid appears; each further tap fine-tunes the tempo. Type a selected span’s length in bars, or step it with − and +: the spans after it move too. The Metronome in the play bar clicks the grid over the track. To match it, line up the first beats, then listen further in. If the click pulls ahead, lower the tempo. If it lags, raise it. For the exact tempo, pause on a downbeat far into the track and press Downbeat is here (D). To hide the grid without losing it, turn off Show in the Grid menu.'],
   ['Layers', `Add a layer (+ above the layer names) for another level of form, or another framework. Group into (several spans) builds the level above from the one below; Copy to layer (one span) copies it to any other layer, up or down. Boundaries at the same moment in different layers move together. Hold ${ALT} while dragging to move one alone. An amber mark shows a boundary just off another layer’s line. Click it to move the boundary onto that line.`],
@@ -44,6 +44,7 @@ const KEYS: [string, [string, string][]][] = [
       ['Shift+B', 'End the span under the playhead there'],
       ['R', 'Re-tap the nearest boundary on the beat: it moves to the average of your re-taps'],
       ['J / L', 'Back / forward 10 seconds'],
+      ['Shift+< / Shift+>', 'Slower / faster, a quarter-speed step (more in ⚙)'],
       ['Home', 'Back to the start'],
       ['M', 'Place a point marker at the playhead'],
       ['T', 'Tap along on the beat to lay the grid'],
@@ -54,7 +55,7 @@ const KEYS: [string, [string, string][]][] = [
     'Metronome (while it’s on)',
     [
       ['[ / ]', 'Tempo down / up 0.01 BPM (with Shift, 0.1)'],
-      [', / .', 'Beat earlier / later by 5 ms (with Shift, 25 ms)'],
+      [', / .', `Beat earlier / later by 5 ms (with ${ALT}, 25 ms)`],
       ['D', 'Downbeat is here: set the exact tempo'],
     ],
   ],

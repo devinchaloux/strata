@@ -1,10 +1,12 @@
 import { useRef, useEffect, useState, useCallback, useLayoutEffect } from 'react'
-import { Link2, CircleAlert, PictureInPicture2, PanelBottom, ArrowDown, ArrowUp } from 'lucide-react'
+import { CircleAlert, ArrowDown, ArrowUp } from 'lucide-react'
 import { useDocumentStore } from '@/store/documentStore'
 import { usePhone } from '@/hooks/usePhone'
 import { useUIStore } from '@/store/uiStore'
 import { useYouTubePlayer } from '@/hooks/useYouTubePlayer'
 import { useAudioPlayer } from '@/hooks/useAudioPlayer'
+import { PlaybackSettingsMenu } from '@/components/PlaybackSettingsMenu'
+import { formatRate, stepRate } from '@/lib/playbackRate'
 import { extractVideoId, formatClock, isInputFocused } from '@/lib/youtube'
 import { pickAudioFile } from '@/lib/fileIO'
 import { setPlayerElement } from '@/lib/playerClearance'
@@ -18,7 +20,6 @@ import { MetronomePopover } from './MetronomePopover'
 import { newGestureKey, withHistoryGroup } from '@/store/history'
 import { SeekBar } from './SeekBar'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
-import type { PlaybackRate } from '@/store/uiStore'
 
 // ---------------------------------------------------------------------------
 // Icons (inline SVG — no dependency on lucide-react)
@@ -107,8 +108,6 @@ function TransportButton({
 // PlayerDock — source-agnostic transport bar + media panel
 // ---------------------------------------------------------------------------
 
-const RATES: PlaybackRate[] = [0.5, 0.75, 1, 1.25]
-
 /**
  * YouTube's embed rules require the player's viewport to be at least 200×200
  * and the player to stay present, so the video can move but never collapse or
@@ -136,7 +135,7 @@ export const READING_VIDEO_W = 'min(640px, 46%)'
  *
  * Also owns two pieces of source-linking behavior:
  * - The link affordance: "Link video or audio" when the document has no
- *   playable source; a swap icon once linked; "Locate" when a local-source
+ *   playable source; Change source… in the ⚙ menu once linked; "Locate" when a local-source
  *   document needs its audio file re-picked this session.
  * - Duration adoption: when a document with duration 0 (fresh analysis) gets
  *   a source whose metadata reports a duration, that duration is adopted into
@@ -154,7 +153,6 @@ export function PlayerDock() {
     currentTime,
     duration,
     playbackState,
-    playbackRate,
     playerStatus,
     playerError,
     videoMini,
@@ -291,7 +289,8 @@ export function PlayerDock() {
   }, [duration, updateMeta])
 
   // ── Keyboard shortcuts (engine-agnostic) ──────────────────────────────────
-  // K play/pause (as Space) · J back 10s · L forward 10s · Home rewind. Modifier check
+  // K play/pause (as Space) · J back 10s · L forward 10s · Home rewind ·
+  // Shift+< Shift+> slower, faster. Modifier check
   // matters: Ctrl+J is merge — without the guard both actions would fire.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -322,6 +321,16 @@ export function PlayerDock() {
           e.preventDefault()
           cmds.seek(Math.min(ui.duration, ui.currentTime + 10))
           break
+        // Speed, as in YouTube's player (lib/playbackRate.ts stepRate).
+        case '<':
+        case '>': {
+          e.preventDefault()
+          const kind = useDocumentStore.getState().document?.source.type === 'local' ? 'local' : 'youtube'
+          const next = stepRate(ui.playbackRate, e.key === '>' ? 1 : -1, kind)
+          if (next !== ui.playbackRate) cmds.setRate(next)
+          ui.showToast(`Speed ${next === 1 ? 'normal' : formatRate(next)}`, { undo: false })
+          break
+        }
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -473,7 +482,9 @@ export function PlayerDock() {
   useEffect(() => {
     if (!clickOn) return
     const scheduler = new ClickScheduler({
-      now: () => engineRef.current.now(),
+      // The player's own time: the clicks reach the headphones as late as the
+      // media does, so they take no listening delay (lib/listeningDelay.ts).
+      now: () => engineRef.current.mediaNow(),
       playing: () => useUIStore.getState().playbackState === 'playing',
       rate: () => useUIStore.getState().playbackRate,
       volume: () => useUIStore.getState().clickVolume,
@@ -493,12 +504,13 @@ export function PlayerDock() {
   }, [clickOn])
 
   // Beat matching by key while the metronome is on (store/beatMatch.ts): [ ]
-  // tempo, , . earlier or later, D "downbeat is here"; Shift for a bigger step.
+  // tempo (Shift for a bigger step), , . earlier or later (Alt/Option for a
+  // bigger step), D "downbeat is here".
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const ui = useUIStore.getState()
-      if (!ui.clickOn || ui.readingView || e.metaKey || e.ctrlKey || e.altKey || isInputFocused()) return
-      const action = beatMatchKey(e.key)
+      if (!ui.clickOn || ui.readingView || e.metaKey || e.ctrlKey || isInputFocused()) return
+      const action = beatMatchKey(e)
       if (!action || !useDocumentStore.getState().document?.beatGrid?.length) return
       e.preventDefault()
       beatMatch(action, engineRef.current.now())
@@ -572,26 +584,9 @@ export function PlayerDock() {
           {formatClock(currentTime)} / {formatClock(duration)}
         </span>
 
-        {/* Playback rate selector */}
-        <select
-          value={String(playbackRate)}
-          onChange={(e) => setRate(Number(e.target.value) as PlaybackRate)}
-          disabled={!isReady}
-          title="Playback rate"
-          aria-label="Playback rate"
-          className="h-7 rounded border border-border bg-card text-xs text-foreground px-1
-            hover:bg-accent disabled:opacity-40 cursor-pointer transition-colors
-            focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-card"
-        >
-          {RATES.map((r) => (
-            <option key={r} value={String(r)}>
-              {r}×
-            </option>
-          ))}
-        </select>
-
         {/* Metronome: a click on the grid's beats, and beat matching. */}
         {!readingView && !embed && <MetronomePopover disabled={!isReady} />}
+
 
         {/* The point-marker button and the Spacebar context indicator both used
             to sit here. They moved into the Segments block's control bar
@@ -637,15 +632,6 @@ export function PlayerDock() {
           </button>
         )}
 
-        {doc && isLinked && !readingView && (
-          <TransportButton
-            onClick={() => setLinkSourceOpen(true)}
-            title="Change source…"
-          >
-            <Link2 size={15} strokeWidth={1.75} />
-          </TransportButton>
-        )}
-
         {/* Scroll to the docked video and back. It can't be hidden (YouTube's
             rules), so this is how it gets out of the way. */}
         {videoId && !videoMini && !readingView && (
@@ -668,20 +654,17 @@ export function PlayerDock() {
           </Tooltip>
         )}
 
-        {/* Video placement — docked below, or a mini player in the corner.
-            There is deliberately no "hide": see VIDEO_MIN below. */}
-        {videoId && !readingView && (
-          <TransportButton
-            onClick={toggleVideoMini}
-            title={videoMini ? 'Dock the video below the play bar' : 'Shrink the video to a corner'}
-          >
-            {videoMini ? (
-              <PanelBottom size={15} strokeWidth={1.75} />
-            ) : (
-              <PictureInPicture2 size={15} strokeWidth={1.75} />
-            )}
-          </TransportButton>
-        )}
+        {/* Speed, headphone delay, and in the editor the source and the
+            video's place: set now and then, so behind one ⚙ (docs/decisions.md,
+            "Speed and Delay in One Settings Menu"). */}
+        <PlaybackSettingsMenu
+          ready={isReady}
+          sourceKind={source?.type === 'local' ? 'local' : 'youtube'}
+          onRate={(r) => setRate(r)}
+          embed={embed}
+          onChangeSource={doc && isLinked && !readingView && !embed ? () => setLinkSourceOpen(true) : undefined}
+          videoPlacement={videoId && !readingView && !embed ? { mini: videoMini, toggle: toggleVideoMini } : undefined}
+        />
       </div>
 
       {/* ── Video panel ── */}

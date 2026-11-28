@@ -109,6 +109,7 @@ aren't part of this repository.
 - [The view follows the playhead only while it plays.](#shared-timeline-axis-phase-16)
 - [Clicking the ruler seeks; a paused click on a span seeks there; a double-click plays from it; a seek while paused stays paused.](#paused-clicks-stay-paused-open-caps-fill-and-join-issue-links-2026-10-01)
 - [Key presses read the player's exact time.](#getting-around-the-timeline-2026-10-01)
+- [The playhead and marks follow what is heard: a headphone delay, set per browser and never in the file, comes off while it plays, and the playhead never steps back as playback starts.](#listening-delay-is-the-listeners-2026-11-27)
 - [The beat grid is a list of segments, each with one tempo and meter; beats are computed, and a stretch between segments is free.](#beat-grid-2026-09-29)
 - [Bar numbers run on across a free stretch unless a segment sets its first bar.](#beat-grid-2026-09-29)
 - [T taps the grid in, rounded to a whole BPM and reaching back to where the music starts; Shift+T stops it.](#tap-along-refinements-click-to-seek-a-visible-pause-2026-10-01)
@@ -131,7 +132,9 @@ aren't part of this repository.
 - [Normalize evens out a run of selected bars, Steady or Smooth (or Steady between ramps, when offered), with a preview; the run's ends stay, and it can copy to a new layer instead.](#normalize-2026-11-25)
 - [The beat grid can be made from the bar layer, or from selected bars: a stretch per bar at its own tempo, equal tempos merged, replacing the grid only where the bars are.](#the-beat-grid-from-the-bars-2026-11-25)
 - [Fit boundaries to the grid moves a layer's boundaries to bars or beats.](#b-in-an-empty-stretch-shiftb-fit-to-the-grid-2026-10-02)
-- [Playback rates are 0.5×, 0.75×, 1× and 1.25×; rewind goes to 0:00.](#player-chrome-phase-03)
+- [Rewind goes to 0:00.](#player-chrome-phase-03)
+- [The play bar's ⚙ holds speed (0.25–1.25× and a custom speed, 0.25× at the slowest on YouTube, 0.1× on an audio file), the headphone delay, changing the source and where the video sits; a speed other than 1× and a delay that's on show beside it. In an embed it holds only speed and delay.](#speed-and-delay-in-one-settings-menu-2026-11-27)
+- [Shift+< and Shift+> step the speed by a quarter, as in YouTube; the metronome's bigger nudge is Alt/Option with , and . instead. An audio file can play with its pitch kept or, like tape, lowered.](#speed-keys-and-tape-style-slowing-2026-11-28)
 - [The play bar's clock reads m:ss; editable times keep milliseconds.](#ui-review-fixes-and-tighter-chrome-2026-09-27)
 
 **The player**
@@ -6504,3 +6507,131 @@ because nothing in Strata names one. It is the embed's window messages
 lib/saveBack.ts (`saveBackParam`, `sendToOpener`); `saveToHost` in
 hooks/useFileIO.ts; the File menu and Ctrl/⌘S in App.tsx; `saveBack` in the
 UI store; `src/test/saveBack.test.ts`.
+
+---
+
+## Listening Delay Is the Listener's (2026-11-27)
+
+*From the maintainer: "I think I need a 'calibrate Bluetooth headphone' option
+in Strata." Their Opus (Eric Prydz) analysis was marked on Bluetooth
+headphones and sits late; analyses marked on wired headphones look early when
+played back over Bluetooth. Also: "there is a bit of a lag when clicking play
+for the YouTube video … the playhead starts but then it jumps back when the
+audio plays."*
+
+**Decision.** A **headphone delay**, in the play bar's Delay panel: how many
+milliseconds (0–500) these headphones play behind the player, and a switch
+to take it off or not. It's remembered in this browser
+(`uiStore.listeningDelayMs`, `listeningDelayOn`) and is never in the file.
+- **Display and input together.** While playing, both engines give the time
+  being *heard*: the reading less the delay, scaled by the playback rate (the
+  delay is wall-clock time). The playhead, B, M, R, T and D all read it, so the
+  playhead and new marks agree with each other and with the ear. Paused, the
+  playhead is the player's time. Seeking is unchanged: a span at 1:34 still
+  plays from 1:34.
+- **The playhead never steps back while playing** by less than a jump (the
+  delay plus half a second), and holds while buffering (`PlayheadClock`). When
+  Play is pressed it holds at the paused position until the heard time
+  catches up, instead of moving back by the delay. This also cures YouTube's
+  own start-up wobble: its reading runs on before the sound starts, then
+  snaps back.
+- **The metronome reads the player's own time** (`mediaNow`), because its
+  clicks reach the headphones as late as the media does.
+- **Calibrating** plays a click every 0.6 s and flashes a dot the set delay
+  after each click is sent; the analyst moves the slider until they land
+  together. Web Audio and the YouTube player go through the same headphones,
+  so their delay is close, though not guaranteed identical.
+- **The repair for an analysis already marked late:** *Move every mark earlier*
+  in Document settings (Advanced) moves every time in the document (spans,
+  point markers, the beat grid, commentary ranges) by the amount, as one undo
+  step. It starts from the headphone delay. Times on 0:00 or the track's end
+  stay put, as they mark the recording's edges; it refuses rather than shrink
+  a span below the shortest a span can be.
+**Rejected.** *Storing the delay in the file:* it belongs to the listener's
+headphones, not to the analysis, the way `sourceOffset` belongs to the video;
+a reader on wired headphones would be thrown off by it. *Folding the repair
+into `sourceOffset`:* it would line the analysis up with this video only, and
+the offset resets on relinking to another source; the marks themselves are
+what's late. *Calibrating by tapping along to clicks:* it measures the
+headphones plus the analyst's own habit of tapping early or late, which their
+wired marks already carry, so the habit would be taken off twice. *Reading the
+delay from the browser* (`AudioContext.outputLatency`): it reports Web Audio's
+latency at best, unreliably for Bluetooth, and nothing for the YouTube player.
+**Open (the maintainer's call):** whether the read-only embed offers the
+setting to readers; for now it applies there when this browser has it on, but
+the panel is only in the editor. Named profiles (wired, AirPods …) if
+switching one delay on and off proves too coarse.
+lib/listeningDelay.ts (`PlayheadClock`, `shiftAllTimes`);
+hooks/playheadClock.ts; the two player hooks; components/HeadphonesPopover.tsx;
+`ShiftAllTimes` in DocumentSettingsDialog; `src/test/listeningDelay.test.ts`.
+
+---
+
+## Speed and Delay in One Settings Menu (2026-11-27)
+
+*From the UI review after the headphone delay landed: the play bar held up to
+eleven items. The maintainer: "I would actually advocate for putting the speed
+multiplier in a deeper settings menu like it is on YouTube with a custom
+option for someone wanting to slow it down even further to do some
+microtiming." On the embed: "a good idea … but it should be quiet."*
+
+**Decision.** A ⚙ at the end of the play bar opens **playback settings**:
+- **Speed** (a submenu): 0.25×, 0.5×, 0.75×, Normal and 1.25×, and a
+  **custom** speed by slider or typed, in steps of 0.05. On YouTube it runs
+  0.25–2×, as YouTube plays nothing slower; on an audio file, 0.1–2×. When
+  YouTube rounds a speed it doesn't offer, the menu shows the speed it
+  actually plays (`onPlaybackRateChange`).
+- **Headphone delay** (a submenu): the panel that was the Delay button.
+- **Video** (editor only): in the corner or below the play bar, the former
+  dock button.
+- **Change source…** (editor only): the former link button.
+- **Nothing changes playback out of sight:** a speed other than 1× is written
+  beside the ⚙, and a dot marks the delay while it's on.
+- **In an embed** and the reading view, the ⚙ holds speed and delay only. In
+  an embed it's quiet: no dot, only the speed when it isn't 1×.
+The play bar keeps Rewind, Play, the Space label, the seek bar and time,
+Metronome, Video ↓ and the source prompts (Link, Locate). Metronome stays out
+because it's worked by key while it plays, and its on-dot matters.
+**Reverses** "Playback rates are 0.5×, 0.75×, 1× and 1.25×" (Player Chrome,
+Phase 0.3), which left out 0.25× as rarely needed and badly distorting: for
+microtiming, a slow, distorted pass is the point.
+**Rejected.** *Speed as a fifth play-bar control beside the delay:* both are
+set now and then, not worked while playing. *Hiding the speed entirely
+inside the menu:* a slowed track with nothing showing is a trap; YouTube
+shows nothing, and that's the part not copied.
+lib/playbackRate.ts; components/PlaybackSettingsMenu.tsx,
+HeadphoneDelayPanel.tsx; PlayerDock; `src/test/playbackSettings.test.tsx`,
+`playbackRate.test.ts`.
+
+---
+
+## Speed Keys and Tape-Style Slowing (2026-11-28)
+
+*From the maintainer, choosing among suggestions for this pass: speed keys
+"use the YouTube options", and a switch to slow an audio file without
+keeping its pitch.*
+
+**Decision.**
+- **Shift+< and Shift+>** step the speed as YouTube's player does: by 0.25×,
+  from 0.25× to 2×, and on an audio file one step further down, to 0.1×. A
+  custom speed steps to the nearest step past it. A toast names the new speed.
+  They work wherever the player does, the reading view included.
+- **The metronome's bigger nudge moves** from Shift+, and Shift+. (which are
+  < and >) to **Alt/Option with , and .**, read by physical key, since Option
+  changes the character typed on a Mac. Shift still takes the tempo's bigger
+  step ({ and }).
+- **Keep pitch** (Speed submenu, audio files only, on by default, remembered
+  in this browser): off, slowed audio plays lower, like tape. Keeping the pitch
+  stretches each sound, which blurs its attack, and the attack is what
+  microtiming listens for.
+- **Not for YouTube:** its player always keeps the pitch. Its embed API has no
+  setting for it, and the video element inside its frame is out of the page's
+  reach. The Speed submenu says so and points to linking an audio file of the
+  recording.
+**Why the keys and not others:** YouTube's are the ones the hand already
+knows. The nudge was the newer, rarer binding, used only with the metronome
+on.
+lib/playbackRate.ts (`stepRate`); store/beatMatch.ts (`beatMatchKey`);
+PlayerDock; `uiStore.keepPitch`; useAudioPlayer; PlaybackSettingsMenu;
+HelpDialog; `src/test/playbackRate.test.ts`, `beatMatchKey.test.ts`,
+`playbackSettings.test.tsx`.

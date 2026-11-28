@@ -146,11 +146,10 @@ on the smoothed and deviation views.
 
 ## 6. Related: playback speed
 
-Marking bars precisely is easier slowed down. The player offers 0.5×, 0.75×,
-1× and 1.25× today. The maintainer would like a custom rate, without it
-needing to be prominent or to look like YouTube's control. Local audio can
-play at any rate; what YouTube's embedded player accepts needs checking
-before a custom rate is designed.
+Marking bars precisely is easier slowed down. The play bar's ⚙ menu offers
+0.25×, 0.5×, 0.75×, 1× and 1.25×, and a custom speed: 0.25–2× on YouTube,
+whose player plays nothing slower, and 0.1–2× on an audio file
+(docs/decisions.md, "Speed and Delay in One Settings Menu").
 
 ## 7. Settled (2026-11-25)
 

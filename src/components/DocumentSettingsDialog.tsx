@@ -479,6 +479,8 @@ export function DocumentSettingsDialog({
             />
           </Field>
 
+          <ShiftAllTimes />
+
           {/* Read-only identity footer */}
           <div className="text-[11px] leading-relaxed text-muted-foreground">
             <p>Duration: {formatClock(doc.duration)}</p>
@@ -507,5 +509,59 @@ export function DocumentSettingsDialog({
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+/**
+ * The repair for an analysis marked by ear with Bluetooth headphones before
+ * their delay was taken off (lib/listeningDelay.ts shiftAllTimes): every mark
+ * landed that much late, so all of them move earlier at once, as one undo step.
+ * It starts from this browser's listening delay, which is usually the amount.
+ */
+function ShiftAllTimes() {
+  const shift = useDocumentStore((s) => s.shiftAllTimes)
+  const delayMs = useUIStore((s) => s.listeningDelayMs)
+  const [text, setText] = useState('')
+  const [status, setStatus] = useState<string | null>(null)
+  const shown = text === '' && delayMs > 0 ? String(delayMs) : text
+
+  function run() {
+    const n = Number(shown)
+    if (!Number.isFinite(n) || n <= 0) {
+      setStatus('Enter how many milliseconds late the marks are.')
+      return
+    }
+    const why = shift(-n / 1000)
+    setStatus(why ?? `Moved every mark ${n} ms earlier. Undo puts them back.`)
+  }
+
+  return (
+    <Field
+      label="Move every mark earlier (ms)"
+      tooltip="For marks made on Bluetooth headphones before their delay was set: they landed late by the delay. Moves spans, markers, the grid and commentary together; 0:00 and the end stay put."
+    >
+      <div className="flex items-center gap-2">
+        <input
+          className={inputClass}
+          inputMode="numeric"
+          placeholder="e.g. 200"
+          value={shown}
+          onChange={(e) => {
+            setText(e.target.value)
+            setStatus(null)
+          }}
+          onKeyDown={(e) => e.key === 'Enter' && run()}
+          aria-label="Milliseconds to move every mark earlier"
+        />
+        <Button size="sm" variant="outline" onClick={run}>
+          Move
+        </Button>
+      </div>
+      {status && (
+        <p className="mt-1 text-[11px] text-muted-foreground" role="status">
+          {status}
+        </p>
+      )}
+    </Field>
   )
 }

@@ -11,6 +11,7 @@ declare namespace YT {
     cueVideoById(videoId: string): void
     setPlaybackRate(suggestedRate: number): void
     getAvailablePlaybackRates(): number[]
+    getPlaybackRate(): number
     getCurrentTime(): number
     getDuration(): number
     getPlayerState(): number
@@ -37,6 +38,12 @@ declare namespace YT {
     onReady?: (event: PlayerEvent) => void
     onStateChange?: (event: OnStateChangeEvent) => void
     onError?: (event: OnErrorEvent) => void
+    onPlaybackRateChange?: (event: OnPlaybackRateChangeEvent) => void
+  }
+
+  interface OnPlaybackRateChangeEvent {
+    target: Player
+    data: number
   }
 
   interface PlayerEvent {

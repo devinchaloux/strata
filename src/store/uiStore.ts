@@ -1,4 +1,5 @@
 import type { SaveBackTarget } from '@/lib/saveBack'
+import { clampDelayMs } from '@/lib/listeningDelay'
 import { create } from 'zustand'
 import type { YTPlayerState } from '@/lib/youtube'
 import type { Span } from '@/types/strata'
@@ -33,7 +34,8 @@ export interface MergeDialogState {
 
 export type PlayerStatus = 'uninitialized' | 'loading' | 'ready' | 'error'
 
-export type PlaybackRate = 0.5 | 0.75 | 1 | 1.25
+/** A playback speed (lib/playbackRate.ts): a preset or a custom one. */
+export type PlaybackRate = number
 
 /**
  * Current zoom/scroll state of the shared timeline viewport. This is the one
@@ -130,6 +132,14 @@ export interface UIState {
   // (lib/palette.ts safeFill). A viewer's preference, remembered in this
   // browser, never in the file.
   colorblindSafe: boolean
+  // Listening delay (lib/listeningDelay.ts): how far behind the player these
+  // headphones play, in ms, and whether it is taken off. The listener's, not
+  // the analysis's: remembered in this browser, never in the file
+  // (docs/decisions.md, "Listening Delay Is the Listener's").
+  listeningDelayMs: number
+  listeningDelayOn: boolean
+  /** Whether a slowed or sped-up audio file keeps its pitch (lib/playbackRate.ts). Remembered in this browser; YouTube always keeps it. */
+  keepPitch: boolean
   /** Vocabulary packs the analyst has switched on in the type picker (lib/vocabulary.ts). */
   enabledPacks: string[]
   /** The Libraries dialog (packs on or off, import, share). */
@@ -229,6 +239,9 @@ export interface UIState {
   setClickOn: (on: boolean) => void
   setClickVolume: (volume: number) => void
   setColorblindSafe: (on: boolean) => void
+  setListeningDelayMs: (ms: number) => void
+  setListeningDelayOn: (on: boolean) => void
+  setKeepPitch: (on: boolean) => void
   setPackEnabled: (id: string, on: boolean) => void
   setLibrariesOpen: (open: boolean) => void
   requestTypePicker: () => void
@@ -323,6 +336,9 @@ const COLORBLIND_KEY = 'strata:colorblindSafe'
 const LYRICS_KEY = 'strata:showLyrics'
 const PACKS_KEY = 'strata:packs'
 const QUICK_KEY = 'strata:quickEntry'
+const DELAY_MS_KEY = 'strata:listeningDelayMs'
+const DELAY_ON_KEY = 'strata:listeningDelayOn'
+const KEEP_PITCH_KEY = 'strata:keepPitch'
 
 // Preferences live in this browser's storage; a blocked store (a private
 // window) just means the default each visit.
@@ -412,6 +428,9 @@ const useUIStore = create<UIState>()((set, get) => ({
   clickOn: false,
   clickVolume: readClickVolume(),
   colorblindSafe: readPreference(COLORBLIND_KEY) === 'on',
+  listeningDelayMs: clampDelayMs(Number(readPreference(DELAY_MS_KEY) ?? 0)),
+  listeningDelayOn: readPreference(DELAY_ON_KEY) === 'on',
+  keepPitch: readPreference(KEEP_PITCH_KEY) !== 'off',
   // On unless the analyst has turned it off (docs/decisions.md, "Lyrics Show in the Editor").
   showLyrics: readPreference(LYRICS_KEY) !== 'off',
   commentaryEdit: null,
@@ -544,6 +563,19 @@ const useUIStore = create<UIState>()((set, get) => ({
   setColorblindSafe: (on) => {
     writePreference(COLORBLIND_KEY, on ? 'on' : 'off')
     set({ colorblindSafe: on })
+  },
+  setListeningDelayMs: (ms) => {
+    const v = clampDelayMs(ms)
+    writePreference(DELAY_MS_KEY, String(v))
+    set({ listeningDelayMs: v })
+  },
+  setListeningDelayOn: (on) => {
+    writePreference(DELAY_ON_KEY, on ? 'on' : 'off')
+    set({ listeningDelayOn: on })
+  },
+  setKeepPitch: (on) => {
+    writePreference(KEEP_PITCH_KEY, on ? 'on' : 'off')
+    set({ keepPitch: on })
   },
   setClickVolume: (volume) => {
     writePreference(CLICK_VOLUME_KEY, String(volume))
