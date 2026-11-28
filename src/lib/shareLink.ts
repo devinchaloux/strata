@@ -1,10 +1,11 @@
 /**
  * Sharing an analysis by link. The analyst puts the .strata file online
  * anywhere a browser may read it (their own site, a GitHub repository or
- * Gist, Dropbox or OneDrive), and a Strata link
+ * Gist, Dropbox, OneDrive or Google Drive), and a Strata link
  * carries its address: `?src=<file address>`. Opening
  * the link fetches the file and shows it in the reading view. No Strata server
- * stores anything. docs/decisions.md, "Sharing by Link".
+ * stores anything; Drive files pass through Strata's Drive-only reader
+ * (api/drive.ts). docs/decisions.md, "Sharing by Link".
  */
 import { readStrataFile } from '@/lib/fileIO'
 import type { LoadResult } from '@/lib/documentLoad'
@@ -49,6 +50,24 @@ export function fileHost(url: string): FileHost {
   return 'web'
 }
 
+/**
+ * The file id in a Google Drive link: drive.google.com/file/d/<id>/view,
+ * /open?id=<id> or /uc?id=<id>. Null when there is none (a folder, say).
+ */
+export function driveFileId(url: string): string | null {
+  let u: URL
+  try {
+    u = new URL(url.trim())
+  } catch {
+    return null
+  }
+  const id = /^\/file\/d\/([A-Za-z0-9_-]+)/.exec(u.pathname)?.[1] ?? (u.pathname === '/open' || u.pathname === '/uc' ? u.searchParams.get('id') : null)
+  return id && /^[A-Za-z0-9_-]{10,200}$/.test(id) ? id : null
+}
+
+/** Strata's own reader for a Drive file (api/drive.ts), which holds the API key. */
+export const DRIVE_READER = '/api/drive'
+
 /** base64url, as OneDrive's sharing API wants a share link encoded. */
 function base64Url(s: string): string {
   return btoa(String.fromCharCode(...new TextEncoder().encode(s)))
@@ -65,8 +84,10 @@ function base64Url(s: string): string {
  *     other sites read the file
  *   - OneDrive: a 1drv.ms or onedrive.live.com link → the OneDrive sharing
  *     API's download address for it
- *   - Google Drive: none. Drive lets other sites read a file only through
- *     Google's Drive API with an API key, which Strata doesn't have; null.
+ *   - Google Drive: Strata's Drive reader for the file's id (a same-site
+ *     address), since Drive lets other sites read a file only through its
+ *     API with a key, and the key stays on the server; null for a Drive link
+ *     with no file id
  * Any other address is used as it is.
  */
 export function rawFileUrl(url: string): string | null {
@@ -84,16 +105,18 @@ export function rawFileUrl(url: string): string | null {
     }
     case 'onedrive':
       return `https://api.onedrive.com/v1.0/shares/u!${base64Url(u)}/root/content`
-    case 'gdrive':
-      return null
+    case 'gdrive': {
+      const id = driveFileId(u)
+      return id ? `${DRIVE_READER}?id=${id}` : null
+    }
     default:
       return u
   }
 }
 
-/** Whether Strata can open links to this host. */
-export function hostSupported(host: FileHost): boolean {
-  return host !== 'gdrive'
+/** Whether Strata can open this link (a Drive link needs a file id). */
+export function hostSupported(url: string): boolean {
+  return rawFileUrl(url) !== null
 }
 
 /** Fetch and read a shared file, with errors written for the reader. */
@@ -103,7 +126,7 @@ export async function fetchSharedAnalysis(url: string): Promise<LoadResult> {
   if (!address) {
     throw new Error(
       host === 'gdrive'
-        ? 'Google Drive doesn’t let other sites read its files, so Strata can’t open Drive links. Dropbox, OneDrive, GitHub, and most websites work.'
+        ? 'This Google Drive link doesn’t point to a file. Open the file in Drive, choose Share, and copy its link.'
         : 'This doesn’t look like a link to a file.',
     )
   }
@@ -118,6 +141,11 @@ export async function fetchSharedAnalysis(url: string): Promise<LoadResult> {
     )
   }
   if (!res.ok) {
+    // The Drive reader says what went wrong in words for the reader.
+    if (host === 'gdrive') {
+      const said = await res.json().catch(() => null) as { error?: unknown } | null
+      if (typeof said?.error === 'string') throw new Error(said.error)
+    }
     throw new Error(
       res.status === 403 || res.status === 404 || res.status === 401
         ? `The file could not be fetched (the server answered ${res.status}). Check that it’s shared with anyone who has the link.`

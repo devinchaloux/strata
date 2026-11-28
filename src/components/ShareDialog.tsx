@@ -2,7 +2,7 @@
  * ShareDialog — make a link that opens this analysis in the reading view.
  *
  * Strata stores nothing on a server, so the analyst puts the .strata file
- * online first (their site, GitHub, Dropbox or OneDrive) and pastes its address or share link here; the link carries that
+ * online first (their site, GitHub, Dropbox, OneDrive or Google Drive) and pastes its address or share link here; the link carries that
  * address (lib/shareLink.ts). Opened from the toolbar or the reading view.
  */
 import { useState } from 'react'
@@ -17,7 +17,7 @@ const HOST_NOTE: Record<FileHost, string> = {
   github: 'GitHub: paste the file’s page link.',
   dropbox: 'Dropbox: works with a share link.',
   onedrive: 'OneDrive: share it with “Anyone with the link”. Work and school accounts may not allow it.',
-  gdrive: '',
+  gdrive: 'Google Drive: share it with “Anyone with the link”.',
   web: '',
 }
 
@@ -32,12 +32,13 @@ export function ShareDialog() {
 
   const fileUrl = address.trim() || sharedFrom || ''
   const host = fileHost(fileUrl)
-  // A link Strata can't open (Google Drive) isn't offered.
-  const valid = /^https?:\/\/\S+$/.test(fileUrl) && hostSupported(host)
+  // A link Strata can't open (a Drive link with no file in it) isn't offered.
+  const supported = hostSupported(fileUrl)
+  const valid = /^https?:\/\/\S+$/.test(fileUrl) && supported
   const link = valid ? shareUrl(fileUrl, window.location.href) : ''
-  const note = hostSupported(host)
+  const note = supported
     ? HOST_NOTE[host]
-    : 'Google Drive doesn’t let other sites read its files, so Strata can’t open Drive links. Dropbox, OneDrive, and GitHub work.'
+    : 'This Drive link doesn’t point to a file. Open the file in Drive, choose Share, and copy its link.'
 
   function copy() {
     navigator.clipboard?.writeText(link)
@@ -57,7 +58,7 @@ export function ShareDialog() {
         <DialogHeader>
           <DialogTitle>Share as a link</DialogTitle>
           <DialogDescription>
-            Put the .strata file online (Dropbox, OneDrive, GitHub, or your own site) and paste its share link here. The link below opens it in Strata’s reading view.
+            Put the .strata file online (Dropbox, OneDrive, Google Drive, GitHub, or your own site) and paste its share link here. The link below opens it in Strata’s reading view.
           </DialogDescription>
         </DialogHeader>
 
@@ -69,7 +70,7 @@ export function ShareDialog() {
             placeholder={sharedFrom ?? 'https://…/alive.strata'}
             onChange={(e) => setAddress(e.target.value)}
           />
-          {note && <span className={hostSupported(host) ? '' : 'text-destructive'}>{note}</span>}
+          {note && <span className={supported ? '' : 'text-destructive'}>{note}</span>}
         </label>
 
         <div className="flex flex-col gap-1 text-xs text-muted-foreground">

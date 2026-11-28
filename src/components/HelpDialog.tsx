@@ -32,7 +32,7 @@ const STEPS: [string, string][] = [
   ['Bars', 'Optional: to work bar by bar, turn on Bar layer in the ⋯ menu of the layer that marks them. Its spans are bars, numbered above and counted inside. Use Bars, in the Segments tool row, to number and count them, elide a bar, make phrases or the beat grid from them, and even out hand-marked timing. Select some bars to work on those, or none to work on all of them. To make bars from phrases, select the phrases and choose Split into bars.'],
   ['Write', 'You write commentary above the diagram: hover a span’s level and press Edit, or press Write commentary in the Inspector. Markdown works, with a toolbar for bold, lists, headings, and links. The link button names a span or marker; type your own words over its label. Commentary appears while that passage plays.'],
   ['Keep', 'Use File to save a .strata file, or Export a figure (SVG, PNG, or PDF) or a commentary page (HTML). Click the analysis’s title for its settings.'],
-  ['Read', 'Open Reading view to read or teach from the video, commentary, and diagram, with editing off. Choose what it shows from View. Zoom the diagram with − and +, or press Fit to see the whole track. Use Share to make a link to a copy you’ve put online (Dropbox, OneDrive, GitHub, or your own site). Press Esc to go back.'],
+  ['Read', 'Open Reading view to read or teach from the video, commentary, and diagram, with editing off. Choose what it shows from View. Zoom the diagram with − and +, or press Fit to see the whole track. Use Share to make a link to a copy you’ve put online (Dropbox, OneDrive, Google Drive, GitHub, or your own site). Press Esc to go back.'],
 ]
 
 const KEYS: [string, [string, string][]][] = [

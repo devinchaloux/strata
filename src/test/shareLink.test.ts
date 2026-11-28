@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { fileHost, rawFileUrl, shareUrl, srcParam } from '@/lib/shareLink'
+import { driveFileId, fileHost, hostSupported, rawFileUrl, shareUrl, srcParam } from '@/lib/shareLink'
 
 describe('share links', () => {
   it('carry the file address and read it back', () => {
@@ -34,10 +34,20 @@ describe('share links', () => {
     expect(token).toMatch(/^[A-Za-z0-9_-]+$/)
   })
 
-  it('recognise a Google Drive link and decline it', () => {
-    const link = 'https://drive.google.com/file/d/1AbC-d_E/view?usp=sharing'
+  it('read a Google Drive link through Strata’s Drive reader', () => {
+    const link = 'https://drive.google.com/file/d/1AbC-d_EfGhIjK/view?usp=sharing'
     expect(fileHost(link)).toBe('gdrive')
-    expect(rawFileUrl(link)).toBeNull()
+    expect(rawFileUrl(link)).toBe('/api/drive?id=1AbC-d_EfGhIjK')
+    expect(driveFileId('https://drive.google.com/open?id=1AbC-d_EfGhIjK')).toBe('1AbC-d_EfGhIjK')
+    expect(driveFileId('https://drive.google.com/uc?id=1AbC-d_EfGhIjK&export=download')).toBe('1AbC-d_EfGhIjK')
+    expect(hostSupported(link)).toBe(true)
+  })
+
+  it('decline a Drive link with no file in it', () => {
+    const folder = 'https://drive.google.com/drive/folders/1AbC-d_EfGhIjK'
+    expect(rawFileUrl(folder)).toBeNull()
+    expect(hostSupported(folder)).toBe(false)
+    expect(hostSupported('https://example.org/a.strata')).toBe(true)
   })
 
 })

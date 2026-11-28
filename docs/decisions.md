@@ -222,8 +222,8 @@ aren't part of this repository.
 - [While playing, the view follows a playhead that walks off it and shows where a seek lands, but leaves alone a view the reader scrolled away.](#following-the-playhead-2026-11-23)
 - [A reader hides a layer in the reading view with the eye on its name; it changes the view, never the file.](#hiding-layers-in-the-reading-view-2026-11-23)
 - [The app bar is File ▾, Undo and Redo, the analysis's title (it opens Document settings), then Reading view, Share and Help ▾; nothing folds.](#the-app-bar-2026-11-26)
-- [You share an analysis as a link to its file (`?src=`); Strata reads GitHub, Dropbox and OneDrive links, and declines Google Drive.](#share-from-the-toolbar-dropbox-and-onedrive-links-2026-10-02)
-- [Through the beta Strata stays link-only: no proxy, no API key, no hosted files.](#link-only-through-the-beta-2026-11-23)
+- [You share an analysis as a link to its file (`?src=`); Strata reads GitHub, Dropbox, OneDrive and Google Drive links.](#share-from-the-toolbar-dropbox-and-onedrive-links-2026-10-02)
+- [Strata stays link-only, with no hosted files and no general fetch proxy; its one server piece reads Drive files by id with a key held on the server.](#google-drive-links-through-a-drive-only-proxy-2026-11-28)
 - [Shared links treat lyrics like any other view.](#shared-links-treat-lyrics-like-any-other-view-2026-10-03)
 - [A page embeds Strata in an iframe (`?embed`), with a focus, layers and window messages.](#embedding-an-analysis-2026-10-03)
 - [An embed shows zoom controls, opens a whole track at 100%, and shows layer names at 640px and wider.](#embed-layout-on-wide-screens-2026-11-06)
@@ -279,7 +279,7 @@ By area, in the order the entries were made:
 
 **The player and the source:** [Player Chrome (Phase 0.3)](#player-chrome-phase-03) · [Source Linking (2026-07-02)](#source-linking-2026-07-02) · [Video Curtain Covers Every Dialog (2026-09-27)](#video-curtain-covers-every-dialog-2026-09-27) · [Dialogs Stay Clear of the Player (2026-09-27)](#dialogs-stay-clear-of-the-player-2026-09-27) · [Video Below the Fold (2026-09-27)](#video-below-the-fold-2026-09-27) · [Menus Keep Clear of the Player (2026-10-02)](#menus-keep-clear-of-the-player-2026-10-02) · [Click Track and Beat Matching (2026-10-24)](#click-track-and-beat-matching-2026-10-24)
 
-**Reading, sharing, embedding and export:** [Sharing](#sharing) · [Embeddable Viewer](#embeddable-viewer) · [Export (2026-09-27)](#export-2026-09-27) · [The Reading View (2026-10-01)](#the-reading-view-2026-10-01) · [Sharing by Link (2026-10-01)](#sharing-by-link-2026-10-01) · [Export: Choose Layers, Cut Spans at the Range (2026-10-02)](#export-choose-layers-cut-spans-at-the-range-2026-10-02) · [Share From the Toolbar; Dropbox and OneDrive Links (2026-10-02)](#share-from-the-toolbar-dropbox-and-onedrive-links-2026-10-02) · [Example Analyses (2026-10-02)](#example-analyses-2026-10-02) · [Embedding an Analysis (2026-10-03)](#embedding-an-analysis-2026-10-03) · [Starting an Analysis from a Link (2026-10-03)](#starting-an-analysis-from-a-link-2026-10-03) · [Embed Zoom (2026-11-06)](#embed-zoom-2026-11-06) · [Embed Layout on Wide Screens (2026-11-06)](#embed-layout-on-wide-screens-2026-11-06) · [Layer Names Sized to Fit (2026-11-06)](#layer-names-sized-to-fit-2026-11-06) · [Save as PDF Through the Print Dialog (2026-11-23)](#save-as-pdf-through-the-print-dialog-2026-11-23) · [Commentary in the PDF (2026-11-23)](#commentary-in-the-pdf-2026-11-23) · [Read and Play on a Phone (2026-11-23)](#read-and-play-on-a-phone-2026-11-23) · [Following the Playhead (2026-11-23)](#following-the-playhead-2026-11-23) · [Hiding Layers in the Reading View (2026-11-23)](#hiding-layers-in-the-reading-view-2026-11-23) · [The Toolbar Folds When Narrow (2026-11-23)](#the-toolbar-folds-when-narrow-2026-11-23) · [Link-Only Through the Beta (2026-11-23)](#link-only-through-the-beta-2026-11-23) · [Reading View Has a View Menu (2026-11-26)](#reading-view-has-a-view-menu-2026-11-26) · [Saving Back to the Page That Opened Strata (2026-11-27)](#saving-back-to-the-page-that-opened-strata-2026-11-27)
+**Reading, sharing, embedding and export:** [Sharing](#sharing) · [Embeddable Viewer](#embeddable-viewer) · [Export (2026-09-27)](#export-2026-09-27) · [The Reading View (2026-10-01)](#the-reading-view-2026-10-01) · [Sharing by Link (2026-10-01)](#sharing-by-link-2026-10-01) · [Export: Choose Layers, Cut Spans at the Range (2026-10-02)](#export-choose-layers-cut-spans-at-the-range-2026-10-02) · [Share From the Toolbar; Dropbox and OneDrive Links (2026-10-02)](#share-from-the-toolbar-dropbox-and-onedrive-links-2026-10-02) · [Example Analyses (2026-10-02)](#example-analyses-2026-10-02) · [Embedding an Analysis (2026-10-03)](#embedding-an-analysis-2026-10-03) · [Starting an Analysis from a Link (2026-10-03)](#starting-an-analysis-from-a-link-2026-10-03) · [Embed Zoom (2026-11-06)](#embed-zoom-2026-11-06) · [Embed Layout on Wide Screens (2026-11-06)](#embed-layout-on-wide-screens-2026-11-06) · [Layer Names Sized to Fit (2026-11-06)](#layer-names-sized-to-fit-2026-11-06) · [Save as PDF Through the Print Dialog (2026-11-23)](#save-as-pdf-through-the-print-dialog-2026-11-23) · [Commentary in the PDF (2026-11-23)](#commentary-in-the-pdf-2026-11-23) · [Read and Play on a Phone (2026-11-23)](#read-and-play-on-a-phone-2026-11-23) · [Following the Playhead (2026-11-23)](#following-the-playhead-2026-11-23) · [Hiding Layers in the Reading View (2026-11-23)](#hiding-layers-in-the-reading-view-2026-11-23) · [The Toolbar Folds When Narrow (2026-11-23)](#the-toolbar-folds-when-narrow-2026-11-23) · [Link-Only Through the Beta (2026-11-23)](#link-only-through-the-beta-2026-11-23) · [Google Drive Links Through a Drive-Only Proxy (2026-11-28)](#google-drive-links-through-a-drive-only-proxy-2026-11-28) · [Reading View Has a View Menu (2026-11-26)](#reading-view-has-a-view-menu-2026-11-26) · [Saving Back to the Page That Opened Strata (2026-11-27)](#saving-back-to-the-page-that-opened-strata-2026-11-27)
 
 **The app shell, help and wording:** [Visual Design (Phase 0.7, 2026-06-20)](#visual-design-phase-07-2026-06-20) · [App Shell & Inspector (2026-06-27)](#app-shell--inspector-2026-06-27) · [Global Settings & Toolbar Cleanup (2026-06-30)](#global-settings--toolbar-cleanup-2026-06-30) · [Help and Beta Notice (2026-09-27)](#help-and-beta-notice-2026-09-27) · [Symbol Palette for Free-Text Fields (2026-09-27)](#symbol-palette-for-free-text-fields-2026-09-27) · [UI Copy Pass, Batch 3 (2026-09-27)](#ui-copy-pass-batch-3-2026-09-27) · [UI Review Fixes and Tighter Chrome (2026-09-27)](#ui-review-fixes-and-tighter-chrome-2026-09-27) · [The Span Inspector: a Header and Three Tabs (2026-10-01)](#the-span-inspector-a-header-and-three-tabs-2026-10-01) · [Inspector Tabs That Stand Out; Confidence Explained (2026-10-02)](#inspector-tabs-that-stand-out-confidence-explained-2026-10-02) · [How the App's Text Reads (2026-10-03)](#how-the-apps-text-reads-2026-10-03) · [Copy Pass, Second Round (2026-10-03)](#copy-pass-second-round-2026-10-03) · [A Shorter New Analysis Dialog; Darker Interface Greys (2026-10-24)](#a-shorter-new-analysis-dialog-darker-interface-greys-2026-10-24) · [People Do Things in Strata's Text (2026-11-05)](#people-do-things-in-stratas-text-2026-11-05) · [The Inspector as Sections; Zoom in the Reading View (2026-11-05)](#the-inspector-as-sections-zoom-in-the-reading-view-2026-11-05) · [Quick Pick Types on Typed Spans; Timing With Boundaries; Commentary Links (2026-11-05)](#quick-pick-types-on-typed-spans-timing-with-boundaries-commentary-links-2026-11-05) · [Public Docs for Analysts; American Spelling; "Live Performance" (2026-11-05)](#public-docs-for-analysts-american-spelling-live-performance-2026-11-05) · [Where Controls Live (2026-11-26)](#where-controls-live-2026-11-26) · [The Controls Rebuilt (2026-11-26)](#the-controls-rebuilt-2026-11-26) · [Menus Are Names (2026-11-26)](#menus-are-names-2026-11-26) · [The App Bar (2026-11-26)](#the-app-bar-2026-11-26) · [First-Run Text (2026-11-26)](#first-run-text-2026-11-26) · [Merge, Split and Delete Confirm With a Toast (2026-11-26)](#merge-split-and-delete-confirm-with-a-toast-2026-11-26) · [Showing and Hiding the Grid (2026-11-26)](#showing-and-hiding-the-grid-2026-11-26) · [The Bars Menu Waits for the Bar Layer (2026-11-26)](#the-bars-menu-waits-for-the-bar-layer-2026-11-26) · [Tempo Gets a Tool Row (2026-11-26)](#tempo-gets-a-tool-row-2026-11-26) · [UI Review: the Layer Menu Folds, Quick Pick Counts Bars (2026-11-26)](#ui-review-the-layer-menu-folds-quick-pick-counts-bars-2026-11-26) · [Help Is a Page (2026-11-26)](#help-is-a-page-2026-11-26)
 
@@ -6635,3 +6635,35 @@ lib/playbackRate.ts (`stepRate`); store/beatMatch.ts (`beatMatchKey`);
 PlayerDock; `uiStore.keepPitch`; useAudioPlayer; PlaybackSettingsMenu;
 HelpDialog; `src/test/playbackRate.test.ts`, `beatMatchKey.test.ts`,
 `playbackSettings.test.tsx`.
+
+---
+
+## Google Drive Links Through a Drive-Only Proxy (2026-11-28)
+
+*From the maintainer: "I think I want to do it Server-side Proxy," for the
+Google Drive API key.*
+
+**Decision.** Strata reads Google Drive share links. A Vercel function,
+`GET /api/drive?id=<file id>` (`api/drive.ts`), fetches the file from the
+Drive API with a key kept in the `GOOGLE_DRIVE_API_KEY` environment variable,
+which never reaches the browser. The app turns a Drive link
+(`/file/d/<id>/…`, `/open?id=`, `/uc?id=`) into that address when it fetches;
+the shared link keeps the Drive address, as for the other hosts. The function
+reads nothing but Drive, by file id; an API key opens only files shared with
+"Anyone with the link"; it passes on only a JSON object under 5 MB; and
+Vercel's cache keeps a file 60 seconds, so a link a class opens at once costs
+one Drive read. It sends no CORS header, so other sites' pages can't use it.
+Without the key the function says Drive isn't set up. A Drive link with no
+file in it (a folder) is declined in the Share dialog.
+**Changes.** "Link-Only Through the Beta" (2026-11-23) rejected a Google API
+key; this replaces that part. Its other rejections stand: no general fetch
+proxy and no Strata-hosted files.
+**Why.** Drive is where many scholars keep files. A key in the browser would
+be public in this repository and in every page load, open to anyone's quota.
+On the server it is one secret in Vercel's settings. Reading only Drive, by
+id, keeps the function from becoming the open relay the earlier ruling
+turned down.
+**Setting it up.** In Google Cloud, enable the Google Drive API, create an
+API key and restrict it to that API. Add it to the Vercel project as
+`GOOGLE_DRIVE_API_KEY`. `npm run dev` doesn't run `api/`, so Drive links work
+on Vercel deployments (or `vercel dev`), not the plain dev server.
